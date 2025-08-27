@@ -1,110 +1,80 @@
-from core.models import Workflow, RuntimeNode, InputTypes
-from core.state import WorkflowState, Frame
+from core.ast import Program, Statement, Value, ValueType
+from core.state import WorkflowState
 from core.opcodes import OpcodeRegistry
+from core.parser import Parser
 
 
 class Engine:
     _state: WorkflowState
     _opcode_registry: OpcodeRegistry
 
-    def __init__(self, workflow: Workflow):
-        self._state = WorkflowState(workflow)
+    def __init__(self, program: Program):
+        self._state = WorkflowState(program)
         self._opcode_registry = OpcodeRegistry()
         self._opcode_registry.discover_opcodes("opcodes")
 
-    # -------------------------
-    # Control flow helpers
-    # -------------------------
-    def jump_to(self, target_id: str | None):
-        """Jump execution directly to a node ID, or None (end)."""
-        if target_id is None:
-            self._state._pc = None
-        else:
-            self._state._pc = self._state._workflow.nodes.get(target_id)
-
-    def call_substack(self, return_node: RuntimeNode | None, target_id: str):
-        """Enter a substack and return to return_node when done."""
-        frame = Frame(return_node=return_node, pending_input=None)
-        self._state._call_stack.append(frame)
-        self.jump_to(target_id)
-
-    def return_from_frame(self, value=None):
-        """Return to the parent node after a substack call."""
-        frame = self._state.pop_frame()
-        if not frame:
-            self._state._pc = None
-            return
-
-        self._state._pc = frame._return_node
-        if value is not None and frame._pending_input:
-            # Push result into the pending input of the parent node
-            frame._return_node.node.inputs[frame._pending_input] = (
-                InputTypes.LITERAL.value,
-                value,
-            )
-
-    # -------------------------
-    # Input evaluation
-    # -------------------------
-    def _evaluate_inputs(self, node: "RuntimeNode") -> bool:
-        """Evaluate all reporter inputs. If a reporter triggers a substack, pause step."""
-        inputs = node.node.inputs or {}
-        for name, (input_type, value) in list(inputs.items()):
+    def _evaluate_input(self, value: Value):
+        if value.type == ValueType.LITERAL:
+            return value.data
+        elif value.type == ValueType.VARIABLE:
+            return self._state._variables[value.data][1]
+        elif value.type == ValueType.NODE_REF:
+            return self._execute_reporter(value.data)
+        elif value.type == ValueType.BRANCH_REF:
+            return value.data
+    
+    def _execute_reporter(self, node_id: str):
+        node = self._state.program.node_map[node_id]
+        
+        inputs = {}
+        for name, (input_type, value) in (node.inputs or {}).items():
+            from core.models import InputTypes
             if input_type == InputTypes.LITERAL.value:
-                self._state.push(value)
-
+                inputs[name] = Value(type=ValueType.LITERAL, data=value)
             elif input_type == InputTypes.VARIABLE_REF.value:
-                self._state.push(self._state._variables[value][1])
-
+                inputs[name] = Value(type=ValueType.VARIABLE, data=value)
             elif input_type == InputTypes.NODE_REF.value:
-                # Reporter → run node first, then come back
-                frame = Frame(return_node=node, pending_input=name)
-                self._state._call_stack.append(frame)
-                target = self._state._workflow.nodes[value]
-                self._state._pc = target
-                return False
-
+                inputs[name] = Value(type=ValueType.NODE_REF, data=value)
             elif input_type == InputTypes.BRANCH_REF.value:
-                # Branch references are just node IDs
-                self._state.push(value)
+                inputs[name] = Value(type=ValueType.BRANCH_REF, data=value)
+        
+        reporter_stmt = Statement(opcode=node.opcode, inputs=inputs)
+        
+        saved_pc = self._state._pc
+        self._execute_statement(reporter_stmt)
+        self._state._pc = saved_pc
+        
+        return self._state.pop()
 
-        return True
+    def _evaluate_inputs(self, stmt: Statement):
+        for name, value in stmt.inputs.items():
+            result = self._evaluate_input(value)
+            self._state.push(result)
 
-    # -------------------------
-    # Opcode execution
-    # -------------------------
-    def execute_opcode(self, node: "RuntimeNode"):
-        opcode_cls = self._opcode_registry.get(node.node.opcode)
+    def _execute_statement(self, stmt: Statement):
+        self._evaluate_inputs(stmt)
+        
+        opcode_cls = self._opcode_registry.get(stmt.opcode)
         opcode = opcode_cls()
-        if not opcode.execute(self._state, node, self):
-            print(f"Failure to run opcode {node.node.opcode}")
+        if not opcode.execute(self._state, stmt, self):
+            print(f"Failure to run opcode {stmt.opcode}")
 
-    # -------------------------
-    # Step execution
-    # -------------------------
+    def _parse_branch_chain(self, node_id: str) -> list[Statement]:
+        from core.models import Workflow
+        dummy_workflow = Workflow(name="dummy", nodes=self._state.program.node_map)
+        parser = Parser(dummy_workflow)
+        return parser._parse_chain(node_id)
+    
+    def _execute_branch(self, statements: list[Statement]):
+        for stmt in statements:
+            self._execute_statement(stmt)
+
     def step(self) -> bool:
-        """Execute a single node in the workflow."""
-        pc = self._state._pc
-        if pc is None:
+        if self._state.is_finished():
             return False
 
-        # First resolve reporter inputs
-        if not self._evaluate_inputs(pc):
-            return True  # Substack called, pause current step
-
-        # Execute the opcode
-        self.execute_opcode(pc)
-
-        # If opcode didn’t redirect control flow, move to next
-        if pc == self._state._pc:
-            if pc.node.next:
-                self.jump_to(pc.node.next)
-            else:
-                # End of flow → return from substack if available
-                if self._state._call_stack:
-                    result = self._state.pop() if self._state else None
-                    self.return_from_frame(result)
-                else:
-                    self._state._pc = None
-
+        current_stmt = self._state.current_statement()
+        self._execute_statement(current_stmt)
+        
+        self._state._pc += 1
         return True

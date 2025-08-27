@@ -1,6 +1,7 @@
 import json
 import argparse
-from core.models import Program
+from core.models import Program as OldProgram
+from core.parser import Parser
 from core.engine import Engine
 
 
@@ -28,18 +29,22 @@ def main():
         json_data = load_workflow(args.file)
 
     if json_data:
-        program: Program = Program.model_validate(json_data)
+        old_program = OldProgram.model_validate(json_data)
+        workflow = old_program.workflows[0]
+        
+        parser = Parser(workflow)
+        program = parser.parse()
 
-    engine = Engine(program.workflows[0])
+    engine = Engine(program)
 
     condition = True
     counter = 0
     while condition:
         engine.step()
         condition = "y" == input(f"Step [{counter}], continue? ")
-        if engine._state._pc is None:
+        if engine._state.is_finished():
             break
-        print(f"Next node: {engine._state._pc}")
+        print(f"Next PC: {engine._state._pc}")
         counter += 1
 
 

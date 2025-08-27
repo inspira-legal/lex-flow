@@ -7,25 +7,16 @@
         "start": {
           "opcode": "event_start",
           "next": "print_hello",
-          "parent": null,
-          "inputs": {},
-          "fields": {},
-          "isReporter": false
+          "inputs": {}
         },
         "print_hello": {
           "opcode": "io_print",
           "next": null,
-          "parent": "start",
           "inputs": {
             "STRING": [1, "Hello, World!\n"]
-          },
-          "fields": {},
-          "isReporter": false
+          }
         }
-      },
-      "comments": {}
+      }
     }
-  ],
-  "globals": {},
-  "metadata": {}
+  ]
 }

@@ -1,35 +1,35 @@
 from core.opcodes import opcode, BaseOpcode
-from core.models import Node, RuntimeNode
-from core.state import Frame
-from core.state import WorkflowState
-from core.models import RuntimeNode, InputTypes
+from core.parser import Parser
 
 
 @opcode("control_if_else")
 class ControlIfElse(BaseOpcode):
-    def execute(self, state, node, engine):
+    def execute(self, state, stmt, engine):
         branch2 = state.pop()
         branch1 = state.pop()
         condition = state.pop()
 
         if condition:
-            engine.call_substack(return_node=node.node.next, target_id=branch1)
+            branch_stmts = engine._parse_branch_chain(branch1)
+            engine._execute_branch(branch_stmts)
         else:
-            engine.call_substack(return_node=node.node.next, target_id=branch2)
+            branch_stmts = engine._parse_branch_chain(branch2)
+            engine._execute_branch(branch_stmts)
 
         return True
 
 
 @opcode("control_while")
 class ControlWhile(BaseOpcode):
-    def execute(self, state, node, engine):
-        # Get CONDITION and SUBSTACK inputs
-        condition_result = state.pop()
-        substack_id = state.pop()
+    def execute(self, state, stmt, engine):
+        substack_id = state.pop()  
+        condition_result = state.pop()  
+
 
         if condition_result:
-            engine.call_substack(return_node=node, target_id=substack_id)
-        else:
-            return True
+            branch_stmts = engine._parse_branch_chain(substack_id)
+            engine._execute_branch(branch_stmts)
+            
+            state._pc -= 1
 
         return True

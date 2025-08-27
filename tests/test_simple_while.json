@@ -1,0 +1,68 @@
+{
+  "workflows": [
+    {
+      "name": "main",
+      "variables": {
+        "1": ["counter", "1"]
+      },
+      "nodes": {
+        "start": {
+          "opcode": "event_start",
+          "next": "while_loop",
+          "inputs": {}
+        },
+        "while_loop": {
+          "opcode": "control_while",
+          "inputs": {
+            "CONDITION": [2, "check_counter"],
+            "SUBSTACK": [4, "print_and_increment"]
+          }
+        },
+        "check_counter": {
+          "opcode": "operator_less_than",
+          "inputs": {
+            "OPERAND1": [3, "1"],
+            "OPERAND2": [1, "4"]
+          },
+          "isReporter": true
+        },
+        "print_and_increment": {
+          "opcode": "io_print",
+          "next": "print_newline",
+          "inputs": {
+            "STRING": [2, "format_counter"]
+          }
+        },
+        "format_counter": {
+          "opcode": "data_get_variable",
+          "inputs": {
+            "VARIABLE": [1, "1"]
+          },
+          "isReporter": true
+        },
+        "print_newline": {
+          "opcode": "io_print",
+          "next": "increment",
+          "inputs": {
+            "STRING": [1, "\n"]
+          }
+        },
+        "increment": {
+          "opcode": "data_set_variable_to",
+          "inputs": {
+            "VARIABLE": [1, "1"],
+            "VALUE": [2, "add_one"]
+          }
+        },
+        "add_one": {
+          "opcode": "operator_add",
+          "inputs": {
+            "OPERAND1": [3, "1"],
+            "OPERAND2": [1, "1"]
+          },
+          "isReporter": true
+        }
+      }
+    }
+  ]
+}

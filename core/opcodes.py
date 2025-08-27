@@ -1,20 +1,16 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Type, Optional
-from core.state import WorkflowState, RuntimeNode
 import importlib
 import pkgutil
 
 
 class OpcodeNotFoundError(Exception):
-    """Raised when an opcode is not found in the registry."""
+    pass
 
 
 class BaseOpcode(ABC):
-    """Base class for all opcodes with common functionality."""
-
     @abstractmethod
-    def execute(self, state: WorkflowState, node: RuntimeNode, engine) -> bool:
-        """Execute the opcode logic."""
+    def execute(self, state, stmt, engine) -> bool:
         pass
 
 

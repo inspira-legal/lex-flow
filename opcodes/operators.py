@@ -3,14 +3,58 @@ from core.opcodes import opcode, BaseOpcode
 
 @opcode("operator_equals")
 class OperatorEquals(BaseOpcode):
-    def execute(self, state, node, engine):
+    def execute(self, state, stmt, engine):
         op2 = state.pop()
         op1 = state.pop()
 
-        print(f"OP1: {op1}, OP2: {op2}")
-        if op1 == op2:
-            state.push(True)
-        else:
-            state.push(False)
+        try:
+            result = int(op1) == int(op2)
+        except (ValueError, TypeError):
+            result = op1 == op2
+        state.push(result)
+        return True
 
+
+@opcode("operator_add")
+class OperatorAdd(BaseOpcode):
+    def execute(self, state, stmt, engine):
+        op2 = state.pop()
+        op1 = state.pop()
+        
+        result = int(op1) + int(op2)
+        state.push(result)
+        return True
+
+
+@opcode("operator_less_than")
+class OperatorLessThan(BaseOpcode):
+    def execute(self, state, stmt, engine):
+        op2 = state.pop()
+        op1 = state.pop()
+        
+        result = int(op1) < int(op2)
+        state.push(result)
+        return True
+
+
+@opcode("operator_greater_than")
+class OperatorGreaterThan(BaseOpcode):
+    def execute(self, state, stmt, engine):
+        op2 = state.pop()
+        op1 = state.pop()
+        
+        result = int(op1) > int(op2)
+        state.push(result)
+        return True
+
+
+@opcode("math_random")
+class MathRandom(BaseOpcode):
+    def execute(self, state, stmt, engine):
+        import random
+        max_val = state.pop()
+        min_val = state.pop()
+        
+        result = random.randint(int(min_val), int(max_val))
+        state.push(result)
         return True
