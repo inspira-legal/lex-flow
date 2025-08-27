@@ -3,6 +3,7 @@
 import json
 import os
 import sys
+import asyncio
 from io import StringIO
 from contextlib import redirect_stdout
 
@@ -11,7 +12,7 @@ from core.parser import Parser
 from core.engine import Engine
 
 
-def run_test(test_file: str) -> dict:
+async def run_test(test_file: str) -> dict:
     """Run a single test file and capture results."""
     test_name = os.path.basename(test_file).replace('.json', '')
     
@@ -33,7 +34,7 @@ def run_test(test_file: str) -> dict:
         
         with redirect_stdout(output):
             step_count = 0
-            while engine.step() and step_count < 50:  # Safety limit
+            while await engine.step() and step_count < 50:  # Safety limit
                 step_count += 1
         
         result = {
@@ -58,7 +59,7 @@ def run_test(test_file: str) -> dict:
     return result
 
 
-def run_all_tests():
+async def run_all_tests():
     """Run all tests in the tests/ directory."""
     tests_dir = 'tests'
     
@@ -80,7 +81,7 @@ def run_all_tests():
     
     for test_file in sorted(test_files):
         test_path = os.path.join(tests_dir, test_file)
-        result = run_test(test_path)
+        result = await run_test(test_path)
         results.append(result)
         
         status_icon = "✅" if result['status'] == 'PASS' else "❌"
@@ -113,4 +114,4 @@ def run_all_tests():
 
 
 if __name__ == "__main__":
-    run_all_tests()
+    asyncio.run(run_all_tests())

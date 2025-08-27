@@ -1,5 +1,6 @@
 import json
 import argparse
+import asyncio
 from core.models import Program as OldProgram
 from core.parser import Parser
 from core.engine import Engine
@@ -19,7 +20,7 @@ def load_workflow(path: str) -> dict:
     return json_data
 
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(description="Lex Flow Interpreter.")
     parser.add_argument("-f", "--file", help="Workflow file path")
     parser.add_argument("--debug", action="store_true", help="Enable step-by-step debugging")
@@ -43,7 +44,7 @@ def main():
         condition = True
         counter = 0
         while condition:
-            engine.step()
+            await engine.step()
             condition = "y" == input(f"Step [{counter}], continue? ")
             if engine._state.is_finished():
                 break
@@ -51,8 +52,8 @@ def main():
             counter += 1
     else:
         while not engine._state.is_finished():
-            engine.step()
+            await engine.step()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

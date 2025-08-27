@@ -3,7 +3,7 @@ from core.opcodes import opcode, BaseOpcode
 
 @opcode("operator_equals")
 class OperatorEquals(BaseOpcode):
-    def execute(self, state, stmt, engine):
+    async def execute(self, state, stmt, engine):
         op2 = state.pop()
         op1 = state.pop()
 
@@ -17,7 +17,7 @@ class OperatorEquals(BaseOpcode):
 
 @opcode("operator_add")
 class OperatorAdd(BaseOpcode):
-    def execute(self, state, stmt, engine):
+    async def execute(self, state, stmt, engine):
         op2 = state.pop()
         op1 = state.pop()
 
@@ -28,7 +28,7 @@ class OperatorAdd(BaseOpcode):
 
 @opcode("operator_less_than")
 class OperatorLessThan(BaseOpcode):
-    def execute(self, state, stmt, engine):
+    async def execute(self, state, stmt, engine):
         op2 = state.pop()
         op1 = state.pop()
 
@@ -39,7 +39,7 @@ class OperatorLessThan(BaseOpcode):
 
 @opcode("operator_greater_than")
 class OperatorGreaterThan(BaseOpcode):
-    def execute(self, state, stmt, engine):
+    async def execute(self, state, stmt, engine):
         op2 = state.pop()
         op1 = state.pop()
 
@@ -50,7 +50,7 @@ class OperatorGreaterThan(BaseOpcode):
 
 @opcode("math_random")
 class MathRandom(BaseOpcode):
-    def execute(self, state, stmt, engine):
+    async def execute(self, state, stmt, engine):
         import random
 
         max_val = state.pop()
@@ -63,7 +63,7 @@ class MathRandom(BaseOpcode):
 
 @opcode("str_format")
 class StrFormat(BaseOpcode):
-    def execute(self, state, stmt, engine):
+    async def execute(self, state, stmt, engine):
         format_string = state.pop()
         
         args = []

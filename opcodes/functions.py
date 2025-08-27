@@ -3,13 +3,13 @@ from core.opcodes import opcode, BaseOpcode
 
 @opcode("function_return")
 class FunctionReturn(BaseOpcode):
-    def execute(self, state, stmt, engine):
+    async def execute(self, state, stmt, engine):
         return True
 
 
 @opcode("function_call")
 class FunctionCallOpcode(BaseOpcode):
-    def execute(self, state, stmt, engine):
+    async def execute(self, state, stmt, engine):
         inputs = list(stmt.inputs.keys())
 
         values = []
@@ -23,7 +23,7 @@ class FunctionCallOpcode(BaseOpcode):
         for arg in args:
             state.push(arg)
 
-        engine._call_function(function_name)
+        await engine._call_function(function_name)
 
         return True
 

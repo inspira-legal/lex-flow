@@ -13,19 +13,19 @@ class Engine:
         self._opcode_registry = OpcodeRegistry()
         self._opcode_registry.discover_opcodes("opcodes")
 
-    def _evaluate_input(self, value: Value):
+    async def _evaluate_input(self, value: Value):
         if value.type == ValueType.LITERAL:
             return value.data
         elif value.type == ValueType.VARIABLE:
             return self._state._variables[value.data][1]
         elif value.type == ValueType.NODE_REF:
-            return self._execute_reporter(value.data)
+            return await self._execute_reporter(value.data)
         elif value.type == ValueType.BRANCH_REF:
             return value.data
         elif value.type == ValueType.FUNCTION_CALL:
-            return self._call_function(value.data)
+            return await self._call_function(value.data)
 
-    def _execute_reporter(self, node_id: str):
+    async def _execute_reporter(self, node_id: str):
         node = self._state.program.node_map[node_id]
 
         inputs = {}
@@ -44,22 +44,22 @@ class Engine:
         reporter_stmt = Statement(opcode=node.opcode, inputs=inputs)
 
         saved_pc = self._state._pc
-        self._execute_statement(reporter_stmt)
+        await self._execute_statement(reporter_stmt)
         self._state._pc = saved_pc
 
         return self._state.pop()
 
-    def _evaluate_inputs(self, stmt: Statement):
+    async def _evaluate_inputs(self, stmt: Statement):
         for name, value in stmt.inputs.items():
-            result = self._evaluate_input(value)
+            result = await self._evaluate_input(value)
             self._state.push(result)
 
-    def _execute_statement(self, stmt: Statement):
-        self._evaluate_inputs(stmt)
+    async def _execute_statement(self, stmt: Statement):
+        await self._evaluate_inputs(stmt)
 
         opcode_cls = self._opcode_registry.get(stmt.opcode)
         opcode = opcode_cls()
-        if not opcode.execute(self._state, stmt, self):
+        if not await opcode.execute(self._state, stmt, self):
             print(f"Failure to run opcode {stmt.opcode}")
 
     def _parse_branch_chain(self, node_id: str) -> list[Statement]:
@@ -69,11 +69,11 @@ class Engine:
         parser = Parser(dummy_workflow)
         return parser._parse_chain(node_id)
 
-    def _execute_branch(self, statements: list[Statement]):
+    async def _execute_branch(self, statements: list[Statement]):
         for stmt in statements:
-            self._execute_statement(stmt)
+            await self._execute_statement(stmt)
 
-    def _call_function(self, function_name: str):
+    async def _call_function(self, function_name: str):
         if function_name not in self._state.program.functions:
             raise Exception(f"Unknown function: {function_name}")
 
@@ -100,19 +100,19 @@ class Engine:
 
         try:
             for stmt in function_def.body.statements:
-                self._execute_statement(stmt)
+                await self._execute_statement(stmt)
         finally:
             self._state._variables = saved_variables
             self._state.pop_frame()
 
         return self._state.pop() if self._state else None
 
-    def step(self) -> bool:
+    async def step(self) -> bool:
         if self._state.is_finished():
             return False
 
         current_stmt = self._state.current_statement()
-        self._execute_statement(current_stmt)
+        await self._execute_statement(current_stmt)
 
         self._state._pc += 1
         return True

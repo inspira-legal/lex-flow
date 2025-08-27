@@ -10,7 +10,7 @@ class OpcodeNotFoundError(Exception):
 
 class BaseOpcode(ABC):
     @abstractmethod
-    def execute(self, state, stmt, engine) -> bool:
+    async def execute(self, state, stmt, engine) -> bool:
         pass
 
 

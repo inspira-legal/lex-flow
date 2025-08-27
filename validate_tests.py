@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import json
+import asyncio
 from run_tests import run_test
 import os
 
 
-def validate_all_tests():
+async def validate_all_tests():
     """Validate that test outputs match expected outputs."""
 
     with open("tests/expected_outputs.json") as f:
@@ -30,7 +31,7 @@ def validate_all_tests():
             print(f"⚠️  {test_name:<20} - No expected output defined")
             continue
 
-        result = run_test(test_path)
+        result = await run_test(test_path)
         expected_output = expected[test_name]
         actual_output = result["output"]
 
@@ -55,5 +56,5 @@ def validate_all_tests():
 
 
 if __name__ == "__main__":
-    validate_all_tests()
+    asyncio.run(validate_all_tests())
 
