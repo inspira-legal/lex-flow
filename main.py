@@ -32,8 +32,14 @@ def main():
 
     engine = Engine(program.workflows[0])
 
+    condition = True
     counter = 0
-    while engine.step():
+    while condition:
+        engine.step()
+        condition = "y" == input(f"Step [{counter}], continue? ")
+        if engine._state._pc is None:
+            break
+        print(f"Next node: {engine._state._pc}")
         counter += 1
 
 

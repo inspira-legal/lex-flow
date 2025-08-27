@@ -3,7 +3,7 @@ from core.opcodes import opcode, BaseOpcode
 
 @opcode("io_print")
 class PrintOpcode(BaseOpcode):
-    def execute(self, state, node):
+    def execute(self, state, node, engine):
         value = state.pop()
         print(value, end="")
 
@@ -12,7 +12,7 @@ class PrintOpcode(BaseOpcode):
 
 @opcode("io_input")
 class InputOpcode(BaseOpcode):
-    def execute(self, state, node):
+    def execute(self, state, node, engine):
         value = input()
         state.push(value)
 

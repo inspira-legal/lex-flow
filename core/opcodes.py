@@ -13,7 +13,7 @@ class BaseOpcode(ABC):
     """Base class for all opcodes with common functionality."""
 
     @abstractmethod
-    async def execute(self, state: WorkflowState, node: RuntimeNode) -> bool:
+    def execute(self, state: WorkflowState, node: RuntimeNode, engine) -> bool:
         """Execute the opcode logic."""
         pass
 

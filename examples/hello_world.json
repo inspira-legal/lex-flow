@@ -2,13 +2,58 @@
   "workflows": [
     {
       "name": "main",
-      "variables": { "0": ["nome", ""] },
+      "variables": {
+        "1": ["game_running", "True"]
+      },
       "nodes": {
         "start": {
           "opcode": "event_start",
-          "next": "set_value",
+          "next": "loop",
           "parent": null,
           "inputs": {},
+          "fields": {},
+          "isReporter": false
+        },
+        "loop": {
+          "opcode": "control_while",
+          "next": null,
+          "parent": "start",
+          "inputs": {
+            "CONDITION": [2, "compare_running"],
+            "SUBSTACK": [4, "print_hello"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "compare_running": {
+          "opcode": "operator_equals",
+          "next": null,
+          "parent": "loop",
+          "inputs": {
+            "OPERAND1": [3, "1"],
+            "OPERAND2": [1, "True"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_hello": {
+          "opcode": "io_print",
+          "next": "set_value",
+          "parent": "loop",
+          "inputs": {
+            "STRING": [1, "Hello, World!\n"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "set_value": {
+          "opcode": "data_set_variable_to",
+          "next": null,
+          "parent": "print_hello",
+          "inputs": {
+            "VALUE": [2, "input"],
+            "VARIABLE": [1, "1"]
+          },
           "fields": {},
           "isReporter": false
         },
@@ -17,57 +62,6 @@
           "next": null,
           "parent": "set_value",
           "inputs": {},
-          "fields": {},
-          "isReporter": true
-        },
-        "set_value": {
-          "opcode": "data_set_variable_to",
-          "next": "check_secret",
-          "parent": "start",
-          "inputs": { "VALUE": [2, "input"], "VARIABLE": [1, "0"] },
-          "fields": {},
-          "isReporter": false
-        },
-        "compare_secret": {
-          "opcode": "operator_equals",
-          "next": null,
-          "parent": "check_secret",
-          "inputs": {
-            "OPERAND1": [3, "0"],
-            "OPERAND2": [1, "secret"]
-          },
-          "fields": {},
-          "isReporter": true
-        },
-        "check_secret": {
-          "opcode": "control_if_else",
-          "next": null,
-          "parent": "set_value",
-          "inputs": {
-            "CONDITION": [2, "compare_secret"],
-            "SUBSTACK": [4, "print_secret"],
-            "SUBSTACK2": [4, "print_wrong"]
-          },
-          "fields": {},
-          "isReporter": false
-        },
-        "print_secret": {
-          "opcode": "io_print",
-          "next": null,
-          "parent": "check_secret",
-          "inputs": {
-            "STRING": [1, "Congratulation you found the secret\n"]
-          },
-          "fields": {},
-          "isReporter": false
-        },
-        "print_wrong": {
-          "opcode": "io_print",
-          "next": null,
-          "parent": "check_secret",
-          "inputs": {
-            "STRING": [1, "Wrong password, try again!\n"]
-          },
           "fields": {},
           "isReporter": false
         }
@@ -78,3 +72,4 @@
   "globals": {},
   "metadata": {}
 }
+

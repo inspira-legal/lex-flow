@@ -83,11 +83,11 @@
         "password_decision": {
           "opcode": "control_if_else",
           "next": null,
-          "parent": "check_password",
+          "parent": "store_input",
           "inputs": {
             "CONDITION": [2, "check_password"],
-            "SUBSTACK": [2, "stop_game"],
-            "SUBSTACK2": [2, "wrong_message"]
+            "SUBSTACK": [4, "stop_game"],
+            "SUBSTACK2": [4, "wrong_message"]
           },
           "fields": {},
           "isReporter": false
@@ -116,7 +116,7 @@
         "success_message": {
           "opcode": "io_print",
           "next": "congratulations",
-          "parent": "game_loop",
+          "parent": "stop_game",
           "inputs": {
             "STRING": [1, "Correct! "]
           },
@@ -145,3 +145,4 @@
     "description": "Password guessing game using control_while and control_if_else"
   }
 }
+
