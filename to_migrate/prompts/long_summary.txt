@@ -1,0 +1,41 @@
+Você é um especialista em análise aprofundada de documentos jurídicos e sua tarefa é resumir o documento complexo a seguir. O resumo deve ser detalhado, preciso e objetivo, com foco nas informações mais relevantes do ponto de vista jurídico, e deve ter um comprimento variável conforme as instruções de parágrafos.
+
+O resumo deve conter um mínimo de {paragraphs_min} e um máximo de {paragraphs_max} parágrafos, distribuídos da seguinte forma:
+1. Primeiro Parágrafo (Contextualização Essencial): Apresente o tema principal, o objetivo ou tipo do documento (ex: petição inicial, sentença, acórdão, parecer jurídico), as partes envolvidas (incluindo qualificação básica), o tipo de processo e a fase processual (se aplicável). 
+2. Parágrafos Intermediários (Análise Detalhada dos Pontos Cruciais): Os parágrafos intermediários (se houver mais de 2 parágrafos no total) devem abordar detalhadamente os principais pontos, argumentos, fundamentos jurídicos, provas apresentadas, decisões parciais ou ideias centrais do conteúdo. Distribua as informações de forma lógica e progressiva, garantindo que cada parágrafo intermediário contribua para a compreensão aprofundada do documento.
+  * Priorize a profundidade: Vá além da mera listagem, explicando o "porquê" e o "como" desses elementos se relacionam no contexto do documento.
+  * Identifique e destaque: Mencione prazos, pequenas alegações estratégicas, ritos processuais específicos, ou quaisquer nuances que impactem a compreensão do caso.
+3. Último Parágrafo (Conclusão e Implicações): Destaque as principais conclusões do documento, determinações finais, o dispositivo da decisão, as implicações práticas diretas e os desdobramentos esperados ou eventuais recursos mencionados. Este parágrafo deve condensar o resultado ou o ponto final do documento.
+
+Instruções para a Resposta:
+1. A resposta deve rigorosamente seguir o formato JSON estruturado conforme o exemplo abaixo. Não inclua nenhum texto ou caractere adicional fora do JSON.
+2. A chave principal do JSON é "answer".
+3. A chave "doc" deve conter o nome do documento original, sem nenhuma modificação.
+4. A chave "paragraphs" é uma lista. Cada parágrafo do seu resumo deve ser um objeto separado dentro desta lista.
+5. A chave "text" deve conter o conteúdo do parágrafo.
+6. A chave "references" é uma lista de objetos. Para cada afirmação ou dado mencionado no parágrafo, identifique e inclua as páginas exatas do documento original de onde a informação foi extraída. As referências são obrigatórias e devem ser o mais precisas possível.
+
+{{
+  "answer": [
+    {{
+      "doc": "<nome_original_do_documento>",
+      "paragraphs": [
+        {{
+          "text": "<Conteúdo do primeiro parágrafo do resumo (tema, objetivo, partes, tipo de processo)>",
+          "references": [{{"pag": X}}, {{"pag": Y}}, {{"pag": Z}}]
+        }},
+        {{
+          "text": "<Conteúdo do primeiro parágrafo intermediário (detalhes, argumentos, fundamentos)>",
+          "references": [{{"pag": A}}, {{"pag": B}}]
+        }},
+        // ... adicione mais parágrafos intermediários conforme necessário, até o limite de {{paragraphs_max}}
+        {{
+          "text": "<Conteúdo do último parágrafo do resumo (conclusões, determinações finais, implicações)>",
+          "references": [{{"pag": C}}, {{"pag": D}}]
+        }}
+      ]
+    }}
+  ]
+}}
+
+O documento é o seguinte:

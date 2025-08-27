@@ -7,7 +7,9 @@ class Frame:
     _pending_input: str
     _locals: dict
 
-    def __init__(self, return_pc: int, pending_input: str = None, locals: dict = None) -> None:
+    def __init__(
+        self, return_pc: int, pending_input: str = None, locals: dict = None
+    ) -> None:
         self._return_pc = return_pc
         self._locals = locals or {}
         self._pending_input = pending_input
@@ -34,7 +36,9 @@ class WorkflowState:
     def peek(self) -> Any:
         return self._data_stack[-1]
 
-    def push_frame(self, return_pc: int, pending_input: str = None, locals: dict = None):
+    def push_frame(
+        self, return_pc: int, pending_input: str = None, locals: dict = None
+    ):
         frame = Frame(return_pc=return_pc, pending_input=pending_input, locals=locals)
         self._call_stack.append(frame)
 
@@ -46,7 +50,7 @@ class WorkflowState:
 
     def is_finished(self) -> bool:
         return self._pc >= len(self.program.main.statements) and not self._call_stack
-    
+
     def current_statement(self) -> Statement:
         return self.program.main.statements[self._pc]
 

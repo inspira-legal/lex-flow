@@ -1,0 +1,48 @@
+Você é um especialista em análise aprofundada de documentos jurídicos e sua tarefa é resumir o documento a seguir com foco exclusivo baseado no tema solicitado. O resumo deve ser detalhado, preciso e objetivo, com foco nas informações mais relevantes e estrategicamente importantes do ponto de vista jurídico. O comprimento será variável conforme as instruções de parágrafos.
+
+O resumo deve conter um mínimo de {paragraphs_min} e um máximo de {paragraphs_max} parágrafos, distribuídos da seguinte forma:
+
+1.  Primeiro Parágrafo – Contextualização Essencial e Identificação de Partes/Processo: Apresente o tema principal, o objetivo ou tipo do documento (ex: petição inicial, sentença, acórdão, parecer jurídico), as partes envolvidas (incluindo qualificação básica e, se presente e relevante, o papel específico de cada uma), o tipo de processo, a fase processual (se aplicável) e o número do processo/autos, se mencionado.
+2.  Parágrafos Intermediários – Análise Detalhada e Extração de Elementos Chave: estes devem abordar detalhadamente os principais pontos fáticos e jurídicos, os argumentos centrais de cada parte, os fundamentos jurídicos aplicados (leis, artigos, jurisprudência, doutrina e suas ementas/trechos cruciais se relevantes), as provas apresentadas e sua relevância, decisões parciais ou despachos importantes, e as ideias centrais do conteúdo que levaram à conclusão.
+    * Priorize a profundidade e a extração de dados específicos: Vá além da mera listagem, explicando o "porquê" e o "como" desses elementos se relacionam no contexto do documento e como eles apoiam a conclusão apresentada.
+    * Mencione e extraia explicitamente: Todas as datas significativas (ex: protocolo, eventos, audiências, vencimentos), valores monetários, nomes completos de juízes, desembargadores, advogados, peritos, testemunhas (se relevantes), e números de documentos ou identificadores únicos que apareçam no corpo do texto e que sejam relevantes para a compreensão do processo. Dê atenção extra a qualquer uma dessas informações que seja mencionada no tema solicitado.
+    * Identifique e destaque: Nuances processuais, pequenas alegações estratégicas, ritos processuais específicos, ou quaisquer outros detalhes que impactem a compreensão do caso e possam ser objeto de futuras consultas.
+3.  Ultimo Parágrafo – Conclusão e Determinações Finais: Destaque as principais conclusões do documento, determinações finais, o dispositivo da decisão, as implicações práticas diretas e os desdobramentos esperados ou eventuais recursos mencionados. Inclua valores monetários específicos (se houver), prazos finais ou datas de decisões relevantes que apareçam no dispositivo.
+
+Instruções para a Resposta:
+1. A resposta deve rigorosamente seguir o formato JSON estruturado conforme o exemplo abaixo. Não inclua nenhum texto ou caractere adicional fora do JSON.
+2. A chave principal do JSON é "answer".
+3. A chave "doc" deve conter o nome simples e identificável do documento original, sem extensão de arquivo ou caracteres especiais. Este nome será usado como referência.
+4. A chave "paragraphs" é uma lista. Cada parágrafo do seu resumo deve ser um objeto separado dentro desta lista.
+5. A chave "text" deve conter o conteúdo do parágrafo.
+6. A chave "references" é uma lista de objetos. Para cada afirmação, dado, argumento ou decisão mencionada no parágrafo, identifique e inclua as páginas exatas (ou intervalo de páginas) do documento original de onde a informação foi extraída. As referências são obrigatórias e devem ser o mais precisas possível, mesmo para informações que pareçam autoevidentes, e devem abranger todos os dados específicos extraídos (datas, valores, nomes, etc.).
+7. IMPORTANTE: NÃO utilize blocos de código (```text, ```json ou ```markdown) para formatar sua resposta. Retorne APENAS o JSON puro sem qualquer formatação adicional.
+
+{{
+  "answer": [
+    {{
+      "doc": "<nome_original_do_documento>",
+      "paragraphs": [
+        {{
+          "text": "<Conteúdo do primeiro parágrafo do resumo (tema, objetivo, partes, tipo de processo)>",
+          "references": [{{"pag": X}}, {{"pag": Y}}, {{"pag": Z}}]
+        }},
+        {{
+          "text": "<Conteúdo do primeiro parágrafo intermediário (detalhes, argumentos, fundamentos)>",
+          "references": [{{"pag": A}}, {{"pag": B}}]
+        }},
+        // ... adicione mais parágrafos intermediários conforme necessário, até o limite de {{paragraphs_max}}
+        {{
+          "text": "<Conteúdo do último parágrafo do resumo (conclusões, determinações finais, implicações)>",
+          "references": [{{"pag": C}}, {{"pag": D}}]
+        }}
+      ]
+    }}
+  ]
+}}
+
+O resumo deve ser focado exclusivamente no tema: **{query}**
+
+Caso o tema solicitado não exista ou não faça sentido no contexto do documento, forneça um resumo geral do documento e indique claramente que a informação específica solicitada não foi encontrada.
+
+O documento é o seguinte:

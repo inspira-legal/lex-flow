@@ -22,8 +22,9 @@ def run_test(test_file: str) -> dict:
         
         old_program = OldProgram.model_validate(data)
         workflow = old_program.workflows[0]
+        functions_data = data.get("functions", {})
         
-        parser = Parser(workflow)
+        parser = Parser(workflow, functions_data)
         program = parser.parse()
         
         # Capture output

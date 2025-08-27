@@ -1,0 +1,49 @@
+{
+  "functions": {
+    "get_message": {
+      "inputs": [],
+      "outputs": ["message"],
+      "body": {
+        "variables": {
+          "1": ["result", "Hello from function!"]
+        },
+        "nodes": {
+          "get_result": {
+            "opcode": "data_get_variable", 
+            "inputs": {
+              "VARIABLE": [1, "1"]
+            }
+          }
+        }
+      }
+    }
+  },
+  "workflows": [
+    {
+      "name": "main",
+      "variables": {
+        "1": ["temp", ""]
+      },
+      "nodes": {
+        "start": {
+          "opcode": "event_start",
+          "next": "print_function_result",
+          "inputs": {}
+        },
+        "print_function_result": {
+          "opcode": "io_print",
+          "next": "print_done",
+          "inputs": {
+            "STRING": [5, "get_message"]
+          }
+        },
+        "print_done": {
+          "opcode": "io_print",
+          "inputs": {
+            "STRING": [1, "\n"]
+          }
+        }
+      }
+    }
+  ]
+}
