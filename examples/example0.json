@@ -1,0 +1,34 @@
+{
+  "workflows": [
+    {
+      "name": "main",
+      "variables": {},
+      "nodes": {
+        "start": {
+          "opcode": "event_start",
+          "next": "print_hello",
+          "inputs": {},
+          "fields": {},
+          "isReporter": false
+        },
+        "get_value": {
+          "opcode": "compute_value",
+          "next": null,
+          "inputs": {"VAL": [1, 42]},
+          "fields": {},
+          "isReporter": false
+        },
+        "print_hello": {
+          "opcode": "io_print",
+          "next": null,
+          "inputs": {"STRING": [2, "get_value"]},
+          "fields": {},
+          "isReporter": false
+        }
+      },
+      "comments": {}
+    }
+  ],
+  "globals": {},
+  "metadata": {}
+}

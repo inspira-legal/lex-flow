@@ -1,0 +1,151 @@
+{
+  "workflows": [
+    {
+      "name": "str_format_test",
+      "variables": {
+        "0": ["player_name", "Alice"],
+        "1": ["score", 95],
+        "2": ["max_score", 100],
+        "3": ["pi", 3.14159]
+      },
+      "nodes": {
+        "start": {
+          "opcode": "event_start",
+          "next": "test_basic_format",
+          "parent": null,
+          "inputs": {},
+          "fields": {},
+          "isReporter": false
+        },
+        "test_basic_format": {
+          "opcode": "str_format",
+          "next": "print_basic",
+          "parent": "start",
+          "inputs": {
+            "FORMAT": [1, "Hello {}, you scored {} out of {}!"],
+            "INPUT1": [3, "0"],
+            "INPUT2": [3, "1"],
+            "INPUT3": [3, "2"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_basic": {
+          "opcode": "io_print",
+          "next": "test_mixed_types",
+          "parent": "test_basic_format",
+          "inputs": {
+            "STRING": [2, "test_basic_format"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "test_mixed_types": {
+          "opcode": "str_format",
+          "next": "print_mixed",
+          "parent": "print_basic",
+          "inputs": {
+            "FORMAT": [1, "\nMixed types: {} (string), {} (int), {} (float)"],
+            "INPUT1": [1, "literal"],
+            "INPUT2": [3, "1"],
+            "INPUT3": [3, "3"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_mixed": {
+          "opcode": "io_print",
+          "next": "calculate_percentage",
+          "parent": "test_mixed_types",
+          "inputs": {
+            "STRING": [2, "test_mixed_types"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "calculate_percentage": {
+          "opcode": "math_divide",
+          "next": "test_node_ref",
+          "parent": "print_mixed",
+          "inputs": {
+            "NUM1": [3, "1"],
+            "NUM2": [3, "2"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "test_node_ref": {
+          "opcode": "str_format",
+          "next": "print_node_ref",
+          "parent": "calculate_percentage",
+          "inputs": {
+            "FORMAT": [1, "\nPercentage: {:.2%}"],
+            "INPUT1": [2, "calculate_percentage"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_node_ref": {
+          "opcode": "io_print",
+          "next": "test_format_specs",
+          "parent": "test_node_ref",
+          "inputs": {
+            "STRING": [2, "test_node_ref"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "test_format_specs": {
+          "opcode": "str_format",
+          "next": "print_format_specs",
+          "parent": "print_node_ref",
+          "inputs": {
+            "FORMAT": [1, "\nFormatting examples:\n- Pi to 2 decimals: {:.2f}\n- Score padded: {:0>5}\n- Name in 10 chars: {:^10}\n"],
+            "INPUT1": [3, "3"],
+            "INPUT2": [3, "1"],
+            "INPUT3": [3, "0"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_format_specs": {
+          "opcode": "io_print",
+          "next": "test_error_handling",
+          "parent": "test_format_specs",
+          "inputs": {
+            "STRING": [2, "test_format_specs"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "test_error_handling": {
+          "opcode": "str_format",
+          "next": "print_error",
+          "parent": "print_format_specs",
+          "inputs": {
+            "FORMAT": [1, "\nError test - too many placeholders: {} {} {}"],
+            "INPUT1": [1, "only"],
+            "INPUT2": [1, "two"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_error": {
+          "opcode": "io_print",
+          "next": null,
+          "parent": "test_error_handling",
+          "inputs": {
+            "STRING": [2, "test_error_handling"]
+          },
+          "fields": {},
+          "isReporter": false
+        }
+      }
+    }
+  ],
+  "globals": {},
+  "metadata": {
+    "version": "1.0",
+    "description": "Comprehensive test for str_format opcode with various input types and formatting options"
+  }
+}

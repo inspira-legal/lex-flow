@@ -1,0 +1,61 @@
+{
+  "workflows": [
+    {
+      "name": "main",
+      "variables": {
+        "1": ["game_running", "True"]
+      },
+      "nodes": {
+        "start": {
+          "opcode": "event_start",
+          "next": "loop",
+          "parent": null,
+          "inputs": {},
+          "fields": {},
+          "isReporter": false
+        },
+        "loop": {
+          "opcode": "control_while",
+          "next": null,
+          "parent": "start",
+          "inputs": {
+            "STRING": [3, "1"],
+            "BRANCH" : [4, "print_hello"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "print_hello": {
+          "opcode": "io_print",
+          "next": "set_value",
+          "parent": "loop",
+          "inputs": {
+            "STRING": [1, "Hello, World!\n"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "set_value": {
+          "opcode": "data_set_variable_to",
+          "next": null,
+          "parent": "print_hello",
+          "inputs": { "VALUE": [2, "input"], "VARIABLE": [1, "1"] },
+          "fields": {},
+          "isReporter": false
+        },
+        "input": {
+          "opcode": "io_input",
+          "next": null,
+          "parent": "set_value",
+          "inputs": {
+          },
+          "fields": {},
+          "isReporter": false
+        }
+      },
+      "comments": {}
+    }
+  ],
+  "globals": {},
+  "metadata": {}
+}

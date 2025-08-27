@@ -1,0 +1,137 @@
+{
+  "templates": {
+    "countdown": {
+      "interface": {
+        "inputs": ["start_num", "message"]
+      },
+      "variables": {
+        "0": ["counter", 0],
+        "1": ["running", "true"]
+      },
+      "nodes": {
+        "start": {
+          "opcode": "data_set_variable_to",
+          "next": "loop",
+          "inputs": {
+            "VALUE": [4, "start_num"],
+            "VARIABLE": [1, "0"]
+          },
+          "isReporter": false
+        },
+        "loop": {
+          "opcode": "control_while",
+          "next": null,
+          "inputs": {
+            "CONDITION": [2, "check_counter"],
+            "SUBSTACK": [2, "print_count"]
+          },
+          "isReporter": false
+        },
+        "check_counter": {
+          "opcode": "operator_gt",
+          "inputs": {
+            "OPERAND1": [3, "0"],
+            "OPERAND2": [1, 0]
+          },
+          "isReporter": true
+        },
+        "print_count": {
+          "opcode": "io_print",
+          "next": "print_message",
+          "inputs": {
+            "STRING": [3, "0"]
+          },
+          "isReporter": false
+        },
+        "print_message": {
+          "opcode": "io_print",
+          "next": "decrement",
+          "inputs": {
+            "STRING": [4, "message"]
+          },
+          "isReporter": false
+        },
+        "decrement": {
+          "opcode": "math_subtract",
+          "next": "update_counter",
+          "inputs": {
+            "OPERAND1": [3, "0"],
+            "OPERAND2": [1, 1]
+          },
+          "isReporter": true
+        },
+        "update_counter": {
+          "opcode": "data_set_variable_to",
+          "inputs": {
+            "VALUE": [2, "decrement"],
+            "VARIABLE": [1, "0"]
+          },
+          "isReporter": false
+        }
+      }
+    }
+  },
+  "workflows": [
+    {
+      "name": "template_demo",
+      "variables": {},
+      "nodes": {
+        "start": {
+          "opcode": "event_start",
+          "next": "intro",
+          "inputs": {},
+          "isReporter": false
+        },
+        "intro": {
+          "opcode": "io_print",
+          "next": "countdown1",
+          "inputs": {
+            "STRING": [1, "=== Template Demo ==="]
+          },
+          "isReporter": false
+        },
+        "countdown1": {
+          "opcode": "template_call",
+          "next": "middle",
+          "inputs": {
+            "TEMPLATE": [1, "countdown"],
+            "start_num": [1, 3],
+            "message": [1, " seconds..."]
+          },
+          "isReporter": false
+        },
+        "middle": {
+          "opcode": "io_print",
+          "next": "countdown2",
+          "inputs": {
+            "STRING": [1, "First countdown done! Starting second countdown:"]
+          },
+          "isReporter": false
+        },
+        "countdown2": {
+          "opcode": "template_call",
+          "next": "finish",
+          "inputs": {
+            "TEMPLATE": [1, "countdown"],
+            "start_num": [1, 5],
+            "message": [1, " steps remaining"]
+          },
+          "isReporter": false
+        },
+        "finish": {
+          "opcode": "io_print",
+          "next": null,
+          "inputs": {
+            "STRING": [1, "All countdowns complete! 🎉"]
+          },
+          "isReporter": false
+        }
+      }
+    }
+  ],
+  "globals": {},
+  "metadata": {
+    "version": "1.0",
+    "description": "Demonstrates template reusability with parameterized countdown"
+  }
+}

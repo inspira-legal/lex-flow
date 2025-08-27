@@ -1,0 +1,134 @@
+{
+  "workflows": [
+    {
+      "name": "printf_test",
+      "variables": {
+        "0": ["name", "Alice"],
+        "1": ["age", 25],
+        "2": ["score", 95.67],
+        "3": ["count", 42]
+      },
+      "nodes": {
+        "start": {
+          "opcode": "event_start",
+          "next": "test_basic",
+          "parent": null,
+          "inputs": {},
+          "fields": {},
+          "isReporter": false
+        },
+        "test_basic": {
+          "opcode": "io_printf",
+          "next": "test_formatting",
+          "parent": "start",
+          "inputs": {
+            "FORMAT": [1, "Hello, {}! You are {} years old.\n"],
+            "INPUT1": [3, "0"],
+            "INPUT2": [3, "1"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "test_formatting": {
+          "opcode": "io_printf",
+          "next": "test_precision",
+          "parent": "test_basic",
+          "inputs": {
+            "FORMAT": [1, "Score: {:.1f}%, Count: {:05d}\n"],
+            "INPUT1": [3, "2"],
+            "INPUT2": [3, "3"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "test_precision": {
+          "opcode": "io_printf",
+          "next": "test_width",
+          "parent": "test_formatting",
+          "inputs": {
+            "FORMAT": [1, "Precise score: {:.3f}\n"],
+            "INPUT1": [3, "2"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "test_width": {
+          "opcode": "io_printf",
+          "next": "test_left_align",
+          "parent": "test_precision",
+          "inputs": {
+            "FORMAT": [1, "Right-aligned: '{:>10}', Center: '{:^8}'\n"],
+            "INPUT1": [3, "0"],
+            "INPUT2": [3, "1"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "test_left_align": {
+          "opcode": "io_printf",
+          "next": "test_literals",
+          "parent": "test_width",
+          "inputs": {
+            "FORMAT": [1, "Left-aligned: '{:<10}', Number width: '{:8}'\n"],
+            "INPUT1": [3, "0"],
+            "INPUT2": [3, "3"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "test_literals": {
+          "opcode": "io_printf",
+          "next": "calculate_double",
+          "parent": "test_left_align",
+          "inputs": {
+            "FORMAT": [1, "Mixed inputs - Literal: {}, Variable: {}, Number: {}\n"],
+            "INPUT1": [1, "LITERAL_VALUE"],
+            "INPUT2": [3, "0"],
+            "INPUT3": [1, 123]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "calculate_double": {
+          "opcode": "math_multiply",
+          "next": "test_node_ref",
+          "parent": "test_literals",
+          "inputs": {
+            "NUM1": [3, "2"],
+            "NUM2": [1, 2]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "test_node_ref": {
+          "opcode": "io_printf",
+          "next": "test_error_handling",
+          "parent": "calculate_double",
+          "inputs": {
+            "FORMAT": [1, "Node reference result: {} (doubled score)\n"],
+            "INPUT1": [2, "calculate_double"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "test_error_handling": {
+          "opcode": "io_printf",
+          "next": null,
+          "parent": "test_node_ref",
+          "inputs": {
+            "FORMAT": [1, "Error test - too many placeholders: {} {} {}\n"],
+            "INPUT1": [1, "only"],
+            "INPUT2": [1, "two"]
+          },
+          "fields": {},
+          "isReporter": false
+        }
+      }
+    }
+  ],
+  "globals": {},
+  "metadata": {
+    "version": "1.0",
+    "description": "Test program for io_printf opcode with variadic INPUT pattern"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "workflows": [
+    {
+      "name": "summarize_demo",
+      "variables": {
+        "user_text": ["user_text", ""],
+        "summary_result": ["summary_result", null]
+      },
+      "nodes": {
+        "start": {
+          "opcode": "event_start",
+          "next": "get_input",
+          "inputs": {},
+          "fields": {}
+        },
+        "get_input": {
+          "opcode": "io_input",
+          "next": "summarize_text",
+          "inputs": {
+            "PROMPT": [1, "Enter text to summarize: "]
+          },
+          "fields": {}
+        },
+        "summarize_text": {
+          "opcode": "llm_summarize",
+          "next": "display_results",
+          "inputs": {
+            "TEXT": [2, "get_input"],
+            "MAX_LENGTH": [1, 150],
+            "STYLE": [1, "concise"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "display_results": {
+          "opcode": "io_printf",
+          "next": null,
+          "inputs": {
+            "FORMAT": [1, "\n=== Summary Results ===\n\nSummary: {}"],
+            "INPUT1": [2, "summarize_text"]
+          },
+          "fields": {}
+        }
+      }
+    }
+  ],
+  "templates": {},
+  "globals": {}
+}

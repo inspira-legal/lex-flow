@@ -1,0 +1,236 @@
+{
+  "workflows": [
+    {
+      "name": "comprehensive_test",
+      "variables": {
+        "0": ["number1", 10],
+        "1": ["number2", 5],
+        "2": ["result", 0]
+      },
+      "nodes": {
+        "start": {
+          "opcode": "event_start",
+          "next": "print_intro",
+          "parent": null,
+          "inputs": {},
+          "fields": {},
+          "isReporter": false
+        },
+        "print_intro": {
+          "opcode": "io_print",
+          "next": "add_test",
+          "parent": "start",
+          "inputs": {
+            "STRING": [1, "=== Math and Logic Test ===\n"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "add_test": {
+          "opcode": "math_add",
+          "next": "store_add",
+          "parent": "print_intro",
+          "inputs": {
+            "NUM1": [3, "0"],
+            "NUM2": [3, "1"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "store_add": {
+          "opcode": "data_set_variable_to",
+          "next": "print_add",
+          "parent": "add_test",
+          "inputs": {
+            "VALUE": [2, "add_test"],
+            "VARIABLE": [1, "2"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "print_add": {
+          "opcode": "io_print",
+          "next": "subtract_test",
+          "parent": "store_add",
+          "inputs": {
+            "STRING": [3, "2"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "subtract_test": {
+          "opcode": "math_subtract",
+          "next": "print_subtract",
+          "parent": "print_add",
+          "inputs": {
+            "NUM1": [3, "0"],
+            "NUM2": [3, "1"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_subtract": {
+          "opcode": "io_print",
+          "next": "multiply_test",
+          "parent": "subtract_test",
+          "inputs": {
+            "STRING": [2, "subtract_test"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "multiply_test": {
+          "opcode": "math_multiply",
+          "next": "print_multiply",
+          "parent": "print_subtract",
+          "inputs": {
+            "NUM1": [3, "0"],
+            "NUM2": [3, "1"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_multiply": {
+          "opcode": "io_print",
+          "next": "divide_test",
+          "parent": "multiply_test",
+          "inputs": {
+            "STRING": [2, "multiply_test"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "divide_test": {
+          "opcode": "math_divide",
+          "next": "print_divide",
+          "parent": "print_multiply",
+          "inputs": {
+            "NUM1": [3, "0"],
+            "NUM2": [3, "1"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_divide": {
+          "opcode": "io_print",
+          "next": "gt_test",
+          "parent": "divide_test",
+          "inputs": {
+            "STRING": [2, "divide_test"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "gt_test": {
+          "opcode": "operator_gt",
+          "next": "print_gt",
+          "parent": "print_divide",
+          "inputs": {
+            "OPERAND1": [3, "0"],
+            "OPERAND2": [3, "1"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_gt": {
+          "opcode": "io_print",
+          "next": "lt_test",
+          "parent": "gt_test",
+          "inputs": {
+            "STRING": [2, "gt_test"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "lt_test": {
+          "opcode": "operator_lt",
+          "next": "print_lt",
+          "parent": "print_gt",
+          "inputs": {
+            "OPERAND1": [3, "0"],
+            "OPERAND2": [1, 20]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_lt": {
+          "opcode": "io_print",
+          "next": "and_test",
+          "parent": "lt_test",
+          "inputs": {
+            "STRING": [2, "lt_test"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "and_test": {
+          "opcode": "operator_and",
+          "next": "print_and",
+          "parent": "print_lt",
+          "inputs": {
+            "OPERAND1": [1, true],
+            "OPERAND2": [1, false]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_and": {
+          "opcode": "io_print",
+          "next": "or_test",
+          "parent": "and_test",
+          "inputs": {
+            "STRING": [2, "and_test"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "or_test": {
+          "opcode": "operator_or",
+          "next": "print_or",
+          "parent": "print_and",
+          "inputs": {
+            "OPERAND1": [1, true],
+            "OPERAND2": [1, false]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_or": {
+          "opcode": "io_print",
+          "next": "not_test",
+          "parent": "or_test",
+          "inputs": {
+            "STRING": [2, "or_test"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "not_test": {
+          "opcode": "operator_not",
+          "next": "print_not",
+          "parent": "print_or",
+          "inputs": {
+            "OPERAND": [1, false]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "print_not": {
+          "opcode": "io_print",
+          "next": null,
+          "parent": "not_test",
+          "inputs": {
+            "STRING": [2, "not_test"]
+          },
+          "fields": {},
+          "isReporter": false
+        }
+      }
+    }
+  ],
+  "globals": {},
+  "metadata": {
+    "version": "1.0",
+    "description": "Comprehensive test of math and logic operations"
+  }
+}

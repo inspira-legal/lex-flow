@@ -1,0 +1,64 @@
+{
+  "templates": {
+    "simple_countdown": {
+      "interface": {
+        "inputs": ["count"]
+      },
+      "variables": {},
+      "nodes": {
+        "start": {
+          "opcode": "io_print",
+          "next": "print_number",
+          "inputs": {
+            "STRING": [1, "Counting down:"]
+          },
+          "isReporter": false
+        },
+        "print_number": {
+          "opcode": "io_print",
+          "next": null,
+          "inputs": {
+            "STRING": [4, "count"]
+          },
+          "isReporter": false
+        }
+      }
+    }
+  },
+  "workflows": [
+    {
+      "name": "simple_template_test",
+      "variables": {},
+      "nodes": {
+        "start": {
+          "opcode": "event_start",
+          "next": "call_template",
+          "inputs": {},
+          "isReporter": false
+        },
+        "call_template": {
+          "opcode": "template_call",
+          "next": "done",
+          "inputs": {
+            "TEMPLATE": [1, "simple_countdown"],
+            "count": [1, "5"]
+          },
+          "isReporter": false
+        },
+        "done": {
+          "opcode": "io_print",
+          "next": null,
+          "inputs": {
+            "STRING": [1, "Done!"]
+          },
+          "isReporter": false
+        }
+      }
+    }
+  ],
+  "globals": {},
+  "metadata": {
+    "version": "1.0",
+    "description": "Simple template test"
+  }
+}

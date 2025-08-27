@@ -1,0 +1,248 @@
+{
+  "workflows": [
+    {
+      "name": "guessing_game_printf",
+      "variables": {},
+      "nodes": {
+        "start": {
+          "opcode": "event_start",
+          "next": "game",
+          "parent": null,
+          "inputs": {},
+          "fields": {},
+          "isReporter": false
+        },
+        "game": {
+          "opcode": "template_call",
+          "next": null,
+          "parent": "start",
+          "inputs": {
+            "TEMPLATE": [1, "number_guessing_game_printf"]
+          },
+          "fields": {},
+          "isReporter": false
+        }
+      },
+      "comments": {}
+    }
+  ],
+  "templates": {
+    "number_guessing_game_printf": {
+      "interface": {
+        "inputs": [],
+        "outputs": null
+      },
+      "variables": {
+        "0": ["user_input", ""],
+        "1": ["game_running", "true"],
+        "2": ["secret_number", "0"],
+        "3": ["winning_number", "0"]
+      },
+      "nodes": {
+        "start": {
+          "opcode": "template_start",
+          "next": "store_secret",
+          "parent": null,
+          "inputs": {},
+          "fields": {},
+          "isReporter": false
+        },
+        "generate_secret": {
+          "opcode": "math_random_int",
+          "next": null,
+          "parent": null,
+          "inputs": {
+            "MIN_VAL": [1, 1],
+            "MAX_VAL": [1, 10]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "store_secret": {
+          "opcode": "data_set_variable_to",
+          "next": "show_welcome",
+          "parent": "start",
+          "inputs": {
+            "VALUE": [2, "generate_secret"],
+            "VARIABLE": [1, "2"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "show_welcome": {
+          "opcode": "io_printf",
+          "next": "game_loop",
+          "parent": "store_secret",
+          "inputs": {
+            "FORMAT": [1, "🎯 Welcome to the Number Guessing Game! 🎯\nI'm thinking of a number between 1 and 10.\nCan you guess it? "]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "game_loop": {
+          "opcode": "control_while",
+          "next": "show_success",
+          "parent": "show_welcome",
+          "inputs": {
+            "CONDITION": [2, "check_game_running"],
+            "SUBSTACK": [2, "process_turn"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "check_game_running": {
+          "opcode": "operator_equals",
+          "next": null,
+          "parent": null,
+          "inputs": {
+            "OPERAND1": [3, "1"],
+            "OPERAND2": [1, "true"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "process_turn": {
+          "opcode": "data_set_variable_to",
+          "next": "check_guess",
+          "parent": null,
+          "inputs": {
+            "VALUE": [2, "get_user_input"],
+            "VARIABLE": [1, "0"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "get_user_input": {
+          "opcode": "io_input",
+          "next": null,
+          "parent": null,
+          "inputs": {},
+          "fields": {},
+          "isReporter": true
+        },
+        "check_guess": {
+          "opcode": "control_if_else",
+          "next": null,
+          "parent": "process_turn",
+          "inputs": {
+            "CONDITION": [2, "is_correct"],
+            "SUBSTACK": [2, "stop_game"],
+            "SUBSTACK2": [2, "give_hint"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "is_correct": {
+          "opcode": "operator_equals",
+          "next": null,
+          "parent": null,
+          "inputs": {
+            "OPERAND1": [3, "0"],
+            "OPERAND2": [3, "2"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "stop_game": {
+          "opcode": "data_set_variable_to",
+          "next": "save_winning_number",
+          "parent": null,
+          "inputs": {
+            "VALUE": [1, "false"],
+            "VARIABLE": [1, "1"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "save_winning_number": {
+          "opcode": "data_set_variable_to",
+          "next": null,
+          "parent": "stop_game",
+          "inputs": {
+            "VALUE": [3, "2"],
+            "VARIABLE": [1, "3"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "give_hint": {
+          "opcode": "control_if_else",
+          "next": null,
+          "parent": null,
+          "inputs": {
+            "CONDITION": [2, "is_too_high"],
+            "SUBSTACK": [2, "show_too_high"],
+            "SUBSTACK2": [2, "show_too_low"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "is_too_high": {
+          "opcode": "operator_gt",
+          "next": null,
+          "parent": null,
+          "inputs": {
+            "OPERAND1": [3, "0"],
+            "OPERAND2": [3, "2"]
+          },
+          "fields": {},
+          "isReporter": true
+        },
+        "show_too_high": {
+          "opcode": "io_printf",
+          "next": null,
+          "parent": null,
+          "inputs": {
+            "FORMAT": [1, "📉 Too high! Try again: "]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "show_too_low": {
+          "opcode": "io_printf",
+          "next": null,
+          "parent": null,
+          "inputs": {
+            "FORMAT": [1, "📈 Too low! Try again: "]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "show_success": {
+          "opcode": "io_printf",
+          "next": "print_finale",
+          "parent": "game_loop",
+          "inputs": {
+            "FORMAT": [1, "🎉 Congratulations! You guessed it! The number was {}!\n"],
+            "INPUT1": [3, "3"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "print_finale": {
+          "opcode": "io_printf",
+          "next": "return_void",
+          "parent": "show_success",
+          "inputs": {
+            "FORMAT": [1, "🎉 Thanks for playing! 🎮\n"]
+          },
+          "fields": {},
+          "isReporter": false
+        },
+        "return_void": {
+          "opcode": "template_return",
+          "next": null,
+          "parent": "print_finale",
+          "inputs": {},
+          "fields": {},
+          "isReporter": false
+        }
+      }
+    }
+  },
+  "globals": {},
+  "metadata": {
+    "version": "3.2",
+    "description": "Enhanced number guessing game using io_printf for better formatting"
+  }
+}
