@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import json
 import asyncio
 from run_tests import run_test
@@ -57,4 +55,3 @@ async def validate_all_tests():
 
 if __name__ == "__main__":
     asyncio.run(validate_all_tests())
-

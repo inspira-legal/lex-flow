@@ -1,0 +1,28 @@
+{
+  "workflows": [
+    {
+      "name": "test_simple_file_load",
+      "variables": {},
+      "nodes": {
+        "start": {
+          "opcode": "event_start",
+          "inputs": {},
+          "next": "load_file"
+        },
+        "load_file": {
+          "opcode": "file_load",
+          "inputs": {
+            "file_path": [1, "tests/test_document.txt"]
+          },
+          "next": "print_result"
+        },
+        "print_result": {
+          "opcode": "io_print",
+          "inputs": {
+            "value": [2, "load_file"]
+          }
+        }
+      }
+    }
+  ]
+}

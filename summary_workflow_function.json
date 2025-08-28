@@ -1,0 +1,82 @@
+{
+  "functions": {
+    "summarize_document": {
+      "inputs": ["summary_depth", "document_url"],
+      "outputs": ["result"],
+      "body": {
+        "variables": {
+          "1": ["summary_depth", "short"],
+          "2": ["document_url", ""]
+        },
+        "nodes": {
+          "format_prompt": {
+            "opcode": "str_format",
+            "next": "load_prompt",
+            "inputs": {
+              "format": [1, "./to_migrate/prompts/{}_summary.txt"],
+              "value": [3, "1"]
+            }
+          },
+          "load_prompt": {
+            "opcode": "ai_load_prompt",
+            "next": "agent_call",
+            "inputs": {
+              "file_path": [2, "format_prompt"]
+            }
+          },
+          "agent_call": {
+            "opcode": "ai_agent_call",
+            "next": null,
+            "inputs": {
+              "system_prompt": [2, "load_prompt"],
+              "user_document": [3, "2"]
+            }
+          }
+        }
+      }
+    }
+  },
+  "workflows": [
+    {
+      "name": "main",
+      "variables": {
+        "1": ["summary_depth", "detailed"],
+        "2": [
+          "document_url",
+          "gs://temp-test-api/66b38d6d5aa73d6234ad902b/ec9336f6cf6a4c558d96a6652f288c18603e2007/4da3468c3823405c996929dbf2906d4f8fb7f482"
+        ],
+        "3": ["result", ""]
+      },
+      "nodes": {
+        "start": {
+          "opcode": "event_start",
+          "next": "print_start",
+          "inputs": {}
+        },
+        "print_start": {
+          "opcode": "io_print",
+          "next": "call_summary_function",
+          "inputs": {
+            "STRING": [1, "Starting document summarization...\n"]
+          }
+        },
+        "call_summary_function": {
+          "opcode": "function_call",
+          "next": "print_result",
+          "inputs": {
+            "FUNCTION": [1, "summarize_document"],
+            "ARG1": [3, "1"],
+            "ARG2": [3, "2"]
+          }
+        },
+        "print_result": {
+          "opcode": "io_print",
+          "inputs": {
+            "STRING": [2, "call_summary_function"]
+          }
+        }
+      }
+    }
+  ]
+}
+

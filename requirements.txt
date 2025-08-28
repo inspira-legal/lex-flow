@@ -1,1 +1,4 @@
 pydantic
+aiofiles
+pydantic-ai-slim[google]
+pymupdf

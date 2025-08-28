@@ -1,7 +1,7 @@
 import json
 import argparse
 import asyncio
-from core.models import Program as OldProgram
+from core.models import Program
 from core.parser import Parser
 from core.engine import Engine
 
@@ -23,7 +23,9 @@ def load_workflow(path: str) -> dict:
 async def main():
     parser = argparse.ArgumentParser(description="Lex Flow Interpreter.")
     parser.add_argument("-f", "--file", help="Workflow file path")
-    parser.add_argument("--debug", action="store_true", help="Enable step-by-step debugging")
+    parser.add_argument(
+        "--debug", action="store_true", help="Enable step-by-step debugging"
+    )
 
     args = parser.parse_args()
 
@@ -31,10 +33,10 @@ async def main():
         json_data = load_workflow(args.file)
 
     if json_data:
-        old_program = OldProgram.model_validate(json_data)
+        old_program = Program.model_validate(json_data)
         workflow = old_program.workflows[0]
         functions_data = json_data.get("functions", {})
-        
+
         parser = Parser(workflow, functions_data)
         program = parser.parse()
 

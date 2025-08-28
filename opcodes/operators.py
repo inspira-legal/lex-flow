@@ -65,13 +65,24 @@ class MathRandom(BaseOpcode):
 class StrFormat(BaseOpcode):
     async def execute(self, state, stmt, engine):
         format_string = state.pop()
-        
+
         args = []
         while state:
             args.append(state.pop())
-        
+
         args.reverse()
-        
+
         result = format_string.format(*args)
+        state.push(result)
+        return True
+
+
+@opcode("str_concat")
+class StrConcat(BaseOpcode):
+    async def execute(self, state, stmt, engine):
+        str2 = state.pop()
+        str1 = state.pop()
+
+        result = str(str1) + str(str2)
         state.push(result)
         return True

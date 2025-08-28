@@ -1,0 +1,18 @@
+This is a test document for the summary workflow.
+
+The document contains important information about:
+- Project goals and objectives
+- Implementation timeline
+- Resource requirements
+- Risk assessment and mitigation strategies
+
+Key findings:
+1. The project is on track to meet its deliverables
+2. Resource allocation is adequate for current scope
+3. Main risks are related to external dependencies
+4. Timeline allows for proper testing and validation
+
+Recommendations:
+- Continue with current approach
+- Monitor external dependencies closely
+- Prepare contingency plans for identified risks
