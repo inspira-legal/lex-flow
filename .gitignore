@@ -1,0 +1,8 @@
+.idea/
+*.pyc
+data/
+logs/
+.env
+__pycache__/
+CLAUDE.md
+.claude/
