@@ -15,7 +15,7 @@
           "opcode": "ai_load_prompt",
           "next" : null,
           "inputs" : {
-            "file_path": [1, "./to_migrate/prompts/long_summary.txt"]
+            "file_path": [1, "./prompts/long_summary.txt"]
           }
         },
         "agent_call" : {

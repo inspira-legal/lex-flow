@@ -1,7 +1,11 @@
 from core.ast import Program, Statement, Value, ValueType
 from core.state import WorkflowState
 from core.opcodes import OpcodeRegistry
+from core.models import Node
 from core.parser import Parser
+from core.models import InputTypes
+
+from core.models import Workflow
 
 
 class Engine:
@@ -30,8 +34,6 @@ class Engine:
 
         inputs = {}
         for name, (input_type, value) in (node.inputs or {}).items():
-            from core.models import InputTypes
-
             if input_type == InputTypes.LITERAL.value:
                 inputs[name] = Value(type=ValueType.LITERAL, data=value)
             elif input_type == InputTypes.VARIABLE_REF.value:
@@ -59,12 +61,12 @@ class Engine:
 
         opcode_cls = self._opcode_registry.get(stmt.opcode)
         opcode = opcode_cls()
-        if not await opcode.execute(self._state, stmt, self):
+        result = await opcode.execute(self._state, stmt, self)
+        if result is False and stmt.opcode != "function_return":
             print(f"Failure to run opcode {stmt.opcode}")
+        return result
 
     def _parse_branch_chain(self, node_id: str) -> list[Statement]:
-        from core.models import Workflow
-
         dummy_workflow = Workflow(name="dummy", nodes=self._state.program.node_map)
         parser = Parser(dummy_workflow)
         return parser._parse_chain(node_id)
@@ -93,19 +95,37 @@ class Engine:
             if var_id:
                 local_vars[var_id] = [param_name, args[i]]
 
-        self._state.push_frame(return_pc=self._state._pc, locals=local_vars)
-
         saved_variables = self._state._variables
+        saved_node_map = self._state.program.node_map
+        saved_pc = self._state._pc
+
+        self._state.push_frame(return_pc=saved_pc, locals=local_vars)
         self._state._variables = local_vars
+
+        function_nodes = {}
+
+        for node_id, node_data in function_def.node_data.items():
+            function_nodes[node_id] = Node(
+                opcode=node_data["opcode"],
+                next=node_data.get("next"),
+                inputs=node_data.get("inputs", {}),
+            )
+
+        self._state.program.node_map = function_nodes
+        self._state._pc = 0
 
         try:
             for stmt in function_def.body.statements:
-                await self._execute_statement(stmt)
+                result = await self._execute_statement(stmt)
+                if result is False:
+                    break
         finally:
             self._state._variables = saved_variables
+            self._state.program.node_map = saved_node_map
+            self._state._pc = saved_pc
             self._state.pop_frame()
 
-        return self._state.pop() if self._state else None
+        return self._state.pop() if len(self._state._data_stack) > 0 else None
 
     async def step(self) -> bool:
         if self._state.is_finished():

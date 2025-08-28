@@ -9,6 +9,11 @@
           "2": ["y", 0]
         },
         "nodes": {
+          "start": {
+            "opcode": "function_start",
+            "next": "calculate",
+            "inputs": {}
+          },
           "calculate": {
             "opcode": "operator_add",
             "next": "print_result",
@@ -19,8 +24,15 @@
           },
           "print_result": {
             "opcode": "io_print",
+            "next": "return_result",
             "inputs": {
               "STRING": [1, "Function result!\n"]
+            }
+          },
+          "return_result": {
+            "opcode": "function_return",
+            "inputs": {
+              "VALUE": [2, "calculate"]
             }
           }
         }

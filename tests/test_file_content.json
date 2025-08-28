@@ -12,7 +12,7 @@
           "next": "load_document"
         },
         "load_document": {
-          "opcode": "file_load",
+          "opcode": "file_read",
           "inputs": {
             "file_path": [3, "1"]
           },

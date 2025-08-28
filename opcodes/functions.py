@@ -1,6 +1,14 @@
 from core.opcodes import opcode, BaseOpcode
 
 
+@opcode("function_start")
+class FunctionStart(BaseOpcode):
+    async def execute(self, state, stmt, engine):
+        # Function start - parameters should already be set up in variables
+        # This is just a marker for clear function entry point
+        return True
+
+
 @opcode("function_return")
 class FunctionReturn(BaseOpcode):
     async def execute(self, state, stmt, engine):
@@ -23,7 +31,10 @@ class FunctionCallOpcode(BaseOpcode):
         for arg in args:
             state.push(arg)
 
-        await engine._call_function(function_name)
+        result = await engine._call_function(function_name)
+
+        # Push the function result back onto the stack
+        if result is not None:
+            state.push(result)
 
         return True
-

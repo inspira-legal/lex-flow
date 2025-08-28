@@ -1,56 +1,86 @@
 import aiofiles
-from core.opcodes import opcode, BaseOpcode
+from core.opcodes import opcode, BaseOpcode, params
 from pydantic_ai import Agent, DocumentUrl, BinaryContent
+from pydantic_ai.models import Model
 from pydantic_ai.models.google import GoogleModel, GoogleProvider
-from pydantic import BaseModel
-
-import re
-
-from typing import List
+from utils.ai import StructuredAnswer, format_structured_answer
+from pathlib import Path
 
 
-class Reference(BaseModel):
-    pag: int
-
-
-class Paragraph(BaseModel):
-    text: str
-    references: List[Reference]
-
-
-class DocumentSummary(BaseModel):
-    doc: str
-    paragraphs: List[Paragraph]
-
-
-class StructuredAnswer(BaseModel):
-    answer: List[DocumentSummary]
-
-
-@opcode("ai_agent_call")
-class AIAgentCall(BaseOpcode):
+@opcode("ai_call_agent")
+class AiCallAgent(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        document_url = state.pop()
-        system_prompt = state.pop()
+        user_input = state.pop()
+        agent: Agent = state.pop()
 
-        document = DocumentUrl(url=document_url, media_type="application/pdf")
-
+        if isinstance(user_input, list):
+            input = user_input
+        else:
+            input = [user_input]
         try:
-            provider = GoogleProvider(vertexai=True)
-            model = GoogleModel("gemini-1.5-flash", provider=provider)
-
-            agent = Agent(
-                model=model,
-                system_prompt=system_prompt,
-                output_type=StructuredAnswer,
-            )
-
-            result = await agent.run([document])
+            result = await agent.run(input)
             state.push(result.output)
 
         except Exception as e:
             error_response = f"AI Error: {str(e)}"
             state.push(error_response)
+
+        return True
+
+
+@params(
+    model={"type": Model, "description": "AI model to use"},
+    system_prompt={"type": str, "description": "System prompt for the agent"},
+    agent_name={
+        "type": str,
+        "description": "Optional agent name",
+        "required": False,
+        "default": None,
+    },
+    output_type={
+        "type": type,
+        "description": "Output type class",
+        "required": False,
+        "default": str,
+    },
+)
+@opcode("ai_create_agent")
+class AiCreateAgent(BaseOpcode):
+    async def execute(self, state, stmt, engine):
+        params = self.resolve_params(state, stmt)
+
+        try:
+            agent = await self._create_agent(**params)
+            state.push(agent)
+        except Exception as e:
+            error_response = f"AI Error: {str(e)}"
+            state.push(error_response)
+
+        return True
+
+    async def _create_agent(
+        self, model, system_prompt: str, agent_name: str = None, output_type: type = str
+    ):
+        provider = GoogleProvider(vertexai=True)
+
+        if not isinstance(model, Model):
+            model = GoogleModel(model, provider=provider)
+
+        return Agent(
+            model=model,
+            system_prompt=system_prompt,
+            output_type=output_type,
+            name=agent_name,
+        )
+
+
+@opcode("ai_create_model")
+class AiCreateModel(BaseOpcode):
+    async def execute(self, state, stmt, engine):
+        model_name = state.pop()
+
+        provider = GoogleProvider(vertexai=True)
+        state.push(GoogleModel(model_name, provider=provider))
 
         return True
 
@@ -74,14 +104,13 @@ class AiLoadDocument(BaseOpcode):
 
 
 @opcode("ai_load_prompt")
-class AILoadPrompt(BaseOpcode):
+class AiLoadPrompt(BaseOpcode):
     async def execute(self, state, stmt, engine):
         file_path = state.pop()
 
         try:
-            async with aiofiles.open(file_path, mode="r") as f:
-                content = await f.read()
-                state.push(content)
+            content = Path(file_path).read_text()
+            state.push(content)
         except Exception as e:
             error_response = f"File Load Error: {str(e)}"
             state.push(error_response)
@@ -89,65 +118,34 @@ class AILoadPrompt(BaseOpcode):
         return True
 
 
-@opcode("ai_format_answer")
-class AIFormatStructuredAnswer(BaseOpcode):
+@opcode("ai_summary")
+class AiSummary(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        structured_answer = state.pop()
-        pages_reference = False
+        document_url = state.pop()
+        system_prompt = state.pop()
+
+        document = DocumentUrl(url=document_url, media_type="application/pdf")
 
         try:
-            if isinstance(structured_answer, StructuredAnswer):
-                formatted_output = self._format_structured_answer(
-                    structured_answer, pages_reference
-                )
-            else:
-                formatted_output = str(structured_answer)
+            provider = GoogleProvider(vertexai=True)
+            model = GoogleModel("gemini-2.5-flash", provider=provider)
 
-            state.push(formatted_output)
+            agent = Agent(
+                model=model,
+                system_prompt=system_prompt,
+                output_type=StructuredAnswer,
+            )
+
+            result = await agent.run(["This is the document", document])
+
+            if isinstance(result.output, StructuredAnswer):
+                output = format_structured_answer(result.output)
+                state.push(output)
+            else:
+                state.push(str(result.output))
+
         except Exception as e:
-            error_response = f"Format Error: {str(e)}"
+            error_response = f"AI Error: {str(e)}"
             state.push(error_response)
 
         return True
-
-    def _format_structured_answer(
-        self, answer: StructuredAnswer, pages_reference: bool = False
-    ) -> str:
-        output_parts = []
-
-        for doc_summary in answer.answer:
-            doc_parts = []
-
-            if doc_summary.doc and doc_summary.doc.strip():
-                doc_parts.append(f"## {doc_summary.doc}\n")
-
-            for paragraph in doc_summary.paragraphs:
-                paragraph_text = paragraph.text.strip()
-
-                if pages_reference and paragraph.references:
-                    page_refs = [str(ref.pag) for ref in paragraph.references]
-                    if page_refs:
-                        page_refs_str = ", ".join(sorted(set(page_refs)))
-                        paragraph_text += f" (p. {page_refs_str})"
-
-                doc_parts.append(paragraph_text)
-
-            if doc_parts:
-                output_parts.append("\n\n".join(doc_parts))
-
-        result = "\n\n".join(output_parts)
-
-        result = self._sanitize_markdown_formatting(result)
-
-        return result
-
-    def _sanitize_markdown_formatting(self, text: str) -> str:
-        text = re.sub(r"\n{3,}", "\n\n", text)
-
-        text = re.sub(r"\n(#+\s)", r"\n\n\1", text)
-        text = re.sub(r"(#+\s.*)\n([^\n])", r"\1\n\n\2", text)
-
-        lines = [line.rstrip() for line in text.split("\n")]
-        text = "\n".join(lines)
-
-        return text.strip()

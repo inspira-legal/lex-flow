@@ -9,27 +9,39 @@
           "2": ["document_url", ""]
         },
         "nodes": {
-          "format_prompt": {
+          "start": {
+            "opcode": "function_start",
+            "next": "return",
+            "inputs": {}
+          },
+          "format_prompt_path": {
             "opcode": "str_format",
-            "next": "load_prompt",
             "inputs": {
-              "format": [1, "./to_migrate/prompts/{}_summary.txt"],
-              "value": [3, "1"]
+              "format" : [1,"./prompts/{}_summary.txt"],
+              "val1": [3, "1"]
             }
           },
           "load_prompt": {
             "opcode": "ai_load_prompt",
-            "next": "agent_call",
+            "next": null,
             "inputs": {
-              "file_path": [2, "format_prompt"]
+              "file_path": [2, "format_prompt_path"]
             }
           },
           "agent_call": {
-            "opcode": "ai_agent_call",
+            "opcode": "ai_summary",
             "next": null,
             "inputs": {
               "system_prompt": [2, "load_prompt"],
               "user_document": [3, "2"]
+            }
+          },
+          "return": {
+            "opcode": "function_return",
+            "next": null,
+            "inputs": {
+              "return" : [2, "agent_call"]
+
             }
           }
         }
@@ -40,7 +52,7 @@
     {
       "name": "main",
       "variables": {
-        "1": ["summary_depth", "detailed"],
+        "1": ["summary_depth", "long"],
         "2": [
           "document_url",
           "gs://temp-test-api/66b38d6d5aa73d6234ad902b/ec9336f6cf6a4c558d96a6652f288c18603e2007/4da3468c3823405c996929dbf2906d4f8fb7f482"
@@ -55,14 +67,14 @@
         },
         "print_start": {
           "opcode": "io_print",
-          "next": "call_summary_function",
+          "next": "print_result",
           "inputs": {
             "STRING": [1, "Starting document summarization...\n"]
           }
         },
         "call_summary_function": {
           "opcode": "function_call",
-          "next": "print_result",
+          "next": null,
           "inputs": {
             "FUNCTION": [1, "summarize_document"],
             "ARG1": [3, "1"],

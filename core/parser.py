@@ -26,7 +26,15 @@ class Parser:
     def _parse_function(self, name: str, func_data: dict) -> FunctionDef:
         body_nodes = func_data["body"]["nodes"]
 
-        start_node_id = list(body_nodes.keys())[0]
+        start_node_id = None
+        for node_id, node_data in body_nodes.items():
+            if node_data.get("opcode") == "function_start":
+                start_node_id = node_id
+                break
+
+        if start_node_id is None:
+            raise ValueError(f"Function '{name}' must have a function_start node")
+
         body_statements = self._parse_function_chain(start_node_id, body_nodes)
 
         return FunctionDef(
@@ -35,6 +43,7 @@ class Parser:
             outputs=func_data.get("outputs", []),
             body=StatementList(statements=body_statements),
             variables=func_data["body"].get("variables", {}),
+            node_data=body_nodes,
         )
 
     def _parse_function_chain(self, node_id: str, nodes: dict) -> list[Statement]:
@@ -86,4 +95,3 @@ class Parser:
             return Value(type=ValueType.BRANCH_REF, data=value)
         elif input_type == 5:  # FUNCTION_CALL
             return Value(type=ValueType.FUNCTION_CALL, data=value)
-

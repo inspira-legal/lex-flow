@@ -32,6 +32,7 @@ class FunctionDef(BaseModel):
     outputs: list[str]
     body: StatementList
     variables: dict[str, Any] = {}
+    node_data: dict[str, Any] = {}
 
 
 class Program(BaseModel):

@@ -8,10 +8,22 @@
           "1": ["result", "Hello from function!"]
         },
         "nodes": {
+          "start": {
+            "opcode": "function_start",
+            "next": "get_result",
+            "inputs": {}
+          },
           "get_result": {
-            "opcode": "data_get_variable", 
+            "opcode": "data_get_variable",
+            "next": "return_value", 
             "inputs": {
               "VARIABLE": [1, "1"]
+            }
+          },
+          "return_value": {
+            "opcode": "function_return",
+            "inputs": {
+              "VALUE": [2, "get_result"]
             }
           }
         }

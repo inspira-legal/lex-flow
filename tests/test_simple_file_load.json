@@ -10,7 +10,7 @@
           "next": "load_file"
         },
         "load_file": {
-          "opcode": "file_load",
+          "opcode": "file_read",
           "inputs": {
             "file_path": [1, "tests/test_document.txt"]
           },
