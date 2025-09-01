@@ -19,9 +19,9 @@ async def run_test(test_file: str) -> dict:
 
         old_program = OldProgram.model_validate(data)
         workflow = old_program.workflows[0]
-        functions_data = data.get("functions", {})
+        all_workflows = old_program.workflows
 
-        parser = Parser(workflow, functions_data)
+        parser = Parser(workflow, all_workflows)
         program = parser.parse()
 
         output = StringIO()

@@ -1,48 +1,21 @@
 {
-  "functions": {
-    "get_message": {
-      "inputs": [],
-      "outputs": ["message"],
-      "body": {
-        "variables": {
-          "1": ["result", "Hello from function!"]
-        },
-        "nodes": {
-          "start": {
-            "opcode": "function_start",
-            "next": "get_result",
-            "inputs": {}
-          },
-          "get_result": {
-            "opcode": "data_get_variable",
-            "next": "return_value", 
-            "inputs": {
-              "VARIABLE": [1, "1"]
-            }
-          },
-          "return_value": {
-            "opcode": "function_return",
-            "inputs": {
-              "VALUE": [2, "get_result"]
-            }
-          }
-        }
-      }
-    }
-  },
   "workflows": [
     {
       "name": "main",
+      "interface": {
+        "inputs": [],
+        "outputs": []
+      },
       "variables": {
         "1": ["temp", ""]
       },
       "nodes": {
         "start": {
-          "opcode": "event_start",
-          "next": "print_function_result",
+          "opcode": "workflow_start",
+          "next": "print_workflow_result",
           "inputs": {}
         },
-        "print_function_result": {
+        "print_workflow_result": {
           "opcode": "io_print",
           "next": "print_done",
           "inputs": {
@@ -53,6 +26,36 @@
           "opcode": "io_print",
           "inputs": {
             "STRING": [1, "\n"]
+          }
+        }
+      }
+    },
+    {
+      "name": "get_message",
+      "interface": {
+        "inputs": [],
+        "outputs": ["message"]
+      },
+      "variables": {
+        "1": ["result", "Hello from function!"]
+      },
+      "nodes": {
+        "start": {
+          "opcode": "workflow_start",
+          "next": "get_result",
+          "inputs": {}
+        },
+        "get_result": {
+          "opcode": "data_get_variable",
+          "next": "return_value", 
+          "inputs": {
+            "VARIABLE": [1, "1"]
+          }
+        },
+        "return_value": {
+          "opcode": "workflow_return",
+          "inputs": {
+            "VALUE": [2, "get_result"]
           }
         }
       }

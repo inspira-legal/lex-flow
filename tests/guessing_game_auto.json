@@ -8,7 +8,7 @@
       },
       "nodes": {
         "start": {
-          "opcode": "event_start",
+          "opcode": "workflow_start",
           "next": "welcome_message",
           "inputs": {}
         },

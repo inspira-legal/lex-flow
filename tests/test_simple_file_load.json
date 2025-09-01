@@ -5,7 +5,7 @@
       "variables": {},
       "nodes": {
         "start": {
-          "opcode": "event_start",
+          "opcode": "workflow_start",
           "inputs": {},
           "next": "load_file"
         },

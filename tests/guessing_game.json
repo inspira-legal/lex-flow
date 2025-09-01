@@ -9,7 +9,7 @@
       },
       "nodes": {
         "start": {
-          "opcode": "event_start",
+          "opcode": "workflow_start",
           "next": "generate_number",
           "inputs": {}
         },

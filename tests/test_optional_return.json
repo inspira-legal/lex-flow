@@ -10,14 +10,14 @@
       "nodes": {
         "start": {
           "opcode": "workflow_start",
-          "next": "print_hello",
+          "next": "print_message",
           "inputs": {}
         },
-        "print_hello": {
+        "print_message": {
           "opcode": "io_print",
           "next": null,
           "inputs": {
-            "STRING": [1, "Hello, World!\n"]
+            "STRING": [1, "No return needed!\n"]
           }
         }
       }
