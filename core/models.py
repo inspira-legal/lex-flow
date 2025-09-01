@@ -20,15 +20,21 @@ class Node(BaseModel):
     is_reporter: bool = Field(default=False, alias="isReporter")
 
 
+class WorkflowInterface(BaseModel):
+    inputs: list[str] = Field(default_factory=list)
+    outputs: list[str] = Field(default_factory=list)
+
+
 class Workflow(BaseModel):
     name: str
+    interface: WorkflowInterface = Field(default_factory=WorkflowInterface)
     variables: dict = Field(default_factory=dict)
     nodes: dict[str, Node] = Field(default_factory=dict)
     comments: dict[str, str] = Field(default_factory=dict)
 
     def get_start_node(self) -> Node | None:
         for node_id, node in self.nodes.items():
-            if node.opcode == "event_start":
+            if node.opcode == "workflow_start":
                 return node_id, node
         return None, None
 

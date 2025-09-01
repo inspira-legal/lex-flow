@@ -4,6 +4,7 @@ from core.opcodes import OpcodeRegistry
 from core.models import Node
 from core.parser import Parser
 from core.models import InputTypes
+from core.errors import RuntimeError as LexFlowRuntimeError, WorkflowNotFoundError
 
 from core.models import Workflow
 
@@ -17,6 +18,10 @@ class Engine:
         self._opcode_registry = OpcodeRegistry()
         self._opcode_registry.discover_opcodes("opcodes")
 
+        self._current_workflow = "main"
+        self._current_node_id = None
+        self._call_stack_trace = []
+
     async def _evaluate_input(self, value: Value):
         if value.type == ValueType.LITERAL:
             return value.data
@@ -26,8 +31,8 @@ class Engine:
             return await self._execute_reporter(value.data)
         elif value.type == ValueType.BRANCH_REF:
             return value.data
-        elif value.type == ValueType.FUNCTION_CALL:
-            return await self._call_function(value.data)
+        elif value.type == ValueType.WORKFLOW_CALL:
+            return await self._call_workflow(value.data)
 
     async def _execute_reporter(self, node_id: str):
         node = self._state.program.node_map[node_id]
@@ -57,14 +62,43 @@ class Engine:
             self._state.push(result)
 
     async def _execute_statement(self, stmt: Statement):
-        await self._evaluate_inputs(stmt)
+        try:
+            await self._evaluate_inputs(stmt)
 
-        opcode_cls = self._opcode_registry.get(stmt.opcode)
-        opcode = opcode_cls()
-        result = await opcode.execute(self._state, stmt, self)
-        if result is False and stmt.opcode != "function_return":
-            print(f"Failure to run opcode {stmt.opcode}")
-        return result
+            if not self._opcode_registry.has_opcode(stmt.opcode):
+                raise LexFlowRuntimeError(
+                    f"Unknown opcode '{stmt.opcode}'",
+                    self._current_workflow,
+                    self._current_node_id,
+                    stmt.opcode,
+                    self._call_stack_trace.copy(),
+                )
+
+            opcode_cls = self._opcode_registry.get(stmt.opcode)
+            opcode = opcode_cls()
+            result = await opcode.execute(self._state, stmt, self)
+
+            if result is False and stmt.opcode != "workflow_return":
+                raise LexFlowRuntimeError(
+                    f"Opcode '{stmt.opcode}' execution failed",
+                    self._current_workflow,
+                    self._current_node_id,
+                    stmt.opcode,
+                    self._call_stack_trace.copy(),
+                )
+            return result
+
+        except LexFlowRuntimeError:
+            raise
+        except Exception as e:
+            raise LexFlowRuntimeError(
+                f"Unexpected error in opcode '{stmt.opcode}': {e}",
+                self._current_workflow,
+                self._current_node_id,
+                stmt.opcode,
+                self._call_stack_trace.copy(),
+                self._state._variables,
+            )
 
     def _parse_branch_chain(self, node_id: str) -> list[Statement]:
         dummy_workflow = Workflow(name="dummy", nodes=self._state.program.node_map)
@@ -75,18 +109,18 @@ class Engine:
         for stmt in statements:
             await self._execute_statement(stmt)
 
-    async def _call_function(self, function_name: str):
-        if function_name not in self._state.program.functions:
-            raise Exception(f"Unknown function: {function_name}")
+    async def _call_workflow(self, workflow_name: str):
+        if workflow_name not in self._state.program.workflows:
+            raise WorkflowNotFoundError(workflow_name, self._current_workflow)
 
-        function_def = self._state.program.functions[function_name]
+        workflow_def = self._state.program.workflows[workflow_name]
 
         args = []
-        for _ in function_def.inputs:
+        for _ in workflow_def.inputs:
             args.insert(0, self._state.pop())
 
-        local_vars = function_def.variables.copy()
-        for i, param_name in enumerate(function_def.inputs):
+        local_vars = workflow_def.variables.copy()
+        for i, param_name in enumerate(workflow_def.inputs):
             var_id = None
             for vid, (name, _) in local_vars.items():
                 if name == param_name:
@@ -102,20 +136,20 @@ class Engine:
         self._state.push_frame(return_pc=saved_pc, locals=local_vars)
         self._state._variables = local_vars
 
-        function_nodes = {}
+        workflow_nodes = {}
 
-        for node_id, node_data in function_def.node_data.items():
-            function_nodes[node_id] = Node(
+        for node_id, node_data in workflow_def.node_data.items():
+            workflow_nodes[node_id] = Node(
                 opcode=node_data["opcode"],
                 next=node_data.get("next"),
                 inputs=node_data.get("inputs", {}),
             )
 
-        self._state.program.node_map = function_nodes
+        self._state.program.node_map = workflow_nodes
         self._state._pc = 0
 
         try:
-            for stmt in function_def.body.statements:
+            for stmt in workflow_def.body.statements:
                 result = await self._execute_statement(stmt)
                 if result is False:
                     break
@@ -132,6 +166,10 @@ class Engine:
             return False
 
         current_stmt = self._state.current_statement()
+
+        if hasattr(current_stmt, "node_id"):
+            self._current_node_id = current_stmt.node_id
+
         await self._execute_statement(current_stmt)
 
         self._state._pc += 1

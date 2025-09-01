@@ -1,22 +1,20 @@
 from core.opcodes import opcode, BaseOpcode
 
 
-@opcode("function_start")
-class FunctionStart(BaseOpcode):
-    async def execute(self, state, stmt, engine):
-        # Function start - parameters should already be set up in variables
-        # This is just a marker for clear function entry point
-        return True
-
-
-@opcode("function_return")
-class FunctionReturn(BaseOpcode):
+@opcode("workflow_start")
+class WorkflowStart(BaseOpcode):
     async def execute(self, state, stmt, engine):
         return True
 
 
-@opcode("function_call")
-class FunctionCallOpcode(BaseOpcode):
+@opcode("workflow_return")
+class WorkflowReturn(BaseOpcode):
+    async def execute(self, state, stmt, engine):
+        return True
+
+
+@opcode("workflow_call")
+class WorkflowCallOpcode(BaseOpcode):
     async def execute(self, state, stmt, engine):
         inputs = list(stmt.inputs.keys())
 
@@ -25,15 +23,14 @@ class FunctionCallOpcode(BaseOpcode):
             values.append(state.pop())
         values.reverse()
 
-        function_name = values[0]
+        workflow_name = values[0]
         args = values[1:]
 
         for arg in args:
             state.push(arg)
 
-        result = await engine._call_function(function_name)
+        result = await engine._call_workflow(workflow_name)
 
-        # Push the function result back onto the stack
         if result is not None:
             state.push(result)
 

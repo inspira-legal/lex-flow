@@ -8,7 +8,7 @@ class ValueType(Enum):
     VARIABLE = "variable"
     NODE_REF = "node_ref"
     BRANCH_REF = "branch_ref"
-    FUNCTION_CALL = "function_call"
+    WORKFLOW_CALL = "workflow_call"
 
 
 class Value(BaseModel):
@@ -26,7 +26,7 @@ class StatementList(BaseModel):
     statements: list[Statement]
 
 
-class FunctionDef(BaseModel):
+class WorkflowDef(BaseModel):
     name: str
     inputs: list[str]
     outputs: list[str]
@@ -37,6 +37,6 @@ class FunctionDef(BaseModel):
 
 class Program(BaseModel):
     variables: dict[str, Any]
-    functions: dict[str, FunctionDef] = {}
+    workflows: dict[str, WorkflowDef] = {}
     main: StatementList
     node_map: dict[str, Any] = None

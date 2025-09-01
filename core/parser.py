@@ -1,69 +1,72 @@
 from core.models import Workflow, InputTypes
-from core.ast import Program, StatementList, Statement, Value, ValueType, FunctionDef
+from core.ast import Program, StatementList, Statement, Value, ValueType, WorkflowDef
 
 
 class Parser:
-    def __init__(self, workflow: Workflow, functions_data: dict = None):
+    def __init__(self, workflow: Workflow, workflows_data: list = None):
         self.workflow = workflow
         self.nodes = workflow.nodes
-        self.functions_data = functions_data or {}
+        self.workflows_data = workflows_data or []
 
     def parse(self) -> Program:
         start_id, start_node = self.workflow.get_start_node()
         main_statements = self._parse_chain(start_id)
 
-        functions = {}
-        for func_name, func_data in self.functions_data.items():
-            functions[func_name] = self._parse_function(func_name, func_data)
+        workflows = {}
+        for workflow_data in self.workflows_data:
+            if workflow_data.name != self.workflow.name:
+                workflows[workflow_data.name] = self._parse_workflow(workflow_data)
 
         return Program(
             variables=self.workflow.variables,
-            functions=functions,
+            workflows=workflows,
             main=StatementList(statements=main_statements),
             node_map=self.nodes,
         )
 
-    def _parse_function(self, name: str, func_data: dict) -> FunctionDef:
-        body_nodes = func_data["body"]["nodes"]
+    def _parse_workflow(self, workflow_data: Workflow) -> WorkflowDef:
+        body_nodes = workflow_data.nodes
 
         start_node_id = None
         for node_id, node_data in body_nodes.items():
-            if node_data.get("opcode") == "function_start":
+            if node_data.opcode == "workflow_start":
                 start_node_id = node_id
                 break
 
         if start_node_id is None:
-            raise ValueError(f"Function '{name}' must have a function_start node")
+            raise ValueError(
+                f"Workflow '{workflow_data.name}' must have a workflow_start node"
+            )
 
-        body_statements = self._parse_function_chain(start_node_id, body_nodes)
+        body_statements = self._parse_workflow_chain(start_node_id, body_nodes)
 
-        return FunctionDef(
-            name=name,
-            inputs=func_data.get("inputs", []),
-            outputs=func_data.get("outputs", []),
+        return WorkflowDef(
+            name=workflow_data.name,
+            inputs=workflow_data.interface.inputs,
+            outputs=workflow_data.interface.outputs,
             body=StatementList(statements=body_statements),
-            variables=func_data["body"].get("variables", {}),
-            node_data=body_nodes,
+            variables=workflow_data.variables,
+            node_data={node_id: node.__dict__ for node_id, node in body_nodes.items()},
         )
 
-    def _parse_function_chain(self, node_id: str, nodes: dict) -> list[Statement]:
+    def _parse_workflow_chain(self, node_id: str, nodes: dict) -> list[Statement]:
         statements = []
         current_id = node_id
 
         while current_id and current_id in nodes:
             node = nodes[current_id]
-            stmt = self._parse_function_node(current_id, node)
+            stmt = self._parse_workflow_node(current_id, node)
             statements.append(stmt)
-            current_id = node.get("next")
+            current_id = getattr(node, "next", None)
 
         return statements
 
-    def _parse_function_node(self, node_id: str, node) -> Statement:
+    def _parse_workflow_node(self, node_id: str, node) -> Statement:
         inputs = {}
-        for name, (input_type, value) in (node.get("inputs", {})).items():
+        for name, (input_type, value) in (node.inputs or {}).items():
             inputs[name] = self._resolve_input(input_type, value)
 
-        return Statement(opcode=node["opcode"], inputs=inputs)
+        return Statement(opcode=node.opcode, inputs=inputs)
 
     def _parse_chain(self, node_id: str) -> list[Statement]:
         statements = []
@@ -93,5 +96,5 @@ class Parser:
             return Value(type=ValueType.NODE_REF, data=value)
         elif input_type == InputTypes.BRANCH_REF.value:
             return Value(type=ValueType.BRANCH_REF, data=value)
-        elif input_type == 5:  # FUNCTION_CALL
-            return Value(type=ValueType.FUNCTION_CALL, data=value)
+        elif input_type == 5:  # WORKFLOW_CALL
+            return Value(type=ValueType.WORKFLOW_CALL, data=value)
