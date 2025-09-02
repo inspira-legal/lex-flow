@@ -1,7 +1,7 @@
 from core.ast import Program, Statement, Value, ValueType
 from core.state import WorkflowState
 from core.opcodes import OpcodeRegistry, ControlFlow
-from core.models import Node, InputTypes
+from core.models import Node
 from core.errors import RuntimeError as LexFlowRuntimeError, WorkflowNotFoundError
 
 
@@ -31,20 +31,16 @@ class Engine:
             return await self._call_workflow(value.data)
 
     async def _execute_reporter(self, node_id: str):
-        node = self._state.program.node_map[node_id]
+        if node_id not in self._state.program.reporters:
+            raise LexFlowRuntimeError(
+                f"Reporter '{node_id}' not found. Available reporters: {list(self._state.program.reporters.keys())}",
+                self._current_workflow,
+                self._current_node_id,
+                "reporter_execution",
+                self._call_stack_trace.copy(),
+            )
 
-        inputs = {}
-        for name, (input_type, value) in (node.inputs or {}).items():
-            if input_type == InputTypes.LITERAL.value:
-                inputs[name] = Value(type=ValueType.LITERAL, data=value)
-            elif input_type == InputTypes.VARIABLE_REF.value:
-                inputs[name] = Value(type=ValueType.VARIABLE, data=value)
-            elif input_type == InputTypes.NODE_REF.value:
-                inputs[name] = Value(type=ValueType.NODE_REF, data=value)
-            elif input_type == InputTypes.BRANCH_REF.value:
-                inputs[name] = Value(type=ValueType.BRANCH_REF, data=value)
-
-        reporter_stmt = Statement(opcode=node.opcode, inputs=inputs)
+        reporter_stmt = self._state.program.reporters[node_id]
 
         saved_pc = self._state._pc
         await self._execute_statement(reporter_stmt)

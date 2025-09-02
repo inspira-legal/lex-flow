@@ -18,6 +18,12 @@ class Parser:
                 workflows[workflow_data.name] = self._parse_workflow(workflow_data)
 
         branches = self._discover_all_branches()
+        reporters = self._discover_all_reporters()
+        
+        # Also discover reporters from all workflows
+        for workflow_data in self.workflows_data:
+            workflow_reporters = self._discover_reporters_from_workflow(workflow_data)
+            reporters.update(workflow_reporters)
 
         return Program(
             variables=self.workflow.variables,
@@ -25,6 +31,7 @@ class Parser:
             main=StatementList(statements=main_statements),
             node_map=self.nodes,
             branches=branches,
+            reporters=reporters,
         )
 
     def _parse_workflow(self, workflow_data: Workflow) -> WorkflowDef:
@@ -101,6 +108,42 @@ class Parser:
                             branches[value] = self._parse_chain(value)
         
         return branches
+
+    def _discover_all_reporters(self) -> dict[str, Statement]:
+        reporters = {}
+        referenced_nodes = set()
+        
+        # Find all nodes referenced via NODE_REF
+        for node_id, node in self.nodes.items():
+            if node.inputs:
+                for input_name, (input_type, value) in node.inputs.items():
+                    if input_type == InputTypes.NODE_REF.value:
+                        referenced_nodes.add(value)
+        
+        # Include nodes marked as reporters OR referenced as NODE_REF
+        for node_id, node in self.nodes.items():
+            if node.is_reporter or node_id in referenced_nodes:
+                reporters[node_id] = self._parse_node(node_id, node)
+        
+        return reporters
+
+    def _discover_reporters_from_workflow(self, workflow_data: Workflow) -> dict[str, Statement]:
+        reporters = {}
+        referenced_nodes = set()
+        
+        # Find all nodes referenced via NODE_REF in this workflow
+        for node_id, node in workflow_data.nodes.items():
+            if node.inputs:
+                for input_name, (input_type, value) in node.inputs.items():
+                    if input_type == InputTypes.NODE_REF.value:
+                        referenced_nodes.add(value)
+        
+        # Include nodes marked as reporters OR referenced as NODE_REF
+        for node_id, node in workflow_data.nodes.items():
+            if node.is_reporter or node_id in referenced_nodes:
+                reporters[node_id] = self._parse_workflow_node(node_id, node)
+        
+        return reporters
 
     def _resolve_input(self, input_type: int, value) -> Value:
         if input_type == InputTypes.LITERAL.value:

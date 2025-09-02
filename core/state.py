@@ -28,12 +28,22 @@ class WorkflowState:
         self._pc = 0
 
     def pop(self) -> Any:
+        if not self._data_stack:
+            raise RuntimeError(
+                f"Stack underflow - cannot pop from empty stack "
+                f"(PC: {self._pc}, stack size: {len(self._data_stack)})"
+            )
         return self._data_stack.pop()
 
     def push(self, value: Any):
         return self._data_stack.append(value)
 
     def peek(self) -> Any:
+        if not self._data_stack:
+            raise RuntimeError(
+                f"Stack underflow - cannot peek at empty stack "
+                f"(PC: {self._pc}, stack size: {len(self._data_stack)})"
+            )
         return self._data_stack[-1]
 
     def push_frame(
@@ -43,6 +53,11 @@ class WorkflowState:
         self._call_stack.append(frame)
 
     def pop_frame(self) -> Frame:
+        if not self._call_stack:
+            raise RuntimeError(
+                f"Call stack underflow - cannot pop frame from empty call stack "
+                f"(PC: {self._pc}, call stack depth: {len(self._call_stack)})"
+            )
         return self._call_stack.pop()
 
     def peek_frame(self) -> Frame | None:
@@ -52,6 +67,13 @@ class WorkflowState:
         return self._pc >= len(self.program.main.statements) and not self._call_stack
 
     def current_statement(self) -> Statement:
+        if self._pc < 0:
+            raise RuntimeError(f"Program counter is negative: {self._pc}")
+        if self._pc >= len(self.program.main.statements):
+            raise RuntimeError(
+                f"Program counter {self._pc} is beyond program end "
+                f"(program has {len(self.program.main.statements)} statements)"
+            )
         return self.program.main.statements[self._pc]
 
     def __len__(self) -> int:

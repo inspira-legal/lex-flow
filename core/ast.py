@@ -41,3 +41,4 @@ class Program(BaseModel):
     main: StatementList
     node_map: dict[str, Any] = None
     branches: dict[str, list[Statement]] = {}
+    reporters: dict[str, Statement] = {}
