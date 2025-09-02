@@ -25,7 +25,7 @@
           }
         },
         "push_second_arg": {
-          "opcode": "data_set_variable_to", 
+          "opcode": "data_set_variable_to",
           "next": "call_workflow",
           "inputs": {
             "VARIABLE": [1, "2"],

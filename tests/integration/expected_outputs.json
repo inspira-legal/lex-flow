@@ -1,6 +1,6 @@
 {
   "simple_hello": "Hello, World!\n",
-  "test_simple_if_else": "Value is not 5!\n", 
+  "test_simple_if_else": "Value is not 5!\n",
   "test_simple_while": "1\n2\n3\n",
   "guessing_game_auto": "Testing guessing game logic...\nEquality test PASSED!\nTesting operators...\nGreater than test PASSED!\n",
   "test_functions": "Function result!\n",

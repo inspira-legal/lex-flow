@@ -33,7 +33,10 @@
           "opcode": "io_print",
           "next": "game_loop",
           "inputs": {
-            "STRING": [1, "Welcome to the Guessing Game!\nI'm thinking of a number between 1 and 10.\n"]
+            "STRING": [
+              1,
+              "Welcome to the Guessing Game!\nI'm thinking of a number between 1 and 10.\n"
+            ]
           }
         },
         "game_loop": {

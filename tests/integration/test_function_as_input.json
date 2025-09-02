@@ -47,7 +47,7 @@
         },
         "get_result": {
           "opcode": "data_get_variable",
-          "next": "return_value", 
+          "next": "return_value",
           "inputs": {
             "VARIABLE": [1, "1"]
           }
