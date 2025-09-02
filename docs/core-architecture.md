@@ -29,15 +29,17 @@ JSON Workflow Files
 **Purpose**: Load and validate JSON workflow files with dependency resolution.
 
 **Key Methods**:
+
 - `load_files_with_main(main_file, import_files)` - Load main and import files
 - `get_main_workflow_from_file(main_file, workflow_name)` - Determine entry point
 - `_load_file(file_path)` - Parse individual JSON files
 - `_validate_dependencies()` - Check workflow references
 
 **Validation**:
+
 - File existence and JSON syntax
 - Required `workflow_start` nodes
-- Duplicate workflow names across files  
+- Duplicate workflow names across files
 - Missing workflow dependencies
 
 ### 2. Legacy Models (`core/models.py`)
@@ -45,6 +47,7 @@ JSON Workflow Files
 **Purpose**: Pydantic models for parsing JSON workflow definitions.
 
 **Key Models**:
+
 ```python
 class Workflow(BaseModel):
     name: str
@@ -52,7 +55,7 @@ class Workflow(BaseModel):
     variables: dict
     nodes: dict[str, Node]
 
-class Node(BaseModel):  
+class Node(BaseModel):
     opcode: str
     next: str | None
     inputs: dict[str, list] | None
@@ -68,12 +71,14 @@ These models handle JSON validation and provide structured access to workflow da
 **Purpose**: Transform legacy models into executable AST format.
 
 **Key Transformations**:
+
 - Converts node chains into linear statement sequences
 - Resolves variable references and node dependencies
 - Creates callable workflow definitions with local scopes
 - Builds execution-ready AST program
 
 **Core Method**:
+
 ```python
 def parse(self) -> Program:
     # Transform workflows to executable format
@@ -87,6 +92,7 @@ def parse(self) -> Program:
 **Purpose**: Runtime execution models optimized for the interpreter.
 
 **Key Models**:
+
 ```python
 class Program:
     workflows: Dict[str, WorkflowDef]  # Executable workflows
@@ -116,6 +122,7 @@ The AST models are designed for efficient execution with direct stack operations
 **Purpose**: Main execution engine with stack-based operation model.
 
 **Key Components**:
+
 ```python
 class Engine:
     _state: WorkflowState           # Execution context
@@ -124,6 +131,7 @@ class Engine:
 ```
 
 **Execution Model**:
+
 - **Sequential execution**: Processes statements with program counter
 - **Stack-based**: All operations use stack for parameters and results
 - **Async support**: Handles async opcodes naturally
@@ -131,6 +139,7 @@ class Engine:
 - **Error context**: Maintains execution context for debugging
 
 **Core Methods**:
+
 - `step()` - Execute single statement, advance program counter
 - `_evaluate_input(value)` - Resolve different input types
 - `_execute_statement(stmt)` - Execute opcode with stack management
@@ -141,22 +150,25 @@ class Engine:
 **Purpose**: Execution context including stack, variables, and program state.
 
 **Key Components**:
+
 ```python
 class WorkflowState:
     _data_stack: List[Any]          # Main execution stack
-    _variables: Dict[str, Tuple]    # Variable storage  
+    _variables: Dict[str, Tuple]    # Variable storage
     _pc: int                        # Program counter
     _call_frames: List[CallFrame]   # Call stack
     program: Program                # Currently executing program
 ```
 
 **Stack Operations**:
+
 - `push(value)` - Add value to top of stack
-- `pop()` - Remove and return top value  
+- `pop()` - Remove and return top value
 - `peek()` - Look at top value without removing
 - `is_finished()` - Check if execution is complete
 
 **Call Frame Management**:
+
 - `push_frame(return_pc, locals)` - Start new call scope
 - `pop_frame()` - Return from call scope
 - Variable isolation between call frames
@@ -166,6 +178,7 @@ class WorkflowState:
 **Purpose**: Plugin architecture for operations with automatic discovery.
 
 **Base Architecture**:
+
 ```python
 @opcode("operation_name")
 class MyOpcode(BaseOpcode):
@@ -175,6 +188,7 @@ class MyOpcode(BaseOpcode):
 ```
 
 **Automatic Discovery**:
+
 - Scans `opcodes/` directory for opcode implementations
 - Uses `@opcode()` decorator for registration
 - Supports categorized organization (control, data, io, etc.)
@@ -182,19 +196,22 @@ class MyOpcode(BaseOpcode):
 ## Execution Flow
 
 ### 1. Loading Phase
+
 ```python
 loader = WorkflowLoader()
 workflows = loader.load_files_with_main(main_file, import_files)
 main_workflow_name = loader.get_main_workflow_from_file(main_file)
 ```
 
-### 2. Parsing Phase  
+### 2. Parsing Phase
+
 ```python
 parser = Parser(main_workflow, list(workflows.values()))
 program = parser.parse()  # Convert to AST
 ```
 
 ### 3. Execution Phase
+
 ```python
 engine = Engine(program)
 while not engine._state.is_finished():
@@ -202,6 +219,7 @@ while not engine._state.is_finished():
 ```
 
 ### 4. Statement Execution
+
 ```python
 # For each statement:
 1. Evaluate inputs (literals, variables, node refs, workflow calls)
@@ -214,26 +232,31 @@ while not engine._state.is_finished():
 ## Key Design Decisions
 
 ### Dual Model Architecture
+
 - **Legacy Models**: Optimized for JSON parsing and validation
 - **AST Models**: Optimized for runtime execution
 - **Parser Bridge**: Transforms between formats cleanly
 
 ### Stack-Based Execution
+
 - **Simplicity**: All opcodes use consistent stack interface
 - **Efficiency**: Direct memory operations without parameter passing overhead
 - **Composability**: Easy to chain operations and handle complex expressions
 
 ### Async-First Design
+
 - All opcode execution is async
 - Supports I/O operations, AI calls, and long-running tasks
 - Engine naturally handles async without special cases
 
 ### Plugin Architecture
+
 - Opcodes are discovered automatically
 - Easy to add new operations without core changes
 - Categorized organization (control, data, io, ai, etc.)
 
 ### Error Context Preservation
+
 - Full call stack tracking
 - Variable state snapshots
 - Source location mapping for debugging
@@ -241,16 +264,19 @@ while not engine._state.is_finished():
 ## Performance Considerations
 
 ### Stack Management
+
 - Efficient LIFO operations with Python lists
 - Minimal memory allocation during execution
 - Direct value passing without serialization
 
 ### Variable Scoping
+
 - Local variable dictionaries per call frame
 - Copy-on-write semantics for parameter passing
 - Automatic cleanup when frames pop
 
 ### Node Reference Optimization
+
 - Direct node ID lookup in program node_map
 - Cached opcode instances in registry
 - Minimal overhead for reporter node execution
@@ -258,13 +284,17 @@ while not engine._state.is_finished():
 ## Extension Points
 
 ### Custom Opcodes
+
 Add new operations by implementing `BaseOpcode` and using `@opcode()` decorator.
 
-### State Extensions  
+### State Extensions
+
 Extend `WorkflowState` for domain-specific execution context.
 
 ### Parser Enhancements
+
 Modify `Parser` to support new language features or optimizations.
 
 ### Loader Plugins
+
 Extend `WorkflowLoader` to support additional file formats or validation rules.

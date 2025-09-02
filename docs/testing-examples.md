@@ -11,7 +11,7 @@ Lex Flow uses pytest for comprehensive testing with separate unit and integratio
 ```
 tests/
 ├── conftest.py              # Shared fixtures and configuration
-├── unit/                    # Unit tests for individual components  
+├── unit/                    # Unit tests for individual components
 │   ├── test_state.py       # WorkflowState and Frame tests
 │   ├── test_loader.py      # WorkflowLoader tests
 │   ├── test_parser.py      # Parser tests
@@ -29,41 +29,48 @@ tests/
 ### Running Tests
 
 #### Run All Tests
+
 ```bash
 pytest
 ```
 
 #### Run Unit Tests Only
+
 ```bash
 pytest tests/unit/
 ```
 
-#### Run Integration Tests Only  
+#### Run Integration Tests Only
+
 ```bash
 pytest tests/integration/
 ```
 
 #### Run with Verbose Output
+
 ```bash
 pytest -v
 ```
 
 #### Run Specific Test File
+
 ```bash
 pytest tests/unit/test_state.py -v
 ```
 
 #### Run Tests Matching Pattern
+
 ```bash
 pytest -k "test_stack" -v
 ```
 
 Example output:
+
 ```
 ============================= test session starts ==============================
 platform linux -- Python 3.13.7, pytest-8.4.1, pluggy-1.6.0
 rootdir: /home/capitani/dev/lex-flow
-configfile: pytest.ini  
+configfile: pytest.ini
 plugins: asyncio-1.1.0
 collecting ... collected 59 items
 
@@ -81,30 +88,32 @@ Unit tests focus on individual components and their behavior in isolation.
 ### Testing Core Components
 
 #### WorkflowState Tests (`test_state.py`)
+
 ```python
 def test_stack_operations(workflow_state):
     """Test basic stack operations."""
     workflow_state.push("test_value")
     workflow_state.push(42)
-    
+
     assert workflow_state.pop() == 42
     assert workflow_state.pop() == "test_value"
 
 def test_call_frame_management(workflow_state):
     """Test call frame push and pop operations."""
     workflow_state.push_frame(return_pc=10, locals={"test": "value"})
-    
+
     assert len(workflow_state._call_stack) == 1
     frame = workflow_state.peek_frame()
     assert frame._return_pc == 10
 ```
 
-#### WorkflowLoader Tests (`test_loader.py`)  
+#### WorkflowLoader Tests (`test_loader.py`)
+
 ```python
 def test_load_single_file(workflow_loader, temp_workflow_file):
     """Test loading a single workflow file."""
     workflows = workflow_loader.load_files_with_main(temp_workflow_file, [])
-    
+
     assert len(workflows) == 1
     assert "test_workflow" in workflows
 
@@ -112,17 +121,18 @@ def test_load_invalid_json_raises(workflow_loader, tmp_path):
     """Test that loading invalid JSON raises JSONParseError."""
     json_file = tmp_path / "invalid.json"
     json_file.write_text('{"invalid": json}')
-    
+
     with pytest.raises(JSONParseError):
         workflow_loader.load_files_with_main(json_file, [])
 ```
 
 #### Opcode Tests (`test_opcodes.py`)
+
 ```python
 def test_params_decorator_creates_param_definitions():
     """Test that @params decorator creates parameter definitions."""
     param_info = TestOpcode.get_param_info()
-    
+
     assert "value1" in param_info
     assert param_info["value1"].type == int
     assert param_info["value1"].description == "First value"
@@ -132,12 +142,12 @@ async def test_opcode_execution(workflow_state):
     """Test executing opcode with parameters."""
     workflow_state.push("world")
     workflow_state.push(123)
-    
+
     stmt = Statement(opcode="test_opcode", inputs={"value1": None, "value2": None})
-    
+
     opcode = TestOpcode()
     result = await opcode.execute(workflow_state, stmt, None)
-    
+
     assert result is True
     assert workflow_state.pop() == "123-world"
 ```
@@ -149,38 +159,40 @@ Integration tests verify full workflow execution from loading to completion.
 ### Workflow Execution Tests
 
 #### Basic Workflow Test
+
 ```python
 @pytest.mark.asyncio
 async def test_simple_hello_world_execution(integration_path):
-    """Test execution of simple hello world workflow.""" 
+    """Test execution of simple hello world workflow."""
     workflow_file = integration_path / "simple_hello.json"
-    
+
     # Load workflow
     loader = WorkflowLoader()
     workflows = loader.load_files_with_main(workflow_file, [])
     main_workflow_name = loader.get_main_workflow_from_file(workflow_file)
     main_workflow = workflows[main_workflow_name]
-    
+
     # Parse to AST
     parser = Parser(main_workflow, list(workflows.values()))
     program = parser.parse()
-    
+
     # Execute with output capture
     engine = Engine(program)
     output = StringIO()
-    
+
     with redirect_stdout(output):
         step_count = 0
         while not engine._state.is_finished() and step_count < 10:
             await engine.step()
             step_count += 1
-            
+
     result_output = output.getvalue()
     assert "Hello, World!" in result_output
     assert step_count > 0
 ```
 
 #### Multi-File Workflow Test
+
 ```python
 @pytest.mark.asyncio
 async def test_multi_file_execution(tmp_path):
@@ -201,7 +213,7 @@ async def test_multi_file_execution(tmp_path):
             }
         }]
     }
-    
+
     # Test execution...
 ```
 
@@ -215,7 +227,7 @@ def workflow_state(simple_ast_program) -> WorkflowState:
     """WorkflowState instance for testing."""
     return WorkflowState(simple_ast_program)
 
-@pytest.fixture  
+@pytest.fixture
 def temp_workflow_file(tmp_path, sample_workflow_data) -> Path:
     """Create a temporary workflow file for testing."""
     workflow_file = tmp_path / "test_workflow.json"
@@ -226,30 +238,35 @@ def temp_workflow_file(tmp_path, sample_workflow_data) -> Path:
 ### Test Categories
 
 #### Basic Operations
+
 - **simple_hello.json** - Basic print operation
 - **test_simple_file_load.json** - File operations
 - **test_file_content.json** - File content processing
 
-#### Control Flow  
+#### Control Flow
+
 - **test_simple_if_else.json** - Conditional execution
 - **test_simple_while.json** - Loop operations
 
 #### Functions/Workflows
+
 - **test_functions.json** - Workflow calls and returns
 - **test_function_as_input.json** - Workflows as parameters
 - **test_optional_return.json** - Optional return values
 
 #### Data Operations
+
 - Variable manipulation
 - Data transformations
 - Stack operations
 
 ### Excluded Tests
+
 Some tests are excluded from automatic runs:
 
 ```python
-test_files = [f for f in os.listdir(tests_dir) 
-              if f.endswith(".json") 
+test_files = [f for f in os.listdir(tests_dir)
+              if f.endswith(".json")
               and f not in ["expected_outputs.json", "guessing_game.json"]]
 ```
 
@@ -258,13 +275,15 @@ Interactive tests like `guessing_game.json` require user input and can't run aut
 ## Example Workflows
 
 ### Hello World
+
 **File**: `examples/hello_world.json`
+
 ```json
 {
   "workflows": [
     {
       "name": "main",
-      "interface": {"inputs": [], "outputs": []},
+      "interface": { "inputs": [], "outputs": [] },
       "variables": {},
       "nodes": {
         "start": {
@@ -273,7 +292,7 @@ Interactive tests like `guessing_game.json` require user input and can't run aut
           "inputs": {}
         },
         "print_hello": {
-          "opcode": "io_print", 
+          "opcode": "io_print",
           "next": null,
           "inputs": {
             "STRING": [1, "Hello, World!\n"]
@@ -286,21 +305,24 @@ Interactive tests like `guessing_game.json` require user input and can't run aut
 ```
 
 **Run**:
+
 ```bash
 python main.py examples/hello_world.json
 ```
 
 ### Calculator with Variables
+
 **File**: `examples/calculator.json`
+
 ```json
 {
   "workflows": [
     {
       "name": "main",
-      "interface": {"inputs": [], "outputs": []},
+      "interface": { "inputs": [], "outputs": [] },
       "variables": {
         "1": ["x", 0],
-        "2": ["y", 0], 
+        "2": ["y", 0],
         "3": ["result", 0]
       },
       "nodes": {
@@ -318,7 +340,7 @@ python main.py examples/hello_world.json
           }
         },
         "set_y": {
-          "opcode": "data_set_variable_to", 
+          "opcode": "data_set_variable_to",
           "next": "add",
           "inputs": {
             "VARIABLE": [1, "2"],
@@ -335,7 +357,7 @@ python main.py examples/hello_world.json
         },
         "store_result": {
           "opcode": "data_set_variable_to",
-          "next": "print_result", 
+          "next": "print_result",
           "inputs": {
             "VARIABLE": [1, "3"],
             "VALUE": [2, "add"]
@@ -355,13 +377,15 @@ python main.py examples/hello_world.json
 ```
 
 ### Multi-File Project
+
 **File**: `examples/main.json`
+
 ```json
 {
   "workflows": [
     {
       "name": "main",
-      "interface": {"inputs": [], "outputs": []},
+      "interface": { "inputs": [], "outputs": [] },
       "variables": {
         "1": ["a", 0],
         "2": ["b", 0]
@@ -384,7 +408,7 @@ python main.py examples/hello_world.json
           "opcode": "data_set_variable_to",
           "next": "call_math",
           "inputs": {
-            "VARIABLE": [1, "2"], 
+            "VARIABLE": [1, "2"],
             "VALUE": [1, 3]
           }
         },
@@ -411,6 +435,7 @@ python main.py examples/hello_world.json
 ```
 
 **File**: `examples/math_utils.json`
+
 ```json
 {
   "workflows": [
@@ -462,19 +487,22 @@ python main.py examples/hello_world.json
 ```
 
 **Run**:
+
 ```bash
 python main.py examples/main.json -I examples/math_utils.json
 ```
 
-### Control Flow Example  
+### Control Flow Example
+
 **File**: `examples/conditional.json`
+
 ```json
 {
   "workflows": [
     {
       "name": "main",
-      "interface": {"inputs": [], "outputs": []},
-      "variables": {"1": ["number", 42]},
+      "interface": { "inputs": [], "outputs": [] },
+      "variables": { "1": ["number", 42] },
       "nodes": {
         "start": {
           "opcode": "workflow_start",
@@ -521,16 +549,18 @@ python main.py examples/main.json -I examples/math_utils.json
 ## Debugging Workflows
 
 ### Debug Mode
+
 Use `--debug` for step-by-step execution:
 
 ```bash
 python main.py examples/calculator.json --debug
 [INFO] Debug mode enabled. Press Enter to step, 'q' to quit.
-Step [0] completed. Continue? (Enter/q): 
+Step [0] completed. Continue? (Enter/q):
 # Press Enter to continue step by step
 ```
 
 ### Verbose Mode
+
 Use `--verbose` for detailed execution information:
 
 ```bash
@@ -549,9 +579,10 @@ python main.py examples/main.json -I examples/math_utils.json --verbose
 ```
 
 ### Validation Mode
+
 Use `--validate-only` to check workflows without execution:
 
-```bash  
+```bash
 python main.py examples/calculator.json --validate-only
 [INFO] Loading workflow file: calculator.json
 [SUCCESS] Loaded 1 workflow(s)
@@ -561,6 +592,7 @@ python main.py examples/calculator.json --validate-only
 ## Best Practices
 
 ### Test Design
+
 1. **Test one feature per file** - Keep tests focused
 2. **Use descriptive names** - Make test purpose clear
 3. **Include edge cases** - Test error conditions and boundaries
@@ -568,13 +600,15 @@ python main.py examples/calculator.json --validate-only
 5. **Document test purpose** - Add comments explaining what's being tested
 
 ### Example Creation
+
 1. **Start simple** - Build complexity gradually
-2. **Show real use cases** - Examples should solve actual problems  
+2. **Show real use cases** - Examples should solve actual problems
 3. **Include comments** - JSON doesn't support comments but use descriptive names
 4. **Demonstrate patterns** - Show idiomatic workflow structures
 5. **Provide multiple approaches** - Show different ways to solve problems
 
 ### Development Workflow
+
 1. **Write failing test** - Create test for new functionality first
 2. **Implement feature** - Build opcode or modify interpreter
 3. **Run tests** - Check that new test passes and old tests still work
@@ -584,25 +618,28 @@ python main.py examples/calculator.json --validate-only
 ### Test Development Workflow
 
 #### 1. Write Unit Tests First
+
 ```python
 def test_new_opcode_functionality():
     """Test new opcode behavior."""
     # Arrange
     opcode = NewOpcode()
     workflow_state = create_test_state()
-    
-    # Act  
+
+    # Act
     result = await opcode.execute(workflow_state, test_stmt, engine)
-    
+
     # Assert
     assert result is True
     assert workflow_state.pop() == expected_value
 ```
 
 #### 2. Add Integration Tests
+
 Create test workflow files in `tests/integration/` to verify end-to-end behavior.
 
 #### 3. Run Tests During Development
+
 ```bash
 # Run specific test while developing
 pytest tests/unit/test_new_feature.py::test_specific_case -v
@@ -621,7 +658,7 @@ The `pytest.ini` file configures test discovery and execution:
 ```ini
 [tool:pytest]
 testpaths = tests
-python_files = test_*.py  
+python_files = test_*.py
 python_classes = Test*
 python_functions = test_*
 
@@ -631,7 +668,7 @@ addopts = -v --tb=short --strict-markers
 
 markers =
     unit: Unit tests for individual components
-    integration: Integration tests for full workflow execution  
+    integration: Integration tests for full workflow execution
     slow: Tests that take longer to run
 ```
 
@@ -654,6 +691,7 @@ pytest --cov=core --cov-report=html
 ## Advanced Testing Patterns
 
 ### Parametrized Tests
+
 ```python
 @pytest.mark.parametrize("input_value,expected", [
     (5, 10),
@@ -666,27 +704,29 @@ def test_double_function(input_value, expected):
 ```
 
 ### Mock Testing for External Dependencies
+
 ```python
 from unittest.mock import Mock, patch
 
 @patch('core.engine.Engine._call_workflow')
 async def test_workflow_call_with_mock(mock_call):
     mock_call.return_value = "mocked_result"
-    
+
     engine = Engine(program)
     result = await engine._call_workflow("test_workflow")
-    
+
     assert result == "mocked_result"
     mock_call.assert_called_once_with("test_workflow")
 ```
 
 ### Error Condition Testing
+
 ```python
 def test_invalid_opcode_raises_error():
     """Test that invalid opcodes raise appropriate errors."""
     with pytest.raises(RuntimeError) as exc_info:
         engine.execute_invalid_opcode()
-        
+
     assert "Unknown opcode" in str(exc_info.value)
     assert exc_info.value.opcode == "invalid_opcode"
 ```

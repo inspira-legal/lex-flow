@@ -5,11 +5,13 @@ Lex Flow provides a powerful command-line interface for executing JSON-based vis
 ## Basic Usage
 
 ### Single Workflow File
+
 ```bash
 python main.py workflow.json
 ```
 
 ### Multi-File Projects
+
 ```bash
 # Import additional workflow files
 python main.py main.json -I utils.json helpers.json
@@ -24,13 +26,16 @@ python main.py main.json -I extra.json --import-dir shared/
 ## Command Options
 
 ### Required Arguments
+
 - `main_file` - The main workflow file to execute (must contain the entry point workflow)
 
 ### Import Options
+
 - `-I, --import FILES...` - Additional workflow files to import
 - `--import-dir DIRECTORY` - Directory containing workflow files to import
 
 ### Execution Options
+
 - `--workflow NAME` - Specify which workflow to execute (default: 'main' or single workflow)
 - `--debug` - Enable step-by-step debugging with user input
 - `--verbose` - Show detailed execution information
@@ -39,20 +44,22 @@ python main.py main.json -I extra.json --import-dir shared/
 ## File Structure
 
 ### Main vs Import Files
+
 - **Main file**: Contains the workflow you want to execute
 - **Import files**: Provide additional workflows that can be called from main
 
 ```bash
-# main.json contains: main, setup workflows  
+# main.json contains: main, setup workflows
 # utils.json contains: add_numbers, multiply workflows
 # helpers.json contains: format_output workflow
 python main.py main.json -I utils.json helpers.json --workflow setup
 ```
 
 ### Workflow Selection
+
 The interpreter determines which workflow to execute using this priority:
 
-1. **Explicit selection**: `--workflow NAME` 
+1. **Explicit selection**: `--workflow NAME`
 2. **'main' workflow**: If a workflow named 'main' exists in main file
 3. **Single workflow**: If main file contains only one workflow
 4. **Error**: If main file has multiple workflows without explicit selection
@@ -60,6 +67,7 @@ The interpreter determines which workflow to execute using this priority:
 ## Execution Modes
 
 ### Normal Execution
+
 ```bash
 python main.py workflow.json
 [INFO] Loading workflow file: workflow.json
@@ -70,6 +78,7 @@ Hello, World!
 ```
 
 ### Verbose Mode
+
 ```bash
 python main.py workflow.json --verbose
 [INFO] Loading workflow file: workflow.json
@@ -83,14 +92,16 @@ Hello, World!
 ```
 
 ### Debug Mode
+
 ```bash
 python main.py workflow.json --debug
 [INFO] Debug mode enabled. Press Enter to step, 'q' to quit.
-Step [0] completed. Continue? (Enter/q): 
+Step [0] completed. Continue? (Enter/q):
 # Press Enter to continue, 'q' to quit
 ```
 
 ### Validation Only
+
 ```bash
 python main.py workflow.json --validate-only
 [INFO] Loading workflow file: workflow.json
@@ -103,6 +114,7 @@ python main.py workflow.json --validate-only
 The CLI provides detailed error messages with contextual suggestions:
 
 ### File Not Found
+
 ```bash
 python main.py missing.json
 [ERROR] JSON Error in missing.json: File not found
@@ -114,6 +126,7 @@ Suggestions:
 ```
 
 ### Workflow Dependencies
+
 ```bash
 [ERROR] Workflow 'missing_workflow' not found (referenced from workflow 'main')
 
@@ -124,6 +137,7 @@ Suggestions:
 ```
 
 ### Invalid JSON
+
 ```bash
 [ERROR] JSON Error in workflow.json at line 15, column 12: Invalid JSON: Expecting ',' delimiter
 
@@ -136,18 +150,21 @@ Suggestions:
 ## Examples
 
 ### Basic Workflow
+
 ```bash
 # Execute a simple workflow
 python main.py tests/simple_hello.json
 ```
 
 ### Multi-Workflow Project
+
 ```bash
 # Main workflow calls functions from imported files
 python main.py main.json -I math_utils.json string_utils.json
 ```
 
 ### Development Workflow
+
 ```bash
 # Validate before execution
 python main.py workflow.json --validate-only
@@ -155,11 +172,12 @@ python main.py workflow.json --validate-only
 # Debug step-by-step
 python main.py workflow.json --debug
 
-# Verbose execution for troubleshooting  
+# Verbose execution for troubleshooting
 python main.py workflow.json --verbose
 ```
 
 ### Directory-Based Projects
+
 ```bash
 # Import all workflows from modules directory
 python main.py app.json --import-dir modules/

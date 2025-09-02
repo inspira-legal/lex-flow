@@ -1,14 +1,17 @@
 import json
+import yaml
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
 from core.models import Program, Workflow
 from core.errors import JSONParseError, WorkflowValidationError, WorkflowNotFoundError
+from core.preprocessor import WorkflowPreprocessor
 
 
 class WorkflowLoader:
     def __init__(self):
         self.all_workflows: Dict[str, Workflow] = {}
         self.file_sources: Dict[str, str] = {}
+        self.preprocessor = WorkflowPreprocessor()
 
     def load_files_with_main(
         self, main_file: Union[str, Path], import_files: List[Union[str, Path]]
@@ -62,19 +65,27 @@ class WorkflowLoader:
 
         if not file_path.exists():
             raise JSONParseError("File not found", str(file_path))
-        if not file_path.suffix == ".json":
-            raise JSONParseError("Expected .json file", str(file_path))
+        
+        # Support both JSON and YAML files
+        if file_path.suffix not in [".json", ".yaml", ".yml"]:
+            raise JSONParseError("Expected .json, .yaml, or .yml file", str(file_path))
 
         try:
             with open(file_path, "r") as f:
-                data = json.loads(f.read())
+                if file_path.suffix in [".yaml", ".yml"]:
+                    data = yaml.safe_load(f)
+                else:
+                    data = json.loads(f.read())
         except json.JSONDecodeError as e:
             raise JSONParseError(
                 f"Invalid JSON: {e.msg}", str(file_path), line=e.lineno, column=e.colno
             )
+        except yaml.YAMLError as e:
+            raise JSONParseError(f"Invalid YAML: {e}", str(file_path))
         except Exception as e:
             raise JSONParseError(f"Failed to read file: {e}", str(file_path))
 
+        data = self.preprocessor.preprocess_workflow(data)
         self._extract_workflows(data, str(file_path))
 
     def _extract_workflows(self, data: Dict[str, Any], file_path: str):

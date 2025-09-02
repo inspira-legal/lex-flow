@@ -5,6 +5,7 @@ Lex Flow uses JSON-based workflow definitions that describe visual programming f
 ## File Structure
 
 ### Top-Level Format
+
 ```json
 {
   "workflows": [
@@ -34,6 +35,7 @@ Lex Flow uses JSON-based workflow definitions that describe visual programming f
 ## Workflow Structure
 
 ### Workflow Definition
+
 ```json
 {
   "name": "workflow_name",
@@ -54,6 +56,7 @@ Lex Flow uses JSON-based workflow definitions that describe visual programming f
 ```
 
 **Fields:**
+
 - `name` - Unique workflow identifier (required)
 - `interface` - Input/output specification (required)
 - `variables` - Local variable definitions (optional)
@@ -61,10 +64,11 @@ Lex Flow uses JSON-based workflow definitions that describe visual programming f
 - `comments` - Documentation for nodes (optional)
 
 ### Workflow Interface
+
 ```json
 {
-  "inputs": ["x", "y"],      // Parameters this workflow accepts
-  "outputs": ["sum", "product"]  // Values this workflow returns
+  "inputs": ["x", "y"], // Parameters this workflow accepts
+  "outputs": ["sum", "product"] // Values this workflow returns
 }
 ```
 
@@ -73,6 +77,7 @@ Workflows with inputs can be called from other workflows. Workflows without inpu
 ## Node Structure
 
 ### Node Definition
+
 ```json
 {
   "opcode": "operation_name",
@@ -87,55 +92,101 @@ Workflows with inputs can be called from other workflows. Workflows without inpu
 ```
 
 **Fields:**
+
 - `opcode` - Operation to perform (required)
 - `next` - Next node to execute (`null` for end nodes)
 - `inputs` - Input parameters (optional)
 - `fields` - Additional opcode-specific data (optional)
 
 ### Node Execution Flow
+
 Nodes execute sequentially following the `next` chain:
+
 ```
 workflow_start → node_a → node_b → node_c → null (end)
 ```
 
 ## Input Types
 
-Node inputs use a `[type, value]` format where type determines how `value` is interpreted:
+Node inputs support three different formats for better readability and developer experience:
 
-### Type 1: Literal Values
+### Format 1: Numeric (Legacy)
+
 ```json
-"PARAM": [1, "Hello World"]     // String literal
-"NUMBER": [1, 42]               // Number literal  
-"BOOL": [1, true]               // Boolean literal
+"PARAM": [1, "Hello World"]       // String literal
+"VALUE": [2, "calculation_node"]  // Node reference
+"VAR": [3, "1"]                   // Variable reference  
+"BRANCH": [4, "if_true_branch"]   // Branch reference
+"RESULT": [5, "helper_workflow"]  // Workflow call
 ```
 
-### Type 2: Node References (Reporters)
+### Format 2: Keyword Arrays
+
 ```json
-"VALUE": [2, "calculation_node"]  // Use output of another node
+"PARAM": ["literal", "Hello World"]       // String literal
+"VALUE": ["node", "calculation_node"]     // Node reference
+"VAR": ["variable", "1"]                  // Variable reference
+"BRANCH": ["branch", "if_true_branch"]    // Branch reference
+"RESULT": ["workflow_call", "helper_workflow"] // Workflow call
 ```
+
+### Format 3: Object Notation (Recommended)
+
+```json
+"PARAM": {"literal": "Hello World"}       // String literal
+"VALUE": {"node": "calculation_node"}     // Node reference
+"VAR": {"variable": "1"}                  // Variable reference
+"BRANCH": {"branch": "if_true_branch"}    // Branch reference
+"RESULT": {"workflow_call": "helper_workflow"} // Workflow call
+```
+
+All three formats are equivalent and can be mixed within the same workflow. The object notation is recommended for new workflows as it's more readable and self-documenting.
+
+### Input Type Details
+
+#### Literal Values (Type 1)
+Direct values used as-is in the operation:
+
+```json
+"STRING": {"literal": "Hello World"}
+"NUMBER": {"literal": 42}
+"BOOL": {"literal": true}
+```
+
+#### Node References (Type 2)
+References to other nodes whose output becomes the input value:
+
+```json
+"VALUE": {"node": "calculation_node"}
+```
+
 The referenced node executes immediately and its result is used as the input value.
 
-### Type 3: Variable References
-```json
-"VALUE": [3, "1"]  // Use variable with ID "1"
-```
-References a variable defined in the workflow's `variables` section.
+#### Variable References (Type 3)
+References to variables defined in the workflow's `variables` section:
 
-### Type 4: Branch References (Control Flow)
 ```json
-"CONDITION": [4, "if_true_branch"]  // Branch for control flow
+"VALUE": {"variable": "1"}
 ```
-Used in conditional statements to specify execution branches.
 
-### Type 5: Workflow Calls
+#### Branch References (Type 4)
+Used in control flow operations to specify execution branches:
+
 ```json
-"RESULT": [5, "helper_workflow"]  // Call another workflow
+"TRUE_BRANCH": {"branch": "if_true_branch"}
 ```
-Executes another workflow and uses its return value.
+
+#### Workflow Calls (Type 5)
+Calls to other workflows, using their return value as input:
+
+```json
+"RESULT": {"workflow_call": "helper_workflow"}
+```
 
 ## Variables
 
 ### Variable Declaration
+
 ```json
 {
   "variables": {
@@ -147,17 +198,19 @@ Executes another workflow and uses its return value.
 ```
 
 Variables are defined as `"id": ["name", default_value]` pairs:
+
 - `id` - Unique identifier for references
 - `name` - Human-readable variable name
 - `default_value` - Initial value
 
 ### Variable Usage
+
 ```json
 {
   "opcode": "data_set_variable_to",
   "inputs": {
-    "VARIABLE": [1, "1"],        // Literal ID of variable to set
-    "VALUE": [3, "2"]            // Value from variable ID "2"
+    "VARIABLE": [1, "1"], // Literal ID of variable to set
+    "VALUE": [3, "2"] // Value from variable ID "2"
   }
 }
 ```
@@ -165,7 +218,9 @@ Variables are defined as `"id": ["name", default_value]` pairs:
 ## Common Patterns
 
 ### Entry Point
+
 Every workflow must have a `workflow_start` node:
+
 ```json
 {
   "start": {
@@ -177,6 +232,7 @@ Every workflow must have a `workflow_start` node:
 ```
 
 ### Sequential Operations
+
 ```json
 {
   "step1": {
@@ -187,7 +243,7 @@ Every workflow must have a `workflow_start` node:
     }
   },
   "step2": {
-    "opcode": "io_print", 
+    "opcode": "io_print",
     "next": null,
     "inputs": {
       "STRING": [1, "Step 2\n"]
@@ -197,6 +253,7 @@ Every workflow must have a `workflow_start` node:
 ```
 
 ### Variable Operations
+
 ```json
 {
   "set_var": {
@@ -211,13 +268,14 @@ Every workflow must have a `workflow_start` node:
     "opcode": "io_print",
     "next": null,
     "inputs": {
-      "STRING": [3, "1"]  // Use variable value
+      "STRING": [3, "1"] // Use variable value
     }
   }
 }
 ```
 
 ### Workflow Calls
+
 ```json
 {
   "call_helper": {
@@ -233,13 +291,14 @@ Every workflow must have a `workflow_start` node:
     "opcode": "io_print",
     "next": null,
     "inputs": {
-      "STRING": [2, "call_helper"]  // Use workflow result
+      "STRING": [2, "call_helper"] // Use workflow result
     }
   }
 }
 ```
 
 ### Return Values
+
 ```json
 {
   "return_result": {
@@ -255,6 +314,7 @@ Every workflow must have a `workflow_start` node:
 ## Complete Examples
 
 ### Simple Hello World
+
 ```json
 {
   "workflows": [
@@ -285,6 +345,7 @@ Every workflow must have a `workflow_start` node:
 ```
 
 ### Calculator with Variables
+
 ```json
 {
   "workflows": [
