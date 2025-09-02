@@ -1,6 +1,6 @@
 from core.ast import Program, Statement, Value, ValueType
 from core.state import WorkflowState
-from core.opcodes import OpcodeRegistry
+from core.opcodes import OpcodeRegistry, ControlFlow
 from core.models import Node
 from core.parser import Parser
 from core.models import InputTypes
@@ -100,14 +100,20 @@ class Engine:
                 self._state._variables,
             )
 
-    def _parse_branch_chain(self, node_id: str) -> list[Statement]:
+    async def _execute_branch_from_node(self, node_id: str):
         dummy_workflow = Workflow(name="dummy", nodes=self._state.program.node_map)
         parser = Parser(dummy_workflow)
-        return parser._parse_chain(node_id)
-
-    async def _execute_branch(self, statements: list[Statement]):
+        statements = parser._parse_chain(node_id)
+        
         for stmt in statements:
-            await self._execute_statement(stmt)
+            control_result = await self._execute_statement(stmt)
+            
+            if control_result == ControlFlow.HALT:
+                return ControlFlow.HALT
+            elif control_result == ControlFlow.REPEAT:
+                return ControlFlow.REPEAT
+        
+        return ControlFlow.CONTINUE
 
     async def _call_workflow(self, workflow_name: str):
         if workflow_name not in self._state.program.workflows:
@@ -170,7 +176,21 @@ class Engine:
         if hasattr(current_stmt, "node_id"):
             self._current_node_id = current_stmt.node_id
 
-        await self._execute_statement(current_stmt)
+        control_result = await self._execute_statement(current_stmt)
 
-        self._state._pc += 1
+        if control_result == ControlFlow.REPEAT:
+            pass
+        elif control_result == ControlFlow.HALT:
+            self._state._pc = len(self._state.program.main.statements)
+        elif control_result in [True, ControlFlow.CONTINUE, None]:
+            self._state._pc += 1
+        else:
+            raise LexFlowRuntimeError(
+                f"Invalid control flow result: {control_result}",
+                self._current_workflow,
+                self._current_node_id,
+                current_stmt.opcode if hasattr(current_stmt, 'opcode') else "unknown",
+                self._call_stack_trace.copy(),
+            )
+
         return True

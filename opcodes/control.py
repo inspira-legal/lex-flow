@@ -1,33 +1,31 @@
-from core.opcodes import opcode, BaseOpcode
+from core.opcodes import opcode, BaseOpcode, ControlFlow
 
 
 @opcode("control_if_else")
 class ControlIfElse(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        branch2 = state.pop()
-        branch1 = state.pop()
+        false_branch = state.pop()
+        true_branch = state.pop()
         condition = state.pop()
 
         if condition:
-            branch_stmts = engine._parse_branch_chain(branch1)
-            await engine._execute_branch(branch_stmts)
+            return await engine._execute_branch_from_node(true_branch)
         else:
-            branch_stmts = engine._parse_branch_chain(branch2)
-            await engine._execute_branch(branch_stmts)
-
-        return True
+            return await engine._execute_branch_from_node(false_branch)
 
 
 @opcode("control_while")
 class ControlWhile(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        substack_id = state.pop()
+        loop_body = state.pop()
         condition_result = state.pop()
 
         if condition_result:
-            branch_stmts = engine._parse_branch_chain(substack_id)
-            await engine._execute_branch(branch_stmts)
-
-            state._pc -= 1
-
-        return True
+            control_result = await engine._execute_branch_from_node(loop_body)
+            
+            if control_result == ControlFlow.HALT:
+                return ControlFlow.CONTINUE
+            else:
+                return ControlFlow.REPEAT
+        else:
+            return ControlFlow.CONTINUE

@@ -119,6 +119,12 @@ def opcode(name: Optional[str] = None):
     return decorator
 
 
+class ControlFlow:
+    CONTINUE = "continue"
+    REPEAT = "repeat"
+    HALT = "halt"
+
+
 class OpcodeRegistry:
     _opcodes: Dict[str, Type[BaseOpcode]] = {}
 
