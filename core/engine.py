@@ -1,12 +1,8 @@
 from core.ast import Program, Statement, Value, ValueType
 from core.state import WorkflowState
 from core.opcodes import OpcodeRegistry, ControlFlow
-from core.models import Node
-from core.parser import Parser
-from core.models import InputTypes
+from core.models import Node, InputTypes
 from core.errors import RuntimeError as LexFlowRuntimeError, WorkflowNotFoundError
-
-from core.models import Workflow
 
 
 class Engine:
@@ -101,9 +97,16 @@ class Engine:
             )
 
     async def _execute_branch_from_node(self, node_id: str):
-        dummy_workflow = Workflow(name="dummy", nodes=self._state.program.node_map)
-        parser = Parser(dummy_workflow)
-        statements = parser._parse_chain(node_id)
+        if node_id not in self._state.program.branches:
+            raise LexFlowRuntimeError(
+                f"Branch '{node_id}' not found. Available branches: {list(self._state.program.branches.keys())}",
+                self._current_workflow,
+                self._current_node_id,
+                "branch_execution",
+                self._call_stack_trace.copy(),
+            )
+        
+        statements = self._state.program.branches[node_id]
         
         for stmt in statements:
             control_result = await self._execute_statement(stmt)

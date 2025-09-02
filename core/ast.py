@@ -40,3 +40,4 @@ class Program(BaseModel):
     workflows: dict[str, WorkflowDef] = {}
     main: StatementList
     node_map: dict[str, Any] = None
+    branches: dict[str, list[Statement]] = {}

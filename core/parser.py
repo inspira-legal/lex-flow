@@ -17,11 +17,14 @@ class Parser:
             if workflow_data.name != self.workflow.name:
                 workflows[workflow_data.name] = self._parse_workflow(workflow_data)
 
+        branches = self._discover_all_branches()
+
         return Program(
             variables=self.workflow.variables,
             workflows=workflows,
             main=StatementList(statements=main_statements),
             node_map=self.nodes,
+            branches=branches,
         )
 
     def _parse_workflow(self, workflow_data: Workflow) -> WorkflowDef:
@@ -86,6 +89,18 @@ class Parser:
             inputs[name] = self._resolve_input(input_type, value)
 
         return Statement(opcode=node.opcode, inputs=inputs)
+
+    def _discover_all_branches(self) -> dict[str, list[Statement]]:
+        branches = {}
+        
+        for node_id, node in self.nodes.items():
+            if node.inputs:
+                for input_name, (input_type, value) in node.inputs.items():
+                    if input_type == InputTypes.BRANCH_REF.value:
+                        if value not in branches:
+                            branches[value] = self._parse_chain(value)
+        
+        return branches
 
     def _resolve_input(self, input_type: int, value) -> Value:
         if input_type == InputTypes.LITERAL.value:
