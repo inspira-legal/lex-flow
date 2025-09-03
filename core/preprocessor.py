@@ -1,5 +1,6 @@
 from typing import Dict, Any, List, Union
 from copy import deepcopy
+from .errors import WorkflowValidationError
 
 
 class WorkflowPreprocessor:
@@ -47,7 +48,37 @@ class WorkflowPreprocessor:
                 and type_identifier in self.INPUT_TYPE_MAP
             ):
                 return [self.INPUT_TYPE_MAP[type_identifier], data]
+            elif isinstance(type_identifier, str):
+                # String identifier but unknown type
+                valid_types = ", ".join(f'"{t}"' for t in self.INPUT_TYPE_MAP.keys())
+                raise WorkflowValidationError(
+                    f'Unknown input type "{type_identifier}". '
+                    f"Valid input types are: {valid_types}. "
+                    f'Example: ["literal", "value"] or ["variable", "var_name"]',
+                    "preprocessor",
+                    None
+                )
+            elif isinstance(type_identifier, int):
+                # Numeric type identifier - this is valid (legacy format)
+                return value
+            else:
+                raise WorkflowValidationError(
+                    f"Invalid input format: first element must be string or integer, got {type(type_identifier).__name__}. "
+                    f'Example: ["literal", "value"] or [1, "value"]',
+                    "preprocessor", 
+                    None
+                )
+        
+        elif isinstance(value, list):
+            # List but not 2 elements
+            raise WorkflowValidationError(
+                f"Invalid input format: list inputs must have exactly 2 elements [type, value], got {len(value)} elements. "
+                f'Example: ["literal", "value"]',
+                "preprocessor",
+                None
+            )
 
+        # Non-dict, non-list values are treated as literals (legacy support)
         return value
 
     def _process_nested_input(self, input_dict: Dict[str, Any]) -> List:
@@ -55,5 +86,13 @@ class WorkflowPreprocessor:
             if type_name in self.INPUT_TYPE_MAP:
                 return [self.INPUT_TYPE_MAP[type_name], data]
 
-        return input_dict
-
+        # If we reach here, no valid input type was found
+        valid_types = ", ".join(f'"{t}"' for t in self.INPUT_TYPE_MAP.keys())
+        invalid_types = ", ".join(f'"{t}"' for t in input_dict.keys())
+        raise WorkflowValidationError(
+            f"Unknown input type(s): {invalid_types}. "
+            f"Valid input types are: {valid_types}. "
+            f"Example: {{'literal': 'value'}} or {{'variable': 'var_name'}}",
+            "preprocessor",
+            None
+        )
