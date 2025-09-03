@@ -60,37 +60,34 @@ class Parser:
         )
 
     def _parse_workflow_chain(self, node_id: str, nodes: dict) -> list[Statement]:
+        return self._parse_chain_generic(node_id, nodes, use_getattr=True)
+
+    def _parse_chain(self, node_id: str) -> list[Statement]:
+        return self._parse_chain_generic(node_id, self.nodes, use_getattr=False)
+        
+    def _parse_chain_generic(self, node_id: str, nodes: dict, use_getattr: bool = False) -> list[Statement]:
         statements = []
         current_id = node_id
 
         while current_id and current_id in nodes:
             node = nodes[current_id]
-            stmt = self._parse_workflow_node(current_id, node)
+            stmt = self._parse_node_generic(current_id, node)
             statements.append(stmt)
-            current_id = getattr(node, "next", None)
+            
+            if use_getattr:
+                current_id = getattr(node, "next", None)
+            else:
+                current_id = node.next
 
         return statements
 
     def _parse_workflow_node(self, node_id: str, node) -> Statement:
-        inputs = {}
-        for name, (input_type, value) in (node.inputs or {}).items():
-            inputs[name] = self._resolve_input(input_type, value)
-
-        return Statement(opcode=node.opcode, inputs=inputs)
-
-    def _parse_chain(self, node_id: str) -> list[Statement]:
-        statements = []
-        current_id = node_id
-
-        while current_id:
-            node = self.nodes[current_id]
-            stmt = self._parse_node(current_id, node)
-            statements.append(stmt)
-            current_id = node.next
-
-        return statements
+        return self._parse_node_generic(node_id, node)
 
     def _parse_node(self, node_id: str, node) -> Statement:
+        return self._parse_node_generic(node_id, node)
+        
+    def _parse_node_generic(self, node_id: str, node) -> Statement:
         inputs = {}
         for name, (input_type, value) in (node.inputs or {}).items():
             inputs[name] = self._resolve_input(input_type, value)
@@ -156,5 +153,5 @@ class Parser:
             return Value(type=ValueType.NODE_REF, data=value)
         elif input_type == InputTypes.BRANCH_REF.value:
             return Value(type=ValueType.BRANCH_REF, data=value)
-        elif input_type == 5:  # WORKFLOW_CALL
+        elif input_type == InputTypes.WORKFLOW_CALL.value:
             return Value(type=ValueType.WORKFLOW_CALL, data=value)

@@ -147,20 +147,42 @@ class OpcodeRegistry:
         cls._opcodes.clear()
 
     @classmethod
-    def discover_opcodes(cls, package_name: str = "opcodes") -> None:
+    def discover_opcodes(cls, package_name: str = "opcodes", strict: bool = False) -> None:
+        import_failures = []
+        
         try:
             package = importlib.import_module(package_name)
-
-            for importer, modname, ispkg in pkgutil.iter_modules(
-                package.__path__, package.__name__ + "."
-            ):
-                if not ispkg:
-                    try:
-                        importlib.import_module(modname)
-                    except ImportError as e:
-                        print(f"Warning: Could not import opcode module {modname}: {e}")
         except ImportError as e:
-            print(f"Warning: Could not import opcodes package {package_name}: {e}")
+            error_msg = f"Could not import opcodes package '{package_name}': {e}"
+            if strict:
+                raise ImportError(error_msg)
+            else:
+                print(f"Warning: {error_msg}")
+                return
+
+        for importer, modname, ispkg in pkgutil.iter_modules(
+            package.__path__, package.__name__ + "."
+        ):
+            if not ispkg:
+                try:
+                    importlib.import_module(modname)
+                except ImportError as e:
+                    failure_info = {
+                        'module': modname,
+                        'error': str(e),
+                        'suggestion': f"Check dependencies or syntax errors in {modname}"
+                    }
+                    import_failures.append(failure_info)
+                    
+                    if strict:
+                        raise ImportError(f"Failed to import opcode module '{modname}': {e}")
+                    else:
+                        print(f"Warning: Could not import opcode module '{modname}': {e}")
+                        print(f"  Suggestion: {failure_info['suggestion']}")
+
+        if import_failures and not strict:
+            print(f"\nOpcode discovery completed with {len(import_failures)} import failure(s).")
+            print("Use strict=True to treat import failures as fatal errors.")
 
     @classmethod
     def has_opcode(cls, name: str) -> bool:

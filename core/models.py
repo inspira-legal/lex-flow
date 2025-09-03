@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from enum import Enum
-from typing import Any
+from typing import Any, Union
 import json
 
 
@@ -13,14 +13,15 @@ class InputTypes(Enum):
     NODE_REF = 2
     VARIABLE_REF = 3
     BRANCH_REF = 4
+    WORKFLOW_CALL = 5
 
 
 class Node(BaseModel):
     opcode: str
-    next: str | None = None
-    parent: str | None = None
-    inputs: dict[str, list] | None = None
-    fields: dict | None = None
+    next: Union[str, None] = None
+    parent: Union[str, None] = None
+    inputs: Union[dict[str, list], None] = None
+    fields: Union[dict, None] = None
     is_reporter: bool = Field(default=False, alias="isReporter")
 
 
@@ -36,7 +37,7 @@ class Workflow(BaseModel):
     nodes: dict[str, Node] = Field(default_factory=dict)
     comments: dict[str, str] = Field(default_factory=dict)
 
-    def get_start_node(self) -> Node | None:
+    def get_start_node(self) -> Union[Node, None]:
         for node_id, node in self.nodes.items():
             if node.opcode == WORKFLOW_START_OPCODE:
                 return node_id, node
@@ -48,11 +49,6 @@ class Program(BaseModel):
     globals: dict = Field(default_factory=dict)
     metadata: dict = Field(default_factory=dict)
 
-    @classmethod
-    def model_validate(cls, data: Any) -> "Program":
-        if isinstance(data, dict) and "workflows" in data:
-            return super().model_validate(data)
-        return super().model_validate(data)
 
 
 class RuntimeNode(BaseModel):

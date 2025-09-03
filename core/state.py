@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Union
 from .ast import Program, Statement
 
 
@@ -60,7 +60,7 @@ class WorkflowState:
             )
         return self._call_stack.pop()
 
-    def peek_frame(self) -> Frame | None:
+    def peek_frame(self) -> Union[Frame, None]:
         return self._call_stack[-1] if self._call_stack else None
 
     def is_finished(self) -> bool:
