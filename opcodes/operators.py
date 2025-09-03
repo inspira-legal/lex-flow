@@ -36,39 +36,54 @@ class OperatorAdd(BaseOpcode):
         return int(op1) + int(op2)
 
 
+@params(
+    op1={"type": int, "description": "First operand"},
+    op2={"type": int, "description": "Second operand"},
+)
 @opcode("operator_less_than")
 class OperatorLessThan(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        op2 = state.pop()
-        op1 = state.pop()
-
-        result = int(op1) < int(op2)
+        params = self.resolve_params(state, stmt)
+        result = await self._op_less_than(params["op1"], params["op2"])
         state.push(result)
         return True
 
+    async def _op_less_than(self, op1: int, op2: int) -> bool:
+        return int(op1) < int(op2)
 
+
+@params(
+    op1={"type": int, "description": "First operand"},
+    op2={"type": int, "description": "Second operand"},
+)
 @opcode("operator_greater_than")
 class OperatorGreaterThan(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        op2 = state.pop()
-        op1 = state.pop()
-
-        result = int(op1) > int(op2)
+        params = self.resolve_params(state, stmt)
+        result = await self._op_greater_than(params["op1"], params["op2"])
         state.push(result)
         return True
 
+    async def _op_greater_than(self, op1: int, op2: int) -> bool:
+        return int(op1) > int(op2)
 
+
+@params(
+    min_val={"type": int, "description": "Minimum value"},
+    max_val={"type": int, "description": "Maximum value"},
+)
 @opcode("math_random")
 class MathRandom(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        import random
-
-        max_val = state.pop()
-        min_val = state.pop()
-
-        result = random.randint(int(min_val), int(max_val))
+        params = self.resolve_params(state, stmt)
+        result = await self._random_int(params["min_val"], params["max_val"])
         state.push(result)
         return True
+
+    async def _random_int(self, min_val: int, max_val: int) -> int:
+        import random
+
+        return random.randint(int(min_val), int(max_val))
 
 
 @params(format_string={"type": str, "description": "Format template"})
@@ -92,12 +107,17 @@ class StrFormat(BaseOpcode):
         return template.format(*args)
 
 
+@params(
+    str1={"type": str, "description": "First string"},
+    str2={"type": str, "description": "Second string"},
+)
 @opcode("str_concat")
 class StrConcat(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        str2 = state.pop()
-        str1 = state.pop()
-
-        result = str(str1) + str(str2)
+        params = self.resolve_params(state, stmt)
+        result = await self._concat_strings(params["str1"], params["str2"])
         state.push(result)
         return True
+
+    async def _concat_strings(self, str1: str, str2: str) -> str:
+        return str(str1) + str(str2)
