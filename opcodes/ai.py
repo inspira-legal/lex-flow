@@ -7,25 +7,28 @@ from utils.ai import StructuredAnswer, format_structured_answer
 from pathlib import Path
 
 
+@params(
+    agent={"type": Agent, "description": "AI agent to call"},
+    user_input={"type": "Any", "description": "Input to send to the agent"},
+)
 @opcode("ai_call_agent")
 class AiCallAgent(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        user_input = state.pop()
-        agent: Agent = state.pop()
+        params = self.resolve_params(state, stmt)
+        result = await self._call_agent(params["agent"], params["user_input"])
+        state.push(result)
+        return True
 
+    async def _call_agent(self, agent: Agent, user_input):
         if isinstance(user_input, list):
             input = user_input
         else:
             input = [user_input]
         try:
             result = await agent.run(input)
-            state.push(result.output)
-
+            return result.output
         except Exception as e:
-            error_response = f"AI Error: {str(e)}"
-            state.push(error_response)
-
-        return True
+            return f"AI Error: {str(e)}"
 
 
 @params(
@@ -74,56 +77,72 @@ class AiCreateAgent(BaseOpcode):
         )
 
 
+@params(model_name={"type": str, "description": "Name of the model to create"})
 @opcode("ai_create_model")
 class AiCreateModel(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        model_name = state.pop()
-
-        provider = GoogleProvider(vertexai=True)
-        state.push(GoogleModel(model_name, provider=provider))
-
+        params = self.resolve_params(state, stmt)
+        model = await self._create_model(params["model_name"])
+        state.push(model)
         return True
 
+    async def _create_model(self, model_name: str):
+        provider = GoogleProvider(vertexai=True)
+        return GoogleModel(model_name, provider=provider)
 
+
+@params(
+    mime_type={"type": str, "description": "MIME type of the document"},
+    file_path={"type": str, "description": "Path to the document file"},
+)
 @opcode("ai_load_document")
 class AiLoadDocument(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        file_path = state.pop()
-        mime_type = state.pop()
+        params = self.resolve_params(state, stmt)
+        result = await self._load_document(params["file_path"], params["mime_type"])
+        state.push(result)
+        return True
 
+    async def _load_document(self, file_path: str, mime_type: str):
         try:
             async with aiofiles.open(file_path, mode="rb") as f:
                 content = await f.read()
-                b_content = BinaryContent(data=content, media_type=mime_type)
-                state.push(b_content)
+                return BinaryContent(data=content, media_type=mime_type)
         except Exception as e:
-            error_response = f"File Load Error: {str(e)}"
-            state.push(error_response)
-
-        return True
+            return f"File Load Error: {str(e)}"
 
 
+@params(file_path={"type": str, "description": "Path to the prompt file"})
 @opcode("ai_load_prompt")
 class AiLoadPrompt(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        file_path = state.pop()
-
-        try:
-            content = Path(file_path).read_text()
-            state.push(content)
-        except Exception as e:
-            error_response = f"File Load Error: {str(e)}"
-            state.push(error_response)
-
+        params = self.resolve_params(state, stmt)
+        result = await self._load_prompt(params["file_path"])
+        state.push(result)
         return True
 
+    async def _load_prompt(self, file_path: str) -> str:
+        try:
+            return Path(file_path).read_text()
+        except Exception as e:
+            return f"File Load Error: {str(e)}"
 
+
+@params(
+    system_prompt={"type": str, "description": "System prompt for summarization"},
+    document_url={"type": str, "description": "URL of the document to summarize"},
+)
 @opcode("ai_summary")
 class AiSummary(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        document_url = state.pop()
-        system_prompt = state.pop()
+        params = self.resolve_params(state, stmt)
+        result = await self._summarize_document(
+            params["system_prompt"], params["document_url"]
+        )
+        state.push(result)
+        return True
 
+    async def _summarize_document(self, system_prompt: str, document_url: str) -> str:
         document = DocumentUrl(url=document_url, media_type="application/pdf")
 
         try:
@@ -139,13 +158,9 @@ class AiSummary(BaseOpcode):
             result = await agent.run(["This is the document", document])
 
             if isinstance(result.output, StructuredAnswer):
-                output = format_structured_answer(result.output)
-                state.push(output)
+                return format_structured_answer(result.output)
             else:
-                state.push(str(result.output))
+                return str(result.output)
 
         except Exception as e:
-            error_response = f"AI Error: {str(e)}"
-            state.push(error_response)
-
-        return True
+            return f"AI Error: {str(e)}"
