@@ -48,9 +48,7 @@ class BaseOpcode(ABC):
 
         for param in input_params[provided_count:]:
             if param.required and param.default is None:
-                raise ValueError(
-                    f"Required parameter '{param.name}' not provided"
-                )
+                raise ValueError(f"Required parameter '{param.name}' not provided")
             else:
                 params[param.name] = param.default
 
@@ -147,9 +145,11 @@ class OpcodeRegistry:
         cls._opcodes.clear()
 
     @classmethod
-    def discover_opcodes(cls, package_name: str = "opcodes", strict: bool = False) -> None:
+    def discover_opcodes(
+        cls, package_name: str = "opcodes", strict: bool = False
+    ) -> None:
         import_failures = []
-        
+
         try:
             package = importlib.import_module(package_name)
         except ImportError as e:
@@ -168,20 +168,26 @@ class OpcodeRegistry:
                     importlib.import_module(modname)
                 except ImportError as e:
                     failure_info = {
-                        'module': modname,
-                        'error': str(e),
-                        'suggestion': f"Check dependencies or syntax errors in {modname}"
+                        "module": modname,
+                        "error": str(e),
+                        "suggestion": f"Check dependencies or syntax errors in {modname}",
                     }
                     import_failures.append(failure_info)
-                    
+
                     if strict:
-                        raise ImportError(f"Failed to import opcode module '{modname}': {e}")
+                        raise ImportError(
+                            f"Failed to import opcode module '{modname}': {e}"
+                        )
                     else:
-                        print(f"Warning: Could not import opcode module '{modname}': {e}")
+                        print(
+                            f"Warning: Could not import opcode module '{modname}': {e}"
+                        )
                         print(f"  Suggestion: {failure_info['suggestion']}")
 
         if import_failures and not strict:
-            print(f"\nOpcode discovery completed with {len(import_failures)} import failure(s).")
+            print(
+                f"\nOpcode discovery completed with {len(import_failures)} import failure(s)."
+            )
             print("Use strict=True to treat import failures as fatal errors.")
 
     @classmethod

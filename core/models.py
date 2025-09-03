@@ -1,10 +1,9 @@
 from pydantic import BaseModel, Field
 from enum import Enum
-from typing import Any, Union
+from typing import Union
 import json
 
 
-# Opcode constants
 WORKFLOW_START_OPCODE = "workflow_start"
 
 
@@ -50,7 +49,6 @@ class Program(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
 
-
 class RuntimeNode(BaseModel):
     id: str
     node: Node
@@ -70,7 +68,8 @@ class RuntimeWorkflow:
             for nid, node in workflow.nodes.items()
         }
         self.start_node = next(
-            (n for n in self.nodes.values() if n.node.opcode == WORKFLOW_START_OPCODE), None
+            (n for n in self.nodes.values() if n.node.opcode == WORKFLOW_START_OPCODE),
+            None,
         )
 
     def __str__(self):

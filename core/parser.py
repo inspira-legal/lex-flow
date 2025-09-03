@@ -20,7 +20,6 @@ class Parser:
         branches = self._discover_all_branches()
         reporters = self._discover_all_reporters()
 
-        # Also discover reporters from all workflows
         for workflow_data in self.workflows_data:
             workflow_reporters = self._discover_reporters_from_workflow(workflow_data)
             reporters.update(workflow_reporters)
@@ -64,8 +63,10 @@ class Parser:
 
     def _parse_chain(self, node_id: str) -> list[Statement]:
         return self._parse_chain_generic(node_id, self.nodes, use_getattr=False)
-        
-    def _parse_chain_generic(self, node_id: str, nodes: dict, use_getattr: bool = False) -> list[Statement]:
+
+    def _parse_chain_generic(
+        self, node_id: str, nodes: dict, use_getattr: bool = False
+    ) -> list[Statement]:
         statements = []
         current_id = node_id
 
@@ -73,7 +74,7 @@ class Parser:
             node = nodes[current_id]
             stmt = self._parse_node_generic(current_id, node)
             statements.append(stmt)
-            
+
             if use_getattr:
                 current_id = getattr(node, "next", None)
             else:
@@ -86,7 +87,7 @@ class Parser:
 
     def _parse_node(self, node_id: str, node) -> Statement:
         return self._parse_node_generic(node_id, node)
-        
+
     def _parse_node_generic(self, node_id: str, node) -> Statement:
         inputs = {}
         for name, (input_type, value) in (node.inputs or {}).items():
@@ -110,14 +111,12 @@ class Parser:
         reporters = {}
         referenced_nodes = set()
 
-        # Find all nodes referenced via NODE_REF
         for node_id, node in self.nodes.items():
             if node.inputs:
                 for input_name, (input_type, value) in node.inputs.items():
                     if input_type == InputTypes.NODE_REF.value:
                         referenced_nodes.add(value)
 
-        # Include nodes marked as reporters OR referenced as NODE_REF
         for node_id, node in self.nodes.items():
             if node.is_reporter or node_id in referenced_nodes:
                 reporters[node_id] = self._parse_node(node_id, node)
@@ -130,14 +129,12 @@ class Parser:
         reporters = {}
         referenced_nodes = set()
 
-        # Find all nodes referenced via NODE_REF in this workflow
         for node_id, node in workflow_data.nodes.items():
             if node.inputs:
                 for input_name, (input_type, value) in node.inputs.items():
                     if input_type == InputTypes.NODE_REF.value:
                         referenced_nodes.add(value)
 
-        # Include nodes marked as reporters OR referenced as NODE_REF
         for node_id, node in workflow_data.nodes.items():
             if node.is_reporter or node_id in referenced_nodes:
                 reporters[node_id] = self._parse_workflow_node(node_id, node)

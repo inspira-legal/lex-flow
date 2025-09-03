@@ -56,7 +56,7 @@ class WorkflowPreprocessor:
                     f"Valid input types are: {valid_types}. "
                     f'Example: ["literal", "value"] or ["variable", "var_name"]',
                     "preprocessor",
-                    None
+                    None,
                 )
             elif isinstance(type_identifier, int):
                 # Numeric type identifier - this is valid (legacy format)
@@ -65,20 +65,18 @@ class WorkflowPreprocessor:
                 raise WorkflowValidationError(
                     f"Invalid input format: first element must be string or integer, got {type(type_identifier).__name__}. "
                     f'Example: ["literal", "value"] or [1, "value"]',
-                    "preprocessor", 
-                    None
+                    "preprocessor",
+                    None,
                 )
-        
+
         elif isinstance(value, list):
-            # List but not 2 elements
             raise WorkflowValidationError(
                 f"Invalid input format: list inputs must have exactly 2 elements [type, value], got {len(value)} elements. "
                 f'Example: ["literal", "value"]',
                 "preprocessor",
-                None
+                None,
             )
 
-        # Non-dict, non-list values are treated as literals (legacy support)
         return value
 
     def _process_nested_input(self, input_dict: Dict[str, Any]) -> List:
@@ -94,5 +92,5 @@ class WorkflowPreprocessor:
             f"Valid input types are: {valid_types}. "
             f"Example: {{'literal': 'value'}} or {{'variable': 'var_name'}}",
             "preprocessor",
-            None
+            None,
         )
