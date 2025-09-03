@@ -1,19 +1,20 @@
-from core.opcodes import opcode, BaseOpcode
+from core.opcodes import opcode, BaseOpcode, params
 
 import aiofiles
 
 
+@params(file_path={"type": str, "description": "Path to the file to read"})
 @opcode("file_read")
 class FileRead(BaseOpcode):
     async def execute(self, state, stmt, engine):
-        file_path = state.pop()
+        params = self.resolve_params(state, stmt)
+        content = await self._read_file(params["file_path"])
+        state.push(content)
+        return True
 
+    async def _read_file(self, file_path: str) -> str:
         try:
             async with aiofiles.open(file_path, mode="r") as f:
-                content = await f.read()
-                state.push(content)
+                return await f.read()
         except Exception as e:
-            error_response = f"File Load Error: {str(e)}"
-            state.push(error_response)
-
-        return True
+            return f"File Load Error: {str(e)}"
