@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Union
+from typing import Any, Union, TYPE_CHECKING
 from pydantic import BaseModel
 
 
@@ -32,7 +32,7 @@ class WorkflowDef(BaseModel):
     outputs: list[str]
     body: StatementList
     variables: dict[str, Any] = {}
-    node_data: dict[str, Any] = {}
+    nodes: dict[str, "Node"] = {}
 
 
 class Program(BaseModel):
@@ -42,3 +42,13 @@ class Program(BaseModel):
     node_map: dict[str, Any] = None
     branches: dict[str, list[Statement]] = {}
     reporters: dict[str, Statement] = {}
+
+
+if TYPE_CHECKING:
+    pass
+else:
+    from .models import Node
+
+    WorkflowDef.model_rebuild()
+    Program.model_rebuild()
+

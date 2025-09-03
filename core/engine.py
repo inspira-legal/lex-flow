@@ -1,7 +1,6 @@
 from core.ast import Program, Statement, Value, ValueType
 from core.state import WorkflowState
 from core.opcodes import OpcodeRegistry, ControlFlow
-from core.models import Node
 from core.errors import RuntimeError as LexFlowRuntimeError, WorkflowNotFoundError
 
 
@@ -101,17 +100,17 @@ class Engine:
                 "branch_execution",
                 self._call_stack_trace.copy(),
             )
-        
+
         statements = self._state.program.branches[node_id]
-        
+
         for stmt in statements:
             control_result = await self._execute_statement(stmt)
-            
+
             if control_result == ControlFlow.HALT:
                 return ControlFlow.HALT
             elif control_result == ControlFlow.REPEAT:
                 return ControlFlow.REPEAT
-        
+
         return ControlFlow.CONTINUE
 
     async def _call_workflow(self, workflow_name: str):
@@ -141,16 +140,7 @@ class Engine:
         self._state.push_frame(return_pc=saved_pc, locals=local_vars)
         self._state._variables = local_vars
 
-        workflow_nodes = {}
-
-        for node_id, node_data in workflow_def.node_data.items():
-            workflow_nodes[node_id] = Node(
-                opcode=node_data["opcode"],
-                next=node_data.get("next"),
-                inputs=node_data.get("inputs", {}),
-            )
-
-        self._state.program.node_map = workflow_nodes
+        self._state.program.node_map = workflow_def.nodes
         self._state._pc = 0
 
         try:
@@ -188,7 +178,7 @@ class Engine:
                 f"Invalid control flow result: {control_result}",
                 self._current_workflow,
                 self._current_node_id,
-                current_stmt.opcode if hasattr(current_stmt, 'opcode') else "unknown",
+                current_stmt.opcode if hasattr(current_stmt, "opcode") else "unknown",
                 self._call_stack_trace.copy(),
             )
 
