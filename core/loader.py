@@ -2,7 +2,7 @@ import json
 import yaml
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
-from core.models import Program, Workflow
+from core.models import Program, Workflow, WORKFLOW_START_OPCODE
 from core.errors import JSONParseError, WorkflowValidationError, WorkflowNotFoundError
 from core.preprocessor import WorkflowPreprocessor
 
@@ -65,8 +65,7 @@ class WorkflowLoader:
 
         if not file_path.exists():
             raise JSONParseError("File not found", str(file_path))
-        
-        # Support both JSON and YAML files
+
         if file_path.suffix not in [".json", ".yaml", ".yml"]:
             raise JSONParseError("Expected .json, .yaml, or .yml file", str(file_path))
 
@@ -104,7 +103,7 @@ class WorkflowLoader:
                     )
 
                 if not any(
-                    node.opcode == "workflow_start" for node in workflow.nodes.values()
+                    node.opcode == WORKFLOW_START_OPCODE for node in workflow.nodes.values()
                 ):
                     raise WorkflowValidationError(
                         "Missing 'workflow_start' node", workflow.name, file_path
@@ -129,4 +128,3 @@ class WorkflowLoader:
                     input_type, called_workflow = node.inputs["WORKFLOW"]
                     if input_type == 1 and called_workflow not in self.all_workflows:
                         raise WorkflowNotFoundError(called_workflow, workflow_name)
-

@@ -4,6 +4,10 @@ from typing import Any
 import json
 
 
+# Opcode constants
+WORKFLOW_START_OPCODE = "workflow_start"
+
+
 class InputTypes(Enum):
     LITERAL = 1
     NODE_REF = 2
@@ -34,7 +38,7 @@ class Workflow(BaseModel):
 
     def get_start_node(self) -> Node | None:
         for node_id, node in self.nodes.items():
-            if node.opcode == "workflow_start":
+            if node.opcode == WORKFLOW_START_OPCODE:
                 return node_id, node
         return None, None
 
@@ -70,7 +74,7 @@ class RuntimeWorkflow:
             for nid, node in workflow.nodes.items()
         }
         self.start_node = next(
-            (n for n in self.nodes.values() if n.node.opcode == "event_start"), None
+            (n for n in self.nodes.values() if n.node.opcode == WORKFLOW_START_OPCODE), None
         )
 
     def __str__(self):
