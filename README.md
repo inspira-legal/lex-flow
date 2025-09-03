@@ -72,33 +72,38 @@ Testing framework, example workflows, and debugging techniques.
 ```
 CLI Interface (main.py)
         ↓
-WorkflowLoader (loads & validates JSON)
+WorkflowLoader (loads & validates JSON/YAML with dependency resolution)
         ↓
-Legacy Models (Pydantic JSON parsing)
+Preprocessor (normalizes input formats with comprehensive validation)
         ↓
-Parser (transforms to executable format)
+Legacy Models (Pydantic JSON parsing with Python 3.9+ compatibility)
         ↓
-AST Models (runtime execution format)
+Parser (transforms to executable format with branch/reporter discovery)
         ↓
-Engine (stack-based async executor)
+AST Models (runtime execution format with pre-parsed components)
         ↓
-WorkflowState (execution context)
+Engine (stack-based async executor with return-based control flow)
         ↓
-Opcode Registry (pluggable operations)
+WorkflowState (execution context with stack safety and bounds checking)
+        ↓
+Opcode Registry (modern @params() validated operations with enhanced discovery)
 ```
 
 ## Key Features
 
 - **JSON/YAML workflows** - Human-readable, tooling-friendly formats
 - **Multiple input syntaxes** - Numeric, keyword, and object notation for better readability
-- **Stack-based execution** - Efficient, composable operation model
+- **Stack-based execution** - Efficient, composable operation model with safety checks
 - **Async-first design** - Natural support for I/O and long-running tasks
-- **Plugin architecture** - Easy to extend with custom opcodes
-- **Multi-file projects** - Import system for modular workflows
-- **Type annotations** - Modern parameter system with tooling support
+- **Modern plugin architecture** - 89% of opcodes use type-safe @params() validation
+- **Multi-file projects** - Import system for modular workflows with dependency resolution
+- **Type-safe parameters** - Modern @params() system with introspection and early validation
 - **Comprehensive testing** - Automated validation and examples
-- **Error handling** - Detailed error messages with suggestions
-- **Preprocessor system** - Modern syntax with full backward compatibility
+- **Enhanced error handling** - Clear error messages with examples and suggestions
+- **Robust preprocessing** - Input format normalization with validation (replaces silent failures)
+- **Performance optimizations** - Pre-parsed branches and reporters eliminate runtime parsing
+- **Python 3.9+ compatibility** - Union syntax compatibility for broader deployment
+- **Consistent architecture** - Eliminated code duplication and manual node reconstruction
 
 ## Common Use Cases
 
@@ -132,6 +137,7 @@ pytest
 ### Modern Input Syntax Examples
 
 **Legacy Numeric Format:**
+
 ```json
 "inputs": {
   "STRING": [1, "Hello"],
@@ -141,15 +147,17 @@ pytest
 ```
 
 **Keyword Array Format:**
+
 ```json
 "inputs": {
   "STRING": ["literal", "Hello"],
-  "VALUE": ["node", "calculate_node"],  
+  "VALUE": ["node", "calculate_node"],
   "VAR": ["variable", "1"]
 }
 ```
 
 **Object Format (Recommended):**
+
 ```json
 "inputs": {
   "STRING": {"literal": "Hello"},

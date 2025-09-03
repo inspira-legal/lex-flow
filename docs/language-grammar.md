@@ -115,7 +115,7 @@ Node inputs support three different formats for better readability and developer
 ```json
 "PARAM": [1, "Hello World"]       // String literal
 "VALUE": [2, "calculation_node"]  // Node reference
-"VAR": [3, "1"]                   // Variable reference  
+"VAR": [3, "1"]                   // Variable reference
 "BRANCH": [4, "if_true_branch"]   // Branch reference
 "RESULT": [5, "helper_workflow"]  // Workflow call
 ```
@@ -145,6 +145,7 @@ All three formats are equivalent and can be mixed within the same workflow. The 
 ### Input Type Details
 
 #### Literal Values (Type 1)
+
 Direct values used as-is in the operation:
 
 ```json
@@ -154,6 +155,7 @@ Direct values used as-is in the operation:
 ```
 
 #### Node References (Type 2)
+
 References to other nodes whose output becomes the input value:
 
 ```json
@@ -163,6 +165,7 @@ References to other nodes whose output becomes the input value:
 The referenced node executes immediately and its result is used as the input value.
 
 #### Variable References (Type 3)
+
 References to variables defined in the workflow's `variables` section:
 
 ```json
@@ -170,6 +173,7 @@ References to variables defined in the workflow's `variables` section:
 ```
 
 #### Branch References (Type 4)
+
 Used in control flow operations to specify execution branches:
 
 ```json
@@ -177,6 +181,7 @@ Used in control flow operations to specify execution branches:
 ```
 
 #### Workflow Calls (Type 5)
+
 Calls to other workflows, using their return value as input:
 
 ```json
