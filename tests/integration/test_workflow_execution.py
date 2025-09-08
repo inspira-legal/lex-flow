@@ -3,9 +3,9 @@ import json
 from io import StringIO
 from contextlib import redirect_stdout
 
-from core.loader import WorkflowLoader
-from core.parser import Parser
-from core.engine import Engine
+from lexflow.core.loader import WorkflowLoader
+from lexflow.core.parser import Parser
+from lexflow.core.engine import Engine
 
 
 class TestWorkflowExecution:
@@ -259,7 +259,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_missing_workflow_dependency_error(self, tmp_path):
         """Test error handling for missing workflow dependencies."""
-        from core.errors import WorkflowNotFoundError
+        from lexflow.core.errors import WorkflowNotFoundError
 
         # Create workflow that calls non-existent workflow
         workflow_data = {
@@ -301,7 +301,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_invalid_opcode_error(self, tmp_path):
         """Test error handling for invalid opcodes."""
-        from core.errors import RuntimeError as LexFlowRuntimeError
+        from lexflow.core.errors import RuntimeError as LexFlowRuntimeError
 
         # Create workflow with invalid opcode
         workflow_data = {

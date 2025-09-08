@@ -1,4 +1,4 @@
-from core.state import Frame
+from lexflow.core.state import Frame
 
 
 class TestWorkflowState:
@@ -60,7 +60,7 @@ class TestWorkflowState:
     def test_is_finished(self, workflow_state):
         """Test is_finished() basic behavior."""
         # Add statements to test with
-        from core.ast import Statement
+        from lexflow.core.ast import Statement
 
         statements = [
             Statement(opcode="test1", inputs={}),

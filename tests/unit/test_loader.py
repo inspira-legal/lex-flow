@@ -1,6 +1,6 @@
 import pytest
 import json
-from core.errors import JSONParseError, WorkflowValidationError, WorkflowNotFoundError
+from lexflow.core.errors import JSONParseError, WorkflowValidationError, WorkflowNotFoundError
 
 
 class TestWorkflowLoader:

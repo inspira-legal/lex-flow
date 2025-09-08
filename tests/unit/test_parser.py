@@ -1,4 +1,4 @@
-from core.parser import Parser
+from lexflow.core.parser import Parser
 
 
 class TestParser:

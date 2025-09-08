@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, Mock
-from core.engine import Engine
-from core.state import WorkflowState
-from core.errors import RuntimeError as LexFlowRuntimeError
+from lexflow.core.engine import Engine
+from lexflow.core.state import WorkflowState
+from lexflow.core.errors import RuntimeError as LexFlowRuntimeError
 
 
 class TestEngine:
@@ -29,7 +29,7 @@ class TestEngine:
     @pytest.mark.asyncio
     async def test_execute_statement_unknown_opcode(self, engine):
         """Test executing statement with unknown opcode raises error."""
-        from core.ast import Statement
+        from lexflow.core.ast import Statement
 
         stmt = Statement(opcode="unknown_opcode", inputs={})
 
@@ -44,7 +44,7 @@ class TestEngine:
     @pytest.mark.asyncio
     async def test_execute_statement_opcode_failure(self, engine):
         """Test executing statement when opcode returns False."""
-        from core.ast import Statement
+        from lexflow.core.ast import Statement
 
         stmt = Statement(opcode="test_opcode", inputs={})
 
@@ -63,7 +63,7 @@ class TestEngine:
     @pytest.mark.asyncio
     async def test_execute_statement_exception_handling(self, engine):
         """Test that unexpected exceptions are wrapped in LexFlowRuntimeError."""
-        from core.ast import Statement
+        from lexflow.core.ast import Statement
 
         stmt = Statement(opcode="test_opcode", inputs={})
 
@@ -98,7 +98,7 @@ class TestEngineWorkflowCalls:
     @pytest.mark.asyncio
     async def test_call_workflow_missing_workflow(self, engine):
         """Test calling non-existent workflow raises error."""
-        from core.errors import WorkflowNotFoundError
+        from lexflow.core.errors import WorkflowNotFoundError
 
         with pytest.raises(WorkflowNotFoundError) as exc_info:
             await engine._call_workflow("nonexistent_workflow")

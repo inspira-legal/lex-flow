@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 
-from core.models import Workflow, Program
-from core.ast import (
+from lexflow.core.models import Workflow, Program
+from lexflow.core.ast import (
     Program as ASTProgram,
     Statement,
     Value,
@@ -12,9 +12,9 @@ from core.ast import (
     StatementList,
     WorkflowDef,
 )
-from core.state import WorkflowState
-from core.engine import Engine
-from core.loader import WorkflowLoader
+from lexflow.core.state import WorkflowState
+from lexflow.core.engine import Engine
+from lexflow.core.loader import WorkflowLoader
 
 
 @pytest.fixture

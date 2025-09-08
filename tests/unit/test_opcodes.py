@@ -1,5 +1,5 @@
 import pytest
-from core.opcodes import BaseOpcode, params, OpcodeRegistry
+from lexflow.core.opcodes import BaseOpcode, params, OpcodeRegistry
 
 
 @params(
@@ -52,7 +52,7 @@ class TestOpcodeRegistry:
 
     def test_opcode_registry_singleton(self):
         """Test that OpcodeRegistry behaves like a singleton."""
-        from core.opcodes import OpcodeRegistry
+        from lexflow.core.opcodes import OpcodeRegistry
 
         registry1 = OpcodeRegistry()
         registry2 = OpcodeRegistry()
@@ -62,7 +62,7 @@ class TestOpcodeRegistry:
 
     def test_register_and_get_opcode(self):
         """Test registering and retrieving opcodes."""
-        from core.opcodes import opcode
+        from lexflow.core.opcodes import opcode
 
         @opcode("test_register")
         class TestRegisterOpcode(BaseOpcode):
@@ -91,7 +91,7 @@ class TestOpcodeRegistry:
 
     def test_get_nonexistent_opcode_raises(self):
         """Test that getting non-existent opcode raises error."""
-        from core.opcodes import OpcodeNotFoundError
+        from lexflow.core.opcodes import OpcodeNotFoundError
 
         registry = OpcodeRegistry()
 
