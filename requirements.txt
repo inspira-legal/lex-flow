@@ -1,6 +1,0 @@
-pydantic
-aiofiles
-pydantic-ai-slim[google]
-pymupdf
-pytest
-pytest-asyncio

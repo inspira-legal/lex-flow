@@ -2,6 +2,28 @@
 
 Lex Flow uses a multi-layered architecture that transforms JSON/YAML workflows into executable programs through preprocessing, parsing, AST generation, and stack-based execution.
 
+## Monorepo Structure
+
+Lex Flow is organized as a monorepo with two main packages:
+
+```
+lex-flow/
+├── lexflow-core/           # Core interpreter library
+│   ├── src/lexflow/
+│   │   ├── core/          # Core components (engine, parser, state, etc.)
+│   │   └── opcodes/       # Operation implementations
+│   └── pyproject.toml     # Core package configuration
+├── lexflow-cli/           # Command-line interface
+│   ├── src/lexflow_cli/   # CLI implementation
+│   └── pyproject.toml     # CLI package configuration
+├── pyproject.toml         # Root workspace configuration
+└── uv.lock               # Unified dependency lockfile
+```
+
+**Package Responsibilities:**
+- **lexflow-core**: Contains the interpreter engine, parser, opcodes, and all core functionality
+- **lexflow-cli**: Provides the command-line interface that uses lexflow-core
+
 ## Architecture Overview
 
 ```
@@ -26,7 +48,7 @@ JSON/YAML Workflow Files
 
 ## Core Components
 
-### 1. WorkflowLoader (`core/loader.py`)
+### 1. WorkflowLoader (`lexflow-core/src/lexflow/core/loader.py`)
 
 **Purpose**: Load and validate JSON workflow files with dependency resolution.
 
@@ -45,7 +67,7 @@ JSON/YAML Workflow Files
 - Missing workflow dependencies
 - Proper node structure and connectivity
 
-### 2. Preprocessor (`core/preprocessor.py`)
+### 2. Preprocessor (`lexflow-core/src/lexflow/core/preprocessor.py`)
 
 **Purpose**: Normalizes input formats and provides comprehensive validation.
 
@@ -58,7 +80,7 @@ JSON/YAML Workflow Files
 
 **Error Handling**: Replaces silent failures with WorkflowValidationError containing helpful suggestions.
 
-### 3. Legacy Models (`core/models.py`)
+### 3. Legacy Models (`lexflow-core/src/lexflow/core/models.py`)
 
 **Purpose**: Pydantic models for parsing JSON workflow definitions with Python 3.9+ compatibility.
 
@@ -93,7 +115,7 @@ class Program(BaseModel):
 
 These models handle JSON validation and provide structured access to workflow data.
 
-### 4. Parser (`core/parser.py`)
+### 4. Parser (`lexflow-core/src/lexflow/core/parser.py`)
 
 **Purpose**: Transform legacy models into executable AST format with optimized discovery.
 
@@ -123,7 +145,7 @@ def parse(self) -> Program:
     # Return AST Program with pre-parsed components
 ```
 
-### 5. AST Models (`core/ast.py`)
+### 5. AST Models (`lexflow-core/src/lexflow/core/ast.py`)
 
 **Purpose**: Runtime execution models optimized for the interpreter with pre-parsed components.
 
@@ -165,7 +187,7 @@ class WorkflowDef:
 
 The AST models are designed for efficient execution with direct stack operations and eliminate runtime parsing overhead.
 
-### 6. Engine (`core/engine.py`)
+### 6. Engine (`lexflow-core/src/lexflow/core/engine.py`)
 
 **Purpose**: Main execution engine with stack-based operation model and return-based control flow.
 
@@ -207,7 +229,7 @@ class Engine:
 - `_execute_reporter(node_id)` - Execute pre-parsed reporter without parsing
 - `_call_workflow(workflow_name)` - Handle workflow calls using stored Node objects
 
-### 7. WorkflowState (`core/state.py`)
+### 7. WorkflowState (`lexflow-core/src/lexflow/core/state.py`)
 
 **Purpose**: Execution context with comprehensive stack safety and bounds checking.
 
@@ -244,7 +266,7 @@ class WorkflowState:
 - `peek_frame()` - Look at current frame without removing
 - Variable isolation between call frames with proper cleanup
 
-### 8. Opcode System (`core/opcodes.py`)
+### 8. Opcode System (`lexflow-core/src/lexflow/core/opcodes.py`)
 
 **Purpose**: Modern plugin architecture with parameter validation and enhanced error handling.
 
@@ -277,7 +299,7 @@ class MyOpcode(BaseOpcode):
 
 **Enhanced Discovery**:
 
-- Scans `opcodes/` directory for opcode implementations
+- Scans `lexflow-core/src/lexflow/opcodes/` directory for opcode implementations
 - Enhanced error handling with suggestions for import failures
 - Optional strict mode for development environments
 - Supports categorized organization (control, data, io, ai, etc.)

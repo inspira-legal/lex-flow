@@ -31,37 +31,37 @@ tests/
 #### Run All Tests
 
 ```bash
-pytest
+uv run pytest
 ```
 
 #### Run Unit Tests Only
 
 ```bash
-pytest tests/unit/
+uv run pytest tests/unit/
 ```
 
 #### Run Integration Tests Only
 
 ```bash
-pytest tests/integration/
+uv run pytest tests/integration/
 ```
 
 #### Run with Verbose Output
 
 ```bash
-pytest -v
+uv run pytest -v
 ```
 
 #### Run Specific Test File
 
 ```bash
-pytest tests/unit/test_state.py -v
+uv run pytest tests/unit/test_state.py -v
 ```
 
 #### Run Tests Matching Pattern
 
 ```bash
-pytest -k "test_stack" -v
+uv run pytest -k "test_stack" -v
 ```
 
 Example output:
@@ -307,7 +307,7 @@ Interactive tests like `guessing_game.json` require user input and can't run aut
 **Run**:
 
 ```bash
-python main.py examples/hello_world.json
+uv run lexflow examples/hello_world.json
 ```
 
 ### Calculator with Variables
@@ -489,7 +489,7 @@ python main.py examples/hello_world.json
 **Run**:
 
 ```bash
-python main.py examples/main.json -I examples/math_utils.json
+uv run lexflow examples/main.json -I examples/math_utils.json
 ```
 
 ### Control Flow Example
@@ -553,7 +553,7 @@ python main.py examples/main.json -I examples/math_utils.json
 Use `--debug` for step-by-step execution:
 
 ```bash
-python main.py examples/calculator.json --debug
+uv run lexflow examples/calculator.json --debug
 [INFO] Debug mode enabled. Press Enter to step, 'q' to quit.
 Step [0] completed. Continue? (Enter/q):
 # Press Enter to continue step by step
@@ -564,7 +564,7 @@ Step [0] completed. Continue? (Enter/q):
 Use `--verbose` for detailed execution information:
 
 ```bash
-python main.py examples/main.json -I examples/math_utils.json --verbose
+uv run lexflow examples/main.json -I examples/math_utils.json --verbose
 [INFO] Loading main file: main.json
 [INFO] Loading 1 import file(s)
 [INFO] Main file workflows:
@@ -583,7 +583,7 @@ python main.py examples/main.json -I examples/math_utils.json --verbose
 Use `--validate-only` to check workflows without execution:
 
 ```bash
-python main.py examples/calculator.json --validate-only
+uv run lexflow examples/calculator.json --validate-only
 [INFO] Loading workflow file: calculator.json
 [SUCCESS] Loaded 1 workflow(s)
 [SUCCESS] All workflows are valid!
@@ -642,13 +642,13 @@ Create test workflow files in `tests/integration/` to verify end-to-end behavior
 
 ```bash
 # Run specific test while developing
-pytest tests/unit/test_new_feature.py::test_specific_case -v
+uv run pytest tests/unit/test_new_feature.py::test_specific_case -v
 
 # Run tests on file change (with pytest-watch)
 ptw tests/unit/test_new_feature.py
 
 # Run tests with coverage
-pytest --cov=core tests/
+uv run pytest --cov=lexflow tests/
 ```
 
 ### Test Configuration
@@ -676,16 +676,16 @@ markers =
 
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Run only fast unit tests during development
-pytest tests/unit/ -m "not slow"
+uv run pytest tests/unit/ -m "not slow"
 
 # Run integration tests for CI/CD
-pytest tests/integration/ --maxfail=1
+uv run pytest tests/integration/ --maxfail=1
 
 # Generate test coverage report
-pytest --cov=core --cov-report=html
+uv run pytest --cov=lexflow --cov-report=html
 ```
 
 ## Advanced Testing Patterns
@@ -708,7 +708,7 @@ def test_double_function(input_value, expected):
 ```python
 from unittest.mock import Mock, patch
 
-@patch('core.engine.Engine._call_workflow')
+@patch('lexflow.core.engine.Engine._call_workflow')
 async def test_workflow_call_with_mock(mock_call):
     mock_call.return_value = "mocked_result"
 

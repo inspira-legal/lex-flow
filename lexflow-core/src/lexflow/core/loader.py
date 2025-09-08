@@ -2,9 +2,9 @@ import json
 import yaml
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
-from core.models import Program, Workflow, WORKFLOW_START_OPCODE
-from core.errors import JSONParseError, WorkflowValidationError, WorkflowNotFoundError
-from core.preprocessor import WorkflowPreprocessor
+from .models import Program, Workflow, WORKFLOW_START_OPCODE
+from .errors import JSONParseError, WorkflowValidationError, WorkflowNotFoundError
+from .preprocessor import WorkflowPreprocessor
 
 
 class WorkflowLoader:

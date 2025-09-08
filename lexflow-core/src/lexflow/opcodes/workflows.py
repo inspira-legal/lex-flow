@@ -1,4 +1,4 @@
-from core.opcodes import opcode, BaseOpcode, ControlFlow
+from ..core.opcodes import opcode, BaseOpcode, ControlFlow
 
 
 @opcode("workflow_start")

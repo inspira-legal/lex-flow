@@ -1,4 +1,4 @@
-from core.opcodes import opcode, BaseOpcode, params
+from ..core.opcodes import opcode, BaseOpcode, params
 
 import aiofiles
 

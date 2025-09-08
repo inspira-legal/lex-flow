@@ -1,4 +1,4 @@
-from core.opcodes import opcode, BaseOpcode
+from ..core.opcodes import opcode, BaseOpcode
 
 
 @opcode("void")

@@ -1,5 +1,5 @@
-from core.models import Workflow, InputTypes, WORKFLOW_START_OPCODE
-from core.ast import Program, StatementList, Statement, Value, ValueType, WorkflowDef
+from .models import Workflow, InputTypes, WORKFLOW_START_OPCODE
+from .ast import Program, StatementList, Statement, Value, ValueType, WorkflowDef
 
 
 class Parser:

@@ -1,7 +1,7 @@
-from core.ast import Program, Statement, Value, ValueType
-from core.state import WorkflowState
-from core.opcodes import OpcodeRegistry, ControlFlow
-from core.errors import RuntimeError as LexFlowRuntimeError, WorkflowNotFoundError
+from .ast import Program, Statement, Value, ValueType
+from .state import WorkflowState
+from .opcodes import OpcodeRegistry, ControlFlow
+from .errors import RuntimeError as LexFlowRuntimeError, WorkflowNotFoundError
 
 
 class Engine:
@@ -11,7 +11,7 @@ class Engine:
     def __init__(self, program: Program):
         self._state = WorkflowState(program)
         self._opcode_registry = OpcodeRegistry()
-        self._opcode_registry.discover_opcodes("opcodes")
+        self._opcode_registry.discover_opcodes("lexflow.opcodes")
 
         self._current_workflow = "main"
         self._current_node_id = None

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lexflow"
+version = "0.1.0"
+description = "A stack-based visual programming workflow interpreter - Core Engine"
+requires-python = ">=3.9"
+dependencies = [
+    "pydantic",
+    "aiofiles",
+]
+
+[project.optional-dependencies]
+ai = ["pydantic-ai-slim[google]"]
+file = ["pymupdf"]
+dev = ["pytest", "pytest-asyncio"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]

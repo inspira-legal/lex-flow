@@ -1,4 +1,4 @@
-from core.opcodes import opcode, BaseOpcode, ControlFlow, params
+from ..core.opcodes import opcode, BaseOpcode, ControlFlow, params
 
 
 @params(

@@ -7,20 +7,20 @@ Lex Flow provides a powerful command-line interface for executing JSON-based vis
 ### Single Workflow File
 
 ```bash
-python main.py workflow.json
+uv run lexflow workflow.json
 ```
 
 ### Multi-File Projects
 
 ```bash
 # Import additional workflow files
-python main.py main.json -I utils.json helpers.json
+uv run lexflow main.json -I utils.json helpers.json
 
 # Import from directory
-python main.py main.json --import-dir modules/
+uv run lexflow main.json --import-dir modules/
 
 # Combined imports
-python main.py main.json -I extra.json --import-dir shared/
+uv run lexflow main.json -I extra.json --import-dir shared/
 ```
 
 ## Command Options
@@ -52,7 +52,7 @@ python main.py main.json -I extra.json --import-dir shared/
 # main.json contains: main, setup workflows
 # utils.json contains: add_numbers, multiply workflows
 # helpers.json contains: format_output workflow
-python main.py main.json -I utils.json helpers.json --workflow setup
+uv run lexflow main.json -I utils.json helpers.json --workflow setup
 ```
 
 ### Workflow Selection
@@ -69,7 +69,7 @@ The interpreter determines which workflow to execute using this priority:
 ### Normal Execution
 
 ```bash
-python main.py workflow.json
+uv run lexflow workflow.json
 [INFO] Loading workflow file: workflow.json
 [SUCCESS] Loaded 1 workflow(s)
 [INFO] Executing workflow: main
@@ -80,7 +80,7 @@ Hello, World!
 ### Verbose Mode
 
 ```bash
-python main.py workflow.json --verbose
+uv run lexflow workflow.json --verbose
 [INFO] Loading workflow file: workflow.json
 [INFO] Main file workflows:
   main() from workflow.json
@@ -94,7 +94,7 @@ Hello, World!
 ### Debug Mode
 
 ```bash
-python main.py workflow.json --debug
+uv run lexflow workflow.json --debug
 [INFO] Debug mode enabled. Press Enter to step, 'q' to quit.
 Step [0] completed. Continue? (Enter/q):
 # Press Enter to continue, 'q' to quit
@@ -103,7 +103,7 @@ Step [0] completed. Continue? (Enter/q):
 ### Validation Only
 
 ```bash
-python main.py workflow.json --validate-only
+uv run lexflow workflow.json --validate-only
 [INFO] Loading workflow file: workflow.json
 [SUCCESS] Loaded 1 workflow(s)
 [SUCCESS] All workflows are valid!
@@ -116,7 +116,7 @@ The CLI provides detailed error messages with contextual suggestions:
 ### File Not Found
 
 ```bash
-python main.py missing.json
+uv run lexflow missing.json
 [ERROR] JSON Error in missing.json: File not found
 
 Suggestions:
@@ -153,37 +153,37 @@ Suggestions:
 
 ```bash
 # Execute a simple workflow
-python main.py tests/simple_hello.json
+uv run lexflow tests/simple_hello.json
 ```
 
 ### Multi-Workflow Project
 
 ```bash
 # Main workflow calls functions from imported files
-python main.py main.json -I math_utils.json string_utils.json
+uv run lexflow main.json -I math_utils.json string_utils.json
 ```
 
 ### Development Workflow
 
 ```bash
 # Validate before execution
-python main.py workflow.json --validate-only
+uv run lexflow workflow.json --validate-only
 
 # Debug step-by-step
-python main.py workflow.json --debug
+uv run lexflow workflow.json --debug
 
 # Verbose execution for troubleshooting
-python main.py workflow.json --verbose
+uv run lexflow workflow.json --verbose
 ```
 
 ### Directory-Based Projects
 
 ```bash
 # Import all workflows from modules directory
-python main.py app.json --import-dir modules/
+uv run lexflow app.json --import-dir modules/
 
 # Combined file and directory imports
-python main.py app.json -I core.json --import-dir plugins/
+uv run lexflow app.json -I core.json --import-dir plugins/
 ```
 
 ## Best Practices

@@ -16,7 +16,7 @@ Opcodes are Python classes that inherit from `BaseOpcode` and implement async op
 ### Simple Opcode
 
 ```python
-from core.opcodes import opcode, BaseOpcode, params
+from lexflow.core.opcodes import opcode, BaseOpcode, params
 
 @params(
     message={"type": str, "description": "Text to print"}
@@ -355,10 +355,10 @@ class CallOpcode(BaseOpcode):
 
 ## File Organization
 
-Organize opcodes by category in the `opcodes/` directory:
+Organize opcodes by category in the `lexflow-core/src/lexflow/opcodes/` directory:
 
 ```
-opcodes/
+lexflow-core/src/lexflow/opcodes/
 ├── __init__.py
 ├── control.py      # if_else, while, for loops
 ├── data.py         # variable operations, data manipulation
@@ -379,9 +379,9 @@ opcodes/
 
 ```python
 import pytest
-from core.state import WorkflowState
-from core.ast import Statement, Value, ValueType
-from opcodes.operators import AddOpcode
+from lexflow.core.state import WorkflowState
+from lexflow.core.ast import Statement, Value, ValueType
+from lexflow.opcodes.operators import AddOpcode
 
 @pytest.mark.asyncio
 async def test_add_opcode():
@@ -410,7 +410,7 @@ Create JSON workflow files that exercise your opcodes and add them to the test s
 ### Getting Opcode Information
 
 ```python
-from opcodes.operators import AddOpcode
+from lexflow.opcodes.operators import AddOpcode
 
 # Get parameter information
 param_info = AddOpcode.get_param_info()

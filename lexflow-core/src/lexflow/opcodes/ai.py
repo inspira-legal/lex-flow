@@ -1,9 +1,9 @@
 import aiofiles
-from core.opcodes import opcode, BaseOpcode, params
+from ..core.opcodes import opcode, BaseOpcode, params
 from pydantic_ai import Agent, DocumentUrl, BinaryContent
 from pydantic_ai.models import Model
 from pydantic_ai.models.google import GoogleModel, GoogleProvider
-from utils.ai import StructuredAnswer, format_structured_answer
+from lexflow.utils.ai import StructuredAnswer, format_structured_answer
 from pathlib import Path
 
 

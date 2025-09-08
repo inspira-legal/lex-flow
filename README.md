@@ -4,9 +4,9 @@ Comprehensive documentation for the Lex Flow visual programming workflow interpr
 
 ## Quick Start
 
-1. **Install dependencies**: `pip install -r requirements.txt`
-2. **Run a workflow**: `python main.py tests/integration/simple_hello.json`
-3. **Test the system**: `pytest`
+1. **Install dependencies**: `uv sync`
+2. **Run a workflow**: `uv run lexflow tests/integration/simple_hello.json`
+3. **Test the system**: `uv run pytest`
 
 ## Documentation Index
 
@@ -70,7 +70,7 @@ Testing framework, example workflows, and debugging techniques.
 ## Architecture Overview
 
 ```
-CLI Interface (main.py)
+CLI Interface (lexflow-cli)
         ↓
 WorkflowLoader (loads & validates JSON/YAML with dependency resolution)
         ↓
@@ -110,28 +110,28 @@ Opcode Registry (modern @params() validated operations with enhanced discovery)
 ### Simple Script Execution
 
 ```bash
-python main.py script.json
-python main.py workflow.yaml  # YAML supported too
+uv run lexflow script.json
+uv run lexflow workflow.yaml  # YAML supported too
 ```
 
 ### Multi-File Projects
 
 ```bash
-python main.py main.json -I utils.json helpers.json
-python main.py main.yaml --import-dir modules/
+uv run lexflow main.json -I utils.json helpers.json
+uv run lexflow main.yaml --import-dir modules/
 ```
 
 ### Development & Debugging
 
 ```bash
-python main.py workflow.json --debug --verbose
+uv run lexflow workflow.json --debug --verbose
 ```
 
 ### Validation & Testing
 
 ```bash
-python main.py workflow.json --validate-only
-pytest
+uv run lexflow workflow.json --validate-only
+uv run pytest
 ```
 
 ### Modern Input Syntax Examples
@@ -170,7 +170,7 @@ All formats are equivalent and can be mixed in the same workflow.
 
 ## Getting Help
 
-- **CLI Help**: `python main.py --help`
+- **CLI Help**: `uv run lexflow --help`
 - **Test Examples**: Browse `tests/` directory for working examples
 - **Error Messages**: Include contextual suggestions and fixes
 - **Verbose Mode**: Use `--verbose` to understand execution flow
