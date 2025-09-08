@@ -18,12 +18,14 @@ class Frame:
 class WorkflowState:
     program: Program
     _variables: dict[str, Any]
-    _data_stack: list = []
-    _call_stack: list = []
+    _data_stack: list
+    _call_stack: list
     _pc: int = 0
 
     def __init__(self, program: Program):
         self.program = program
+        self._data_stack = []
+        self._call_stack = []
         self._variables = program.variables.copy()
         self._pc = 0
 
