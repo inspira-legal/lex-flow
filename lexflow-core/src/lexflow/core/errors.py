@@ -142,4 +142,3 @@ class ErrorReporter:
                 report += f"  {i}. {suggestion}\n"
 
         return report
-

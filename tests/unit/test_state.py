@@ -91,4 +91,3 @@ class TestFrame:
 
         assert frame._return_pc == 5
         assert frame._locals == locals_dict
-

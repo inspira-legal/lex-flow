@@ -104,4 +104,3 @@ class TestEngineWorkflowCalls:
             await engine._call_workflow("nonexistent_workflow")
 
         assert "nonexistent_workflow" in str(exc_info.value)
-

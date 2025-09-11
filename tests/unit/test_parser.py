@@ -33,4 +33,3 @@ class TestParser:
         # Should have global node map for node references
         assert hasattr(program, "node_map")
         assert isinstance(program.node_map, dict)
-

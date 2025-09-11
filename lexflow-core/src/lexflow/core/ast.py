@@ -51,4 +51,3 @@ else:
 
     WorkflowDef.model_rebuild()
     Program.model_rebuild()
-

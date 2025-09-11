@@ -350,4 +350,3 @@ class TestErrorHandling:
 
         assert "Unknown opcode" in str(exc_info.value)
         assert "definitely_invalid_opcode" in str(exc_info.value)
-

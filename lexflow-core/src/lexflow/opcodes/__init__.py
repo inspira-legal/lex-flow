@@ -7,7 +7,7 @@ The opcodes are automatically discovered by the engine through the @opcode decor
 
 # Import all opcode modules to ensure they are registered
 from . import ai
-from . import control  
+from . import control
 from . import data
 from . import file
 from . import io

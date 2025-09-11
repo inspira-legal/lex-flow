@@ -97,4 +97,3 @@ class TestOpcodeRegistry:
 
         with pytest.raises(OpcodeNotFoundError):
             registry.get("definitely_nonexistent_opcode")
-

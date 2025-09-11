@@ -141,4 +141,3 @@ def fixtures_path() -> Path:
 def integration_path() -> Path:
     """Path to integration test workflows."""
     return Path(__file__).parent / "integration"
-

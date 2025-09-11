@@ -103,7 +103,8 @@ class WorkflowLoader:
                     )
 
                 if not any(
-                    node.opcode == WORKFLOW_START_OPCODE for node in workflow.nodes.values()
+                    node.opcode == WORKFLOW_START_OPCODE
+                    for node in workflow.nodes.values()
                 ):
                     raise WorkflowValidationError(
                         "Missing 'workflow_start' node", workflow.name, file_path
