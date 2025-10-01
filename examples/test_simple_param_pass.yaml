@@ -1,0 +1,40 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      my_value: 42
+    nodes:
+      start:
+        opcode: workflow_start
+        next: call_print_value
+        inputs: {}
+
+      call_print_value:
+        opcode: workflow_call
+        next: null
+        inputs:
+          WORKFLOW:
+            literal: print_value
+          ARG1:
+            variable: my_value
+
+  - name: print_value
+    interface:
+      inputs: ["value"]
+      outputs: []
+    variables:
+      value: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_it
+        inputs: {}
+
+      print_it:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            variable: value

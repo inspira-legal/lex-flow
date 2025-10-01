@@ -1,0 +1,57 @@
+{
+  "workflows": [
+    {
+      "name": "main",
+      "interface": {
+        "inputs": [],
+        "outputs": []
+      },
+      "variables": {
+        "temp": ""
+      },
+      "nodes": {
+        "start": {
+          "opcode": "workflow_start",
+          "next": "print_workflow_result",
+          "inputs": {}
+        },
+        "print_workflow_result": {
+          "opcode": "io_print",
+          "next": "print_done",
+          "inputs": {
+            "STRING": {"workflow_call": "get_message"}
+          }
+        },
+        "print_done": {
+          "opcode": "io_print",
+          "inputs": {
+            "STRING": {"literal": "\n"}
+          }
+        }
+      }
+    },
+    {
+      "name": "get_message",
+      "interface": {
+        "inputs": [],
+        "outputs": ["message"]
+      },
+      "variables": {
+        "result": "Hello from function!"
+      },
+      "nodes": {
+        "start": {
+          "opcode": "workflow_start",
+          "next": "return_value",
+          "inputs": {}
+        },
+        "return_value": {
+          "opcode": "workflow_return",
+          "inputs": {
+            "VALUE": {"variable": "result"}
+          }
+        }
+      }
+    }
+  ]
+}

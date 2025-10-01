@@ -1,0 +1,123 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_intro
+        inputs: {}
+
+      print_intro:
+        opcode: io_print
+        next: test_positive
+        inputs:
+          STRING:
+            literal: "Testing conditionals in workflow calls:\n"
+
+      test_positive:
+        opcode: workflow_call
+        next: test_negative
+        inputs:
+          WORKFLOW:
+            literal: check_number
+          ARG1:
+            literal: 10
+
+      test_negative:
+        opcode: workflow_call
+        next: test_zero
+        inputs:
+          WORKFLOW:
+            literal: check_number
+          ARG1:
+            literal: -5
+
+      test_zero:
+        opcode: workflow_call
+        next: print_done
+        inputs:
+          WORKFLOW:
+            literal: check_number
+          ARG1:
+            literal: 0
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "All tests completed!\n"
+
+  - name: check_number
+    interface:
+      inputs: ["num"]
+      outputs: []
+    variables:
+      num: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: check_sign
+        inputs: {}
+
+      check_sign:
+        opcode: control_if_else
+        inputs:
+          CONDITION:
+            node: is_positive
+          BRANCH1:
+            branch: positive_path
+          BRANCH2:
+            branch: not_positive
+
+      is_positive:
+        opcode: operator_greater_than
+        inputs:
+          OPERAND1:
+            variable: num
+          OPERAND2:
+            literal: 0
+        isReporter: true
+
+      positive_path:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "Number is positive\n"
+
+      not_positive:
+        opcode: control_if_else
+        inputs:
+          CONDITION:
+            node: is_negative
+          BRANCH1:
+            branch: negative_path
+          BRANCH2:
+            branch: zero_path
+
+      is_negative:
+        opcode: operator_less_than
+        inputs:
+          OPERAND1:
+            variable: num
+          OPERAND2:
+            literal: 0
+        isReporter: true
+
+      negative_path:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "Number is negative\n"
+
+      zero_path:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "Number is zero\n"

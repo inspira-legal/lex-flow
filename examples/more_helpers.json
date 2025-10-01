@@ -1,0 +1,26 @@
+{
+  "workflows": [
+    {
+      "name": "goodbye",
+      "interface": {
+        "inputs": [],
+        "outputs": []
+      },
+      "variables": {},
+      "nodes": {
+        "start": {
+          "opcode": "workflow_start",
+          "next": "print_bye",
+          "inputs": {}
+        },
+        "print_bye": {
+          "opcode": "io_print",
+          "next": null,
+          "inputs": {
+            "STRING": {"literal": "Goodbye from JSON file!\n"}
+          }
+        }
+      }
+    }
+  ]
+}

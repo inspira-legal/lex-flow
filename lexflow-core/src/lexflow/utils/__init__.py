@@ -1,3 +1,0 @@
-"""
-LexFlow utilities package
-"""

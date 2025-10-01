@@ -1,0 +1,85 @@
+{
+  "workflows": [
+    {
+      "name": "main",
+      "interface": {
+        "inputs": [],
+        "outputs": []
+      },
+      "variables": {
+        "temp1": "",
+        "temp2": ""
+      },
+      "nodes": {
+        "start": {
+          "opcode": "workflow_start",
+          "next": "push_args",
+          "inputs": {}
+        },
+        "push_args": {
+          "opcode": "data_set_variable_to",
+          "next": "push_second_arg",
+          "inputs": {
+            "VARIABLE": {"literal": "temp1"},
+            "VALUE": {"literal": "7"}
+          }
+        },
+        "push_second_arg": {
+          "opcode": "data_set_variable_to",
+          "next": "call_workflow",
+          "inputs": {
+            "VARIABLE": {"literal": "temp2"},
+            "VALUE": {"literal": "3"}
+          }
+        },
+        "call_workflow": {
+          "opcode": "call",
+          "inputs": {
+            "WORKFLOW": {"literal": "add_numbers"},
+            "ARG1": {"variable": "temp1"},
+            "ARG2": {"variable": "temp2"}
+          }
+        }
+      }
+    },
+    {
+      "name": "add_numbers",
+      "interface": {
+        "inputs": ["x", "y"],
+        "outputs": ["sum"]
+      },
+      "variables": {
+        "x": 0,
+        "y": 0
+      },
+      "nodes": {
+        "start": {
+          "opcode": "workflow_start",
+          "next": "calculate",
+          "inputs": {}
+        },
+        "calculate": {
+          "opcode": "operator_add",
+          "next": "print_result",
+          "inputs": {
+            "OPERAND1": {"variable": "x"},
+            "OPERAND2": {"variable": "y"}
+          }
+        },
+        "print_result": {
+          "opcode": "io_print",
+          "next": "return_result",
+          "inputs": {
+            "STRING": {"literal": "Function result!\n"}
+          }
+        },
+        "return_result": {
+          "opcode": "workflow_return",
+          "inputs": {
+            "VALUE": {"node": "calculate"}
+          }
+        }
+      }
+    }
+  ]
+}

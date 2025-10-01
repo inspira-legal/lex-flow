@@ -1,0 +1,226 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      text: "hello world"
+      numbers: [1, 2, 3, 4, 5]
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      # Test string operations
+      print_header:
+        opcode: io_print
+        next: test_upper
+        inputs:
+          STRING:
+            literal: "=== Testing New Opcodes ===\n\n"
+
+      test_upper:
+        opcode: io_print
+        next: print_upper_result
+        inputs:
+          STRING:
+            literal: "String upper: "
+
+      print_upper_result:
+        opcode: io_print
+        next: print_newline1
+        inputs:
+          STRING:
+            node: upper_result
+
+      upper_result:
+        opcode: string_upper
+        inputs:
+          text:
+            variable: text
+        isReporter: true
+
+      print_newline1:
+        opcode: io_print
+        next: test_length
+        inputs:
+          STRING:
+            literal: "\n"
+
+      test_length:
+        opcode: io_print
+        next: print_length_result
+        inputs:
+          STRING:
+            literal: "String length: "
+
+      print_length_result:
+        opcode: io_print
+        next: print_newline2
+        inputs:
+          STRING:
+            node: length_result
+
+      length_result:
+        opcode: string_length
+        inputs:
+          text:
+            variable: text
+        isReporter: true
+
+      print_newline2:
+        opcode: io_print
+        next: test_modulo
+        inputs:
+          STRING:
+            literal: "\n"
+
+      # Test modulo operator
+      test_modulo:
+        opcode: io_print
+        next: print_modulo_result
+        inputs:
+          STRING:
+            literal: "Modulo (10 % 3): "
+
+      print_modulo_result:
+        opcode: io_print
+        next: print_newline3
+        inputs:
+          STRING:
+            node: modulo_result
+
+      modulo_result:
+        opcode: operator_modulo
+        inputs:
+          left:
+            literal: 10
+          right:
+            literal: 3
+        isReporter: true
+
+      print_newline3:
+        opcode: io_print
+        next: test_math_abs
+        inputs:
+          STRING:
+            literal: "\n"
+
+      # Test math operations
+      test_math_abs:
+        opcode: io_print
+        next: print_abs_result
+        inputs:
+          STRING:
+            literal: "Absolute value of -42: "
+
+      print_abs_result:
+        opcode: io_print
+        next: print_newline4
+        inputs:
+          STRING:
+            node: abs_result
+
+      abs_result:
+        opcode: math_abs
+        inputs:
+          value:
+            literal: -42
+        isReporter: true
+
+      print_newline4:
+        opcode: io_print
+        next: test_pow
+        inputs:
+          STRING:
+            literal: "\n"
+
+      test_pow:
+        opcode: io_print
+        next: print_pow_result
+        inputs:
+          STRING:
+            literal: "2 to the power of 8: "
+
+      print_pow_result:
+        opcode: io_print
+        next: print_newline5
+        inputs:
+          STRING:
+            node: pow_result
+
+      pow_result:
+        opcode: math_pow
+        inputs:
+          base:
+            literal: 2
+          exponent:
+            literal: 8
+        isReporter: true
+
+      print_newline5:
+        opcode: io_print
+        next: test_logical_and
+        inputs:
+          STRING:
+            literal: "\n"
+
+      # Test logical operators
+      test_logical_and:
+        opcode: io_print
+        next: print_and_result
+        inputs:
+          STRING:
+            literal: "Logical AND (true AND false): "
+
+      print_and_result:
+        opcode: io_print
+        next: print_newline6
+        inputs:
+          STRING:
+            node: and_result
+
+      and_result:
+        opcode: operator_and
+        inputs:
+          left:
+            literal: true
+          right:
+            literal: false
+        isReporter: true
+
+      print_newline6:
+        opcode: io_print
+        next: test_logical_not
+        inputs:
+          STRING:
+            literal: "\n"
+
+      test_logical_not:
+        opcode: io_print
+        next: print_not_result
+        inputs:
+          STRING:
+            literal: "Logical NOT (NOT false): "
+
+      print_not_result:
+        opcode: io_print
+        next: print_final
+        inputs:
+          STRING:
+            node: not_result
+
+      not_result:
+        opcode: operator_not
+        inputs:
+          value:
+            literal: false
+        isReporter: true
+
+      print_final:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n\n✅ All new opcodes working!\n"

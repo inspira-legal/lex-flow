@@ -1,0 +1,30 @@
+{
+  "workflows": [
+    {
+      "name": "test_file_content",
+      "variables": {
+        "doc_path": "tests/test_document.txt"
+      },
+      "nodes": {
+        "start": {
+          "opcode": "workflow_start",
+          "inputs": {},
+          "next": "load_document"
+        },
+        "load_document": {
+          "opcode": "file_read",
+          "inputs": {
+            "file_path": {"variable": "doc_path"}
+          },
+          "next": "print_file_data"
+        },
+        "print_file_data": {
+          "opcode": "io_print",
+          "inputs": {
+            "value": {"node": "load_document"}
+          }
+        }
+      }
+    }
+  ]
+}

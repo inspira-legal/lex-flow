@@ -1,0 +1,90 @@
+{
+  "workflows": [
+    {
+      "name": "main",
+      "variables": {
+        "secret_number": "5",
+        "test_guess": "5"
+      },
+      "nodes": {
+        "start": {
+          "opcode": "workflow_start",
+          "next": "welcome_message",
+          "inputs": {}
+        },
+        "welcome_message": {
+          "opcode": "io_print",
+          "next": "test_correct_guess",
+          "inputs": {
+            "STRING": {"literal": "Testing guessing game logic...\n"}
+          }
+        },
+        "test_correct_guess": {
+          "opcode": "control_if_else",
+          "inputs": {
+            "CONDITION": {"node": "is_correct"},
+            "BRANCH1": {"branch": "correct_message"},
+            "BRANCH2": {"branch": "wrong_message"}
+          }
+        },
+        "is_correct": {
+          "opcode": "operator_equals",
+          "inputs": {
+            "OPERAND1": {"variable": "test_guess"},
+            "OPERAND2": {"variable": "secret_number"}
+          },
+          "isReporter": true
+        },
+        "correct_message": {
+          "opcode": "io_print",
+          "next": "test_comparison",
+          "inputs": {
+            "STRING": {"literal": "Equality test PASSED!\n"}
+          }
+        },
+        "wrong_message": {
+          "opcode": "io_print",
+          "next": "test_comparison",
+          "inputs": {
+            "STRING": {"literal": "Equality test FAILED!\n"}
+          }
+        },
+        "test_comparison": {
+          "opcode": "io_print",
+          "next": "test_greater",
+          "inputs": {
+            "STRING": {"literal": "Testing operators...\n"}
+          }
+        },
+        "test_greater": {
+          "opcode": "control_if_else",
+          "inputs": {
+            "CONDITION": {"node": "is_greater"},
+            "BRANCH1": {"branch": "greater_pass"},
+            "BRANCH2": {"branch": "greater_fail"}
+          }
+        },
+        "is_greater": {
+          "opcode": "operator_greater_than",
+          "inputs": {
+            "OPERAND1": {"literal": "7"},
+            "OPERAND2": {"literal": "5"}
+          },
+          "isReporter": true
+        },
+        "greater_pass": {
+          "opcode": "io_print",
+          "inputs": {
+            "STRING": {"literal": "Greater than test PASSED!\n"}
+          }
+        },
+        "greater_fail": {
+          "opcode": "io_print",
+          "inputs": {
+            "STRING": {"literal": "Greater than test FAILED!\n"}
+          }
+        }
+      }
+    }
+  ]
+}

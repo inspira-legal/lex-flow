@@ -1,0 +1,235 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_before
+        inputs: {}
+
+      print_before:
+        opcode: io_print
+        next: call_counter
+        inputs:
+          STRING:
+            literal: "Before calling workflow with loop...\n"
+
+      call_counter:
+        opcode: workflow_call
+        next: print_after
+        inputs:
+          WORKFLOW:
+            literal: count_to_five
+
+      print_after:
+        opcode: io_print
+        next: call_nested_loops
+        inputs:
+          STRING:
+            literal: "After workflow with loop.\n"
+
+      call_nested_loops:
+        opcode: workflow_call
+        next: print_done
+        inputs:
+          WORKFLOW:
+            literal: nested_loops
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "All done!\n"
+
+  - name: count_to_five
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      counter: 1
+    nodes:
+      start:
+        opcode: workflow_start
+        next: loop
+        inputs: {}
+
+      loop:
+        opcode: control_while
+        inputs:
+          CONDITION:
+            node: check_counter
+          SUBSTACK:
+            branch: print_count
+
+      check_counter:
+        opcode: operator_less_than
+        inputs:
+          OPERAND1:
+            variable: counter
+          OPERAND2:
+            literal: 6
+        isReporter: true
+
+      print_count:
+        opcode: io_print
+        next: print_newline
+        inputs:
+          STRING:
+            variable: counter
+
+      print_newline:
+        opcode: io_print
+        next: increment
+        inputs:
+          STRING:
+            literal: "\n"
+
+      increment:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: counter
+          VALUE:
+            node: add_one
+
+      add_one:
+        opcode: operator_add
+        inputs:
+          OPERAND1:
+            variable: counter
+          OPERAND2:
+            literal: 1
+        isReporter: true
+
+  - name: nested_loops
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      outer: 1
+      inner: 1
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_nested_start
+        inputs: {}
+
+      print_nested_start:
+        opcode: io_print
+        next: outer_loop
+        inputs:
+          STRING:
+            literal: "Nested loops:\n"
+
+      outer_loop:
+        opcode: control_while
+        inputs:
+          CONDITION:
+            node: check_outer
+          SUBSTACK:
+            branch: reset_inner
+
+      check_outer:
+        opcode: operator_less_than
+        inputs:
+          OPERAND1:
+            variable: outer
+          OPERAND2:
+            literal: 4
+        isReporter: true
+
+      reset_inner:
+        opcode: data_set_variable_to
+        next: inner_loop
+        inputs:
+          VARIABLE:
+            literal: inner
+          VALUE:
+            literal: 1
+
+      inner_loop:
+        opcode: control_while
+        next: increment_outer
+        inputs:
+          CONDITION:
+            node: check_inner
+          SUBSTACK:
+            branch: print_coords
+
+      check_inner:
+        opcode: operator_less_than
+        inputs:
+          OPERAND1:
+            variable: inner
+          OPERAND2:
+            literal: 4
+        isReporter: true
+
+      print_coords:
+        opcode: io_print
+        next: print_comma
+        inputs:
+          STRING:
+            variable: outer
+
+      print_comma:
+        opcode: io_print
+        next: print_inner
+        inputs:
+          STRING:
+            literal: ","
+
+      print_inner:
+        opcode: io_print
+        next: print_space
+        inputs:
+          STRING:
+            variable: inner
+
+      print_space:
+        opcode: io_print
+        next: increment_inner
+        inputs:
+          STRING:
+            literal: " "
+
+      increment_inner:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: inner
+          VALUE:
+            node: add_one_inner
+
+      add_one_inner:
+        opcode: operator_add
+        inputs:
+          OPERAND1:
+            variable: inner
+          OPERAND2:
+            literal: 1
+        isReporter: true
+
+      increment_outer:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: outer
+          VALUE:
+            node: add_one_outer
+
+      add_one_outer:
+        opcode: operator_add
+        inputs:
+          OPERAND1:
+            variable: outer
+          OPERAND2:
+            literal: 1
+        isReporter: true

@@ -2,51 +2,42 @@ import argparse
 import asyncio
 import sys
 from pathlib import Path
-from typing import List
 
-from lexflow import WorkflowLoader, Parser, Engine, LexFlowError, ErrorReporter
+from lexflow import Parser, Engine
 
 
 def create_parser() -> argparse.ArgumentParser:
-    """Create enhanced argument parser"""
+    """Create argument parser"""
     parser = argparse.ArgumentParser(
         description="Lex Flow - Visual Programming Workflow Interpreter",
         epilog="""
 Examples:
-  python main.py workflow.json                           # Run single workflow
-  python main.py main.json -I utils.json helpers.json   # Import additional workflows
-  python main.py main.json --workflow greeting -I utils.json  # Run specific workflow
-  python main.py workflow.json --import-dir modules/     # Import from directory
-  python main.py --debug workflow.json                   # Step-by-step debugging
+  lexflow workflow.json                             # Run workflow
+  lexflow workflow.yaml                             # Run YAML workflow
+  lexflow main.yaml --include helpers.yaml          # Include external workflows
+  lexflow main.json --include util.json lib.yaml    # Include multiple files (JSON/YAML)
+  lexflow workflow.json --verbose                   # Verbose output
+  lexflow workflow.json --validate-only             # Validate without executing
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     # Main workflow file (required)
-    parser.add_argument("main_file", help="Main workflow file to execute")
+    parser.add_argument(
+        "workflow_file",
+        help="Main workflow file to execute (JSON or YAML). The 'main' workflow from this file will be executed."
+    )
 
     # Import options
     parser.add_argument(
-        "-I",
-        "--import",
-        dest="import_files",
-        nargs="*",
-        default=[],
-        help="Additional workflow files to import",
-    )
-    parser.add_argument(
-        "--import-dir", type=str, help="Directory containing workflow files to import"
+        "--include",
+        dest="include_files",
+        nargs="+",
+        metavar="FILE",
+        help="Include additional workflow files. All workflows (including 'main' if present) become callable external workflows.",
     )
 
     # Execution options
-    parser.add_argument(
-        "--workflow",
-        type=str,
-        help="Name of specific workflow to execute (default: 'main' or single workflow)",
-    )
-    parser.add_argument(
-        "--debug", action="store_true", help="Enable step-by-step debugging"
-    )
     parser.add_argument(
         "--verbose",
         "-v",
@@ -56,7 +47,7 @@ Examples:
     parser.add_argument(
         "--validate-only",
         action="store_true",
-        help="Only validate workflows without executing",
+        help="Only validate workflow without executing",
     )
 
     return parser
@@ -64,140 +55,78 @@ Examples:
 
 def print_success(message: str):
     """Print success message"""
-    print(f"[SUCCESS] {message}")
+    print(f"✓ {message}")
 
 
 def print_info(message: str):
     """Print info message"""
-    print(f"[INFO] {message}")
+    print(f"→ {message}")
 
 
-def print_error(error: Exception, suggestions: List[str] = None):
-    """Print formatted error with suggestions"""
-    print(ErrorReporter.format_error_report(error, suggestions))
-
-
-async def run_workflow(engine: Engine, debug: bool = False, verbose: bool = False):
-    """Execute workflow with optional debugging"""
-    if debug:
-        step_count = 0
-        print_info("Debug mode enabled. Press Enter to step, 'q' to quit.")
-
-        while not engine._state.is_finished():
-            if verbose:
-                print(f"Step {step_count}: {engine._state}")
-
-            await engine.step()
-
-            user_input = (
-                input(f"Step [{step_count}] completed. Continue? (Enter/q): ")
-                .strip()
-                .lower()
-            )
-            if user_input == "q":
-                print_info("Execution terminated by user")
-                break
-
-            step_count += 1
-
-        if engine._state.is_finished():
-            print_success(f"Workflow completed in {step_count} steps")
-
-    else:
-        step_count = 0
-        while not engine._state.is_finished():
-            await engine.step()
-            step_count += 1
-
-        if verbose:
-            print_success(f"Workflow completed in {step_count} steps")
+def print_error(message: str):
+    """Print error message"""
+    print(f"✗ {message}", file=sys.stderr)
 
 
 async def main():
-    parser = create_parser()
-    args = parser.parse_args()
+    arg_parser = create_parser()
+    args = arg_parser.parse_args()
 
     try:
-        loader = WorkflowLoader()
+        workflow_file = Path(args.workflow_file)
 
-        import_files = list(args.import_files) if args.import_files else []
+        # Check if main file exists
+        if not workflow_file.exists():
+            print_error(f"File not found: {workflow_file}")
+            sys.exit(1)
 
-        if args.import_dir:
-            print_info(f"Loading import workflows from directory: {args.import_dir}")
-            import_dir = Path(args.import_dir)
-            if import_dir.exists() and import_dir.is_dir():
-                json_files = list(import_dir.glob("*.json"))
-                import_files.extend([str(f) for f in json_files])
-
-        if import_files:
-            print_info(f"Loading main file: {Path(args.main_file).name}")
-            print_info(f"Loading {len(import_files)} import file(s)")
-        else:
-            print_info(f"Loading workflow file: {Path(args.main_file).name}")
-
-        all_workflows = loader.load_files_with_main(args.main_file, import_files)
+        # Check if included files exist
+        include_files = args.include_files or []
+        for include_file in include_files:
+            if not Path(include_file).exists():
+                print_error(f"Included file not found: {include_file}")
+                sys.exit(1)
 
         if args.verbose:
-            main_workflows = []
-            import_workflows_list = []
+            print_info(f"Loading workflow: {workflow_file.name}")
+            if include_files:
+                print_info(f"Including files: {', '.join(Path(f).name for f in include_files)}")
 
-            for name, workflow in all_workflows.items():
-                source_file = Path(loader.file_sources[name]).name
-                interface = workflow.interface
-                inputs = (
-                    f"({', '.join(interface.inputs)})" if interface.inputs else "()"
-                )
-                outputs = (
-                    f" -> ({', '.join(interface.outputs)})" if interface.outputs else ""
-                )
+        # Parse the workflow(s)
+        parser = Parser()
+        if include_files:
+            program = parser.parse_files(str(workflow_file), include_files)
+        else:
+            program = parser.parse_file(str(workflow_file))
 
-                workflow_info = f"  {name}{inputs}{outputs} from {source_file}"
-                if source_file == Path(args.main_file).name:
-                    main_workflows.append(workflow_info)
-                else:
-                    import_workflows_list.append(workflow_info)
-
-            if main_workflows:
-                print_info("Main file workflows:")
-                for info in main_workflows:
-                    print(info)
-
-            if import_workflows_list:
-                print_info("Imported workflows:")
-                for info in import_workflows_list:
-                    print(info)
-
-        print_success(f"Loaded {len(all_workflows)} workflow(s)")
-
-        main_workflow_name = loader.get_main_workflow_from_file(
-            args.main_file, args.workflow
-        )
-        main_workflow = all_workflows[main_workflow_name]
-
-        print_info(f"Executing workflow: {main_workflow_name}")
+        if args.verbose:
+            print_success("Workflow parsed successfully")
+            print_info(f"Main workflow: {program.main.name}")
+            if program.externals:
+                print_info(f"External workflows: {', '.join(program.externals.keys())}")
 
         if args.validate_only:
-            print_success("All workflows are valid!")
+            print_success("Workflow is valid!")
             return
 
-        parser_obj = Parser(main_workflow, list(all_workflows.values()))
-        program = parser_obj.parse()
+        # Create and run engine
+        if args.verbose:
+            print_info("Starting execution...")
 
         engine = Engine(program)
-        print_info("Starting execution...")
+        result = await engine.run()
 
-        await run_workflow(engine, args.debug, args.verbose)
+        if args.verbose:
+            print_success("Execution completed")
+            if result is not None:
+                print_info(f"Result: {result}")
 
     except KeyboardInterrupt:
         print_info("\nExecution interrupted by user")
         sys.exit(1)
 
-    except LexFlowError as e:
-        print_error(e)
-        sys.exit(1)
-
     except Exception as e:
-        print(f"[ERROR] Unexpected error: {e}")
+        print_error(f"Error: {e}")
         if args.verbose:
             import traceback
 

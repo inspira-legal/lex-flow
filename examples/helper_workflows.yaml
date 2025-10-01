@@ -1,0 +1,71 @@
+workflows:
+  # This file contains helper workflows that can be imported
+  # Note: This file has a 'main' workflow but it won't be executed
+  # when included - only the main file's 'main' workflow runs
+
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_msg
+        inputs: {}
+      print_msg:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "This is the helper's main workflow!\n"
+
+  - name: greet
+    interface:
+      inputs: ["name"]
+      outputs: []
+    variables:
+      name: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_hello
+        inputs: {}
+      print_hello:
+        opcode: io_print
+        next: print_name
+        inputs:
+          STRING:
+            literal: "Hello, "
+      print_name:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            variable: name
+
+  - name: add_numbers
+    interface:
+      inputs: ["a", "b"]
+      outputs: ["sum"]
+    variables:
+      a: 0
+      b: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: calculate
+        inputs: {}
+      calculate:
+        opcode: operator_add
+        next: return_result
+        inputs:
+          OPERAND1:
+            variable: a
+          OPERAND2:
+            variable: b
+      return_result:
+        opcode: workflow_return
+        inputs:
+          VALUE:
+            node: calculate

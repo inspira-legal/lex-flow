@@ -1,0 +1,41 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_start
+        inputs: {}
+
+      print_start:
+        opcode: io_print
+        next: call_greet
+        inputs:
+          STRING:
+            literal: "Including multiple files (YAML and JSON):\n"
+
+      call_greet:
+        opcode: workflow_call
+        next: call_goodbye
+        inputs:
+          WORKFLOW:
+            literal: greet
+          ARG1:
+            literal: "Bob"
+
+      call_goodbye:
+        opcode: workflow_call
+        next: print_end
+        inputs:
+          WORKFLOW:
+            literal: goodbye
+
+      print_end:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "All done!\n"

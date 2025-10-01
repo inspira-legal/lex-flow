@@ -1,0 +1,26 @@
+{
+  "workflows": [
+    {
+      "name": "main",
+      "interface": {
+        "inputs": [],
+        "outputs": []
+      },
+      "variables": {},
+      "nodes": {
+        "start": {
+          "opcode": "workflow_start",
+          "next": "print_message",
+          "inputs": {}
+        },
+        "print_message": {
+          "opcode": "io_print",
+          "next": null,
+          "inputs": {
+            "STRING": {"literal": "No return needed!\n"}
+          }
+        }
+      }
+    }
+  ]
+}

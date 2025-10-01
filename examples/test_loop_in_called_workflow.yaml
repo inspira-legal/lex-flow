@@ -1,0 +1,410 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_before
+        inputs: {}
+
+      print_before:
+        opcode: io_print
+        next: call_counter
+        inputs:
+          STRING:
+            literal: "=== Test: Loops in Called Workflows ===\n"
+
+      call_counter:
+        opcode: workflow_call
+        next: print_after
+        inputs:
+          WORKFLOW:
+            literal: count_and_sum
+
+      print_after:
+        opcode: io_print
+        next: call_nested
+        inputs:
+          STRING:
+            literal: "✓ Simple loop in workflow call passed\n"
+
+      call_nested:
+        opcode: workflow_call
+        next: call_if_else_loop
+        inputs:
+          WORKFLOW:
+            literal: nested_loops_test
+
+      call_if_else_loop:
+        opcode: workflow_call
+        next: print_final
+        inputs:
+          WORKFLOW:
+            literal: loop_with_conditionals
+
+      print_final:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "=== All loop tests passed! ===\n"
+
+  - name: count_and_sum
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      counter: 1
+      sum: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: loop
+        inputs:
+          STRING:
+            literal: "Counting 1 to 5: "
+
+      loop:
+        opcode: control_while
+        next: print_newline
+        inputs:
+          CONDITION:
+            node: check
+          SUBSTACK:
+            branch: process
+
+      check:
+        opcode: operator_less_than
+        inputs:
+          OPERAND1:
+            variable: counter
+          OPERAND2:
+            literal: 6
+        isReporter: true
+
+      process:
+        opcode: io_print
+        next: update_sum
+        inputs:
+          STRING:
+            variable: counter
+
+      update_sum:
+        opcode: data_set_variable_to
+        next: print_space
+        inputs:
+          VARIABLE:
+            literal: sum
+          VALUE:
+            node: add_to_sum
+
+      add_to_sum:
+        opcode: operator_add
+        inputs:
+          OPERAND1:
+            variable: sum
+          OPERAND2:
+            variable: counter
+        isReporter: true
+
+      print_space:
+        opcode: io_print
+        next: increment
+        inputs:
+          STRING:
+            literal: " "
+
+      increment:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: counter
+          VALUE:
+            node: inc
+
+      inc:
+        opcode: operator_add
+        inputs:
+          OPERAND1:
+            variable: counter
+          OPERAND2:
+            literal: 1
+        isReporter: true
+
+      print_newline:
+        opcode: io_print
+        next: print_sum
+        inputs:
+          STRING:
+            literal: "\n"
+
+      print_sum:
+        opcode: io_print
+        next: print_sum_val
+        inputs:
+          STRING:
+            literal: "Sum: "
+
+      print_sum_val:
+        opcode: io_print
+        next: print_newline2
+        inputs:
+          STRING:
+            variable: sum
+
+      print_newline2:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n"
+
+  - name: nested_loops_test
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      i: 1
+      j: 1
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: outer_loop
+        inputs:
+          STRING:
+            literal: "Nested loops 2x2:\n"
+
+      outer_loop:
+        opcode: control_while
+        next: print_done
+        inputs:
+          CONDITION:
+            node: check_i
+          SUBSTACK:
+            branch: reset_j
+
+      check_i:
+        opcode: operator_less_than
+        inputs:
+          OPERAND1:
+            variable: i
+          OPERAND2:
+            literal: 3
+        isReporter: true
+
+      reset_j:
+        opcode: data_set_variable_to
+        next: inner_loop
+        inputs:
+          VARIABLE:
+            literal: j
+          VALUE:
+            literal: 1
+
+      inner_loop:
+        opcode: control_while
+        next: next_i
+        inputs:
+          CONDITION:
+            node: check_j
+          SUBSTACK:
+            branch: print_pair
+
+      check_j:
+        opcode: operator_less_than
+        inputs:
+          OPERAND1:
+            variable: j
+          OPERAND2:
+            literal: 3
+        isReporter: true
+
+      print_pair:
+        opcode: io_print
+        next: print_comma
+        inputs:
+          STRING:
+            variable: i
+
+      print_comma:
+        opcode: io_print
+        next: print_j
+        inputs:
+          STRING:
+            literal: ","
+
+      print_j:
+        opcode: io_print
+        next: print_space
+        inputs:
+          STRING:
+            variable: j
+
+      print_space:
+        opcode: io_print
+        next: inc_j
+        inputs:
+          STRING:
+            literal: " "
+
+      inc_j:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: j
+          VALUE:
+            node: add_j
+
+      add_j:
+        opcode: operator_add
+        inputs:
+          OPERAND1:
+            variable: j
+          OPERAND2:
+            literal: 1
+        isReporter: true
+
+      next_i:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: i
+          VALUE:
+            node: add_i
+
+      add_i:
+        opcode: operator_add
+        inputs:
+          OPERAND1:
+            variable: i
+          OPERAND2:
+            literal: 1
+        isReporter: true
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n✓ Nested loops passed\n"
+
+  - name: loop_with_conditionals
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      n: 1
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: loop
+        inputs:
+          STRING:
+            literal: "Loop with conditionals (1-6, evens only): "
+
+      loop:
+        opcode: control_while
+        next: print_newline
+        inputs:
+          CONDITION:
+            node: check_n
+          SUBSTACK:
+            branch: check_even
+
+      check_n:
+        opcode: operator_less_than
+        inputs:
+          OPERAND1:
+            variable: n
+          OPERAND2:
+            literal: 7
+        isReporter: true
+
+      check_even:
+        opcode: control_if_else
+        next: inc_n
+        inputs:
+          CONDITION:
+            node: is_even
+          BRANCH1:
+            branch: print_n
+          BRANCH2:
+            branch: skip
+
+      is_even:
+        opcode: operator_equals
+        inputs:
+          OPERAND1:
+            node: modulo
+          OPERAND2:
+            literal: 0
+        isReporter: true
+
+      modulo:
+        opcode: operator_modulo
+        inputs:
+          OPERAND1:
+            variable: n
+          OPERAND2:
+            literal: 2
+        isReporter: true
+
+      print_n:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            variable: n
+
+      skip:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: ""
+
+      inc_n:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: n
+          VALUE:
+            node: add_n
+
+      add_n:
+        opcode: operator_add
+        inputs:
+          OPERAND1:
+            variable: n
+          OPERAND2:
+            literal: 1
+        isReporter: true
+
+      print_newline:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n✓ Loop with conditionals passed\n"
