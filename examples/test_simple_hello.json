@@ -17,7 +17,7 @@
           "opcode": "io_print",
           "next": null,
           "inputs": {
-            "STRING": {"literal": "Hello, World!\n"}
+            "STRING": { "literal": "Hello, World!\n" }
           }
         }
       }

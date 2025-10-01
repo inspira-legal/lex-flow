@@ -14,29 +14,29 @@
         "if_check": {
           "opcode": "control_if_else",
           "inputs": {
-            "CONDITION": {"node": "is_greater"},
-            "BRANCH1": {"branch": "print_yes"},
-            "BRANCH2": {"branch": "print_no"}
+            "CONDITION": { "node": "is_greater" },
+            "BRANCH1": { "branch": "print_yes" },
+            "BRANCH2": { "branch": "print_no" }
           }
         },
         "is_greater": {
           "opcode": "operator_equals",
           "inputs": {
-            "OPERAND1": {"variable": "test_value"},
-            "OPERAND2": {"literal": "5"}
+            "OPERAND1": { "variable": "test_value" },
+            "OPERAND2": { "literal": "5" }
           },
           "isReporter": true
         },
         "print_yes": {
           "opcode": "io_print",
           "inputs": {
-            "STRING": {"literal": "Value is 5!\n"}
+            "STRING": { "literal": "Value is 5!\n" }
           }
         },
         "print_no": {
           "opcode": "io_print",
           "inputs": {
-            "STRING": {"literal": "Value is not 5!\n"}
+            "STRING": { "literal": "Value is not 5!\n" }
           }
         }
       }

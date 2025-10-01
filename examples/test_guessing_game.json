@@ -17,15 +17,15 @@
           "opcode": "assign",
           "next": "welcome_message",
           "inputs": {
-            "VARIABLE": {"literal": "secret_number"},
-            "VALUE": {"node": "random_1_to_10"}
+            "VARIABLE": { "literal": "secret_number" },
+            "VALUE": { "node": "random_1_to_10" }
           }
         },
         "random_1_to_10": {
           "opcode": "math_random",
           "inputs": {
-            "MIN": {"literal": "1"},
-            "MAX": {"literal": "10"}
+            "MIN": { "literal": "1" },
+            "MAX": { "literal": "10" }
           },
           "isReporter": true
         },
@@ -41,15 +41,15 @@
         "game_loop": {
           "opcode": "control_while",
           "inputs": {
-            "CONDITION": {"node": "check_game_running"},
-            "SUBSTACK": {"branch": "get_user_input"}
+            "CONDITION": { "node": "check_game_running" },
+            "SUBSTACK": { "branch": "get_user_input" }
           }
         },
         "check_game_running": {
           "opcode": "operator_equals",
           "inputs": {
-            "OPERAND1": {"variable": "game_running"},
-            "OPERAND2": {"literal": "true"}
+            "OPERAND1": { "variable": "game_running" },
+            "OPERAND2": { "literal": "true" }
           },
           "isReporter": true
         },
@@ -57,15 +57,15 @@
           "opcode": "io_print",
           "next": "read_input",
           "inputs": {
-            "STRING": {"literal": "Enter your guess: "}
+            "STRING": { "literal": "Enter your guess: " }
           }
         },
         "read_input": {
           "opcode": "data_set_variable_to",
           "next": "check_guess",
           "inputs": {
-            "VARIABLE": {"literal": "user_guess"},
-            "VALUE": {"node": "input_number"}
+            "VARIABLE": { "literal": "user_guess" },
+            "VALUE": { "node": "input_number" }
           }
         },
         "input_number": {
@@ -77,16 +77,16 @@
           "opcode": "control_if_else",
           "next": null,
           "inputs": {
-            "CONDITION": {"node": "is_correct"},
-            "BRANCH1": {"branch": "correct_guess"},
-            "BRANCH2": {"branch": "wrong_guess"}
+            "CONDITION": { "node": "is_correct" },
+            "BRANCH1": { "branch": "correct_guess" },
+            "BRANCH2": { "branch": "wrong_guess" }
           }
         },
         "is_correct": {
           "opcode": "operator_equals",
           "inputs": {
-            "OPERAND1": {"variable": "user_guess"},
-            "OPERAND2": {"variable": "secret_number"}
+            "OPERAND1": { "variable": "user_guess" },
+            "OPERAND2": { "variable": "secret_number" }
           },
           "isReporter": true
         },
@@ -94,42 +94,42 @@
           "opcode": "io_print",
           "next": "end_game",
           "inputs": {
-            "STRING": {"literal": "Congratulations! You guessed it!\n"}
+            "STRING": { "literal": "Congratulations! You guessed it!\n" }
           }
         },
         "end_game": {
           "opcode": "data_set_variable_to",
           "inputs": {
-            "VARIABLE": {"literal": "game_running"},
-            "VALUE": {"literal": "false"}
+            "VARIABLE": { "literal": "game_running" },
+            "VALUE": { "literal": "false" }
           }
         },
         "wrong_guess": {
           "opcode": "control_if_else",
           "inputs": {
-            "CONDITION": {"node": "is_too_high"},
-            "BRANCH1": {"branch": "too_high_message"},
-            "BRANCH2": {"branch": "too_low_message"}
+            "CONDITION": { "node": "is_too_high" },
+            "BRANCH1": { "branch": "too_high_message" },
+            "BRANCH2": { "branch": "too_low_message" }
           }
         },
         "is_too_high": {
           "opcode": "operator_greater_than",
           "inputs": {
-            "OPERAND1": {"variable": "user_guess"},
-            "OPERAND2": {"variable": "secret_number"}
+            "OPERAND1": { "variable": "user_guess" },
+            "OPERAND2": { "variable": "secret_number" }
           },
           "isReporter": true
         },
         "too_high_message": {
           "opcode": "io_print",
           "inputs": {
-            "STRING": {"literal": "Too high! Try again.\n"}
+            "STRING": { "literal": "Too high! Try again.\n" }
           }
         },
         "too_low_message": {
           "opcode": "io_print",
           "inputs": {
-            "STRING": {"literal": "Too low! Try again.\n"}
+            "STRING": { "literal": "Too low! Try again.\n" }
           }
         }
       }

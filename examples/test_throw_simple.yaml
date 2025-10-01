@@ -1,0 +1,58 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_intro
+        inputs: {}
+
+      print_intro:
+        opcode: io_print
+        next: try_node
+        inputs:
+          STRING:
+            literal: "Testing throw opcode\n"
+
+      try_node:
+        opcode: control_try
+        next: print_done
+        inputs:
+          TRY:
+            branch: do_throw
+          CATCH1:
+            exception_type: "ValueError"
+            var: "e"
+            body:
+              branch: handle_it
+
+      do_throw:
+        opcode: throw_value_error
+        next: print_should_not_see
+        inputs:
+          message:
+            literal: "Test error"
+
+      print_should_not_see:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "SHOULD NOT SEE THIS\n"
+
+      handle_it:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "Caught the error!\n"
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "Done\n"

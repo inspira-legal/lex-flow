@@ -12,14 +12,14 @@
         "load_file": {
           "opcode": "file_read",
           "inputs": {
-            "file_path": {"literal": "tests/test_document.txt"}
+            "file_path": { "literal": "tests/test_document.txt" }
           },
           "next": "print_result"
         },
         "print_result": {
           "opcode": "io_print",
           "inputs": {
-            "value": {"node": "load_file"}
+            "value": { "node": "load_file" }
           }
         }
       }

@@ -19,13 +19,13 @@
           "opcode": "io_print",
           "next": "print_done",
           "inputs": {
-            "STRING": {"workflow_call": "get_message"}
+            "STRING": { "workflow_call": "get_message" }
           }
         },
         "print_done": {
           "opcode": "io_print",
           "inputs": {
-            "STRING": {"literal": "\n"}
+            "STRING": { "literal": "\n" }
           }
         }
       }
@@ -48,7 +48,7 @@
         "return_value": {
           "opcode": "workflow_return",
           "inputs": {
-            "VALUE": {"variable": "result"}
+            "VALUE": { "variable": "result" }
           }
         }
       }

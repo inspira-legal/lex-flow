@@ -14,9 +14,15 @@ A LexFlow program is the top-level structure containing one or more workflows.
 
 ```json
 {
-  "workflows": [ /* array of workflow definitions */ ],
-  "globals": { /* optional global state */ },
-  "metadata": { /* optional program metadata */ }
+  "workflows": [
+    /* array of workflow definitions */
+  ],
+  "globals": {
+    /* optional global state */
+  },
+  "metadata": {
+    /* optional program metadata */
+  }
 }
 ```
 
@@ -41,6 +47,7 @@ Workflows are the primary unit of organization, similar to functions in traditio
 ```
 
 **Key Points:**
+
 - Each workflow must have a unique `name`
 - The `interface` defines parameters and return values
 - Variables use names directly for better readability
@@ -60,7 +67,7 @@ Execute actions and chain to the next node:
     "opcode": "io_print",
     "next": "next_node_id",
     "inputs": {
-      "STRING": {"literal": "Hello, World!\n"}
+      "STRING": { "literal": "Hello, World!\n" }
     }
   }
 }
@@ -75,8 +82,8 @@ Act as expressions, returning values to the stack:
   "reporter_id": {
     "opcode": "operator_add",
     "inputs": {
-      "OPERAND1": {"variable": "x"},
-      "OPERAND2": {"literal": 5}
+      "OPERAND1": { "variable": "x" },
+      "OPERAND2": { "literal": 5 }
     },
     "isReporter": true
   }
@@ -84,6 +91,7 @@ Act as expressions, returning values to the stack:
 ```
 
 **Node Properties:**
+
 - `opcode` (required): The operation to perform
 - `next` (optional): ID of the next node in the execution chain
 - `inputs` (optional): Dictionary of input parameters
@@ -105,25 +113,25 @@ LexFlow uses an object-based encoding system for node inputs:
 
 ### Input Types
 
-| Type Key | Description | Example |
-|----------|-------------|---------|
-| `literal` | Direct value (string, number, boolean) | `{"literal": "Hello"}` |
-| `node` | Reference to a reporter node | `{"node": "calculator"}` |
-| `variable` | Reference to a variable by name | `{"variable": "counter"}` |
-| `branch` | Reference to a node chain | `{"branch": "loop_body"}` |
-| `workflow_call` | Call to another workflow | `{"workflow_call": "helper"}` |
+| Type Key        | Description                            | Example                       |
+| --------------- | -------------------------------------- | ----------------------------- |
+| `literal`       | Direct value (string, number, boolean) | `{"literal": "Hello"}`        |
+| `node`          | Reference to a reporter node           | `{"node": "calculator"}`      |
+| `variable`      | Reference to a variable by name        | `{"variable": "counter"}`     |
+| `branch`        | Reference to a node chain              | `{"branch": "loop_body"}`     |
+| `workflow_call` | Call to another workflow               | `{"workflow_call": "helper"}` |
 
 ### Examples
 
 ```json
 {
   "inputs": {
-    "STRING": {"literal": "Hello World"},           // Literal string
-    "NUMBER": {"literal": 42},                      // Literal number
-    "COUNTER": {"variable": "counter"},             // Variable reference
-    "RESULT": {"node": "calculator_node"},          // Reporter node reference
-    "LOOP_BODY": {"branch": "loop_start"},          // Branch to node chain
-    "HELPER": {"workflow_call": "helper_workflow"}  // Workflow call
+    "STRING": { "literal": "Hello World" }, // Literal string
+    "NUMBER": { "literal": 42 }, // Literal number
+    "COUNTER": { "variable": "counter" }, // Variable reference
+    "RESULT": { "node": "calculator_node" }, // Reporter node reference
+    "LOOP_BODY": { "branch": "loop_start" }, // Branch to node chain
+    "HELPER": { "workflow_call": "helper_workflow" } // Workflow call
   }
 }
 ```
@@ -143,12 +151,14 @@ Variables are defined at the workflow level using direct name-value pairs:
 ```
 
 **Scoping Rules:**
+
 - Each workflow has its own variable space
 - Variables are referenced by name
 - Workflow calls create new variable scopes
 - Local variables shadow parent workflow variables
 
 **Usage:**
+
 - To reference a variable name as a literal: `{"literal": "variable_name"}`
 - To reference a variable's value: `{"variable": "variable_name"}`
 
@@ -163,12 +173,12 @@ Nodes chain together using the `next` property:
   "first": {
     "opcode": "io_print",
     "next": "second",
-    "inputs": { "STRING": {"literal": "First\n"} }
+    "inputs": { "STRING": { "literal": "First\n" } }
   },
   "second": {
     "opcode": "io_print",
     "next": null,
-    "inputs": { "STRING": {"literal": "Second\n"} }
+    "inputs": { "STRING": { "literal": "Second\n" } }
   }
 }
 ```
@@ -180,16 +190,16 @@ Nodes chain together using the `next` property:
   "check": {
     "opcode": "control_if_else",
     "inputs": {
-      "CONDITION": {"node": "is_valid"},
-      "BRANCH1": {"branch": "true_path"},
-      "BRANCH2": {"branch": "false_path"}
+      "CONDITION": { "node": "is_valid" },
+      "BRANCH1": { "branch": "true_path" },
+      "BRANCH2": { "branch": "false_path" }
     }
   },
   "is_valid": {
     "opcode": "operator_equals",
     "inputs": {
-      "OPERAND1": {"variable": "x"},
-      "OPERAND2": {"literal": 10}
+      "OPERAND1": { "variable": "x" },
+      "OPERAND2": { "literal": 10 }
     },
     "isReporter": true
   }
@@ -203,15 +213,15 @@ Nodes chain together using the `next` property:
   "loop": {
     "opcode": "control_while",
     "inputs": {
-      "CONDITION": {"node": "keep_running"},
-      "SUBSTACK": {"branch": "loop_body"}
+      "CONDITION": { "node": "keep_running" },
+      "SUBSTACK": { "branch": "loop_body" }
     }
   },
   "keep_running": {
     "opcode": "operator_less_than",
     "inputs": {
-      "OPERAND1": {"variable": "counter"},
-      "OPERAND2": {"literal": 10}
+      "OPERAND1": { "variable": "counter" },
+      "OPERAND2": { "literal": 10 }
     },
     "isReporter": true
   }
@@ -226,9 +236,9 @@ Nodes chain together using the `next` property:
     "opcode": "workflow_call",
     "next": "process_result",
     "inputs": {
-      "WORKFLOW": {"literal": "helper_function"},
-      "ARG1": {"variable": "x"},
-      "ARG2": {"literal": 42}
+      "WORKFLOW": { "literal": "helper_function" },
+      "ARG1": { "variable": "x" },
+      "ARG2": { "literal": 42 }
     }
   }
 }
@@ -239,11 +249,111 @@ Nodes chain together using the `next` property:
   "return_value": {
     "opcode": "workflow_return",
     "inputs": {
-      "VALUE": {"node": "result_calculator"}
+      "VALUE": { "node": "result_calculator" }
     }
   }
 }
 ```
+
+### Exception Handling (Try-Catch-Finally)
+
+LexFlow provides native exception handling using Python's built-in exception system.
+
+#### Basic Try-Catch
+
+```json
+{
+  "try_divide": {
+    "opcode": "control_try",
+    "next": "after_try",
+    "inputs": {
+      "TRY": { "branch": "attempt_operation" },
+      "CATCH1": {
+        "exception_type": "ZeroDivisionError",
+        "var": "error",
+        "body": { "branch": "handle_error" }
+      }
+    }
+  }
+}
+```
+
+#### Multiple Catch Handlers
+
+```json
+{
+  "multi_catch": {
+    "opcode": "control_try",
+    "inputs": {
+      "TRY": { "branch": "risky_code" },
+      "CATCH1": {
+        "exception_type": "ValueError",
+        "var": "err",
+        "body": { "branch": "handle_value_error" }
+      },
+      "CATCH2": {
+        "exception_type": "TypeError",
+        "var": "err",
+        "body": { "branch": "handle_type_error" }
+      },
+      "CATCH3": {
+        "exception_type": null,
+        "var": "err",
+        "body": { "branch": "handle_any" }
+      }
+    }
+  }
+}
+```
+
+#### Try-Finally (Cleanup)
+
+```json
+{
+  "with_cleanup": {
+    "opcode": "control_try",
+    "inputs": {
+      "TRY": { "branch": "do_work" },
+      "FINALLY": { "branch": "cleanup" }
+    }
+  }
+}
+```
+
+#### Throwing Exceptions
+
+**Using control_throw statement:**
+
+```json
+{
+  "throw_error": {
+    "opcode": "control_throw",
+    "inputs": {
+      "VALUE": { "literal": "Custom error message" }
+    }
+  }
+}
+```
+
+**Using throw opcodes:**
+
+```json
+{
+  "throw_specific": {
+    "opcode": "throw_value_error",
+    "next": "unreachable",
+    "inputs": {
+      "message": { "literal": "Invalid input" }
+    }
+  }
+}
+```
+
+**Exception Variable Scope:**
+
+- Variables set by `var` in catch handlers persist for the entire workflow
+- They behave like regular workflow variables
+- Can be overwritten by subsequent catch handlers
 
 ## Execution Model
 
@@ -258,6 +368,7 @@ Nodes chain together using the `next` property:
 ### Stack-Based Operations
 
 All opcodes use a data stack for parameter passing:
+
 - Reporter nodes push results onto the stack
 - Statement nodes pop parameters from the stack as needed
 - This enables expression composition and nested operations
@@ -265,6 +376,7 @@ All opcodes use a data stack for parameter passing:
 ### Async-Native
 
 The entire execution pipeline is async:
+
 - All opcode execution is async by default
 - Supports I/O operations without blocking
 - Natural integration with AI APIs and external services
@@ -293,7 +405,7 @@ The entire execution pipeline is async:
           "opcode": "io_print",
           "next": null,
           "inputs": {
-            "STRING": {"literal": "Hello, World!\n"}
+            "STRING": { "literal": "Hello, World!\n" }
           }
         }
       }
@@ -327,14 +439,14 @@ The entire execution pipeline is async:
           "opcode": "operator_add",
           "next": "return_result",
           "inputs": {
-            "OPERAND1": {"variable": "x"},
-            "OPERAND2": {"variable": "y"}
+            "OPERAND1": { "variable": "x" },
+            "OPERAND2": { "variable": "y" }
           }
         },
         "return_result": {
           "opcode": "workflow_return",
           "inputs": {
-            "VALUE": {"node": "calculate"}
+            "VALUE": { "node": "calculate" }
           }
         }
       }
@@ -348,11 +460,13 @@ The entire execution pipeline is async:
 LexFlow supports both JSON and YAML formats:
 
 ### JSON
+
 ```bash
 lexflow workflow.json
 ```
 
 ### YAML
+
 ```bash
 lexflow workflow.yaml
 ```

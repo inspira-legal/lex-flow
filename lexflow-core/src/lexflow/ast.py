@@ -81,8 +81,30 @@ class OpStmt(BaseModel):
     args: list[Expression]
 
 
+class Catch(BaseModel):
+    """Catch clause with optional exception type and variable binding."""
+
+    exception_type: Optional[str] = None  # None = catch all
+    var_name: Optional[str] = None  # Variable to bind exception message to
+    body: "Statement"
+
+
+class Try(BaseModel):
+    """Try-catch-finally statement."""
+
+    body: "Statement"
+    handlers: list[Catch]
+    finally_: Optional["Statement"] = None
+
+
+class Throw(BaseModel):
+    """Throw an exception."""
+
+    value: Expression  # Evaluates to error message/exception
+
+
 # Union type for all statements
-Statement = Assign | Block | If | While | Return | ExprStmt | OpStmt
+Statement = Assign | Block | If | While | Return | ExprStmt | OpStmt | Try | Throw
 
 
 # ============ Top Level ============
@@ -107,3 +129,5 @@ class Program(BaseModel):
 Block.model_rebuild()
 If.model_rebuild()
 While.model_rebuild()
+Try.model_rebuild()
+Catch.model_rebuild()

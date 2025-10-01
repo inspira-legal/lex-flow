@@ -17,7 +17,7 @@
           "opcode": "io_print",
           "next": null,
           "inputs": {
-            "STRING": {"literal": "Goodbye from JSON file!\n"}
+            "STRING": { "literal": "Goodbye from JSON file!\n" }
           }
         }
       }

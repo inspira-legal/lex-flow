@@ -17,7 +17,7 @@
           "opcode": "io_print",
           "next": null,
           "inputs": {
-            "STRING": {"literal": "No return needed!\n"}
+            "STRING": { "literal": "No return needed!\n" }
           }
         }
       }

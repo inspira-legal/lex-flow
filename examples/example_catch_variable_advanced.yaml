@@ -1,0 +1,140 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      error_log: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_intro
+        inputs: {}
+
+      print_intro:
+        opcode: io_print
+        next: test_error_uses
+        inputs:
+          STRING:
+            literal: "=== Advanced Exception Variable Usage ===\n\n"
+
+      test_error_uses:
+        opcode: control_try
+        next: print_log
+        inputs:
+          TRY:
+            branch: cause_error
+          CATCH1:
+            exception_type: "ValueError"
+            var: "error_msg"
+            body:
+              branch: handle_with_variable
+
+      cause_error:
+        opcode: throw_value_error
+        next: null
+        inputs:
+          message:
+            literal: "Invalid input detected"
+
+      # Use 1: Print the error directly
+      handle_with_variable:
+        opcode: io_print
+        next: print_error_direct
+        inputs:
+          STRING:
+            literal: "1. Direct print: "
+
+      print_error_direct:
+        opcode: io_print
+        next: store_in_variable
+        inputs:
+          STRING:
+            variable: error_msg
+
+      # Use 2: Store error in another variable
+      store_in_variable:
+        opcode: data_set_variable_to
+        next: print_stored
+        inputs:
+          VARIABLE:
+            literal: error_log
+          VALUE:
+            variable: error_msg
+
+      print_stored:
+        opcode: io_print
+        next: print_stored_value
+        inputs:
+          STRING:
+            literal: "\n2. Stored in variable: "
+
+      print_stored_value:
+        opcode: io_print
+        next: check_error_length
+        inputs:
+          STRING:
+            variable: error_log
+
+      # Use 3: Use in expressions (check string length)
+      check_error_length:
+        opcode: io_print
+        next: print_length
+        inputs:
+          STRING:
+            literal: "\n3. Error message length: "
+
+      print_length:
+        opcode: io_print
+        next: use_in_condition
+        inputs:
+          STRING:
+            node: get_length
+
+      get_length:
+        opcode: string_length
+        inputs:
+          text:
+            variable: error_msg
+        isReporter: true
+
+      # Use 4: Use in conditions
+      use_in_condition:
+        opcode: control_if_else
+        inputs:
+          CONDITION:
+            node: check_contains
+          BRANCH1:
+            branch: error_contains_invalid
+          BRANCH2:
+            branch: error_no_invalid
+
+      check_contains:
+        opcode: string_contains
+        inputs:
+          text:
+            variable: error_msg
+          substring:
+            literal: "Invalid"
+        isReporter: true
+
+      error_contains_invalid:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n4. Error message contains 'Invalid': Yes\n"
+
+      error_no_invalid:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n4. Error message contains 'Invalid': No\n"
+
+      print_log:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n✅ All exception variable uses demonstrated!\n"

@@ -14,14 +14,14 @@
         "load_document": {
           "opcode": "file_read",
           "inputs": {
-            "file_path": {"variable": "doc_path"}
+            "file_path": { "variable": "doc_path" }
           },
           "next": "print_file_data"
         },
         "print_file_data": {
           "opcode": "io_print",
           "inputs": {
-            "value": {"node": "load_document"}
+            "value": { "node": "load_document" }
           }
         }
       }

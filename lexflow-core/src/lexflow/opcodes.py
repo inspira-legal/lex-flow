@@ -372,6 +372,39 @@ class OpcodeRegistry:
             """No operation."""
             pass
 
+        # ============ Exception Operations ============
+        @self.register()
+        async def throw(message: str) -> None:
+            """Throw a runtime error with message."""
+            raise RuntimeError(message)
+
+        @self.register()
+        async def throw_value_error(message: str) -> None:
+            """Throw a ValueError."""
+            raise ValueError(message)
+
+        @self.register()
+        async def throw_type_error(message: str) -> None:
+            """Throw a TypeError."""
+            raise TypeError(message)
+
+        @self.register()
+        async def throw_assertion_error(message: str) -> None:
+            """Throw an AssertionError."""
+            raise AssertionError(message)
+
+        @self.register()
+        async def assert_true(condition: bool, message: str = "Assertion failed") -> None:
+            """Assert condition is true, throw AssertionError otherwise."""
+            if not bool(condition):
+                raise AssertionError(message)
+
+        @self.register()
+        async def assert_equals(left: Any, right: Any, message: str = "Values not equal") -> None:
+            """Assert two values are equal."""
+            if left != right:
+                raise AssertionError(f"{message}: {left} != {right}")
+
         # ============ Special Operations (handled by parser) ============
         @self.register()
         async def data_get_variable(var_name: str) -> None:

@@ -1,0 +1,279 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_intro
+        inputs: {}
+
+      print_intro:
+        opcode: io_print
+        next: test_1
+        inputs:
+          STRING:
+            literal: "=== Testing Exception Propagation Through Workflows ===\n\n"
+
+      # Test 1: Exception thrown in called workflow, caught in caller
+      test_1:
+        opcode: io_print
+        next: try_call_thrower
+        inputs:
+          STRING:
+            literal: "1. Exception in called workflow:\n"
+
+      try_call_thrower:
+        opcode: control_try
+        next: test_2
+        inputs:
+          TRY:
+            branch: call_throwing_workflow
+          CATCH1:
+            exception_type: "ValueError"
+            var: "err"
+            body:
+              branch: caught_from_called_workflow
+
+      call_throwing_workflow:
+        opcode: workflow_call
+        next: should_not_reach_1
+        inputs:
+          WORKFLOW:
+            literal: workflow_that_throws
+
+      should_not_reach_1:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "   ✗ ERROR: Should not reach here!\n"
+
+      caught_from_called_workflow:
+        opcode: io_print
+        next: print_err_1
+        inputs:
+          STRING:
+            literal: "   ✓ Caught exception from called workflow: "
+
+      print_err_1:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            variable: err
+
+      # Test 2: Nested workflow calls with exception
+      test_2:
+        opcode: io_print
+        next: try_call_nested
+        inputs:
+          STRING:
+            literal: "\n\n2. Nested workflow calls with exception:\n"
+
+      try_call_nested:
+        opcode: control_try
+        next: test_3
+        inputs:
+          TRY:
+            branch: call_level1
+          CATCH1:
+            exception_type: "TypeError"
+            var: "nested_err"
+            body:
+              branch: caught_nested
+
+      call_level1:
+        opcode: workflow_call
+        next: should_not_reach_2
+        inputs:
+          WORKFLOW:
+            literal: level1_caller
+
+      should_not_reach_2:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "   ✗ ERROR: Should not reach here!\n"
+
+      caught_nested:
+        opcode: io_print
+        next: print_err_2
+        inputs:
+          STRING:
+            literal: "   ✓ Caught exception from nested workflow: "
+
+      print_err_2:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            variable: nested_err
+
+      # Test 3: Exception with parameters passed
+      test_3:
+        opcode: io_print
+        next: try_with_params
+        inputs:
+          STRING:
+            literal: "\n\n3. Exception in workflow with parameters:\n"
+
+      try_with_params:
+        opcode: control_try
+        next: done
+        inputs:
+          TRY:
+            branch: call_with_params
+          CATCH1:
+            exception_type: "AssertionError"
+            var: "param_err"
+            body:
+              branch: caught_param_error
+
+      call_with_params:
+        opcode: workflow_call
+        next: should_not_reach_3
+        inputs:
+          WORKFLOW:
+            literal: validate_number
+          ARG1:
+            literal: -5
+
+      should_not_reach_3:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "   ✗ ERROR: Should not reach here!\n"
+
+      caught_param_error:
+        opcode: io_print
+        next: print_err_3
+        inputs:
+          STRING:
+            literal: "   ✓ Caught assertion from parameterized workflow: "
+
+      print_err_3:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            variable: param_err
+
+      done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n\n✅ All exception propagation tests passed!\n"
+
+  # Helper workflow that throws an exception
+  - name: workflow_that_throws
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: throw_error
+        inputs: {}
+
+      throw_error:
+        opcode: throw_value_error
+        next: null
+        inputs:
+          message:
+            literal: "Error from called workflow"
+
+  # Nested workflow call: level1 calls level2 which throws
+  - name: level1_caller
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_level1
+        inputs: {}
+
+      print_level1:
+        opcode: io_print
+        next: call_level2
+        inputs:
+          STRING:
+            literal: "   → Level 1 workflow\n"
+
+      call_level2:
+        opcode: workflow_call
+        next: null
+        inputs:
+          WORKFLOW:
+            literal: level2_thrower
+
+  - name: level2_thrower
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_level2
+        inputs: {}
+
+      print_level2:
+        opcode: io_print
+        next: throw_from_level2
+        inputs:
+          STRING:
+            literal: "   → Level 2 workflow\n"
+
+      throw_from_level2:
+        opcode: throw_type_error
+        next: null
+        inputs:
+          message:
+            literal: "Error from nested workflow"
+
+  # Workflow with parameters that validates and throws
+  - name: validate_number
+    interface:
+      inputs: ["num"]
+      outputs: []
+    variables:
+      num: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: validate
+        inputs: {}
+
+      validate:
+        opcode: assert_true
+        next: success
+        inputs:
+          condition:
+            node: is_positive
+          message:
+            literal: "Number must be positive"
+
+      is_positive:
+        opcode: operator_greater_than
+        inputs:
+          left:
+            variable: num
+          right:
+            literal: 0
+        isReporter: true
+
+      success:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "   ✓ Validation passed\n"

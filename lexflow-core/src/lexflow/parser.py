@@ -14,6 +14,9 @@ from .ast import (
     Return,
     ExprStmt,
     OpStmt,
+    Try,
+    Catch,
+    Throw,
     Workflow,
     Program,
     Expression,
@@ -252,6 +255,31 @@ class Parser:
             call_expr = Call(name=workflow_name, args=args)
             return ExprStmt(expr=call_expr)
 
+        elif opcode in ["control_try", "try_catch"]:
+            # Convert to Try statement
+            # Parse try body
+            try_body = self._parse_branch(inputs.get("TRY", {}), all_nodes)
+
+            # Parse catch handlers
+            handlers = []
+            i = 1
+            while f"CATCH{i}" in inputs:
+                catch_input = inputs[f"CATCH{i}"]
+                handlers.append(self._parse_catch_handler(catch_input, all_nodes))
+                i += 1
+
+            # Parse optional finally
+            finally_body = None
+            if "FINALLY" in inputs:
+                finally_body = self._parse_branch(inputs["FINALLY"], all_nodes)
+
+            return Try(body=try_body, handlers=handlers, finally_=finally_body)
+
+        elif opcode == "control_throw":
+            # Convert to Throw statement
+            value_expr = self._parse_input(inputs.get("VALUE", {}), all_nodes)
+            return Throw(value=value_expr)
+
         else:
             # Regular opcode - convert to OpStmt
             args = []
@@ -358,3 +386,12 @@ class Parser:
             return None
 
         return Block(stmts=statements) if len(statements) > 1 else statements[0]
+
+    def _parse_catch_handler(self, catch_input: dict, all_nodes: dict) -> Catch:
+        """Parse a catch handler from input specification."""
+        # Modern format: {"exception_type": "ValueError", "var": "e", "body": {"branch": "catch_start"}}
+        exception_type = catch_input.get("exception_type")
+        var_name = catch_input.get("var")
+        body = self._parse_branch(catch_input.get("body", {}), all_nodes)
+
+        return Catch(exception_type=exception_type, var_name=var_name, body=body)

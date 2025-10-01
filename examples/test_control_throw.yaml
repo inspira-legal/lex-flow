@@ -1,0 +1,73 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_intro
+        inputs: {}
+
+      print_intro:
+        opcode: io_print
+        next: test_control_throw
+        inputs:
+          STRING:
+            literal: "=== Testing control_throw Statement ===\n\n"
+
+      # Test control_throw which creates a Throw AST node
+      test_control_throw:
+        opcode: control_try
+        next: print_done
+        inputs:
+          TRY:
+            branch: do_throw
+          CATCH1:
+            exception_type: "RuntimeError"
+            var: "error_msg"
+            body:
+              branch: handle_error
+
+      do_throw:
+        opcode: control_throw
+        next: should_not_see
+        inputs:
+          VALUE:
+            literal: "Custom error message"
+
+      should_not_see:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "✗ ERROR: Should not reach here after throw!\n"
+
+      handle_error:
+        opcode: io_print
+        next: print_error_msg
+        inputs:
+          STRING:
+            literal: "✓ Caught RuntimeError: "
+
+      print_error_msg:
+        opcode: io_print
+        next: print_newline
+        inputs:
+          STRING:
+            variable: error_msg
+
+      print_newline:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n"
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n✅ control_throw test passed!\n"

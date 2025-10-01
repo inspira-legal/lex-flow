@@ -1,0 +1,135 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_intro
+        inputs: {}
+
+      print_intro:
+        opcode: io_print
+        next: test_value_error
+        inputs:
+          STRING:
+            literal: "=== Testing Multiple Catch Handlers ===\n\n"
+
+      # Test 1: ValueError should be caught by first handler
+      test_value_error:
+        opcode: control_try
+        next: test_type_error
+        inputs:
+          TRY:
+            branch: throw_value_error
+          CATCH1:
+            exception_type: "ValueError"
+            var: "e"
+            body:
+              branch: handle_value_error
+          CATCH2:
+            exception_type: null
+            var: "e"
+            body:
+              branch: handle_catch_all
+
+      throw_value_error:
+        opcode: throw_value_error
+        next: should_not_reach
+        inputs:
+          message:
+            literal: "This is a value error"
+
+      should_not_reach:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "ERROR: Should not reach here\n"
+
+      handle_value_error:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "✓ Caught ValueError in specific handler\n"
+
+      # Test 2: TypeError should be caught by second handler
+      test_type_error:
+        opcode: control_try
+        next: test_catch_all
+        inputs:
+          TRY:
+            branch: throw_type_error
+          CATCH1:
+            exception_type: "ValueError"
+            var: "e"
+            body:
+              branch: wrong_handler
+          CATCH2:
+            exception_type: "TypeError"
+            var: "e"
+            body:
+              branch: handle_type_error
+
+      throw_type_error:
+        opcode: throw_type_error
+        next: null
+        inputs:
+          message:
+            literal: "This is a type error"
+
+      handle_type_error:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "✓ Caught TypeError in specific handler\n"
+
+      wrong_handler:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "✗ ERROR: Wrong handler executed!\n"
+
+      # Test 3: RuntimeError should be caught by catch-all
+      test_catch_all:
+        opcode: control_try
+        next: print_done
+        inputs:
+          TRY:
+            branch: throw_runtime_error
+          CATCH1:
+            exception_type: "ValueError"
+            var: "e"
+            body:
+              branch: wrong_handler
+          CATCH2:
+            exception_type: null
+            var: "e"
+            body:
+              branch: handle_catch_all
+
+      throw_runtime_error:
+        opcode: throw
+        next: null
+        inputs:
+          message:
+            literal: "This is a runtime error"
+
+      handle_catch_all:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "✓ Caught exception in catch-all handler\n"
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n✅ Multiple catch handlers test passed!\n"
