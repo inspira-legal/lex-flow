@@ -4,15 +4,17 @@ from .evaluator import Evaluator
 from .executor import Executor
 from .opcodes import OpcodeRegistry
 from .workflows import WorkflowManager
-from typing import Any
+from contextlib import redirect_stdout
+from typing import Any, Optional, TextIO
 
 
 class Engine:
     """Simple, clean engine."""
 
-    def __init__(self, program: Program):
+    def __init__(self, program: Program, output: Optional[TextIO] = None):
         self.program = program
         self.runtime = Runtime(program)
+        self.output = output
 
         # Create components
         self.evaluator = Evaluator(self.runtime)
@@ -28,7 +30,15 @@ class Engine:
         self.executor.opcodes = self.opcodes
 
     async def run(self) -> Any:
-        """Run program to completion."""
+        """Run program to completion with optional output redirection."""
+        if self.output:
+            with redirect_stdout(self.output):
+                return await self._run_internal()
+        else:
+            return await self._run_internal()
+
+    async def _run_internal(self) -> Any:
+        """Internal execution logic."""
         # Execute main workflow body
         await self.executor.exec(self.program.main.body)
 

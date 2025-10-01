@@ -18,6 +18,7 @@ Examples:
   lexflow main.json --include util.json lib.yaml    # Include multiple files (JSON/YAML)
   lexflow workflow.json --verbose                   # Verbose output
   lexflow workflow.json --validate-only             # Validate without executing
+  lexflow workflow.json --output-file output.txt    # Redirect output to file
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -48,6 +49,13 @@ Examples:
         "--validate-only",
         action="store_true",
         help="Only validate workflow without executing",
+    )
+    parser.add_argument(
+        "--output-file",
+        "-o",
+        dest="output_file",
+        metavar="FILE",
+        help="Redirect workflow output to file instead of stdout",
     )
 
     return parser
@@ -113,13 +121,26 @@ async def main():
         if args.verbose:
             print_info("Starting execution...")
 
-        engine = Engine(program)
-        result = await engine.run()
+        # Handle output redirection
+        output_file = None
+        if args.output_file:
+            if args.verbose:
+                print_info(f"Redirecting output to: {args.output_file}")
+            output_file = open(args.output_file, 'w')
 
-        if args.verbose:
-            print_success("Execution completed")
-            if result is not None:
-                print_info(f"Result: {result}")
+        try:
+            engine = Engine(program, output=output_file)
+            result = await engine.run()
+
+            if args.verbose:
+                print_success("Execution completed")
+                if result is not None:
+                    print_info(f"Result: {result}")
+        finally:
+            if output_file:
+                output_file.close()
+                if args.verbose:
+                    print_success(f"Output written to: {args.output_file}")
 
     except KeyboardInterrupt:
         print_info("\nExecution interrupted by user")
