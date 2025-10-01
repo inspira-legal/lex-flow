@@ -35,6 +35,95 @@ class Parser:
         data = self._load_file(file_path)
         return self.parse_json(data)
 
+    def parse_dict(self, data: dict) -> Program:
+        """Parse a dictionary directly into a Program.
+
+        Args:
+            data: Dictionary containing workflow definition (same structure as JSON/YAML files)
+
+        Returns:
+            Program: Parsed program ready for execution
+
+        Example:
+            >>> workflow_data = {
+            ...     "workflows": [
+            ...         {
+            ...             "name": "main",
+            ...             "interface": {"inputs": ["name"], "outputs": []},
+            ...             "variables": {"name": "World"},
+            ...             "nodes": {...}
+            ...         }
+            ...     ]
+            ... }
+            >>> parser = Parser()
+            >>> program = parser.parse_dict(workflow_data)
+        """
+        return self.parse_json(data)
+
+    def parse_dicts(self, main_data: dict, include_data: list[dict] = None) -> Program:
+        """Parse multiple dictionaries (main + includes) into a single Program.
+
+        Args:
+            main_data: Main workflow dictionary - its 'main' workflow will be executed
+            include_data: List of additional workflow dictionaries - all their workflows
+                         (including 'main') become callable external workflows
+
+        Returns:
+            Program: Merged program with main workflow and externals
+
+        Example:
+            >>> main = {"workflows": [{"name": "main", ...}]}
+            >>> helpers = {"workflows": [{"name": "helper1", ...}, {"name": "helper2", ...}]}
+            >>> parser = Parser()
+            >>> program = parser.parse_dicts(main, [helpers])
+        """
+        include_data = include_data or []
+
+        # Parse main workflows
+        main_workflows = main_data.get("workflows", [])
+        if not main_workflows:
+            raise ValueError("No workflows found in main data")
+
+        # Find the main workflow
+        main_workflow = None
+        external_workflows = {}
+
+        for wf_data in main_workflows:
+            workflow = self._parse_workflow(wf_data)
+            if workflow.name == "main":
+                main_workflow = workflow
+            else:
+                external_workflows[workflow.name] = workflow
+
+        if not main_workflow:
+            raise ValueError("No 'main' workflow found in main data")
+
+        # Parse included dictionaries - all workflows become externals
+        for idx, include_dict in enumerate(include_data):
+            workflows_data = include_dict.get("workflows", [])
+
+            if not workflows_data:
+                raise ValueError(f"No workflows found in include data at index {idx}")
+
+            for wf_data in workflows_data:
+                workflow = self._parse_workflow(wf_data)
+
+                # Check for name conflicts
+                if workflow.name in external_workflows:
+                    raise ValueError(
+                        f"Duplicate workflow name '{workflow.name}' in include data. "
+                        f"Already defined in another workflow."
+                    )
+
+                external_workflows[workflow.name] = workflow
+
+        # Extract global variables from main workflow
+        globals_dict = main_workflow.locals.copy()
+
+        return Program(
+            globals=globals_dict, externals=external_workflows, main=main_workflow
+        )
+
     def parse_files(self, main_file: str, include_files: list[str] = None) -> Program:
         """Parse multiple workflow files and merge them into a single Program.
 

@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -56,6 +57,14 @@ Examples:
         dest="output_file",
         metavar="FILE",
         help="Redirect workflow output to file instead of stdout",
+    )
+    parser.add_argument(
+        "--input",
+        "-i",
+        dest="inputs",
+        action="append",
+        metavar="KEY=VALUE",
+        help="Input parameters for main workflow (can be used multiple times). Values are parsed as JSON when possible (e.g., --input age=30 --input enabled=true)",
     )
 
     return parser
@@ -117,6 +126,27 @@ async def main():
             print_success("Workflow is valid!")
             return
 
+        # Parse input parameters
+        inputs_dict = {}
+        if args.inputs:
+            for input_str in args.inputs:
+                if "=" not in input_str:
+                    print_error(f"Invalid input format: {input_str}. Expected KEY=VALUE")
+                    sys.exit(1)
+
+                key, value = input_str.split("=", 1)
+
+                # Try to parse value as JSON for automatic type conversion
+                # This allows: age=30 -> int, enabled=true -> bool, tags='["a","b"]' -> list
+                try:
+                    inputs_dict[key] = json.loads(value)
+                except json.JSONDecodeError:
+                    # If JSON parsing fails, keep as string
+                    inputs_dict[key] = value
+
+            if args.verbose:
+                print_info(f"Input parameters: {inputs_dict}")
+
         # Create and run engine
         if args.verbose:
             print_info("Starting execution...")
@@ -130,7 +160,7 @@ async def main():
 
         try:
             engine = Engine(program, output=output_file)
-            result = await engine.run()
+            result = await engine.run(inputs=inputs_dict if inputs_dict else None)
 
             if args.verbose:
                 print_success("Execution completed")

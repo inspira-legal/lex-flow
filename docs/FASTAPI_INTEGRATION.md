@@ -21,8 +21,8 @@ from typing import Optional, Any
 import asyncio
 import io
 from pathlib import Path
-import tempfile
 import json
+import yaml
 
 from lexflow import Parser, Engine
 
@@ -62,43 +62,41 @@ async def execute_workflow(request: WorkflowExecuteRequest):
     Execute a LexFlow workflow from JSON or YAML content.
 
     Args:
-        request: WorkflowExecuteRequest containing workflow content and parameters
+        request: WorkflowExecuteRequest containing workflow content, parameters, and inputs
 
     Returns:
         WorkflowExecuteResponse with execution results and captured output
     """
     try:
-        # Create temporary file for workflow content
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            f.write(request.content)
-            temp_path = Path(f.name)
+        # Parse workflow content directly (no temp files needed!)
+        parser = Parser()
 
+        # Try parsing as JSON first, fallback to YAML
         try:
-            # Parse workflow
-            parser = Parser()
-            program = parser.parse_file(str(temp_path))
+            workflow_data = json.loads(request.content)
+        except json.JSONDecodeError:
+            workflow_data = yaml.safe_load(request.content)
 
-            # Capture output using StringIO
-            output_buffer = io.StringIO()
+        # Parse dictionary directly into program
+        program = parser.parse_dict(workflow_data)
 
-            # Create engine with output redirection
-            engine = Engine(program, output=output_buffer)
+        # Capture output using StringIO
+        output_buffer = io.StringIO()
 
-            # Execute workflow
-            result = await engine.run()
+        # Create engine with output redirection
+        engine = Engine(program, output=output_buffer)
 
-            # Get captured output
-            captured_output = output_buffer.getvalue()
+        # Execute workflow with inputs
+        result = await engine.run(inputs=request.inputs if request.inputs else None)
 
-            return WorkflowExecuteResponse(
-                success=True,
-                result=result,
-                output=captured_output
-            )
+        # Get captured output
+        captured_output = output_buffer.getvalue()
 
-        finally:
-            # Cleanup temp file
-            temp_path.unlink(missing_ok=True)
+        return WorkflowExecuteResponse(
+            success=True,
+            result=result,
+            output=captured_output
+        )
 
     except Exception as e:
         return WorkflowExecuteResponse(
@@ -119,28 +117,27 @@ async def validate_workflow(request: WorkflowValidateRequest):
         WorkflowValidateResponse with validation results
     """
     try:
-        # Create temporary file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            f.write(request.content)
-            temp_path = Path(f.name)
+        # Parse workflow content directly (no temp files needed!)
+        parser = Parser()
 
+        # Try parsing as JSON first, fallback to YAML
         try:
-            # Parse and validate
-            parser = Parser()
-            program = parser.parse_file(str(temp_path))
+            workflow_data = json.loads(request.content)
+        except json.JSONDecodeError:
+            workflow_data = yaml.safe_load(request.content)
 
-            # Extract workflow names
-            workflow_names = [program.main.name]
-            if program.externals:
-                workflow_names.extend(program.externals.keys())
+        # Parse dictionary directly
+        program = parser.parse_dict(workflow_data)
 
-            return WorkflowValidateResponse(
-                valid=True,
-                workflows=workflow_names
-            )
+        # Extract workflow names
+        workflow_names = [program.main.name]
+        if program.externals:
+            workflow_names.extend(program.externals.keys())
 
-        finally:
-            temp_path.unlink(missing_ok=True)
+        return WorkflowValidateResponse(
+            valid=True,
+            workflows=workflow_names
+        )
 
     except Exception as e:
         return WorkflowValidateResponse(
@@ -229,19 +226,24 @@ LexFlow automatically captures all workflow output (from `io_print` opcodes) whe
 ```python
 # In the execute_workflow endpoint:
 
-# 1. Create a StringIO buffer
+# 1. Parse workflow content directly (no temp files!)
+parser = Parser()
+workflow_data = json.loads(request.content)  # or yaml.safe_load()
+program = parser.parse_dict(workflow_data)
+
+# 2. Create a StringIO buffer
 output_buffer = io.StringIO()
 
-# 2. Pass it to the Engine
+# 3. Pass it to the Engine
 engine = Engine(program, output=output_buffer)
 
-# 3. Execute the workflow
-result = await engine.run()
+# 4. Execute the workflow with inputs
+result = await engine.run(inputs=request.inputs)
 
-# 4. Get captured output
+# 5. Get captured output
 captured_output = output_buffer.getvalue()
 
-# 5. Return in response
+# 6. Return in response
 return WorkflowExecuteResponse(
     success=True,
     result=result,
@@ -276,6 +278,92 @@ The API response will be:
   "result": null,
   "output": "Processing data...\n",
   "error": null
+}
+```
+
+### Workflow Inputs Example
+
+Workflows can accept input parameters via their `interface.inputs` definition. These are passed through the API request and validated by the engine.
+
+**Workflow Definition:**
+```yaml
+workflows:
+  - name: main
+    interface:
+      inputs: ["name", "age"]
+      outputs: []
+    variables:
+      name: "Guest"    # default values
+      age: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: greet
+      greet:
+        opcode: io_print
+        inputs:
+          STRING:
+            node: greeting_text
+      greeting_text:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Hello, "
+          right:
+            node: name_and_age
+      name_and_age:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: name
+          right:
+            node: age_suffix
+      age_suffix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "! You are "
+          right:
+            node: age_str
+      age_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: age
+```
+
+**API Request:**
+```json
+{
+  "content": "<workflow YAML or JSON>",
+  "inputs": {
+    "name": "Alice",
+    "age": 30
+  }
+}
+```
+
+**API Response:**
+```json
+{
+  "success": true,
+  "result": null,
+  "output": "Hello, Alice! You are 30 years old.\n",
+  "error": null
+}
+```
+
+If invalid parameter names are provided, the engine will return a validation error:
+```json
+{
+  "success": false,
+  "error": "Invalid input parameters: {'invalid_param'}. Main workflow accepts: ['name', 'age']",
+  "result": null,
+  "output": null
 }
 ```
 

@@ -1,0 +1,61 @@
+workflows:
+  - name: main
+    interface:
+      inputs: ["name", "age"]
+      outputs: []
+    variables:
+      name: "Guest"
+      age: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_greeting
+        inputs: {}
+
+      print_greeting:
+        opcode: io_print
+        next: print_age_msg
+        inputs:
+          STRING:
+            node: greeting_text
+
+      greeting_text:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Hello, "
+          right:
+            variable: name
+
+      print_age_msg:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: age_text
+
+      age_text:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "! You are "
+          right:
+            node: age_str
+
+      age_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: age_as_str
+          right:
+            literal: " years old.\n"
+
+      age_as_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: age

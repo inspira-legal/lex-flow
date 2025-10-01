@@ -29,8 +29,37 @@ class Engine:
         self.evaluator.functions = self.workflows
         self.executor.opcodes = self.opcodes
 
-    async def run(self) -> Any:
-        """Run program to completion with optional output redirection."""
+    async def run(self, inputs: Optional[dict[str, Any]] = None) -> Any:
+        """Run program to completion with optional output redirection and inputs.
+
+        Args:
+            inputs: Optional dictionary of input parameters for main workflow.
+                   Keys must match the main workflow's interface.inputs parameters.
+
+        Returns:
+            The final result value from the workflow execution
+
+        Raises:
+            ValueError: If input keys don't match main workflow parameters
+
+        Example:
+            >>> engine = Engine(program)
+            >>> result = await engine.run(inputs={"name": "Alice", "age": 30})
+        """
+        # Apply inputs to main workflow if provided
+        if inputs:
+            # Validate that all input keys are valid parameters
+            invalid_keys = set(inputs.keys()) - set(self.program.main.params)
+            if invalid_keys:
+                raise ValueError(
+                    f"Invalid input parameters: {invalid_keys}. "
+                    f"Main workflow accepts: {self.program.main.params}"
+                )
+
+            # Override runtime scope with provided inputs
+            for param_name, value in inputs.items():
+                self.runtime.scope[param_name] = value
+
         if self.output:
             with redirect_stdout(self.output):
                 return await self._run_internal()
