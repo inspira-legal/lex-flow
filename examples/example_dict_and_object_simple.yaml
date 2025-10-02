@@ -1,0 +1,441 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      user_dict: {}
+      person_obj: null
+    nodes:
+      start:
+        opcode: workflow_start
+        next: intro
+        inputs: {}
+
+      intro:
+        opcode: io_print
+        next: test_dict_from_lists
+        inputs:
+          STRING:
+            literal: "=== Dictionary and Object Operations ===\n\n"
+
+      # Test 1: Create dictionary from lists
+      test_dict_from_lists:
+        opcode: io_print
+        next: create_dict_from_lists
+        inputs:
+          STRING:
+            literal: "1. Creating dictionary from lists:\n"
+
+      create_dict_from_lists:
+        opcode: dict_from_lists
+        next: print_dict1
+        isReporter: true
+        inputs:
+          keys:
+            literal: ["name", "age", "role"]
+          values:
+            literal: ["Alice", 30, "engineer"]
+
+      print_dict1:
+        opcode: io_print
+        next: test_dict_set
+        inputs:
+          STRING:
+            node: dict1_str
+
+      dict1_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Created: "
+          right:
+            node: dict1_repr
+
+      dict1_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: create_dict_from_lists
+
+      # Test 2: Add property to dictionary
+      test_dict_set:
+        opcode: io_print
+        next: add_email
+        inputs:
+          STRING:
+            literal: "\n2. Adding properties:\n"
+
+      add_email:
+        opcode: dict_set
+        next: print_with_email
+        isReporter: true
+        inputs:
+          d:
+            node: create_dict_from_lists
+          key:
+            literal: "email"
+          value:
+            literal: "alice@example.com"
+
+      print_with_email:
+        opcode: io_print
+        next: test_dict_get
+        inputs:
+          STRING:
+            node: with_email_str
+
+      with_email_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  After adding email: "
+          right:
+            node: with_email_repr
+
+      with_email_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: add_email
+
+      # Test 3: Get values from dictionary
+      test_dict_get:
+        opcode: io_print
+        next: get_name
+        inputs:
+          STRING:
+            literal: "\n3. Getting values:\n"
+
+      get_name:
+        opcode: dict_get
+        next: print_name
+        isReporter: true
+        inputs:
+          d:
+            node: add_email
+          key:
+            literal: "name"
+
+      print_name:
+        opcode: io_print
+        next: get_missing
+        inputs:
+          STRING:
+            node: name_str
+
+      name_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Name: "
+          right:
+            node: get_name
+
+      get_missing:
+        opcode: dict_get
+        next: print_missing
+        isReporter: true
+        inputs:
+          d:
+            node: add_email
+          key:
+            literal: "phone"
+          default:
+            literal: "N/A"
+
+      print_missing:
+        opcode: io_print
+        next: test_dict_keys
+        inputs:
+          STRING:
+            node: missing_str
+
+      missing_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Phone (with default): "
+          right:
+            node: get_missing
+
+      # Test 4: List dictionary keys
+      test_dict_keys:
+        opcode: io_print
+        next: get_keys
+        inputs:
+          STRING:
+            literal: "\n4. Listing keys:\n"
+
+      get_keys:
+        opcode: dict_keys
+        next: print_keys
+        isReporter: true
+        inputs:
+          d:
+            node: add_email
+
+      print_keys:
+        opcode: io_print
+        next: test_object_create
+        inputs:
+          STRING:
+            node: keys_str
+
+      keys_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Keys: "
+          right:
+            node: keys_repr
+
+      keys_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_keys
+
+      # Test 5: Create object from dictionary
+      test_object_create:
+        opcode: io_print
+        next: dict_to_object
+        inputs:
+          STRING:
+            literal: "\n5. Converting to object:\n"
+
+      dict_to_object:
+        opcode: object_from_dict
+        next: print_object
+        isReporter: true
+        inputs:
+          d:
+            node: add_email
+
+      print_object:
+        opcode: io_print
+        next: test_object_get
+        inputs:
+          STRING:
+            node: obj_str
+
+      obj_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  As object: "
+          right:
+            node: obj_repr
+
+      obj_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: dict_to_object
+
+      # Test 6: Get property from object
+      test_object_get:
+        opcode: io_print
+        next: get_obj_name
+        inputs:
+          STRING:
+            literal: "\n6. Getting object property:\n"
+
+      get_obj_name:
+        opcode: object_get
+        next: print_obj_name
+        isReporter: true
+        inputs:
+          obj:
+            node: dict_to_object
+          key:
+            literal: "role"
+
+      print_obj_name:
+        opcode: io_print
+        next: test_object_set
+        inputs:
+          STRING:
+            node: obj_name_str
+
+      obj_name_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Role: "
+          right:
+            node: get_obj_name
+
+      # Test 7: Set property on object
+      test_object_set:
+        opcode: io_print
+        next: set_verified
+        inputs:
+          STRING:
+            literal: "\n7. Setting object property:\n"
+
+      set_verified:
+        opcode: object_set
+        next: print_updated_obj
+        isReporter: true
+        inputs:
+          obj:
+            node: dict_to_object
+          key:
+            literal: "verified"
+          value:
+            literal: true
+
+      print_updated_obj:
+        opcode: io_print
+        next: test_object_has
+        inputs:
+          STRING:
+            node: updated_obj_str
+
+      updated_obj_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  After adding verified: "
+          right:
+            node: updated_obj_repr
+
+      updated_obj_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: set_verified
+
+      # Test 8: Check if property exists
+      test_object_has:
+        opcode: io_print
+        next: check_has_email
+        inputs:
+          STRING:
+            literal: "\n8. Checking properties:\n"
+
+      check_has_email:
+        opcode: object_has
+        next: print_has_email
+        isReporter: true
+        inputs:
+          obj:
+            node: set_verified
+          key:
+            literal: "email"
+
+      print_has_email:
+        opcode: io_print
+        next: check_has_phone
+        inputs:
+          STRING:
+            node: has_email_str
+
+      has_email_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Has email: "
+          right:
+            node: has_email_repr
+
+      has_email_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: check_has_email
+
+      check_has_phone:
+        opcode: object_has
+        next: print_has_phone
+        isReporter: true
+        inputs:
+          obj:
+            node: set_verified
+          key:
+            literal: "phone"
+
+      print_has_phone:
+        opcode: io_print
+        next: test_object_to_dict
+        inputs:
+          STRING:
+            node: has_phone_str
+
+      has_phone_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Has phone: "
+          right:
+            node: has_phone_repr
+
+      has_phone_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: check_has_phone
+
+      # Test 9: Convert back to dictionary
+      test_object_to_dict:
+        opcode: io_print
+        next: obj_to_dict
+        inputs:
+          STRING:
+            literal: "\n9. Converting back to dictionary:\n"
+
+      obj_to_dict:
+        opcode: object_to_dict
+        next: print_back_to_dict
+        isReporter: true
+        inputs:
+          obj:
+            node: set_verified
+
+      print_back_to_dict:
+        opcode: io_print
+        next: final_message
+        inputs:
+          STRING:
+            node: back_to_dict_str
+
+      back_to_dict_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Back to dict: "
+          right:
+            node: back_to_dict_repr
+
+      back_to_dict_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: obj_to_dict
+
+      final_message:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n=== All tests completed! ===\n"

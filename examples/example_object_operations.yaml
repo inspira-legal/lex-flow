@@ -1,0 +1,491 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: test_intro
+        inputs: {}
+
+      test_intro:
+        opcode: io_print
+        next: set_name
+        inputs:
+          STRING:
+            literal: "=== Object Operations Examples ===\n\n1. Creating objects:\n"
+
+      # Test 1: Create empty object
+      test_object_create:
+        opcode: object_create
+        next: null
+        isReporter: true
+        inputs: {}
+
+      set_name:
+        opcode: object_set
+        next: set_age
+        isReporter: true
+        inputs:
+          obj:
+            node: test_object_create
+          key:
+            literal: "name"
+          value:
+            literal: "Bob"
+
+      set_age:
+        opcode: object_set
+        next: set_active
+        isReporter: true
+        inputs:
+          obj:
+            node: set_name
+          key:
+            literal: "age"
+          value:
+            literal: 25
+
+      set_active:
+        opcode: object_set
+        next: print_person
+        isReporter: true
+        inputs:
+          obj:
+            node: set_age
+          key:
+            literal: "active"
+          value:
+            literal: true
+
+      print_person:
+        opcode: io_print
+        next: test_from_dict
+        inputs:
+          STRING:
+            node: person_str
+
+      person_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Created person object: "
+          right:
+            node: person_repr
+
+      person_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: set_active
+
+      # Test 2: Create from dictionary
+      test_from_dict:
+        opcode: io_print
+        next: create_user_dict
+        inputs:
+          STRING:
+            literal: "\n2. Creating from dictionary:\n"
+
+      create_user_dict:
+        opcode: dict_from_lists
+        next: user_from_dict
+        isReporter: true
+        inputs:
+          keys:
+            literal: ["username", "email", "role"]
+          values:
+            literal: ["alice", "alice@example.com", "admin"]
+
+      user_from_dict:
+        opcode: object_from_dict
+        next: print_user
+        isReporter: true
+        inputs:
+          d:
+            node: create_user_dict
+
+      print_user:
+        opcode: io_print
+        next: test_object_get
+        inputs:
+          STRING:
+            node: user_str
+
+      user_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "User object: "
+          right:
+            node: user_repr
+
+      user_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: user_from_dict
+
+      # Test 3: Get properties
+      test_object_get:
+        opcode: io_print
+        next: get_username
+        inputs:
+          STRING:
+            literal: "\n3. Getting properties:\n"
+
+      get_username:
+        opcode: object_get
+        next: print_username
+        isReporter: true
+        inputs:
+          obj:
+            node: user_from_dict
+          key:
+            literal: "username"
+
+      print_username:
+        opcode: io_print
+        next: get_missing
+        inputs:
+          STRING:
+            node: username_str
+
+      username_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Username: "
+          right:
+            node: get_username
+
+      get_missing:
+        opcode: object_get
+        next: print_missing
+        isReporter: true
+        inputs:
+          obj:
+            node: user_from_dict
+          key:
+            literal: "missing"
+          default:
+            literal: "N/A"
+
+      print_missing:
+        opcode: io_print
+        next: test_object_has
+        inputs:
+          STRING:
+            node: missing_str
+
+      missing_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Missing property (with default): "
+          right:
+            node: get_missing
+
+      # Test 4: Check properties
+      test_object_has:
+        opcode: io_print
+        next: check_has_email
+        inputs:
+          STRING:
+            literal: "\n4. Checking properties:\n"
+
+      check_has_email:
+        opcode: object_has
+        next: print_has_email
+        isReporter: true
+        inputs:
+          obj:
+            node: user_from_dict
+          key:
+            literal: "email"
+
+      print_has_email:
+        opcode: io_print
+        next: check_has_phone
+        inputs:
+          STRING:
+            node: has_email_str
+
+      has_email_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Has email: "
+          right:
+            node: has_email_repr
+
+      has_email_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: check_has_email
+
+      check_has_phone:
+        opcode: object_has
+        next: print_has_phone
+        isReporter: true
+        inputs:
+          obj:
+            node: user_from_dict
+          key:
+            literal: "phone"
+
+      print_has_phone:
+        opcode: io_print
+        next: test_object_keys
+        inputs:
+          STRING:
+            node: has_phone_str
+
+      has_phone_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Has phone: "
+          right:
+            node: has_phone_repr
+
+      has_phone_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: check_has_phone
+
+      # Test 5: List properties
+      test_object_keys:
+        opcode: io_print
+        next: get_user_keys
+        inputs:
+          STRING:
+            literal: "\n5. Listing properties:\n"
+
+      get_user_keys:
+        opcode: object_keys
+        next: print_user_keys
+        isReporter: true
+        inputs:
+          obj:
+            node: user_from_dict
+
+      print_user_keys:
+        opcode: io_print
+        next: test_conversion
+        inputs:
+          STRING:
+            node: keys_str
+
+      keys_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Object properties: "
+          right:
+            node: keys_repr
+
+      keys_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_user_keys
+
+      # Test 6: Convert to dict and back
+      test_conversion:
+        opcode: io_print
+        next: obj_to_dict
+        inputs:
+          STRING:
+            literal: "\n6. Converting between objects and dicts:\n"
+
+      obj_to_dict:
+        opcode: object_to_dict
+        next: print_as_dict
+        isReporter: true
+        inputs:
+          obj:
+            node: user_from_dict
+
+      print_as_dict:
+        opcode: io_print
+        next: modify_dict
+        inputs:
+          STRING:
+            node: as_dict_str
+
+      as_dict_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "As dictionary: "
+          right:
+            node: dict_repr
+
+      dict_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: obj_to_dict
+
+      modify_dict:
+        opcode: dict_set
+        next: dict_to_obj
+        isReporter: true
+        inputs:
+          d:
+            node: obj_to_dict
+          key:
+            literal: "verified"
+          value:
+            literal: true
+
+      dict_to_obj:
+        opcode: object_from_dict
+        next: print_new_obj
+        isReporter: true
+        inputs:
+          d:
+            node: modify_dict
+
+      print_new_obj:
+        opcode: io_print
+        next: test_remove
+        inputs:
+          STRING:
+            node: new_obj_str
+
+      new_obj_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Modified as object: "
+          right:
+            node: new_obj_repr
+
+      new_obj_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: dict_to_obj
+
+      # Test 7: Remove property
+      test_remove:
+        opcode: io_print
+        next: create_temp_obj
+        inputs:
+          STRING:
+            literal: "\n7. Removing properties:\n"
+
+      create_temp_obj:
+        opcode: object_create
+        next: add_temp_props
+        isReporter: true
+        inputs: {}
+
+      add_temp_props:
+        opcode: object_set
+        next: add_more_props
+        isReporter: true
+        inputs:
+          obj:
+            node: create_temp_obj
+          key:
+            literal: "keep"
+          value:
+            literal: "important"
+
+      add_more_props:
+        opcode: object_set
+        next: print_before_remove
+        isReporter: true
+        inputs:
+          obj:
+            node: add_temp_props
+          key:
+            literal: "remove"
+          value:
+            literal: "temporary"
+
+      print_before_remove:
+        opcode: io_print
+        next: remove_prop
+        inputs:
+          STRING:
+            node: before_str
+
+      before_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Before removal: "
+          right:
+            node: before_repr
+
+      before_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: add_more_props
+
+      remove_prop:
+        opcode: object_remove
+        next: print_after_remove
+        isReporter: true
+        inputs:
+          obj:
+            node: add_more_props
+          key:
+            literal: "remove"
+
+      print_after_remove:
+        opcode: io_print
+        next: final_message
+        inputs:
+          STRING:
+            node: after_str
+
+      after_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "After removal: "
+          right:
+            node: after_repr
+
+      after_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: remove_prop
+
+      final_message:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n=== All object tests completed! ===\n"

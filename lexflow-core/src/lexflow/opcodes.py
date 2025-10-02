@@ -1,5 +1,6 @@
-from typing import Any, Callable, get_type_hints
+from typing import Any, Callable, Union, get_type_hints
 from functools import wraps
+from types import SimpleNamespace
 import inspect
 import random
 
@@ -330,6 +331,187 @@ class OpcodeRegistry:
                 return list(range(int(start)))
             return list(range(int(start), int(stop), int(step)))
 
+        # ============ Dictionary Operations ============
+        @self.register()
+        async def dict_create(*args) -> dict:
+            """Create dictionary from key-value pair arguments."""
+            if not args:
+                return {}
+            if len(args) % 2 != 0:
+                raise ValueError(
+                    "dict_create requires even number of arguments (key-value pairs)"
+                )
+
+            result = {}
+            for i in range(0, len(args), 2):
+                result[args[i]] = args[i + 1]
+            return result
+
+        @self.register()
+        async def dict_from_lists(keys: list, values: list) -> dict:
+            """Create dict from parallel lists of keys and values."""
+            return dict(zip(keys, values))
+
+        @self.register()
+        async def dict_set(d: dict, key: Any, value: Any) -> dict:
+            """Set key-value pair (mutates and returns dict for chaining)."""
+            d[key] = value
+            return d
+
+        @self.register()
+        async def dict_get(d: dict, key: Any, default: Any = None) -> Any:
+            """Get value by key with optional default."""
+            return d.get(key, default)
+
+        @self.register()
+        async def dict_pop(d: dict, key: Any, default: Any = None) -> Any:
+            """Remove and return value by key."""
+            return d.pop(key, default)
+
+        @self.register()
+        async def dict_setdefault(d: dict, key: Any, default: Any = None) -> Any:
+            """Set key to default if not present, return value."""
+            return d.setdefault(key, default)
+
+        @self.register()
+        async def dict_update(d: dict, other: dict) -> dict:
+            """Update dict with key-value pairs from other dict."""
+            d.update(other)
+            return d
+
+        @self.register()
+        async def dict_clear(d: dict) -> dict:
+            """Clear all items from dict."""
+            d.clear()
+            return d
+
+        @self.register()
+        async def dict_copy(d: dict) -> dict:
+            """Create a shallow copy of the dict."""
+            return d.copy()
+
+        @self.register()
+        async def dict_keys(d: dict) -> list:
+            """Get list of all keys."""
+            return list(d.keys())
+
+        @self.register()
+        async def dict_values(d: dict) -> list:
+            """Get list of all values."""
+            return list(d.values())
+
+        @self.register()
+        async def dict_items(d: dict) -> list:
+            """Get list of (key, value) tuples."""
+            return list(d.items())
+
+        @self.register()
+        async def dict_contains(d: dict, key: Any) -> bool:
+            """Check if key exists in dict."""
+            return key in d
+
+        @self.register()
+        async def dict_len(d: dict) -> int:
+            """Get number of items in dict."""
+            return len(d)
+
+        @self.register()
+        async def dict_is_empty(d: dict) -> bool:
+            """Check if dict is empty."""
+            return len(d) == 0
+
+        # ============ Object Operations ============
+        @self.register()
+        async def object_create() -> SimpleNamespace:
+            """Create empty object (SimpleNamespace)."""
+            return SimpleNamespace()
+
+        @self.register()
+        async def object_from_dict(d: dict) -> SimpleNamespace:
+            """Create object from dictionary."""
+            return SimpleNamespace(**d)
+
+        @self.register()
+        async def object_get(
+            obj: Union[SimpleNamespace, dict], key: str, default: Any = None
+        ) -> Any:
+            """Get property value with optional default."""
+            if isinstance(obj, SimpleNamespace):
+                return getattr(obj, key, default)
+            elif isinstance(obj, dict):
+                return obj.get(key, default)
+            else:
+                raise TypeError(
+                    f"object_get only works with SimpleNamespace or dict, not {type(obj).__name__}"
+                )
+
+        @self.register()
+        async def object_set(
+            obj: Union[SimpleNamespace, dict], key: str, value: Any
+        ) -> Union[SimpleNamespace, dict]:
+            """Set property value (returns object for chaining)."""
+            if isinstance(obj, SimpleNamespace):
+                setattr(obj, key, value)
+                return obj
+            elif isinstance(obj, dict):
+                obj[key] = value
+                return obj
+            else:
+                raise TypeError(
+                    f"object_set only works with SimpleNamespace or dict, not {type(obj).__name__}"
+                )
+
+        @self.register()
+        async def object_has(obj: Union[SimpleNamespace, dict], key: str) -> bool:
+            """Check if object has property."""
+            if isinstance(obj, SimpleNamespace):
+                return hasattr(obj, key)
+            elif isinstance(obj, dict):
+                return key in obj
+            else:
+                raise TypeError(
+                    f"object_has only works with SimpleNamespace or dict"
+                )
+
+        @self.register()
+        async def object_remove(
+            obj: Union[SimpleNamespace, dict], key: str
+        ) -> Union[SimpleNamespace, dict]:
+            """Remove property (returns object for chaining)."""
+            if isinstance(obj, SimpleNamespace):
+                if hasattr(obj, key):
+                    delattr(obj, key)
+                return obj
+            elif isinstance(obj, dict):
+                obj.pop(key, None)
+                return obj
+            else:
+                raise TypeError(
+                    f"object_remove only works with SimpleNamespace or dict"
+                )
+
+        @self.register()
+        async def object_keys(obj: Union[SimpleNamespace, dict]) -> list:
+            """Get list of all property names."""
+            if isinstance(obj, SimpleNamespace):
+                return [k for k in vars(obj).keys() if not k.startswith("_")]
+            elif isinstance(obj, dict):
+                return list(obj.keys())
+            else:
+                raise TypeError(f"object_keys only works with SimpleNamespace or dict")
+
+        @self.register()
+        async def object_to_dict(obj: Union[SimpleNamespace, dict]) -> dict:
+            """Convert object to dictionary."""
+            if isinstance(obj, SimpleNamespace):
+                return {k: v for k, v in vars(obj).items() if not k.startswith("_")}
+            elif isinstance(obj, dict):
+                return obj.copy()
+            else:
+                raise TypeError(
+                    f"object_to_dict only works with SimpleNamespace or dict"
+                )
+
         # ============ Type Conversions ============
         @self.register("str")
         async def to_string(value: Any) -> str:
@@ -424,3 +606,18 @@ class OpcodeRegistry:
         async def workflow_return(value: Any = None) -> None:
             """Return from workflow - handled by Return statement."""
             raise NotImplementedError("workflow_return should be handled by parser")
+
+
+# Default global registry instance
+default_registry = OpcodeRegistry()
+
+
+def opcode(name: str = None):
+    """Convenience decorator for registering opcodes to the default global registry.
+
+    Usage:
+        @opcode()
+        async def fibonacci(n: int) -> int:
+            return n if n <= 1 else fibonacci(n-1) + fibonacci(n-2)
+    """
+    return default_registry.register(name)

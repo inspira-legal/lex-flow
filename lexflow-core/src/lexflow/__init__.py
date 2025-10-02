@@ -6,7 +6,7 @@ from .ast import Program, Workflow
 from .runtime import Runtime
 from .evaluator import Evaluator
 from .executor import Executor
-from .opcodes import OpcodeRegistry
+from .opcodes import OpcodeRegistry, default_registry, opcode
 from .workflows import WorkflowManager
 
 # Main exports for API users
@@ -19,6 +19,8 @@ __all__ = [
     "Evaluator",
     "Executor",
     "OpcodeRegistry",
+    "default_registry",
+    "opcode",
     "WorkflowManager",
 ]
 

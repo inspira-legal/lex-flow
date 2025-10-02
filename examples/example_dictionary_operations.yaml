@@ -1,0 +1,392 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: test_intro
+        inputs: {}
+
+      test_intro:
+        opcode: io_print
+        next: test_dict_from_lists
+        inputs:
+          STRING:
+            literal: "=== Dictionary Operations Examples ===\n\n1. Creating dictionaries from lists:\n"
+
+      # Test 1: Create from parallel lists
+      test_dict_from_lists:
+        opcode: dict_from_lists
+        next: print_user_dict
+        isReporter: true
+        inputs:
+          keys:
+            literal: ["name", "age", "role"]
+          values:
+            literal: ["Alice", 30, "engineer"]
+
+      print_user_dict:
+        opcode: io_print
+        next: test_dict_operations
+        inputs:
+          STRING:
+            node: user_dict_str
+
+      user_dict_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Created user dict: "
+          right:
+            node: user_dict_repr
+
+      user_dict_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: test_dict_from_lists
+
+      # Test 2: Get and set operations
+      test_dict_operations:
+        opcode: io_print
+        next: get_name
+        inputs:
+          STRING:
+            literal: "\n2. Getting and setting values:\n"
+
+      get_name:
+        opcode: dict_get
+        next: print_name
+        isReporter: true
+        inputs:
+          d:
+            node: test_dict_from_lists
+          key:
+            literal: "name"
+
+      print_name:
+        opcode: io_print
+        next: set_email
+        inputs:
+          STRING:
+            node: name_str
+
+      name_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Name: "
+          right:
+            node: get_name
+
+      set_email:
+        opcode: dict_set
+        next: print_with_email
+        isReporter: true
+        inputs:
+          d:
+            node: test_dict_from_lists
+          key:
+            literal: "email"
+          value:
+            literal: "alice@example.com"
+
+      print_with_email:
+        opcode: io_print
+        next: test_default_value
+        inputs:
+          STRING:
+            node: with_email_str
+
+      with_email_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "After adding email: "
+          right:
+            node: with_email_repr
+
+      with_email_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: set_email
+
+      # Test 3: Get with default
+      test_default_value:
+        opcode: io_print
+        next: get_missing
+        inputs:
+          STRING:
+            literal: "\n3. Getting with default value:\n"
+
+      get_missing:
+        opcode: dict_get
+        next: print_missing
+        isReporter: true
+        inputs:
+          d:
+            node: set_email
+          key:
+            literal: "phone"
+          default:
+            literal: "N/A"
+
+      print_missing:
+        opcode: io_print
+        next: test_dict_merge
+        inputs:
+          STRING:
+            node: missing_str
+
+      missing_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Phone (missing, with default): "
+          right:
+            node: get_missing
+
+      # Test 4: Merge dictionaries
+      test_dict_merge:
+        opcode: io_print
+        next: create_updates
+        inputs:
+          STRING:
+            literal: "\n4. Merging dictionaries:\n"
+
+      create_updates:
+        opcode: dict_from_lists
+        next: merge_dicts
+        isReporter: true
+        inputs:
+          keys:
+            literal: ["role", "department"]
+          values:
+            literal: ["senior engineer", "R&D"]
+
+      merge_dicts:
+        opcode: dict_update
+        next: print_merged
+        isReporter: true
+        inputs:
+          d:
+            node: set_email
+          other:
+            node: create_updates
+
+      print_merged:
+        opcode: io_print
+        next: test_query
+        inputs:
+          STRING:
+            node: merged_str
+
+      merged_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "After merge: "
+          right:
+            node: merged_repr
+
+      merged_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: merge_dicts
+
+      # Test 5: Query operations
+      test_query:
+        opcode: io_print
+        next: get_keys
+        inputs:
+          STRING:
+            literal: "\n5. Querying dictionary:\n"
+
+      get_keys:
+        opcode: dict_keys
+        next: print_keys
+        isReporter: true
+        inputs:
+          d:
+            node: merge_dicts
+
+      print_keys:
+        opcode: io_print
+        next: check_contains
+        inputs:
+          STRING:
+            node: keys_str
+
+      keys_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "All keys: "
+          right:
+            node: keys_repr
+
+      keys_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_keys
+
+      check_contains:
+        opcode: dict_contains
+        next: print_contains
+        isReporter: true
+        inputs:
+          d:
+            node: merge_dicts
+          key:
+            literal: "email"
+
+      print_contains:
+        opcode: io_print
+        next: get_size
+        inputs:
+          STRING:
+            node: contains_str
+
+      contains_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Contains 'email': "
+          right:
+            node: contains_repr
+
+      contains_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: check_contains
+
+      get_size:
+        opcode: dict_len
+        next: print_size
+        isReporter: true
+        inputs:
+          d:
+            node: merge_dicts
+
+      print_size:
+        opcode: io_print
+        next: test_copy
+        inputs:
+          STRING:
+            node: size_str
+
+      size_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Dictionary size: "
+          right:
+            node: size_repr
+
+      size_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_size
+
+      # Test 6: Copy and modify
+      test_copy:
+        opcode: io_print
+        next: copy_dict
+        inputs:
+          STRING:
+            literal: "\n6. Copying and modifying:\n"
+
+      copy_dict:
+        opcode: dict_copy
+        next: modify_copy
+        isReporter: true
+        inputs:
+          d:
+            node: merge_dicts
+
+      modify_copy:
+        opcode: dict_set
+        next: print_both
+        isReporter: true
+        inputs:
+          d:
+            node: copy_dict
+          key:
+            literal: "modified"
+          value:
+            literal: true
+
+      print_both:
+        opcode: io_print
+        next: print_original
+        inputs:
+          STRING:
+            node: copy_str
+
+      copy_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Modified copy: "
+          right:
+            node: copy_repr
+
+      copy_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: modify_copy
+
+      print_original:
+        opcode: io_print
+        next: final_message
+        inputs:
+          STRING:
+            node: orig_str
+
+      orig_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Original unchanged: "
+          right:
+            node: orig_repr
+
+      orig_repr:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: merge_dicts
+
+      final_message:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n=== All dictionary tests completed! ===\n"

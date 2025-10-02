@@ -2,7 +2,7 @@ from .ast import Program
 from .runtime import Runtime
 from .evaluator import Evaluator
 from .executor import Executor
-from .opcodes import OpcodeRegistry
+from .opcodes import OpcodeRegistry, default_registry
 from .workflows import WorkflowManager
 from contextlib import redirect_stdout
 from typing import Any, Optional, TextIO
@@ -11,7 +11,12 @@ from typing import Any, Optional, TextIO
 class Engine:
     """Simple, clean engine."""
 
-    def __init__(self, program: Program, output: Optional[TextIO] = None):
+    def __init__(
+        self,
+        program: Program,
+        output: Optional[TextIO] = None,
+        opcodes: Optional[OpcodeRegistry] = None,
+    ):
         self.program = program
         self.runtime = Runtime(program)
         self.output = output
@@ -21,7 +26,7 @@ class Engine:
         self.executor = Executor(self.runtime, self.evaluator)
 
         # Plugin systems
-        self.opcodes = OpcodeRegistry()
+        self.opcodes = opcodes if opcodes is not None else default_registry
         self.workflows = WorkflowManager(program.externals, self.executor, self.runtime)
 
         # Wire up dependencies

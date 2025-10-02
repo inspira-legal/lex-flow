@@ -217,6 +217,125 @@ inputs:
 # Returns: [1, 3, 5, 7, 9]
 ```
 
+## Dictionary Operations ⭐ NEW
+
+### `dict_create(*args)`
+
+Create dictionary from key-value pair arguments.
+
+```yaml
+opcode: dict_create
+inputs:
+  args:
+    - literal: "name"
+    - literal: "Alice"
+    - literal: "age"
+    - literal: 30
+# Returns: {"name": "Alice", "age": 30}
+```
+
+### `dict_from_lists(keys, values)`
+
+Create dictionary from parallel lists of keys and values.
+
+### `dict_set(d, key, value)`
+
+Set key-value pair (mutates and returns dict for chaining). Supports any hashable key type.
+
+### `dict_get(d, key, default=None)`
+
+Get value by key with optional default.
+
+### `dict_pop(d, key, default=None)`
+
+Remove and return value by key.
+
+### `dict_setdefault(d, key, default=None)`
+
+Set key to default if not present, return value.
+
+### `dict_update(d, other)`
+
+Update dict with key-value pairs from other dict.
+
+### `dict_clear(d)`
+
+Clear all items from dict.
+
+### `dict_copy(d)`
+
+Create a shallow copy of the dict.
+
+### `dict_keys(d)`
+
+Get list of all keys.
+
+### `dict_values(d)`
+
+Get list of all values.
+
+### `dict_items(d)`
+
+Get list of (key, value) tuples.
+
+### `dict_contains(d, key)`
+
+Check if key exists in dict.
+
+### `dict_len(d)`
+
+Get number of items in dict.
+
+### `dict_is_empty(d)`
+
+Check if dict is empty.
+
+## Object Operations ⭐ NEW
+
+Objects use `SimpleNamespace` or dictionaries for safe property access.
+
+### `object_create()`
+
+Create empty object (SimpleNamespace).
+
+### `object_from_dict(d)`
+
+Create object from dictionary.
+
+```yaml
+opcode: object_from_dict
+inputs:
+  d:
+    node: my_dict
+# Creates object with properties from dict
+```
+
+### `object_get(obj, key, default=None)`
+
+Get property value with optional default. Works with SimpleNamespace or dict.
+
+### `object_set(obj, key, value)`
+
+Set property value (mutates and returns object for chaining). Works with SimpleNamespace or dict.
+
+### `object_has(obj, key)`
+
+Check if object has property. Works with SimpleNamespace or dict.
+
+### `object_remove(obj, key)`
+
+Remove property (mutates and returns object for chaining). Works with SimpleNamespace or dict.
+
+### `object_keys(obj)`
+
+Get list of all property names. Works with SimpleNamespace or dict.
+
+### `object_to_dict(obj)`
+
+Convert object to dictionary. Works with SimpleNamespace or dict.
+
+**Security Note**: Object operations only work with SimpleNamespace and dict types for safety. Attempting to use them on arbitrary Python objects will raise a TypeError.
+
 ## Type Conversions
 
 ### `str(value)`
@@ -505,13 +624,39 @@ engine = Engine(program, output=stream)
 
 See `example_custom_opcodes.py` for complete examples.
 
+### Simple Pattern (Recommended)
+
 ```python
-from lexflow.opcodes import OpcodeRegistry
+from lexflow import opcode
 
-registry = OpcodeRegistry()
+@opcode()
+async def fibonacci(n: int) -> int:
+    """Calculate nth Fibonacci number."""
+    if n <= 1:
+        return n
+    a, b = 0, 1
+    for _ in range(2, int(n) + 1):
+        a, b = b, a + b
+    return b
 
-@registry.register()
+# Opcode is now available to all engines automatically
+```
+
+### Advanced Pattern (Custom Registry)
+
+For use cases requiring opcode isolation:
+
+```python
+from lexflow import OpcodeRegistry, Engine
+
+# Create isolated registry
+custom_registry = OpcodeRegistry()
+
+@custom_registry.register()
 async def my_opcode(x: int, y: int = 10) -> int:
     """My custom opcode with optional parameter."""
     return x + y
+
+# Pass to engine
+engine = Engine(program, opcodes=custom_registry)
 ```
