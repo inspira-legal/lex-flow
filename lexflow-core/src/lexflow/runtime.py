@@ -25,7 +25,6 @@ class Runtime:
         for name, value in program.globals.items():
             self.scope[name] = value
 
-    # Stack operations - Pythonic and simple
     def push(self, value: Any):
         self.stack.append(value)
 

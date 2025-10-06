@@ -437,6 +437,27 @@ class Parser:
             else:
                 raise ValueError("Invalid VARIABLE input in data_get_variable")
 
+        # Handle workflow_call as Call expression
+        if opcode in ["workflow_call", "call"]:
+            workflow_name_input = inputs.get("WORKFLOW", {})
+            if (
+                isinstance(workflow_name_input, dict)
+                and "literal" in workflow_name_input
+            ):
+                workflow_name = workflow_name_input["literal"]
+            else:
+                raise ValueError("Invalid WORKFLOW input in workflow_call")
+
+            # Get arguments
+            args = []
+            i = 1
+            while f"ARG{i}" in inputs:
+                arg_expr = self._parse_input(inputs[f"ARG{i}"], all_nodes)
+                args.append(arg_expr)
+                i += 1
+
+            return Call(name=workflow_name, args=args)
+
         # Parse inputs into argument expressions
         args = []
         for param_name, param_input in inputs.items():
