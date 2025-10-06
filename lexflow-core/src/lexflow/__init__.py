@@ -8,6 +8,9 @@ from .evaluator import Evaluator
 from .executor import Executor
 from .opcodes import OpcodeRegistry, default_registry, opcode
 from .workflows import WorkflowManager
+from .opcodes_pydantic_ai import register_pydantic_ai_opcodes
+
+register_pydantic_ai_opcodes()
 
 # Main exports for API users
 __all__ = [

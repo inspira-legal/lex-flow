@@ -439,6 +439,107 @@ Workflow entry point marker (no-op).
 
 No operation.
 
+## AI Operations (Pydantic AI) ⭐ NEW
+
+Requires installation: `pip install lexflow[ai]`
+
+Authentication for Vertex AI:
+- `gcloud auth application-default login`
+- Or set `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+
+### `pydantic_ai_create_vertex_model(model_name, project=None, location=None)`
+
+Create a Google Vertex AI model instance.
+
+```yaml
+opcode: pydantic_ai_create_vertex_model
+inputs:
+  model_name: { literal: "gemini-1.5-flash" }
+  location: { literal: "us-central1" }
+# Returns: GoogleModel instance
+```
+
+**Parameters:**
+- `model_name`: Model name (e.g., "gemini-1.5-flash", "gemini-1.5-pro")
+- `project`: Optional GCP project ID (uses default if not specified)
+- `location`: Optional region (e.g., "us-central1", "asia-east1")
+
+### `pydantic_ai_create_agent(model, instructions='', system_prompt='')`
+
+Create a pydantic_ai Agent with the given model.
+
+```yaml
+opcode: pydantic_ai_create_agent
+inputs:
+  model: { node: vertex_model }
+  instructions: { literal: "You are a helpful assistant. Be concise." }
+# Returns: Agent instance
+```
+
+**Parameters:**
+- `model`: Model instance (from `pydantic_ai_create_vertex_model`)
+- `instructions`: Optional instructions for the agent
+- `system_prompt`: Optional static system prompt
+
+### `pydantic_ai_run_sync(agent, prompt)`
+
+Run agent synchronously with a prompt.
+
+```yaml
+opcode: pydantic_ai_run_sync
+inputs:
+  agent: { node: my_agent }
+  prompt: { literal: "What is 2+2?" }
+# Returns: String output from the agent
+```
+
+**Note:** Synchronous wrapper that may block. For async workflows, use `pydantic_ai_run`.
+
+### `pydantic_ai_run(agent, prompt)`
+
+Run agent asynchronously with a prompt.
+
+```yaml
+opcode: pydantic_ai_run
+inputs:
+  agent: { node: my_agent }
+  prompt: { literal: "Explain quantum computing in one sentence." }
+# Returns: String output from the agent
+```
+
+**Example Workflow:**
+
+```yaml
+create_model:
+  opcode: pydantic_ai_create_vertex_model
+  isReporter: true
+  inputs:
+    model_name: { literal: "gemini-1.5-flash" }
+    location: { literal: "us-central1" }
+
+create_agent:
+  opcode: pydantic_ai_create_agent
+  isReporter: true
+  inputs:
+    model: { node: create_model }
+    instructions: { literal: "Be helpful and concise" }
+
+run_query:
+  opcode: pydantic_ai_run_sync
+  isReporter: true
+  inputs:
+    agent: { node: create_agent }
+    prompt: { literal: "What is the capital of France?" }
+
+print_result:
+  opcode: io_print
+  next: null
+  inputs:
+    STRING: { node: run_query }
+```
+
+See `examples/example_pydantic_ai_vertex.yaml` for a complete example.
+
 ---
 
 ## Legend
@@ -447,7 +548,7 @@ No operation.
 
 ## Total Count
 
-**52 opcodes** available (32 newly added)
+**56 opcodes** available (36 newly added: 32 core + 4 AI opcodes)
 
 ## Usage in Workflows
 

@@ -1,0 +1,165 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: intro
+        inputs: {}
+
+      intro:
+        opcode: io_print
+        next: create_model
+        inputs:
+          STRING:
+            literal: "=== Pydantic AI + Vertex AI Example ===\n\n"
+
+      # Step 1: Create Vertex AI Model
+      create_model:
+        opcode: pydantic_ai_create_vertex_model
+        next: print_model_created
+        isReporter: true
+        inputs:
+          model_name:
+            literal: "gemini-2.5-flash"
+          project:
+            literal: "inspira-development"
+          location:
+            literal: "us-central1"
+
+      print_model_created:
+        opcode: io_print
+        next: create_agent
+        inputs:
+          STRING:
+            literal: "1. Created Vertex AI model: gemini-2.5-flash\n\n"
+
+      # Step 2: Create Agent
+      create_agent:
+        opcode: pydantic_ai_create_agent
+        next: print_agent_created
+        isReporter: true
+        inputs:
+          model:
+            node: create_model
+          instructions:
+            literal: "You are a helpful AI assistant. Be concise and accurate."
+
+      print_agent_created:
+        opcode: io_print
+        next: query_math
+        inputs:
+          STRING:
+            literal: "2. Created AI agent with instructions\n\n"
+
+      # Step 3: Math Query
+      query_math:
+        opcode: io_print
+        next: run_math_query
+        inputs:
+          STRING:
+            literal: "3. Asking: What is 15 * 23?\n"
+
+      run_math_query:
+        opcode: pydantic_ai_run_sync
+        next: print_math_result
+        isReporter: true
+        inputs:
+          agent:
+            node: create_agent
+          prompt:
+            literal: "What is 15 * 23? Just give the number."
+
+      print_math_result:
+        opcode: io_print
+        next: query_capital
+        inputs:
+          STRING:
+            node: math_result_str
+
+      math_result_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "   Answer: "
+          right:
+            node: run_math_query
+
+      # Step 4: Geography Query
+      query_capital:
+        opcode: io_print
+        next: run_capital_query
+        inputs:
+          STRING:
+            literal: "\n4. Asking: What is the capital of France?\n"
+
+      run_capital_query:
+        opcode: pydantic_ai_run_sync
+        next: print_capital_result
+        isReporter: true
+        inputs:
+          agent:
+            node: create_agent
+          prompt:
+            literal: "What is the capital of France? One word only."
+
+      print_capital_result:
+        opcode: io_print
+        next: query_code
+        inputs:
+          STRING:
+            node: capital_result_str
+
+      capital_result_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "   Answer: "
+          right:
+            node: run_capital_query
+
+      # Step 5: Programming Query
+      query_code:
+        opcode: io_print
+        next: run_code_query
+        inputs:
+          STRING:
+            literal: "\n5. Asking: Explain recursion in one sentence\n"
+
+      run_code_query:
+        opcode: pydantic_ai_run_sync
+        next: print_code_result
+        isReporter: true
+        inputs:
+          agent:
+            node: create_agent
+          prompt:
+            literal: "Explain recursion in one sentence."
+
+      print_code_result:
+        opcode: io_print
+        next: final_message
+        inputs:
+          STRING:
+            node: code_result_str
+
+      code_result_str:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "   Answer: "
+          right:
+            node: run_code_query
+
+      final_message:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n=== All queries completed! ===\n"
