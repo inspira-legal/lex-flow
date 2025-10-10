@@ -146,29 +146,29 @@ class OpcodeRegistry:
         async def operator_add(left: Any, right: Any) -> Any:
             """Add two values (numeric or string concatenation)."""
             try:
-                return int(left) + int(right)
+                return left + right
             except (ValueError, TypeError):
                 return str(left) + str(right)
 
         @self.register()
-        async def operator_subtract(left: int, right: int) -> int:
+        async def operator_subtract(left: Any, right: Any) -> Any:
             """Subtract right from left."""
-            return int(left) - int(right)
+            return left - right
 
         @self.register()
-        async def operator_multiply(left: int, right: int) -> int:
+        async def operator_multiply(left: Any, right: Any) -> Any:
             """Multiply two values."""
-            return int(left) * int(right)
+            return left * right
 
         @self.register()
-        async def operator_divide(left: int, right: int) -> int:
-            """Integer division."""
-            return int(left) // int(right)
+        async def operator_divide(left: Any, right: Any) -> Any:
+            """Division (true division)."""
+            return left / right
 
         @self.register()
-        async def operator_modulo(left: int, right: int) -> int:
+        async def operator_modulo(left: Any, right: Any) -> Any:
             """Modulo operation (remainder)."""
-            return int(left) % int(right)
+            return left % right
 
         # ============ Comparison Operators ============
         @self.register()
@@ -188,24 +188,24 @@ class OpcodeRegistry:
                 return left != right
 
         @self.register()
-        async def operator_less_than(left: int, right: int) -> bool:
+        async def operator_less_than(left: Any, right: Any) -> bool:
             """Check if left < right."""
-            return int(left) < int(right)
+            return left < right
 
         @self.register()
-        async def operator_greater_than(left: int, right: int) -> bool:
+        async def operator_greater_than(left: Any, right: Any) -> bool:
             """Check if left > right."""
-            return int(left) > int(right)
+            return left > right
 
         @self.register()
-        async def operator_less_than_or_equals(left: int, right: int) -> bool:
+        async def operator_less_than_or_equals(left: Any, right: Any) -> bool:
             """Check if left <= right."""
-            return int(left) <= int(right)
+            return left <= right
 
         @self.register()
-        async def operator_greater_than_or_equals(left: int, right: int) -> bool:
+        async def operator_greater_than_or_equals(left: Any, right: Any) -> bool:
             """Check if left >= right."""
-            return int(left) >= int(right)
+            return left >= right
 
         # ============ Logical Operators ============
         @self.register()
@@ -230,14 +230,14 @@ class OpcodeRegistry:
             return random.randint(int(min_val), int(max_val))
 
         @self.register()
-        async def math_abs(value: int) -> int:
+        async def math_abs(value: Any) -> Any:
             """Absolute value."""
-            return abs(int(value))
+            return abs(value)
 
         @self.register()
-        async def math_pow(base: int, exponent: int) -> int:
+        async def math_pow(base: Any, exponent: Any) -> Any:
             """Power operation."""
-            return int(base) ** int(exponent)
+            return base**exponent
 
         @self.register()
         async def math_sqrt(value: float) -> float:
@@ -469,9 +469,7 @@ class OpcodeRegistry:
             elif isinstance(obj, dict):
                 return key in obj
             else:
-                raise TypeError(
-                    f"object_has only works with SimpleNamespace or dict"
-                )
+                raise TypeError("object_has only works with SimpleNamespace or dict")
 
         @self.register()
         async def object_remove(
@@ -486,9 +484,7 @@ class OpcodeRegistry:
                 obj.pop(key, None)
                 return obj
             else:
-                raise TypeError(
-                    f"object_remove only works with SimpleNamespace or dict"
-                )
+                raise TypeError("object_remove only works with SimpleNamespace or dict")
 
         @self.register()
         async def object_keys(obj: Union[SimpleNamespace, dict]) -> list:
@@ -498,7 +494,7 @@ class OpcodeRegistry:
             elif isinstance(obj, dict):
                 return list(obj.keys())
             else:
-                raise TypeError(f"object_keys only works with SimpleNamespace or dict")
+                raise TypeError("object_keys only works with SimpleNamespace or dict")
 
         @self.register()
         async def object_to_dict(obj: Union[SimpleNamespace, dict]) -> dict:
@@ -509,7 +505,7 @@ class OpcodeRegistry:
                 return obj.copy()
             else:
                 raise TypeError(
-                    f"object_to_dict only works with SimpleNamespace or dict"
+                    "object_to_dict only works with SimpleNamespace or dict"
                 )
 
         # ============ Type Conversions ============
@@ -576,13 +572,17 @@ class OpcodeRegistry:
             raise AssertionError(message)
 
         @self.register()
-        async def assert_true(condition: bool, message: str = "Assertion failed") -> None:
+        async def assert_true(
+            condition: bool, message: str = "Assertion failed"
+        ) -> None:
             """Assert condition is true, throw AssertionError otherwise."""
             if not bool(condition):
                 raise AssertionError(message)
 
         @self.register()
-        async def assert_equals(left: Any, right: Any, message: str = "Values not equal") -> None:
+        async def assert_equals(
+            left: Any, right: Any, message: str = "Values not equal"
+        ) -> None:
             """Assert two values are equal."""
             if left != right:
                 raise AssertionError(f"{message}: {left} != {right}")
