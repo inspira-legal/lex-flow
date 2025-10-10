@@ -548,7 +548,7 @@ See `examples/example_pydantic_ai_vertex.yaml` for a complete example.
 
 ## Total Count
 
-**56 opcodes** available (36 newly added: 32 core + 4 AI opcodes)
+**76 opcodes** available
 
 ## Usage in Workflows
 

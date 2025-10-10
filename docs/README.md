@@ -29,11 +29,13 @@ Welcome to the LexFlow documentation! This directory contains comprehensive guid
 
 **[OPCODE_REFERENCE.md](OPCODE_REFERENCE.md)** - Opcode quick reference
 
-- All 52 built-in opcodes
+- All 75+ built-in opcodes
 - Input/output operations
 - Arithmetic, comparison, and logical operators
 - Math operations
 - String and list operations
+- Dictionary and object operations
+- AI operations (pydantic-ai integration)
 - Exception opcodes
 - Type conversions
 - Usage examples
@@ -163,11 +165,14 @@ workflows:
 
 ### Operations
 
-✅ 52 built-in opcodes
+✅ 75+ built-in opcodes
 ✅ Arithmetic operations
 ✅ Comparison and logic
 ✅ String manipulation
 ✅ List operations
+✅ Dictionary operations
+✅ Object operations
+✅ AI operations (pydantic-ai)
 ✅ Exception handling
 ✅ Custom opcode support
 
@@ -260,10 +265,15 @@ For questions, issues, or contributions:
 
 ## Version History
 
-### Current Version
+### Current Version (MVP)
 
 - ✅ Exception handling (try-catch-finally)
-- ✅ 52 built-in opcodes
+- ✅ 75+ built-in opcodes
+- ✅ Dictionary and object operations
+- ✅ AI integration (Google Vertex AI via pydantic-ai)
+- ✅ Workflow input parameters
+- ✅ Output redirection and capture
+- ✅ Workflow calls on reporter nodes
 - ✅ JSON and YAML support
 - ✅ Multi-file workflows
 - ✅ Async-native execution

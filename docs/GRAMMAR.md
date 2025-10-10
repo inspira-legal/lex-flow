@@ -183,7 +183,33 @@ Nodes chain together using the `next` property:
 }
 ```
 
+### Conditional (If)
+
+Simple if without else branch:
+
+```json
+{
+  "check": {
+    "opcode": "control_if",
+    "inputs": {
+      "CONDITION": { "node": "is_valid" },
+      "THEN": { "branch": "true_path" }
+    }
+  },
+  "is_valid": {
+    "opcode": "operator_equals",
+    "inputs": {
+      "OPERAND1": { "variable": "x" },
+      "OPERAND2": { "literal": 10 }
+    },
+    "isReporter": true
+  }
+}
+```
+
 ### Conditional (If/Else)
+
+If with else branch:
 
 ```json
 {
@@ -191,8 +217,8 @@ Nodes chain together using the `next` property:
     "opcode": "control_if_else",
     "inputs": {
       "CONDITION": { "node": "is_valid" },
-      "BRANCH1": { "branch": "true_path" },
-      "BRANCH2": { "branch": "false_path" }
+      "THEN": { "branch": "true_path" },
+      "ELSE": { "branch": "false_path" }
     }
   },
   "is_valid": {
@@ -214,7 +240,7 @@ Nodes chain together using the `next` property:
     "opcode": "control_while",
     "inputs": {
       "CONDITION": { "node": "keep_running" },
-      "SUBSTACK": { "branch": "loop_body" }
+      "BODY": { "branch": "loop_body" }
     }
   },
   "keep_running": {
@@ -227,6 +253,83 @@ Nodes chain together using the `next` property:
   }
 }
 ```
+
+### For Loop
+
+Range-based iteration (like Python's `for i in range(...)`):
+
+```json
+{
+  "loop": {
+    "opcode": "control_for",
+    "inputs": {
+      "VAR": { "literal": "i" },
+      "START": { "literal": 0 },
+      "END": { "literal": 10 },
+      "STEP": { "literal": 1 },
+      "BODY": { "branch": "loop_body" }
+    }
+  }
+}
+```
+
+**Parameters:**
+- `VAR`: Loop variable name (literal string)
+- `START`: Starting value (inclusive)
+- `END`: Ending value (exclusive)
+- `STEP`: Optional step value (default: 1)
+- `BODY`: Loop body branch
+
+**Note:** Loop variable persists after loop completion with its last value (Python-like behavior).
+
+### ForEach Loop
+
+Iterate over any iterable (lists, dict keys, etc.):
+
+```json
+{
+  "loop": {
+    "opcode": "control_foreach",
+    "inputs": {
+      "VAR": { "literal": "item" },
+      "ITERABLE": { "variable": "my_list" },
+      "BODY": { "branch": "process_item" }
+    }
+  }
+}
+```
+
+**Parameters:**
+- `VAR`: Variable to bind current item (literal string)
+- `ITERABLE`: List, dict, or any iterable
+- `BODY`: Loop body branch
+
+**Notes:**
+- When iterating over dicts, iterates over keys
+- Loop variable persists after loop completion with its last value (Python-like behavior)
+
+### Fork (Concurrent Execution)
+
+Execute multiple branches concurrently:
+
+```json
+{
+  "parallel": {
+    "opcode": "control_fork",
+    "inputs": {
+      "BRANCH1": { "branch": "task_a" },
+      "BRANCH2": { "branch": "task_b" },
+      "BRANCH3": { "branch": "task_c" }
+    }
+  }
+}
+```
+
+**Parameters:**
+- `BRANCH1`, `BRANCH2`, ..., `BRANCHn`: Branches to execute concurrently
+- All branches run using `asyncio.gather()`
+- If any branch raises an exception, it propagates immediately
+- If any branch returns, the fork returns immediately
 
 ### Workflow Calls and Returns
 
