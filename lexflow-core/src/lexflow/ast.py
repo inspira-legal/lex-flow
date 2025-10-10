@@ -62,10 +62,34 @@ class While(BaseModel):
     body: "Statement"
 
 
-class Return(BaseModel):
-    """Return from function"""
+class For(BaseModel):
+    """For loop: for var in range(start, end, step)"""
 
-    value: Optional[Expression] = None
+    var_name: str
+    start: Expression
+    end: Expression
+    step: Optional[Expression] = None
+    body: "Statement"
+
+
+class ForEach(BaseModel):
+    """ForEach loop: for var in iterable"""
+
+    var_name: str
+    iterable: Expression
+    body: "Statement"
+
+
+class Fork(BaseModel):
+    """Fork: execute branches concurrently"""
+
+    branches: list["Statement"]
+
+
+class Return(BaseModel):
+    """Return from function - supports returning multiple values"""
+
+    values: list[Expression] = []
 
 
 class ExprStmt(BaseModel):
@@ -104,7 +128,7 @@ class Throw(BaseModel):
 
 
 # Union type for all statements
-Statement = Assign | Block | If | While | Return | ExprStmt | OpStmt | Try | Throw
+Statement = Assign | Block | If | While | For | ForEach | Fork | Return | ExprStmt | OpStmt | Try | Throw
 
 
 # ============ Top Level ============
@@ -129,5 +153,8 @@ class Program(BaseModel):
 Block.model_rebuild()
 If.model_rebuild()
 While.model_rebuild()
+For.model_rebuild()
+ForEach.model_rebuild()
+Fork.model_rebuild()
 Try.model_rebuild()
 Catch.model_rebuild()

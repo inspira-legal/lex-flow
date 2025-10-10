@@ -1,6 +1,7 @@
 from typing import Any
 from .runtime import Runtime
 from .ast import Expression, Literal, Call, Opcode, Variable
+from .opcodes import OpcodeRegistry
 
 # ruff: noqa
 
@@ -9,12 +10,13 @@ class Evaluator:
     """Evaluate expressions to values."""
 
     def __init__(self, runtime: Runtime):
-        self.rt = runtime
+        from .workflows import WorkflowManager
 
-        self.unops = {
-            "-": lambda x: -int(x),
-            "not": lambda x: not self._truthy(x),
-        }
+        self.rt = runtime
+        self.opcodes: OpcodeRegistry  # Set by the Engine to avoid circular dependency
+        self.workflows: (
+            WorkflowManager  # Set by the Engine to avoid circular dependency
+        )
 
     async def eval(self, expr: Expression) -> Any:
         """Evaluate expression using pattern matching."""
@@ -27,7 +29,7 @@ class Evaluator:
 
             case Call(name=n, args=args):
                 arg_vals = [await self.eval(a) for a in args]
-                return await self.functions.call(n, arg_vals)
+                return await self.workflows.call(n, arg_vals)
 
             case Opcode(name=n, args=args):
                 arg_vals = [await self.eval(a) for a in args]

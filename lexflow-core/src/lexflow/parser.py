@@ -11,6 +11,9 @@ from .ast import (
     Block,
     If,
     While,
+    For,
+    ForEach,
+    Fork,
     Return,
     ExprStmt,
     OpStmt,
@@ -289,11 +292,21 @@ class Parser:
             return None
 
         elif opcode in ["workflow_return", "return"]:
-            # Convert to Return statement
-            value_expr = None
-            if "VALUE" in inputs:
+            # Convert to Return statement - supports multiple values
+            values = []
+            # Check for VALUE1, VALUE2, VALUE3, etc.
+            i = 1
+            while f"VALUE{i}" in inputs:
+                value_expr = self._parse_input(inputs[f"VALUE{i}"], all_nodes)
+                values.append(value_expr)
+                i += 1
+
+            # Fallback to single VALUE for backward compatibility
+            if not values and "VALUE" in inputs:
                 value_expr = self._parse_input(inputs["VALUE"], all_nodes)
-            return Return(value=value_expr)
+                values.append(value_expr)
+
+            return Return(values=values)
 
         elif opcode in ["data_set_variable_to", "assign"]:
             # Convert to Assign statement
@@ -310,17 +323,71 @@ class Parser:
             return Assign(name=var_name, value=value_expr)
 
         elif opcode == "control_if_else":
-            # Convert to If statement
+            # Convert to If statement with else branch
             cond_expr = self._parse_input(inputs.get("CONDITION", []), all_nodes)
-            then_branch = self._parse_branch(inputs.get("BRANCH1", []), all_nodes)
-            else_branch = self._parse_branch(inputs.get("BRANCH2", []), all_nodes)
+            then_branch = self._parse_branch(inputs.get("THEN", []), all_nodes)
+            else_branch = self._parse_branch(inputs.get("ELSE", []), all_nodes)
             return If(cond=cond_expr, then=then_branch, else_=else_branch)
+
+        elif opcode == "control_if":
+            # Convert to If statement without else branch
+            cond_expr = self._parse_input(inputs.get("CONDITION", []), all_nodes)
+            then_branch = self._parse_branch(inputs.get("THEN", []), all_nodes)
+            return If(cond=cond_expr, then=then_branch, else_=None)
 
         elif opcode == "control_while":
             # Convert to While statement
             cond_expr = self._parse_input(inputs.get("CONDITION", []), all_nodes)
-            body_branch = self._parse_branch(inputs.get("SUBSTACK", []), all_nodes)
+            body_branch = self._parse_branch(inputs.get("BODY", []), all_nodes)
             return While(cond=cond_expr, body=body_branch)
+
+        elif opcode == "control_for":
+            # Convert to For statement
+            var_input = inputs.get("VAR", {})
+            if isinstance(var_input, dict) and "literal" in var_input:
+                var_name = var_input["literal"]
+            else:
+                raise ValueError("Invalid VAR input in control_for")
+
+            start_expr = self._parse_input(inputs.get("START", {}), all_nodes)
+            end_expr = self._parse_input(inputs.get("END", {}), all_nodes)
+            step_expr = None
+            if "STEP" in inputs:
+                step_expr = self._parse_input(inputs["STEP"], all_nodes)
+            body_branch = self._parse_branch(inputs.get("BODY", {}), all_nodes)
+
+            return For(
+                var_name=var_name,
+                start=start_expr,
+                end=end_expr,
+                step=step_expr,
+                body=body_branch,
+            )
+
+        elif opcode == "control_foreach":
+            # Convert to ForEach statement
+            var_input = inputs.get("VAR", {})
+            if isinstance(var_input, dict) and "literal" in var_input:
+                var_name = var_input["literal"]
+            else:
+                raise ValueError("Invalid VAR input in control_foreach")
+
+            iterable_expr = self._parse_input(inputs.get("ITERABLE", {}), all_nodes)
+            body_branch = self._parse_branch(inputs.get("BODY", {}), all_nodes)
+
+            return ForEach(var_name=var_name, iterable=iterable_expr, body=body_branch)
+
+        elif opcode == "control_fork":
+            # Convert to Fork statement
+            branches = []
+            i = 1
+            while f"BRANCH{i}" in inputs:
+                branch = self._parse_branch(inputs[f"BRANCH{i}"], all_nodes)
+                if branch:
+                    branches.append(branch)
+                i += 1
+
+            return Fork(branches=branches)
 
         elif opcode in ["workflow_call", "call"]:
             # Convert to Call expression wrapped in ExprStmt
@@ -419,11 +486,6 @@ class Parser:
         if not node:
             raise ValueError(f"Reporter node '{node_id}' not found")
 
-        # Allow nodes to be treated as expressions even if not explicitly marked as reporter
-        # This handles cases where nodes are referenced as [2, node_id] in the workflow
-        # if not node.get("isReporter", False):
-        #     raise ValueError(f"Node '{node_id}' is not a reporter node")
-
         opcode = node.get("opcode", "")
         inputs = node.get("inputs", {})
 
@@ -499,7 +561,6 @@ class Parser:
 
     def _parse_catch_handler(self, catch_input: dict, all_nodes: dict) -> Catch:
         """Parse a catch handler from input specification."""
-        # Modern format: {"exception_type": "ValueError", "var": "e", "body": {"branch": "catch_start"}}
         exception_type = catch_input.get("exception_type")
         var_name = catch_input.get("var")
         body = self._parse_branch(catch_input.get("body", {}), all_nodes)

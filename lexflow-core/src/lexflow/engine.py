@@ -9,8 +9,6 @@ from typing import Any, Optional, TextIO
 
 
 class Engine:
-    """Simple, clean engine."""
-
     def __init__(
         self,
         program: Program,
@@ -31,7 +29,7 @@ class Engine:
 
         # Wire up dependencies
         self.evaluator.opcodes = self.opcodes
-        self.evaluator.functions = self.workflows
+        self.evaluator.workflows = self.workflows
         self.executor.opcodes = self.opcodes
 
     async def run(self, inputs: Optional[dict[str, Any]] = None) -> Any:
@@ -72,7 +70,6 @@ class Engine:
             return await self._run_internal()
 
     async def _run_internal(self) -> Any:
-        """Internal execution logic."""
         # Execute main workflow body
         await self.executor.exec(self.program.main.body)
 
