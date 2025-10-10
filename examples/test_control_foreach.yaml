@@ -1,0 +1,179 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      fruits: ["apple", "banana", "cherry"]
+      numbers: [10, 20, 30, 40]
+      person:
+        name: "Alice"
+        age: 30
+        city: "NYC"
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: test_list
+        inputs:
+          STRING:
+            literal: "=== Testing control_foreach ===\n\n"
+
+      # Test 1: Iterate over list of strings
+      test_list:
+        opcode: io_print
+        next: foreach_fruits
+        inputs:
+          STRING:
+            literal: "Test 1: Iterate over fruits list:\n"
+
+      foreach_fruits:
+        opcode: control_foreach
+        next: test_numbers
+        inputs:
+          VAR:
+            literal: "fruit"
+          ITERABLE:
+            variable: fruits
+          BODY:
+            branch: print_fruit
+
+      print_fruit:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: format_fruit
+
+      format_fruit:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "  - "
+          OPERAND2:
+            node: add_newline
+
+      add_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: fruit
+          OPERAND2:
+            literal: "\n"
+
+      # Test 2: Iterate over list of numbers
+      test_numbers:
+        opcode: io_print
+        next: foreach_numbers
+        inputs:
+          STRING:
+            literal: "\nTest 2: Iterate over numbers and double them:\n"
+
+      foreach_numbers:
+        opcode: control_foreach
+        next: test_dict_keys
+        inputs:
+          VAR:
+            literal: "num"
+          ITERABLE:
+            variable: numbers
+          BODY:
+            branch: print_doubled
+
+      print_doubled:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: format_doubled
+
+      format_doubled:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "  "
+          OPERAND2:
+            node: double_and_format
+
+      double_and_format:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: doubled_as_str
+          OPERAND2:
+            literal: "\n"
+
+      doubled_as_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: doubled
+
+      doubled:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: num
+          OPERAND2:
+            literal: 2
+
+      # Test 3: Iterate over dict keys
+      test_dict_keys:
+        opcode: io_print
+        next: foreach_keys
+        inputs:
+          STRING:
+            literal: "\nTest 3: Iterate over dict keys:\n"
+
+      foreach_keys:
+        opcode: control_foreach
+        next: print_footer
+        inputs:
+          VAR:
+            literal: "key"
+          ITERABLE:
+            variable: person
+          BODY:
+            branch: print_key
+
+      print_key:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: format_key
+
+      format_key:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "  Key: "
+          OPERAND2:
+            node: key_with_newline
+
+      key_with_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: key
+          OPERAND2:
+            literal: "\n"
+
+      print_footer:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n✅ All control_foreach tests passed!\n"

@@ -1,0 +1,211 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      pi: 3.14159
+      radius: 5.0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: test_multiply
+        inputs:
+          STRING:
+            literal: "=== Testing Float Arithmetic ===\n\n"
+
+      # Test 1: Multiply floats
+      test_multiply:
+        opcode: io_print
+        next: test_divide
+        inputs:
+          STRING:
+            node: format_area
+
+      format_area:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "Area (π * r²): "
+          OPERAND2:
+            node: format_area_value
+
+      format_area_value:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: area_str
+          OPERAND2:
+            literal: "\n"
+
+      area_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: area
+
+      area:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: pi
+          OPERAND2:
+            node: radius_squared
+
+      radius_squared:
+        opcode: math_pow
+        isReporter: true
+        inputs:
+          base:
+            variable: radius
+          exponent:
+            literal: 2
+
+      # Test 2: Division (true division)
+      test_divide:
+        opcode: io_print
+        next: test_comparison
+        inputs:
+          STRING:
+            node: format_half
+
+      format_half:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "π / 2 = "
+          OPERAND2:
+            node: format_half_value
+
+      format_half_value:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: half_pi_str
+          OPERAND2:
+            literal: "\n"
+
+      half_pi_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: half_pi
+
+      half_pi:
+        opcode: operator_divide
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: pi
+          OPERAND2:
+            literal: 2
+
+      # Test 3: Comparison with floats
+      test_comparison:
+        opcode: io_print
+        next: test_abs
+        inputs:
+          STRING:
+            node: format_comparison
+
+      format_comparison:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "π > 3.0: "
+          OPERAND2:
+            node: format_comparison_value
+
+      format_comparison_value:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: pi_gt_3_str
+          OPERAND2:
+            literal: "\n"
+
+      pi_gt_3_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: pi_gt_3
+
+      pi_gt_3:
+        opcode: operator_greater_than
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: pi
+          OPERAND2:
+            literal: 3.0
+
+      # Test 4: Absolute value
+      test_abs:
+        opcode: io_print
+        next: print_footer
+        inputs:
+          STRING:
+            node: format_abs
+
+      format_abs:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "abs(-π): "
+          OPERAND2:
+            node: format_abs_value
+
+      format_abs_value:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: abs_neg_pi_str
+          OPERAND2:
+            literal: "\n"
+
+      abs_neg_pi_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: abs_neg_pi
+
+      abs_neg_pi:
+        opcode: math_abs
+        isReporter: true
+        inputs:
+          value:
+            node: neg_pi
+
+      neg_pi:
+        opcode: operator_subtract
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: 0
+          OPERAND2:
+            variable: pi
+
+      print_footer:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n✅ Float arithmetic tests passed!\n"

@@ -104,9 +104,9 @@ workflows:
         inputs:
           CONDITION:
             node: check_contains
-          BRANCH1:
+          THEN:
             branch: error_contains_invalid
-          BRANCH2:
+          ELSE:
             branch: error_no_invalid
 
       check_contains:

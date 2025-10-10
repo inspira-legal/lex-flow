@@ -1,0 +1,97 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      time: 0
+      count: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: loop
+        inputs: {}
+
+      loop:
+        opcode: control_while
+        next: end
+        inputs:
+          CONDITION:
+            node: check_count
+          BODY:
+            branch: loop_body
+
+      check_count:
+        opcode: operator_less_than
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: count
+          OPERAND2:
+            literal: 5
+
+      loop_body:
+        opcode: io_print
+        next: increment_time
+        inputs:
+          value:
+            node: time_msg
+
+      time_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "Time: "
+          OPERAND2:
+            node: time_str
+
+      time_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: time
+
+      increment_time:
+        opcode: data_set_variable_to
+        next: increment_count
+        inputs:
+          VARIABLE:
+            literal: time
+          VALUE:
+            node: new_time
+
+      new_time:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: time
+          OPERAND2:
+            literal: 1
+
+      increment_count:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: count
+          VALUE:
+            node: new_count
+
+      new_count:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: count
+          OPERAND2:
+            literal: 1
+
+      end:
+        opcode: io_print
+        next: null
+        inputs:
+          value:
+            literal: "Done!"

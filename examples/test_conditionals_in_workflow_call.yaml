@@ -68,9 +68,9 @@ workflows:
         inputs:
           CONDITION:
             node: is_positive
-          BRANCH1:
+          THEN:
             branch: positive_path
-          BRANCH2:
+          ELSE:
             branch: not_positive
 
       is_positive:
@@ -94,9 +94,9 @@ workflows:
         inputs:
           CONDITION:
             node: is_negative
-          BRANCH1:
+          THEN:
             branch: negative_path
-          BRANCH2:
+          ELSE:
             branch: zero_path
 
       is_negative:

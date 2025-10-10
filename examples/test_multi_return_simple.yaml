@@ -1,0 +1,29 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: return_three_values
+        inputs:
+          STRING:
+            literal: "=== Testing Multi-Value Return ===\n\n"
+
+      # Return 3 values directly
+      return_three_values:
+        opcode: workflow_return
+        inputs:
+          VALUE1:
+            literal: "First"
+          VALUE2:
+            literal: "Second"
+          VALUE3:
+            literal: "Third"

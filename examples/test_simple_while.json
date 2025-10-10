@@ -15,7 +15,7 @@
           "opcode": "control_while",
           "inputs": {
             "CONDITION": { "node": "check_counter" },
-            "SUBSTACK": { "branch": "print_and_increment" }
+            "BODY": { "branch": "print_and_increment" }
           }
         },
         "check_counter": {

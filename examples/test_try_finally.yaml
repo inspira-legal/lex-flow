@@ -56,9 +56,9 @@ workflows:
         inputs:
           CONDITION:
             node: cleanup_check
-          BRANCH1:
+          THEN:
             branch: cleanup_success
-          BRANCH2:
+          ELSE:
             branch: cleanup_failed
 
       cleanup_check:

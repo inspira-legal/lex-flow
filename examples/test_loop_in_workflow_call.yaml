@@ -62,7 +62,7 @@ workflows:
         inputs:
           CONDITION:
             node: check_counter
-          SUBSTACK:
+          BODY:
             branch: print_count
 
       check_counter:
@@ -131,7 +131,7 @@ workflows:
         inputs:
           CONDITION:
             node: check_outer
-          SUBSTACK:
+          BODY:
             branch: reset_inner
 
       check_outer:
@@ -158,7 +158,7 @@ workflows:
         inputs:
           CONDITION:
             node: check_inner
-          SUBSTACK:
+          BODY:
             branch: print_coords
 
       check_inner:

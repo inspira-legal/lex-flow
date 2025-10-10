@@ -1,0 +1,625 @@
+workflows:
+  - name: draw_wavy_string
+    interface:
+      inputs: ["text", "start_x", "start_offset", "letter_spacing", "color"]
+      outputs: []
+    variables:
+      text: ""
+      start_x: 0
+      start_offset: 0
+      letter_spacing: 25
+      color: null
+      index: 0
+      length: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: get_length
+        inputs: {}
+
+      get_length:
+        opcode: data_set_variable_to
+        next: draw_loop
+        inputs:
+          VARIABLE:
+            literal: length
+          VALUE:
+            node: calc_length
+
+      calc_length:
+        opcode: string_length
+        isReporter: true
+        inputs:
+          text:
+            variable: text
+
+      # Loop through each character
+      draw_loop:
+        opcode: control_while
+        next: null
+        inputs:
+          CONDITION:
+            node: has_more_chars
+          BODY:
+            branch: draw_char
+
+      has_more_chars:
+        opcode: operator_less_than
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: index
+          OPERAND2:
+            variable: length
+
+      # Draw current character
+      draw_char:
+        opcode: workflow_call
+        next: increment_index
+        inputs:
+          WORKFLOW:
+            literal: draw_wavy_letter
+          ARG1:
+            node: current_char
+          ARG2:
+            node: current_x
+          ARG3:
+            node: current_offset
+          ARG4:
+            variable: color
+
+      current_char:
+        opcode: string_char_at
+        isReporter: true
+        inputs:
+          text:
+            variable: text
+          index:
+            variable: index
+
+      current_x:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: start_x
+          OPERAND2:
+            node: x_offset
+
+      x_offset:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          left:
+            variable: index
+          right:
+            variable: letter_spacing
+
+      current_offset:
+        opcode: math_add
+        isReporter: true
+        inputs:
+          left:
+            variable: start_offset
+          right:
+            node: offset_increment
+
+      offset_increment:
+        opcode: math_multiply
+        isReporter: true
+        inputs:
+          left:
+            variable: index
+          right:
+            literal: 0.5
+
+      increment_index:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: index
+          VALUE:
+            node: next_index
+
+      next_index:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: index
+          OPERAND2:
+            literal: 1
+
+  - name: draw_wavy_letter
+    interface:
+      inputs: ["letter", "x", "offset", "color"]
+      outputs: []
+    variables:
+      letter: ""
+      x: 0
+      offset: 0
+      color: null
+    nodes:
+      start:
+        opcode: workflow_start
+        next: draw_letter
+        inputs: {}
+
+      draw_letter:
+        opcode: pygame_draw_text
+        next: null
+        inputs:
+          screen:
+            variable: screen
+          text:
+            variable: letter
+          x:
+            variable: x
+          y:
+            node: calc_y
+          font_size:
+            literal: 64
+          color:
+            variable: color
+
+      calc_y:
+        opcode: math_add
+        isReporter: true
+        inputs:
+          left:
+            literal: 250
+          right:
+            node: wave_offset
+
+      wave_offset:
+        opcode: math_multiply
+        isReporter: true
+        inputs:
+          left:
+            node: sin_value
+          right:
+            literal: 30
+
+      sin_value:
+        opcode: math_sin
+        isReporter: true
+        inputs:
+          angle:
+            node: angle
+
+      angle:
+        opcode: math_add
+        isReporter: true
+        inputs:
+          left:
+            node: base_angle
+          right:
+            variable: offset
+
+      base_angle:
+        opcode: math_multiply
+        isReporter: true
+        inputs:
+          left:
+            variable: time
+          right:
+            literal: 0.2
+
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      screen: null
+      white: null
+      black: null
+      blue: null
+      green: null
+      time: 0
+      running: true
+      frame_count: 0
+      last_fps_time: 0
+      fps: 0
+      show_fps: false
+    nodes:
+      start:
+        opcode: workflow_start
+        next: init_pygame
+        inputs: {}
+
+      # Initialize pygame
+      init_pygame:
+        opcode: pygame_init
+        next: create_colors
+        inputs: {}
+
+      # Create colors
+      create_colors:
+        opcode: data_set_variable_to
+        next: create_black
+        inputs:
+          VARIABLE:
+            literal: white
+          VALUE:
+            node: make_white
+
+      make_white:
+        opcode: pygame_create_color
+        isReporter: true
+        inputs:
+          r:
+            literal: 255
+          g:
+            literal: 255
+          b:
+            literal: 255
+
+      create_black:
+        opcode: data_set_variable_to
+        next: create_blue
+        inputs:
+          VARIABLE:
+            literal: black
+          VALUE:
+            node: make_black
+
+      make_black:
+        opcode: pygame_create_color
+        isReporter: true
+        inputs:
+          r:
+            literal: 20
+          g:
+            literal: 20
+          b:
+            literal: 30
+
+      create_blue:
+        opcode: data_set_variable_to
+        next: create_green
+        inputs:
+          VARIABLE:
+            literal: blue
+          VALUE:
+            node: make_blue
+
+      make_blue:
+        opcode: pygame_create_color
+        isReporter: true
+        inputs:
+          r:
+            literal: 100
+          g:
+            literal: 150
+          b:
+            literal: 255
+
+      create_green:
+        opcode: data_set_variable_to
+        next: create_window
+        inputs:
+          VARIABLE:
+            literal: green
+          VALUE:
+            node: make_green
+
+      make_green:
+        opcode: pygame_create_color
+        isReporter: true
+        inputs:
+          r:
+            literal: 0
+          g:
+            literal: 255
+          b:
+            literal: 0
+
+      # Create window
+      create_window:
+        opcode: data_set_variable_to
+        next: game_loop
+        inputs:
+          VARIABLE:
+            literal: screen
+          VALUE:
+            node: make_window
+
+      make_window:
+        opcode: pygame_create_window
+        isReporter: true
+        inputs:
+          width:
+            literal: 900
+          height:
+            literal: 600
+          title:
+            literal: "LexFlow Wave Animation"
+
+      # Game loop
+      game_loop:
+        opcode: control_while
+        next: cleanup
+        inputs:
+          CONDITION:
+            node: check_running
+          BODY:
+            branch: game_loop_body
+
+      check_running:
+        opcode: operator_not
+        isReporter: true
+        inputs:
+          value:
+            node: should_quit
+
+      should_quit:
+        opcode: pygame_should_quit
+        isReporter: true
+        inputs: {}
+
+      # Game loop body
+      game_loop_body:
+        opcode: pygame_fill_screen
+        next: draw_hello
+        inputs:
+          screen:
+            variable: screen
+          color:
+            variable: black
+
+      # Draw "Hello Inspira" with wave animation using helper workflow
+
+      # Draw "Hello " in blue
+      draw_hello:
+        opcode: workflow_call
+        next: draw_inspira
+        inputs:
+          WORKFLOW:
+            literal: draw_wavy_string
+          ARG1:
+            literal: "Hello "
+          ARG2:
+            literal: 200
+          ARG3:
+            literal: 0
+          ARG4:
+            literal: 45
+          ARG5:
+            variable: blue
+
+      # Draw "Inspira" in white
+      draw_inspira:
+        opcode: workflow_call
+        next: draw_subtitle
+        inputs:
+          WORKFLOW:
+            literal: draw_wavy_string
+          ARG1:
+            literal: "Inspira"
+          ARG2:
+            literal: 425
+          ARG3:
+            literal: 3.0
+          ARG4:
+            literal: 45
+          ARG5:
+            variable: white
+
+      # Subtitle
+      draw_subtitle:
+        opcode: pygame_draw_text
+        next: check_show_fps
+        inputs:
+          screen:
+            variable: screen
+          text:
+            literal: "Powered by LexFlow"
+          x:
+            literal: 320
+          y:
+            literal: 400
+          font_size:
+            literal: 32
+          color:
+            variable: white
+
+      # Check if we should draw FPS
+      check_show_fps:
+        opcode: control_if_else
+        next: update_screen
+        inputs:
+          CONDITION:
+            variable: show_fps
+          THEN:
+            branch: draw_fps
+          ELSE:
+            branch: null
+
+      # Draw FPS counter
+      draw_fps:
+        opcode: pygame_draw_text
+        next: null
+        inputs:
+          screen:
+            variable: screen
+          text:
+            node: fps_text
+          x:
+            literal: 10
+          y:
+            literal: 10
+          font_size:
+            literal: 24
+          color:
+            variable: green
+
+
+      fps_text:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "FPS: "
+          right:
+            node: fps_string
+
+      fps_string:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: fps
+
+      # Update display
+      update_screen:
+        opcode: pygame_update_display
+        next: increment_frame_count
+        inputs: {}
+
+      # Increment frame counter
+      increment_frame_count:
+        opcode: data_set_variable_to
+        next: check_fps_update
+        inputs:
+          VARIABLE:
+            literal: frame_count
+          VALUE:
+            node: new_frame_count
+
+      new_frame_count:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: frame_count
+          right:
+            literal: 1
+
+      # Check if we should update FPS (every 30 frames)
+      check_fps_update:
+        opcode: control_if_else
+        next: increment_time
+        inputs:
+          CONDITION:
+            node: should_update_fps
+          THEN:
+            branch: update_fps
+          ELSE:
+            branch: skip_fps_update
+
+      should_update_fps:
+        opcode: operator_equals
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: frame_mod
+          OPERAND2:
+            literal: 0
+
+      frame_mod:
+        opcode: operator_modulo
+        isReporter: true
+        inputs:
+          left:
+            variable: frame_count
+          right:
+            literal: 30
+
+      # Update FPS calculation
+      update_fps:
+        opcode: data_set_variable_to
+        next: reset_last_fps_time
+        inputs:
+          VARIABLE:
+            literal: fps
+          VALUE:
+            node: calculate_fps
+
+      calculate_fps:
+        opcode: operator_divide
+        isReporter: true
+        inputs:
+          left:
+            node: fps_numerator
+          right:
+            node: time_elapsed
+
+      fps_numerator:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          left:
+            literal: 30000
+          right:
+            literal: 1
+
+      time_elapsed:
+        opcode: operator_subtract
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: current_ticks
+          OPERAND2:
+            variable: last_fps_time
+
+      current_ticks:
+        opcode: pygame_get_ticks
+        isReporter: true
+        inputs: {}
+
+      reset_last_fps_time:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: last_fps_time
+          VALUE:
+            node: current_ticks_2
+
+      current_ticks_2:
+        opcode: pygame_get_ticks
+        isReporter: true
+        inputs: {}
+
+      skip_fps_update:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: running
+          VALUE:
+            literal: true
+
+      # Increment time for animation
+      increment_time:
+        opcode: data_set_variable_to
+        next: frame_delay
+        inputs:
+          VARIABLE:
+            literal: time
+          VALUE:
+            node: new_time
+
+      new_time:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: time
+          right:
+            literal: 1
+
+      # Frame rate control (~60 FPS)
+      frame_delay:
+        opcode: pygame_delay
+        next: null
+        inputs:
+          milliseconds:
+            literal: 10
+
+      # Cleanup
+      cleanup:
+        opcode: pygame_quit
+        next: null
+        inputs: {}

@@ -23,8 +23,8 @@
           "opcode": "control_if_else",
           "inputs": {
             "CONDITION": { "node": "is_correct" },
-            "BRANCH1": { "branch": "correct_message" },
-            "BRANCH2": { "branch": "wrong_message" }
+            "THEN": { "branch": "correct_message" },
+            "ELSE": { "branch": "wrong_message" }
           }
         },
         "is_correct": {
@@ -60,8 +60,8 @@
           "opcode": "control_if_else",
           "inputs": {
             "CONDITION": { "node": "is_greater" },
-            "BRANCH1": { "branch": "greater_pass" },
-            "BRANCH2": { "branch": "greater_fail" }
+            "THEN": { "branch": "greater_pass" },
+            "ELSE": { "branch": "greater_fail" }
           }
         },
         "is_greater": {

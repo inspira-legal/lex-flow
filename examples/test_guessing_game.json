@@ -42,7 +42,7 @@
           "opcode": "control_while",
           "inputs": {
             "CONDITION": { "node": "check_game_running" },
-            "SUBSTACK": { "branch": "get_user_input" }
+            "BODY": { "branch": "get_user_input" }
           }
         },
         "check_game_running": {
@@ -78,8 +78,8 @@
           "next": null,
           "inputs": {
             "CONDITION": { "node": "is_correct" },
-            "BRANCH1": { "branch": "correct_guess" },
-            "BRANCH2": { "branch": "wrong_guess" }
+            "THEN": { "branch": "correct_guess" },
+            "ELSE": { "branch": "wrong_guess" }
           }
         },
         "is_correct": {
@@ -108,8 +108,8 @@
           "opcode": "control_if_else",
           "inputs": {
             "CONDITION": { "node": "is_too_high" },
-            "BRANCH1": { "branch": "too_high_message" },
-            "BRANCH2": { "branch": "too_low_message" }
+            "THEN": { "branch": "too_high_message" },
+            "ELSE": { "branch": "too_low_message" }
           }
         },
         "is_too_high": {

@@ -1,0 +1,185 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      screen: null
+      white: null
+      black: null
+      blue: null
+    nodes:
+      start:
+        opcode: workflow_start
+        next: init_pygame
+        inputs: {}
+
+      # Initialize pygame
+      init_pygame:
+        opcode: pygame_init
+        next: create_colors
+        inputs: {}
+
+      # Create colors
+      create_colors:
+        opcode: data_set_variable_to
+        next: create_black
+        inputs:
+          VARIABLE:
+            literal: white
+          VALUE:
+            node: make_white
+
+      make_white:
+        opcode: pygame_create_color
+        isReporter: true
+        inputs:
+          r:
+            literal: 255
+          g:
+            literal: 255
+          b:
+            literal: 255
+
+      create_black:
+        opcode: data_set_variable_to
+        next: create_blue
+        inputs:
+          VARIABLE:
+            literal: black
+          VALUE:
+            node: make_black
+
+      make_black:
+        opcode: pygame_create_color
+        isReporter: true
+        inputs:
+          r:
+            literal: 30
+          g:
+            literal: 30
+          b:
+            literal: 40
+
+      create_blue:
+        opcode: data_set_variable_to
+        next: create_window
+        inputs:
+          VARIABLE:
+            literal: blue
+          VALUE:
+            node: make_blue
+
+      make_blue:
+        opcode: pygame_create_color
+        isReporter: true
+        inputs:
+          r:
+            literal: 100
+          g:
+            literal: 150
+          b:
+            literal: 255
+
+      # Create window
+      create_window:
+        opcode: data_set_variable_to
+        next: fill_bg
+        inputs:
+          VARIABLE:
+            literal: screen
+          VALUE:
+            node: make_window
+
+      make_window:
+        opcode: pygame_create_window
+        isReporter: true
+        inputs:
+          width:
+            literal: 800
+          height:
+            literal: 600
+          title:
+            literal: "Hello from LexFlow!"
+
+      # Fill background
+      fill_bg:
+        opcode: pygame_fill_screen
+        next: draw_decoration
+        inputs:
+          screen:
+            variable: screen
+          color:
+            variable: black
+
+      # Draw decorative circle
+      draw_decoration:
+        opcode: pygame_draw_circle
+        next: draw_title
+        inputs:
+          screen:
+            variable: screen
+          x:
+            literal: 100
+          y:
+            literal: 100
+          radius:
+            literal: 50
+          color:
+            variable: blue
+
+      # Draw title
+      draw_title:
+        opcode: pygame_draw_text
+        next: draw_subtitle
+        inputs:
+          screen:
+            variable: screen
+          text:
+            literal: "Hello, LexFlow!"
+          x:
+            literal: 200
+          y:
+            literal: 200
+          font_size:
+            literal: 72
+          color:
+            variable: white
+
+      # Draw subtitle
+      draw_subtitle:
+        opcode: pygame_draw_text
+        next: update_screen
+        inputs:
+          screen:
+            variable: screen
+          text:
+            literal: "Visual workflows meet game development"
+          x:
+            literal: 150
+          y:
+            literal: 300
+          font_size:
+            literal: 36
+          color:
+            variable: white
+
+      # Update display
+      update_screen:
+        opcode: pygame_update_display
+        next: wait_display
+        inputs: {}
+
+      # Wait 3 seconds
+      wait_display:
+        opcode: pygame_delay
+        next: cleanup
+        inputs:
+          milliseconds:
+            literal: 3000
+
+      # Cleanup
+      cleanup:
+        opcode: pygame_quit
+        next: null
+        inputs: {}

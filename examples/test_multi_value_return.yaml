@@ -1,0 +1,200 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: call_calculator
+        inputs:
+          STRING:
+            literal: "=== Testing Multi-Value Return ===\n\n"
+
+      # Call workflow that returns multiple values
+      call_calculator:
+        opcode: workflow_call
+        next: print_sum
+        inputs:
+          WORKFLOW:
+            literal: calculator
+          ARG1:
+            literal: 15
+          ARG2:
+            literal: 7
+
+      # The calculator returns 3 values: sum, difference, product
+      # They will be on the stack in order (last return value on top)
+
+      print_sum:
+        opcode: io_print
+        next: print_diff
+        inputs:
+          STRING:
+            node: get_sum
+
+      get_sum:
+        opcode: data_get_variable
+        isReporter: true
+        inputs:
+          VARIABLE:
+            literal: result_sum
+
+      print_diff:
+        opcode: io_print
+        next: print_product
+        inputs:
+          STRING:
+            node: get_diff
+
+      get_diff:
+        opcode: data_get_variable
+        isReporter: true
+        inputs:
+          VARIABLE:
+            literal: result_diff
+
+      print_product:
+        opcode: io_print
+        next: print_footer
+        inputs:
+          STRING:
+            node: get_product
+
+      get_product:
+        opcode: data_get_variable
+        isReporter: true
+        inputs:
+          VARIABLE:
+            literal: result_product
+
+      print_footer:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n✅ Multi-value return test completed!\n"
+
+  # Calculator workflow that returns 3 values
+  - name: calculator
+    interface:
+      inputs: ["a", "b"]
+      outputs: ["sum", "diff", "product"]
+    variables:
+      a: 0
+      b: 0
+      result_sum: 0
+      result_diff: 0
+      result_product: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: calc_sum
+        inputs: {}
+
+      # Calculate sum
+      calc_sum:
+        opcode: data_set_variable_to
+        next: calc_diff
+        inputs:
+          VARIABLE:
+            literal: result_sum
+          VALUE:
+            node: add_ab
+
+      add_ab:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: a
+          OPERAND2:
+            variable: b
+
+      # Calculate difference
+      calc_diff:
+        opcode: data_set_variable_to
+        next: calc_product
+        inputs:
+          VARIABLE:
+            literal: result_diff
+          VALUE:
+            node: sub_ab
+
+      sub_ab:
+        opcode: operator_subtract
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: a
+          OPERAND2:
+            variable: b
+
+      # Calculate product
+      calc_product:
+        opcode: data_set_variable_to
+        next: print_results
+        inputs:
+          VARIABLE:
+            literal: result_product
+          VALUE:
+            node: mul_ab
+
+      mul_ab:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: a
+          OPERAND2:
+            variable: b
+
+      # Print what we're returning
+      print_results:
+        opcode: io_print
+        next: print_values
+        inputs:
+          STRING:
+            literal: "Calculator returning:\n"
+
+      print_values:
+        opcode: io_print
+        next: return_all
+        inputs:
+          STRING:
+            node: format_values
+
+      format_values:
+        opcode: string_join
+        isReporter: true
+        inputs:
+          items:
+            node: make_list
+          delimiter:
+            literal: ""
+
+      make_list:
+        opcode: list_range
+        isReporter: true
+        inputs:
+          start:
+            literal: 1
+          stop:
+            literal: 2
+
+      # Return multiple values using VALUE1, VALUE2, VALUE3
+      return_all:
+        opcode: workflow_return
+        inputs:
+          VALUE1:
+            variable: result_sum
+          VALUE2:
+            variable: result_diff
+          VALUE3:
+            variable: result_product

@@ -1,0 +1,115 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: for_loop
+        inputs:
+          STRING:
+            literal: "=== Testing Loop Variable Scope ===\n\n"
+
+      # For loop: i should be 0-4
+      for_loop:
+        opcode: control_for
+        next: print_after_for
+        inputs:
+          VAR:
+            literal: "i"
+          START:
+            literal: 0
+          END:
+            literal: 5
+          BODY:
+            branch: noop_for
+
+      noop_for:
+        opcode: noop
+        next: null
+        inputs: {}
+
+      # After loop, what is i?
+      print_after_for:
+        opcode: io_print
+        next: foreach_loop
+        inputs:
+          STRING:
+            node: format_i
+
+      format_i:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "After for loop, i = "
+          OPERAND2:
+            node: i_with_newline
+
+      i_with_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: i
+          OPERAND2:
+            literal: "\n\n"
+
+      # ForEach loop
+      foreach_loop:
+        opcode: control_foreach
+        next: print_after_foreach
+        inputs:
+          VAR:
+            literal: "item"
+          ITERABLE:
+            node: make_list
+          BODY:
+            branch: noop_foreach
+
+      make_list:
+        opcode: list_range
+        isReporter: true
+        inputs:
+          start:
+            literal: 10
+          stop:
+            literal: 13
+
+      noop_foreach:
+        opcode: noop
+        next: null
+        inputs: {}
+
+      # After foreach, what is item?
+      print_after_foreach:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: format_item
+
+      format_item:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "After foreach loop, item = "
+          OPERAND2:
+            node: item_with_newline
+
+      item_with_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: item
+          OPERAND2:
+            literal: "\n"

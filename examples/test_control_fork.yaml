@@ -1,0 +1,154 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: test_fork
+        inputs:
+          STRING:
+            literal: "=== Testing control_fork (concurrent execution) ===\n\n"
+
+      # Test: Fork executes branches concurrently
+      test_fork:
+        opcode: control_fork
+        next: print_after_fork
+        inputs:
+          BRANCH1:
+            branch: task_a
+          BRANCH2:
+            branch: task_b
+          BRANCH3:
+            branch: task_c
+
+      task_a:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "Task A executed\n"
+
+      task_b:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "Task B executed\n"
+
+      task_c:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "Task C executed\n"
+
+      print_after_fork:
+        opcode: io_print
+        next: test_fork_with_loop
+        inputs:
+          STRING:
+            literal: "\n✓ All fork branches completed\n\n"
+
+      # Test: Fork with loops in branches
+      test_fork_with_loop:
+        opcode: io_print
+        next: fork_with_loops
+        inputs:
+          STRING:
+            literal: "Test 2: Fork with loops in branches:\n"
+
+      fork_with_loops:
+        opcode: control_fork
+        next: print_footer
+        inputs:
+          BRANCH1:
+            branch: count_evens
+          BRANCH2:
+            branch: count_odds
+
+      count_evens:
+        opcode: io_print
+        next: for_evens
+        inputs:
+          STRING:
+            literal: "Evens: "
+
+      for_evens:
+        opcode: control_for
+        next: print_evens_newline
+        inputs:
+          VAR:
+            literal: "i"
+          START:
+            literal: 0
+          END:
+            literal: 10
+          STEP:
+            literal: 2
+          BODY:
+            branch: print_even
+
+      print_even:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            variable: i
+
+      print_evens_newline:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n"
+
+      count_odds:
+        opcode: io_print
+        next: for_odds
+        inputs:
+          STRING:
+            literal: "Odds: "
+
+      for_odds:
+        opcode: control_for
+        next: print_odds_newline
+        inputs:
+          VAR:
+            literal: "i"
+          START:
+            literal: 1
+          END:
+            literal: 10
+          STEP:
+            literal: 2
+          BODY:
+            branch: print_odd
+
+      print_odd:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            variable: i
+
+      print_odds_newline:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n"
+
+      print_footer:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n✅ All control_fork tests passed!\n"

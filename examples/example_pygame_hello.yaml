@@ -1,0 +1,227 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      screen: null
+      white: null
+      black: null
+      running: true
+    nodes:
+      start:
+        opcode: workflow_start
+        next: init_pygame
+        inputs: {}
+
+      # Initialize pygame
+      init_pygame:
+        opcode: pygame_init
+        next: create_colors
+        inputs: {}
+
+      # Create color constants
+      create_colors:
+        opcode: data_set_variable_to
+        next: create_black
+        inputs:
+          VARIABLE:
+            literal: white
+          VALUE:
+            node: make_white
+
+      make_white:
+        opcode: pygame_create_color
+        isReporter: true
+        inputs:
+          r:
+            literal: 255
+          g:
+            literal: 255
+          b:
+            literal: 255
+
+      create_black:
+        opcode: data_set_variable_to
+        next: create_window
+        inputs:
+          VARIABLE:
+            literal: black
+          VALUE:
+            node: make_black
+
+      make_black:
+        opcode: pygame_create_color
+        isReporter: true
+        inputs:
+          r:
+            literal: 30
+          g:
+            literal: 30
+          b:
+            literal: 40
+
+      # Create window
+      create_window:
+        opcode: data_set_variable_to
+        next: game_loop
+        inputs:
+          VARIABLE:
+            literal: screen
+          VALUE:
+            node: make_window
+
+      make_window:
+        opcode: pygame_create_window
+        isReporter: true
+        inputs:
+          width:
+            literal: 800
+          height:
+            literal: 600
+          title:
+            literal: "LexFlow + Pygame Demo"
+
+      # Game loop (controlled by LexFlow!)
+      game_loop:
+        opcode: control_while
+        next: cleanup
+        inputs:
+          CONDITION:
+            node: check_running
+          BODY:
+            branch: game_loop_body
+
+      # Check if still running (not quit)
+      check_running:
+        opcode: operator_not
+        isReporter: true
+        inputs:
+          value:
+            node: should_quit
+
+      should_quit:
+        opcode: pygame_should_quit
+        isReporter: true
+        inputs: {}
+
+      # Game loop body
+      game_loop_body:
+        opcode: data_set_variable_to
+        next: fill_bg
+        inputs:
+          VARIABLE:
+            literal: running
+          VALUE:
+            literal: true
+
+      # Fill background
+      fill_bg:
+        opcode: pygame_fill_screen
+        next: draw_title
+        inputs:
+          screen:
+            variable: screen
+          color:
+            variable: black
+
+      # Draw title
+      draw_title:
+        opcode: pygame_draw_text
+        next: draw_subtitle
+        inputs:
+          screen:
+            variable: screen
+          text:
+            literal: "Hello, LexFlow!"
+          x:
+            literal: 200
+          y:
+            literal: 200
+          font_size:
+            literal: 72
+          color:
+            variable: white
+
+      # Draw subtitle
+      draw_subtitle:
+        opcode: pygame_draw_text
+        next: draw_instructions
+        inputs:
+          screen:
+            variable: screen
+          text:
+            literal: "Visual programming meets game development"
+          x:
+            literal: 150
+          y:
+            literal: 300
+          font_size:
+            literal: 36
+          color:
+            variable: white
+
+      # Draw instructions
+      draw_instructions:
+        opcode: pygame_draw_text
+        next: draw_decoration
+        inputs:
+          screen:
+            variable: screen
+          text:
+            literal: "Close window to exit"
+          x:
+            literal: 280
+          y:
+            literal: 500
+          font_size:
+            literal: 28
+          color:
+            variable: white
+
+      # Draw decorative circle
+      draw_decoration:
+        opcode: pygame_draw_circle
+        next: update_screen
+        inputs:
+          screen:
+            variable: screen
+          x:
+            literal: 100
+          y:
+            literal: 100
+          radius:
+            literal: 50
+          color:
+            node: make_blue
+
+      make_blue:
+        opcode: pygame_create_color
+        isReporter: true
+        inputs:
+          r:
+            literal: 100
+          g:
+            literal: 150
+          b:
+            literal: 255
+
+      # Update display
+      update_screen:
+        opcode: pygame_update_display
+        next: frame_delay
+        inputs: {}
+
+      # Frame rate control (~60 FPS)
+      frame_delay:
+        opcode: pygame_delay
+        next: null
+        inputs:
+          milliseconds:
+            literal: 16
+
+      # Cleanup
+      cleanup:
+        opcode: pygame_quit
+        next: null
+        inputs: {}

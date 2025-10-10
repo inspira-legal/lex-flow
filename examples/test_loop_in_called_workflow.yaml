@@ -78,7 +78,7 @@ workflows:
         inputs:
           CONDITION:
             node: check
-          SUBSTACK:
+          BODY:
             branch: process
 
       check:
@@ -194,7 +194,7 @@ workflows:
         inputs:
           CONDITION:
             node: check_i
-          SUBSTACK:
+          BODY:
             branch: reset_j
 
       check_i:
@@ -221,7 +221,7 @@ workflows:
         inputs:
           CONDITION:
             node: check_j
-          SUBSTACK:
+          BODY:
             branch: print_pair
 
       check_j:
@@ -329,7 +329,7 @@ workflows:
         inputs:
           CONDITION:
             node: check_n
-          SUBSTACK:
+          BODY:
             branch: check_even
 
       check_n:
@@ -347,9 +347,9 @@ workflows:
         inputs:
           CONDITION:
             node: is_even
-          BRANCH1:
+          THEN:
             branch: print_n
-          BRANCH2:
+          ELSE:
             branch: skip
 
       is_even:
