@@ -4,8 +4,9 @@ from .evaluator import Evaluator
 from .executor import Executor
 from .opcodes import OpcodeRegistry, default_registry
 from .workflows import WorkflowManager
+from .metrics import ExecutionMetrics, NullMetrics
 from contextlib import redirect_stdout
-from typing import Any, Optional, TextIO
+from typing import Any, Optional, TextIO, Union
 
 
 class Engine:
@@ -14,18 +15,27 @@ class Engine:
         program: Program,
         output: Optional[TextIO] = None,
         opcodes: Optional[OpcodeRegistry] = None,
+        metrics: Optional[Union[ExecutionMetrics, bool]] = None,
     ):
         self.program = program
         self.runtime = Runtime(program)
         self.output = output
 
+        # Metrics collection
+        if metrics is True:
+            self.metrics: Union[ExecutionMetrics, NullMetrics] = ExecutionMetrics()
+        elif isinstance(metrics, ExecutionMetrics):
+            self.metrics = metrics
+        else:
+            self.metrics = NullMetrics()
+
         # Create components
-        self.evaluator = Evaluator(self.runtime)
-        self.executor = Executor(self.runtime, self.evaluator)
+        self.evaluator = Evaluator(self.runtime, self.metrics)
+        self.executor = Executor(self.runtime, self.evaluator, self.metrics)
 
         # Plugin systems
         self.opcodes = opcodes if opcodes is not None else default_registry
-        self.workflows = WorkflowManager(program.externals, self.executor, self.runtime)
+        self.workflows = WorkflowManager(program.externals, self.executor, self.runtime, self.metrics)
 
         # Wire up dependencies
         self.evaluator.opcodes = self.opcodes
@@ -70,8 +80,30 @@ class Engine:
             return await self._run_internal()
 
     async def _run_internal(self) -> Any:
-        # Execute main workflow body
-        await self.executor.exec(self.program.main.body)
+        # Start metrics collection
+        self.metrics.start_execution()
 
-        # Return final stack value
-        return self.runtime.pop() if self.runtime.stack else None
+        try:
+            # Execute main workflow body
+            await self.executor.exec(self.program.main.body)
+
+            # Return final stack value
+            return self.runtime.pop() if self.runtime.stack else None
+        finally:
+            # End metrics collection
+            self.metrics.end_execution()
+
+    def get_metrics_report(self, top_n: int = 10) -> str:
+        """Generate formatted metrics report.
+
+        Args:
+            top_n: Number of top operations to show per category
+
+        Returns:
+            Formatted text report of execution metrics
+        """
+        return self.metrics.get_report(top_n=top_n)
+
+    def get_metrics_summary(self) -> str:
+        """Get brief metrics summary."""
+        return self.metrics.get_summary()

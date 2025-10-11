@@ -8,6 +8,7 @@ from .evaluator import Evaluator
 from .executor import Executor
 from .opcodes import OpcodeRegistry, default_registry, opcode
 from .workflows import WorkflowManager
+from .metrics import ExecutionMetrics, NullMetrics
 from .opcodes_pydantic_ai import register_pydantic_ai_opcodes
 
 register_pydantic_ai_opcodes()
@@ -25,6 +26,8 @@ __all__ = [
     "default_registry",
     "opcode",
     "WorkflowManager",
+    "ExecutionMetrics",
+    "NullMetrics",
 ]
 
 __version__ = "0.1.0"

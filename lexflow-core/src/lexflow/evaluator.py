@@ -1,7 +1,9 @@
-from typing import Any
+from typing import Any, Union
+import time
 from .runtime import Runtime
 from .ast import Expression, Literal, Call, Opcode, Variable
 from .opcodes import OpcodeRegistry
+from .metrics import ExecutionMetrics, NullMetrics
 
 # ruff: noqa
 
@@ -9,10 +11,15 @@ from .opcodes import OpcodeRegistry
 class Evaluator:
     """Evaluate expressions to values."""
 
-    def __init__(self, runtime: Runtime):
+    def __init__(
+        self,
+        runtime: Runtime,
+        metrics: Union[ExecutionMetrics, NullMetrics] = None
+    ):
         from .workflows import WorkflowManager
 
         self.rt = runtime
+        self.metrics = metrics if metrics is not None else NullMetrics()
         self.opcodes: OpcodeRegistry  # Set by the Engine to avoid circular dependency
         self.workflows: (
             WorkflowManager  # Set by the Engine to avoid circular dependency
@@ -20,17 +27,30 @@ class Evaluator:
 
     async def eval(self, expr: Expression) -> Any:
         """Evaluate expression using pattern matching."""
-        match expr:
-            case Literal(value=v):
-                return v
+        start_time = time.perf_counter()
+        expr_type = type(expr).__name__
 
-            case Variable(name=n):
-                return self.rt.scope[n]
+        try:
+            match expr:
+                case Literal(value=v):
+                    return v
 
-            case Call(name=n, args=args):
-                arg_vals = [await self.eval(a) for a in args]
-                return await self.workflows.call(n, arg_vals)
+                case Variable(name=n):
+                    return self.rt.scope[n]
 
-            case Opcode(name=n, args=args):
-                arg_vals = [await self.eval(a) for a in args]
-                return await self.opcodes.call(n, arg_vals)
+                case Call(name=n, args=args):
+                    arg_vals = [await self.eval(a) for a in args]
+                    # Workflow calls are measured separately in WorkflowManager
+                    return await self.workflows.call(n, arg_vals)
+
+                case Opcode(name=n, args=args):
+                    arg_vals = [await self.eval(a) for a in args]
+                    # Measure opcode execution separately
+                    opcode_start = time.perf_counter()
+                    result = await self.opcodes.call(n, arg_vals)
+                    opcode_duration = time.perf_counter() - opcode_start
+                    self.metrics.record("opcode", n, opcode_duration)
+                    return result
+        finally:
+            duration = time.perf_counter() - start_time
+            self.metrics.record("expression", expr_type, duration)

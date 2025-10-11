@@ -20,6 +20,8 @@ Examples:
   lexflow workflow.json --verbose                   # Verbose output
   lexflow workflow.json --validate-only             # Validate without executing
   lexflow workflow.json --output-file output.txt    # Redirect output to file
+  lexflow workflow.json --metrics                   # Show performance metrics
+  lexflow workflow.json --metrics --metrics-json    # Export metrics as JSON
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -65,6 +67,31 @@ Examples:
         action="append",
         metavar="KEY=VALUE",
         help="Input parameters for main workflow (can be used multiple times). Values are parsed as JSON when possible (e.g., --input age=30 --input enabled=true)",
+    )
+
+    # Metrics options
+    parser.add_argument(
+        "--metrics",
+        "-m",
+        action="store_true",
+        help="Collect and display performance metrics after execution",
+    )
+    parser.add_argument(
+        "--metrics-json",
+        action="store_true",
+        help="Export metrics as JSON (requires --metrics). Output to stdout or --metrics-output file",
+    )
+    parser.add_argument(
+        "--metrics-output",
+        metavar="FILE",
+        help="Output file for metrics (JSON or text report based on --metrics-json)",
+    )
+    parser.add_argument(
+        "--metrics-top",
+        type=int,
+        default=10,
+        metavar="N",
+        help="Number of top operations to show in metrics report (default: 10)",
     )
 
     return parser
@@ -159,13 +186,48 @@ async def main():
             output_file = open(args.output_file, 'w')
 
         try:
-            engine = Engine(program, output=output_file)
+            # Create engine with optional metrics
+            engine = Engine(program, output=output_file, metrics=args.metrics)
             result = await engine.run(inputs=inputs_dict if inputs_dict else None)
 
             if args.verbose:
                 print_success("Execution completed")
                 if result is not None:
                     print_info(f"Result: {result}")
+
+            # Handle metrics output
+            if args.metrics:
+                if args.metrics_json:
+                    # Export as JSON
+                    metrics_json = engine.metrics.to_json(indent=2)
+
+                    if args.metrics_output:
+                        with open(args.metrics_output, 'w') as f:
+                            f.write(metrics_json)
+                        if args.verbose:
+                            print_success(f"Metrics JSON written to: {args.metrics_output}")
+                    else:
+                        # Print to stdout (stderr if output file is stdout)
+                        target = sys.stderr if not args.output_file else sys.stdout
+                        print("\n=== METRICS (JSON) ===", file=target)
+                        print(metrics_json, file=target)
+                else:
+                    # Show formatted report
+                    metrics_report = engine.get_metrics_report(top_n=args.metrics_top)
+
+                    if args.metrics_output:
+                        with open(args.metrics_output, 'w') as f:
+                            f.write(metrics_report)
+                        if args.verbose:
+                            print_success(f"Metrics report written to: {args.metrics_output}")
+                    else:
+                        # Print to stdout (stderr if output file is stdout)
+                        target = sys.stderr if not args.output_file else sys.stdout
+                        print(file=target)
+                        print(metrics_report, file=target)
+                        print(file=target)
+                        print(f"Summary: {engine.get_metrics_summary()}", file=target)
+
         finally:
             if output_file:
                 output_file.close()
