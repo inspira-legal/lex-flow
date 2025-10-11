@@ -1,7 +1,8 @@
 import json
 import yaml
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, List
+from abc import ABC, abstractmethod
 from .ast import (
     Literal,
     Variable,
@@ -27,11 +28,356 @@ from .ast import (
 )
 
 
+# ============= Error Handling =============
+
+class ParseError(Exception):
+    """Base exception for parsing errors with context."""
+
+    def __init__(self, message: str, context: Optional[dict] = None):
+        self.context = context or {}
+        super().__init__(message)
+
+
+# ============= Parse Context =============
+
+class ParseContext:
+    """Context object passed during parsing operations."""
+
+    def __init__(self, parser: 'Parser', all_nodes: dict):
+        self.parser = parser
+        self.all_nodes = all_nodes
+        self.current_workflow = None
+
+
+# ============= Node Handler Strategy Pattern =============
+
+class NodeHandler(ABC):
+    """Abstract base class for node handlers."""
+
+    @abstractmethod
+    def can_handle(self, opcode: str) -> bool:
+        """Check if this handler can process the given opcode."""
+        pass
+
+    @abstractmethod
+    def handle(self, node_id: str, node: dict, context: ParseContext) -> Optional[Statement]:
+        """Process the node and return a statement."""
+        pass
+
+
+# ============= Expression Parser =============
+
+class ExpressionParser:
+    """Handles parsing of expressions from input data."""
+
+    def parse(self, input_data: Any, context: ParseContext) -> Expression:
+        """Parse input data into an expression."""
+        if not isinstance(input_data, dict):
+            return Literal(value=input_data)
+
+        if "literal" in input_data:
+            return Literal(value=input_data["literal"])
+
+        elif "variable" in input_data:
+            return Variable(name=input_data["variable"])
+
+        elif "workflow_call" in input_data:
+            return Call(name=input_data["workflow_call"], args=[])
+
+        elif "node" in input_data:
+            return self._parse_node_reference(input_data, context)
+
+        elif "branch" in input_data:
+            raise ParseError("Branch reference cannot be parsed as expression")
+
+        else:
+            raise ParseError(f"Unknown input type: {list(input_data.keys())}", {"input": input_data})
+
+    def _parse_node_reference(self, data: dict, context: ParseContext) -> Expression:
+        """Parse a reporter node reference."""
+        node_id = data["node"]
+        node = context.all_nodes.get(node_id)
+
+        if not node:
+            raise ParseError(f"Reporter node '{node_id}' not found")
+
+        opcode = node.get("opcode", "")
+        inputs = node.get("inputs", {})
+
+        # Special case: variable getter
+        if opcode == "data_get_variable":
+            var_input = inputs.get("VARIABLE", {})
+            if isinstance(var_input, dict) and "literal" in var_input:
+                return Variable(name=var_input["literal"])
+            raise ParseError("Invalid VARIABLE input in data_get_variable")
+
+        # Special case: workflow call as expression
+        if opcode in ("workflow_call", "call"):
+            workflow_name = self._extract_workflow_name(inputs)
+            args = self._extract_call_arguments(inputs, context)
+            return Call(name=workflow_name, args=args)
+
+        # Default: opcode expression
+        args = []
+        for param_name, param_input in inputs.items():
+            arg_expr = self.parse(param_input, context)
+            args.append(arg_expr)
+
+        return Opcode(name=opcode, args=args)
+
+    def _extract_workflow_name(self, inputs: dict) -> str:
+        """Extract workflow name from WORKFLOW input."""
+        workflow_input = inputs.get("WORKFLOW", {})
+        if isinstance(workflow_input, dict) and "literal" in workflow_input:
+            return workflow_input["literal"]
+        raise ParseError("Invalid WORKFLOW input in call", {"input": workflow_input})
+
+    def _extract_call_arguments(self, inputs: dict, context: ParseContext) -> List[Expression]:
+        """Extract ARG1, ARG2, ... arguments from inputs."""
+        args = []
+        i = 1
+        while f"ARG{i}" in inputs:
+            arg_expr = self.parse(inputs[f"ARG{i}"], context)
+            args.append(arg_expr)
+            i += 1
+        return args
+
+
+# ============= Concrete Node Handlers =============
+
+class ControlFlowHandler(NodeHandler):
+    """Handles control flow nodes (if, while, for, etc.)"""
+
+    OPCODES = {
+        "control_if",
+        "control_if_else",
+        "control_while",
+        "control_for",
+        "control_foreach",
+        "control_fork",
+    }
+
+    def can_handle(self, opcode: str) -> bool:
+        return opcode in self.OPCODES
+
+    def handle(self, node_id: str, node: dict, context: ParseContext) -> Optional[Statement]:
+        opcode = node.get("opcode", "")
+        inputs = node.get("inputs", {})
+
+        handlers = {
+            "control_if": self._handle_if,
+            "control_if_else": self._handle_if_else,
+            "control_while": self._handle_while,
+            "control_for": self._handle_for,
+            "control_foreach": self._handle_foreach,
+            "control_fork": self._handle_fork,
+        }
+
+        handler = handlers.get(opcode)
+        if handler:
+            return handler(inputs, context)
+        return None
+
+    def _handle_if(self, inputs: dict, context: ParseContext) -> If:
+        cond = context.parser._parse_input(inputs.get("CONDITION", []), context)
+        then_branch = context.parser._parse_branch(inputs.get("THEN", []), context)
+        return If(cond=cond, then=then_branch, else_=None)
+
+    def _handle_if_else(self, inputs: dict, context: ParseContext) -> If:
+        cond = context.parser._parse_input(inputs.get("CONDITION", []), context)
+        then_branch = context.parser._parse_branch(inputs.get("THEN", []), context)
+        else_branch = context.parser._parse_branch(inputs.get("ELSE", []), context)
+        return If(cond=cond, then=then_branch, else_=else_branch)
+
+    def _handle_while(self, inputs: dict, context: ParseContext) -> While:
+        cond = context.parser._parse_input(inputs.get("CONDITION", []), context)
+        body = context.parser._parse_branch(inputs.get("BODY", []), context)
+        return While(cond=cond, body=body)
+
+    def _handle_for(self, inputs: dict, context: ParseContext) -> For:
+        var_name = self._extract_variable_name(inputs.get("VAR", {}), "control_for")
+        start = context.parser._parse_input(inputs.get("START", {}), context)
+        end = context.parser._parse_input(inputs.get("END", {}), context)
+        step = context.parser._parse_input(inputs.get("STEP", {}), context) if "STEP" in inputs else None
+        body = context.parser._parse_branch(inputs.get("BODY", {}), context)
+        return For(var_name=var_name, start=start, end=end, step=step, body=body)
+
+    def _handle_foreach(self, inputs: dict, context: ParseContext) -> ForEach:
+        var_name = self._extract_variable_name(inputs.get("VAR", {}), "control_foreach")
+        iterable = context.parser._parse_input(inputs.get("ITERABLE", {}), context)
+        body = context.parser._parse_branch(inputs.get("BODY", {}), context)
+        return ForEach(var_name=var_name, iterable=iterable, body=body)
+
+    def _handle_fork(self, inputs: dict, context: ParseContext) -> Fork:
+        branches = []
+        i = 1
+        while f"BRANCH{i}" in inputs:
+            branch = context.parser._parse_branch(inputs[f"BRANCH{i}"], context)
+            if branch:
+                branches.append(branch)
+            i += 1
+        return Fork(branches=branches)
+
+    def _extract_variable_name(self, var_input: dict, opcode: str) -> str:
+        if isinstance(var_input, dict) and "literal" in var_input:
+            return var_input["literal"]
+        raise ParseError(f"Invalid VAR input in {opcode}", {"input": var_input})
+
+
+class DataHandler(NodeHandler):
+    """Handles data operations (assign, return)"""
+
+    OPCODES = {"data_set_variable_to", "assign", "workflow_return", "return"}
+
+    def can_handle(self, opcode: str) -> bool:
+        return opcode in self.OPCODES
+
+    def handle(self, node_id: str, node: dict, context: ParseContext) -> Optional[Statement]:
+        opcode = node.get("opcode", "")
+        inputs = node.get("inputs", {})
+
+        if opcode in ("data_set_variable_to", "assign"):
+            return self._handle_assign(inputs, context)
+        elif opcode in ("workflow_return", "return"):
+            return self._handle_return(inputs, context)
+        return None
+
+    def _handle_assign(self, inputs: dict, context: ParseContext) -> Assign:
+        var_input = inputs.get("VARIABLE", {})
+        if not isinstance(var_input, dict) or "literal" not in var_input:
+            raise ParseError("Invalid VARIABLE input in assignment", {"input": var_input})
+
+        var_name = var_input["literal"]
+        value = context.parser._parse_input(inputs.get("VALUE", {}), context)
+        return Assign(name=var_name, value=value)
+
+    def _handle_return(self, inputs: dict, context: ParseContext) -> Return:
+        values = []
+
+        # Check for multiple return values (VALUE1, VALUE2, ...)
+        i = 1
+        while f"VALUE{i}" in inputs:
+            value_expr = context.parser._parse_input(inputs[f"VALUE{i}"], context)
+            values.append(value_expr)
+            i += 1
+
+        # Fallback to single VALUE for backward compatibility
+        if not values and "VALUE" in inputs:
+            value_expr = context.parser._parse_input(inputs["VALUE"], context)
+            values.append(value_expr)
+
+        return Return(values=values)
+
+
+class WorkflowHandler(NodeHandler):
+    """Handles workflow operations (call)"""
+
+    OPCODES = {"workflow_call", "call"}
+
+    def can_handle(self, opcode: str) -> bool:
+        return opcode in self.OPCODES
+
+    def handle(self, node_id: str, node: dict, context: ParseContext) -> Optional[Statement]:
+        inputs = node.get("inputs", {})
+        workflow_name = self._extract_workflow_name(inputs)
+        args = self._extract_arguments(inputs, context)
+        call_expr = Call(name=workflow_name, args=args)
+        return ExprStmt(expr=call_expr)
+
+    def _extract_workflow_name(self, inputs: dict) -> str:
+        workflow_input = inputs.get("WORKFLOW", {})
+        if isinstance(workflow_input, dict) and "literal" in workflow_input:
+            return workflow_input["literal"]
+        raise ParseError("Invalid WORKFLOW input in call", {"input": workflow_input})
+
+    def _extract_arguments(self, inputs: dict, context: ParseContext) -> List[Expression]:
+        args = []
+        i = 1
+        while f"ARG{i}" in inputs:
+            arg_expr = context.parser._parse_input(inputs[f"ARG{i}"], context)
+            args.append(arg_expr)
+            i += 1
+        return args
+
+
+class ExceptionHandler(NodeHandler):
+    """Handles exception-related nodes (try, throw)"""
+
+    OPCODES = {"control_try", "try_catch", "control_throw"}
+
+    def can_handle(self, opcode: str) -> bool:
+        return opcode in self.OPCODES
+
+    def handle(self, node_id: str, node: dict, context: ParseContext) -> Optional[Statement]:
+        opcode = node.get("opcode", "")
+        inputs = node.get("inputs", {})
+
+        if opcode in ("control_try", "try_catch"):
+            return self._handle_try(inputs, context)
+        elif opcode == "control_throw":
+            return self._handle_throw(inputs, context)
+        return None
+
+    def _handle_try(self, inputs: dict, context: ParseContext) -> Try:
+        try_body = context.parser._parse_branch(inputs.get("TRY", {}), context)
+
+        handlers = []
+        i = 1
+        while f"CATCH{i}" in inputs:
+            handlers.append(self._parse_catch_handler(inputs[f"CATCH{i}"], context))
+            i += 1
+
+        finally_body = None
+        if "FINALLY" in inputs:
+            finally_body = context.parser._parse_branch(inputs["FINALLY"], context)
+
+        return Try(body=try_body, handlers=handlers, finally_=finally_body)
+
+    def _handle_throw(self, inputs: dict, context: ParseContext) -> Throw:
+        value = context.parser._parse_input(inputs.get("VALUE", {}), context)
+        return Throw(value=value)
+
+    def _parse_catch_handler(self, catch_input: dict, context: ParseContext) -> Catch:
+        exception_type = catch_input.get("exception_type")
+        var_name = catch_input.get("var")
+        body = context.parser._parse_branch(catch_input.get("body", {}), context)
+        return Catch(exception_type=exception_type, var_name=var_name, body=body)
+
+
+class DefaultHandler(NodeHandler):
+    """Default handler for opcodes without special handling"""
+
+    def can_handle(self, opcode: str) -> bool:
+        # Skip special nodes
+        return opcode not in ("workflow_start", "start")
+
+    def handle(self, node_id: str, node: dict, context: ParseContext) -> Optional[Statement]:
+        opcode = node.get("opcode", "")
+        inputs = node.get("inputs", {})
+
+        # Convert regular opcodes to OpStmt
+        args = []
+        for param_name, param_input in inputs.items():
+            arg_expr = context.parser._parse_input(param_input, context)
+            args.append(arg_expr)
+
+        return OpStmt(name=opcode, args=args)
+
+
 class Parser:
-    """Parse JSON workflows into AST."""
+    """Parse JSON workflows into AST using strategy pattern for node handling."""
 
     def __init__(self):
         self.current_workflow = None
+        # Initialize handlers in priority order (DefaultHandler must be last)
+        self.handlers: List[NodeHandler] = [
+            ControlFlowHandler(),
+            DataHandler(),
+            WorkflowHandler(),
+            ExceptionHandler(),
+            DefaultHandler(),  # Must be last as catch-all
+        ]
+        self.expr_parser = ExpressionParser()
 
     def parse_file(self, file_path: str) -> Program:
         """Parse a single JSON or YAML workflow file into a Program."""
@@ -255,10 +601,14 @@ class Parser:
         return Workflow(name=name, params=params, body=body, locals=locals_dict)
 
     def _parse_nodes(self, nodes: dict) -> Statement:
-        """Parse nodes into a Block statement."""
+        """Parse nodes into a Block statement using strategy pattern."""
         # Find the start node
         if "start" not in nodes:
             raise ValueError("No 'start' node found in workflow")
+
+        # Create parse context
+        context = ParseContext(self, nodes)
+        context.current_workflow = self.current_workflow
 
         # Follow the node chain
         statements = []
@@ -269,10 +619,14 @@ class Parser:
             if not node:
                 break
 
-            # Parse the node into a statement
-            stmt = self._parse_node(current_node_id, node, nodes)
-            if stmt:
-                statements.append(stmt)
+            # Parse the node into a statement using handlers
+            try:
+                stmt = self._parse_node(current_node_id, node, context)
+                if stmt:
+                    statements.append(stmt)
+            except ParseError as e:
+                # Convert ParseError to ValueError for backwards compatibility
+                raise ValueError(str(e)) from e
 
             # Move to next node
             current_node_id = node.get("next")
@@ -280,256 +634,28 @@ class Parser:
         return Block(stmts=statements)
 
     def _parse_node(
-        self, node_id: str, node: dict, all_nodes: dict
+        self, node_id: str, node: dict, context: ParseContext
     ) -> Statement | None:
-        """Parse a single node into a statement."""
+        """Parse a single node using appropriate handler."""
         opcode = node.get("opcode", "")
-        inputs = node.get("inputs", {})
 
-        # Handle special opcodes
-        if opcode in ["workflow_start", "start"]:
-            # Skip start node
-            return None
+        # Try each handler in priority order
+        for handler in self.handlers:
+            if handler.can_handle(opcode):
+                return handler.handle(node_id, node, context)
 
-        elif opcode in ["workflow_return", "return"]:
-            # Convert to Return statement - supports multiple values
-            values = []
-            # Check for VALUE1, VALUE2, VALUE3, etc.
-            i = 1
-            while f"VALUE{i}" in inputs:
-                value_expr = self._parse_input(inputs[f"VALUE{i}"], all_nodes)
-                values.append(value_expr)
-                i += 1
+        # No handler found (shouldn't happen with DefaultHandler)
+        return None
 
-            # Fallback to single VALUE for backward compatibility
-            if not values and "VALUE" in inputs:
-                value_expr = self._parse_input(inputs["VALUE"], all_nodes)
-                values.append(value_expr)
+    def _parse_input(self, input_data: Any, context: ParseContext) -> Expression:
+        """Parse an input value into an expression using ExpressionParser."""
+        try:
+            return self.expr_parser.parse(input_data, context)
+        except ParseError as e:
+            # Convert ParseError to ValueError for backwards compatibility
+            raise ValueError(str(e)) from e
 
-            return Return(values=values)
-
-        elif opcode in ["data_set_variable_to", "assign"]:
-            # Convert to Assign statement
-            var_input = inputs.get("VARIABLE", {})
-            value_input = inputs.get("VALUE", {})
-
-            # Variable name is in the literal field of the input object
-            if isinstance(var_input, dict) and "literal" in var_input:
-                var_name = var_input["literal"]
-            else:
-                raise ValueError("Invalid VARIABLE input in data_set_variable_to")
-
-            value_expr = self._parse_input(value_input, all_nodes)
-            return Assign(name=var_name, value=value_expr)
-
-        elif opcode == "control_if_else":
-            # Convert to If statement with else branch
-            cond_expr = self._parse_input(inputs.get("CONDITION", []), all_nodes)
-            then_branch = self._parse_branch(inputs.get("THEN", []), all_nodes)
-            else_branch = self._parse_branch(inputs.get("ELSE", []), all_nodes)
-            return If(cond=cond_expr, then=then_branch, else_=else_branch)
-
-        elif opcode == "control_if":
-            # Convert to If statement without else branch
-            cond_expr = self._parse_input(inputs.get("CONDITION", []), all_nodes)
-            then_branch = self._parse_branch(inputs.get("THEN", []), all_nodes)
-            return If(cond=cond_expr, then=then_branch, else_=None)
-
-        elif opcode == "control_while":
-            # Convert to While statement
-            cond_expr = self._parse_input(inputs.get("CONDITION", []), all_nodes)
-            body_branch = self._parse_branch(inputs.get("BODY", []), all_nodes)
-            return While(cond=cond_expr, body=body_branch)
-
-        elif opcode == "control_for":
-            # Convert to For statement
-            var_input = inputs.get("VAR", {})
-            if isinstance(var_input, dict) and "literal" in var_input:
-                var_name = var_input["literal"]
-            else:
-                raise ValueError("Invalid VAR input in control_for")
-
-            start_expr = self._parse_input(inputs.get("START", {}), all_nodes)
-            end_expr = self._parse_input(inputs.get("END", {}), all_nodes)
-            step_expr = None
-            if "STEP" in inputs:
-                step_expr = self._parse_input(inputs["STEP"], all_nodes)
-            body_branch = self._parse_branch(inputs.get("BODY", {}), all_nodes)
-
-            return For(
-                var_name=var_name,
-                start=start_expr,
-                end=end_expr,
-                step=step_expr,
-                body=body_branch,
-            )
-
-        elif opcode == "control_foreach":
-            # Convert to ForEach statement
-            var_input = inputs.get("VAR", {})
-            if isinstance(var_input, dict) and "literal" in var_input:
-                var_name = var_input["literal"]
-            else:
-                raise ValueError("Invalid VAR input in control_foreach")
-
-            iterable_expr = self._parse_input(inputs.get("ITERABLE", {}), all_nodes)
-            body_branch = self._parse_branch(inputs.get("BODY", {}), all_nodes)
-
-            return ForEach(var_name=var_name, iterable=iterable_expr, body=body_branch)
-
-        elif opcode == "control_fork":
-            # Convert to Fork statement
-            branches = []
-            i = 1
-            while f"BRANCH{i}" in inputs:
-                branch = self._parse_branch(inputs[f"BRANCH{i}"], all_nodes)
-                if branch:
-                    branches.append(branch)
-                i += 1
-
-            return Fork(branches=branches)
-
-        elif opcode in ["workflow_call", "call"]:
-            # Convert to Call expression wrapped in ExprStmt
-            workflow_name_input = inputs.get("WORKFLOW", {})
-            if (
-                isinstance(workflow_name_input, dict)
-                and "literal" in workflow_name_input
-            ):
-                workflow_name = workflow_name_input["literal"]
-            else:
-                raise ValueError("Invalid WORKFLOW input in workflow_call")
-
-            # Get arguments
-            args = []
-            i = 1
-            while f"ARG{i}" in inputs:
-                arg_expr = self._parse_input(inputs[f"ARG{i}"], all_nodes)
-                args.append(arg_expr)
-                i += 1
-
-            call_expr = Call(name=workflow_name, args=args)
-            return ExprStmt(expr=call_expr)
-
-        elif opcode in ["control_try", "try_catch"]:
-            # Convert to Try statement
-            # Parse try body
-            try_body = self._parse_branch(inputs.get("TRY", {}), all_nodes)
-
-            # Parse catch handlers
-            handlers = []
-            i = 1
-            while f"CATCH{i}" in inputs:
-                catch_input = inputs[f"CATCH{i}"]
-                handlers.append(self._parse_catch_handler(catch_input, all_nodes))
-                i += 1
-
-            # Parse optional finally
-            finally_body = None
-            if "FINALLY" in inputs:
-                finally_body = self._parse_branch(inputs["FINALLY"], all_nodes)
-
-            return Try(body=try_body, handlers=handlers, finally_=finally_body)
-
-        elif opcode == "control_throw":
-            # Convert to Throw statement
-            value_expr = self._parse_input(inputs.get("VALUE", {}), all_nodes)
-            return Throw(value=value_expr)
-
-        else:
-            # Regular opcode - convert to OpStmt
-            args = []
-            for param_name, param_input in inputs.items():
-                arg_expr = self._parse_input(param_input, all_nodes)
-                args.append(arg_expr)
-
-            return OpStmt(name=opcode, args=args)
-
-    def _parse_input(self, input_data: Any, all_nodes: dict) -> Expression:
-        """Parse an input value into an expression."""
-        # New object notation format: {"literal": value} or {"node": "id"} etc.
-        if isinstance(input_data, dict):
-            if "literal" in input_data:
-                # Literal value
-                return Literal(value=input_data["literal"])
-
-            elif "node" in input_data:
-                # Node reference (reporter node)
-                return self._parse_reporter_node(input_data["node"], all_nodes)
-
-            elif "variable" in input_data:
-                # Variable reference by name
-                return Variable(name=input_data["variable"])
-
-            elif "branch" in input_data:
-                # Branch reference - shouldn't be here, handled by control flow
-                raise ValueError("Branch reference should not be parsed as expression")
-
-            elif "workflow_call" in input_data:
-                # Workflow call as an expression (parameterless call)
-                # Example: {"workflow_call": "get_value"}
-                workflow_name = input_data["workflow_call"]
-                return Call(name=workflow_name, args=[])
-
-            else:
-                raise ValueError(
-                    f"Unknown input type in object: {list(input_data.keys())}"
-                )
-
-        else:
-            # Fallback: treat as literal if not in expected format
-            return Literal(value=input_data)
-
-    def _parse_reporter_node(self, node_id: str, all_nodes: dict) -> Expression:
-        """Parse a reporter node into an expression."""
-        node = all_nodes.get(node_id)
-        if not node:
-            raise ValueError(f"Reporter node '{node_id}' not found")
-
-        opcode = node.get("opcode", "")
-        inputs = node.get("inputs", {})
-
-        # Handle special opcodes
-        if opcode == "data_get_variable":
-            # Convert to Variable reference
-            var_input = inputs.get("VARIABLE", {})
-            if isinstance(var_input, dict) and "literal" in var_input:
-                var_name = var_input["literal"]
-                return Variable(name=var_name)
-            else:
-                raise ValueError("Invalid VARIABLE input in data_get_variable")
-
-        # Handle workflow_call as Call expression
-        if opcode in ["workflow_call", "call"]:
-            workflow_name_input = inputs.get("WORKFLOW", {})
-            if (
-                isinstance(workflow_name_input, dict)
-                and "literal" in workflow_name_input
-            ):
-                workflow_name = workflow_name_input["literal"]
-            else:
-                raise ValueError("Invalid WORKFLOW input in workflow_call")
-
-            # Get arguments
-            args = []
-            i = 1
-            while f"ARG{i}" in inputs:
-                arg_expr = self._parse_input(inputs[f"ARG{i}"], all_nodes)
-                args.append(arg_expr)
-                i += 1
-
-            return Call(name=workflow_name, args=args)
-
-        # Parse inputs into argument expressions
-        args = []
-        for param_name, param_input in inputs.items():
-            arg_expr = self._parse_input(param_input, all_nodes)
-            args.append(arg_expr)
-
-        # Return as Opcode expression
-        return Opcode(name=opcode, args=args)
-
-    def _parse_branch(self, branch_input: Any, all_nodes: dict) -> Statement | None:
+    def _parse_branch(self, branch_input: Any, context: ParseContext) -> Statement | None:
         """Parse a branch reference into a statement."""
         if not isinstance(branch_input, dict):
             return None
@@ -544,13 +670,16 @@ class Parser:
         current_node_id = branch_node_id
 
         while current_node_id:
-            node = all_nodes.get(current_node_id)
+            node = context.all_nodes.get(current_node_id)
             if not node:
                 break
 
-            stmt = self._parse_node(current_node_id, node, all_nodes)
-            if stmt:
-                statements.append(stmt)
+            try:
+                stmt = self._parse_node(current_node_id, node, context)
+                if stmt:
+                    statements.append(stmt)
+            except ParseError as e:
+                raise ValueError(str(e)) from e
 
             current_node_id = node.get("next")
 
@@ -558,11 +687,3 @@ class Parser:
             return None
 
         return Block(stmts=statements) if len(statements) > 1 else statements[0]
-
-    def _parse_catch_handler(self, catch_input: dict, all_nodes: dict) -> Catch:
-        """Parse a catch handler from input specification."""
-        exception_type = catch_input.get("exception_type")
-        var_name = catch_input.get("var")
-        body = self._parse_branch(catch_input.get("body", {}), all_nodes)
-
-        return Catch(exception_type=exception_type, var_name=var_name, body=body)

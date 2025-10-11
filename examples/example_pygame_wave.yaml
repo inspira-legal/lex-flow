@@ -9,53 +9,38 @@ workflows:
       start_offset: 0
       letter_spacing: 25
       color: null
-      index: 0
-      length: 0
+      i: 0
     nodes:
       start:
         opcode: workflow_start
-        next: get_length
+        next: draw_loop
         inputs: {}
 
-      get_length:
-        opcode: data_set_variable_to
-        next: draw_loop
+      # Loop through each character index using for loop
+      draw_loop:
+        opcode: control_for
+        next: null
         inputs:
-          VARIABLE:
-            literal: length
-          VALUE:
-            node: calc_length
+          VAR:
+            literal: "i"
+          START:
+            literal: 0
+          END:
+            node: text_length
+          BODY:
+            branch: draw_char
 
-      calc_length:
+      text_length:
         opcode: string_length
         isReporter: true
         inputs:
           text:
             variable: text
 
-      # Loop through each character
-      draw_loop:
-        opcode: control_while
-        next: null
-        inputs:
-          CONDITION:
-            node: has_more_chars
-          BODY:
-            branch: draw_char
-
-      has_more_chars:
-        opcode: operator_less_than
-        isReporter: true
-        inputs:
-          OPERAND1:
-            variable: index
-          OPERAND2:
-            variable: length
-
       # Draw current character
       draw_char:
         opcode: workflow_call
-        next: increment_index
+        next: null
         inputs:
           WORKFLOW:
             literal: draw_wavy_letter
@@ -75,7 +60,7 @@ workflows:
           text:
             variable: text
           index:
-            variable: index
+            variable: i
 
       current_x:
         opcode: operator_add
@@ -91,7 +76,7 @@ workflows:
         isReporter: true
         inputs:
           left:
-            variable: index
+            variable: i
           right:
             variable: letter_spacing
 
@@ -109,27 +94,9 @@ workflows:
         isReporter: true
         inputs:
           left:
-            variable: index
+            variable: i
           right:
             literal: 0.5
-
-      increment_index:
-        opcode: data_set_variable_to
-        next: null
-        inputs:
-          VARIABLE:
-            literal: index
-          VALUE:
-            node: next_index
-
-      next_index:
-        opcode: operator_add
-        isReporter: true
-        inputs:
-          OPERAND1:
-            variable: index
-          OPERAND2:
-            literal: 1
 
   - name: draw_wavy_letter
     interface:

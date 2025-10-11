@@ -3,7 +3,9 @@ workflows:
     interface:
       inputs: []
       outputs: []
-    variables: {}
+    variables:
+      model: null
+      agent: null
     nodes:
       start:
         opcode: workflow_start
@@ -12,15 +14,14 @@ workflows:
 
       intro:
         opcode: io_print
-        next: create_model
+        next: store_model
         inputs:
           STRING:
             literal: "=== Pydantic AI + Vertex AI Example ===\n\n"
 
-      # Step 1: Create Vertex AI Model
+      # Step 1: Create Vertex AI Model (reporter node)
       create_model:
         opcode: pydantic_ai_create_vertex_model
-        next: print_model_created
         isReporter: true
         inputs:
           model_name:
@@ -30,23 +31,42 @@ workflows:
           location:
             literal: "us-central1"
 
+      # Store model in variable
+      store_model:
+        opcode: data_set_variable_to
+        next: print_model_created
+        inputs:
+          VARIABLE:
+            literal: "model"
+          VALUE:
+            node: create_model
+
       print_model_created:
         opcode: io_print
-        next: create_agent
+        next: store_agent
         inputs:
           STRING:
             literal: "1. Created Vertex AI model: gemini-2.5-flash\n\n"
 
-      # Step 2: Create Agent
+      # Step 2: Create Agent (reporter node)
       create_agent:
         opcode: pydantic_ai_create_agent
-        next: print_agent_created
         isReporter: true
         inputs:
           model:
-            node: create_model
+            variable: "model"
           instructions:
             literal: "You are a helpful AI assistant. Be concise and accurate."
+
+      # Store agent in variable
+      store_agent:
+        opcode: data_set_variable_to
+        next: print_agent_created
+        inputs:
+          VARIABLE:
+            literal: "agent"
+          VALUE:
+            node: create_agent
 
       print_agent_created:
         opcode: io_print
@@ -58,18 +78,17 @@ workflows:
       # Step 3: Math Query
       query_math:
         opcode: io_print
-        next: run_math_query
+        next: print_math_result
         inputs:
           STRING:
             literal: "3. Asking: What is 15 * 23?\n"
 
       run_math_query:
         opcode: pydantic_ai_run_sync
-        next: print_math_result
         isReporter: true
         inputs:
           agent:
-            node: create_agent
+            variable: "agent"
           prompt:
             literal: "What is 15 * 23? Just give the number."
 
@@ -92,18 +111,17 @@ workflows:
       # Step 4: Geography Query
       query_capital:
         opcode: io_print
-        next: run_capital_query
+        next: print_capital_result
         inputs:
           STRING:
             literal: "\n4. Asking: What is the capital of France?\n"
 
       run_capital_query:
         opcode: pydantic_ai_run_sync
-        next: print_capital_result
         isReporter: true
         inputs:
           agent:
-            node: create_agent
+            variable: "agent"
           prompt:
             literal: "What is the capital of France? One word only."
 
@@ -126,18 +144,17 @@ workflows:
       # Step 5: Programming Query
       query_code:
         opcode: io_print
-        next: run_code_query
+        next: print_code_result
         inputs:
           STRING:
             literal: "\n5. Asking: Explain recursion in one sentence\n"
 
       run_code_query:
         opcode: pydantic_ai_run_sync
-        next: print_code_result
         isReporter: true
         inputs:
           agent:
-            node: create_agent
+            variable: "agent"
           prompt:
             literal: "Explain recursion in one sentence."
 
