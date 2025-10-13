@@ -65,8 +65,13 @@
           "next": "check_guess",
           "inputs": {
             "VARIABLE": { "literal": "user_guess" },
-            "VALUE": { "node": "input_number" }
+            "VALUE": { "node": "to_integer" }
           }
+        },
+        "to_integer": {
+          "opcode": "int",
+          "inputs": { "VALUE": { "node": "input_number" }},
+          "isReporter": true
         },
         "input_number": {
           "opcode": "io_input",

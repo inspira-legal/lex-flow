@@ -29,7 +29,7 @@ Examples:
     # Main workflow file (required)
     parser.add_argument(
         "workflow_file",
-        help="Main workflow file to execute (JSON or YAML). The 'main' workflow from this file will be executed."
+        help="Main workflow file to execute (JSON or YAML). The 'main' workflow from this file will be executed.",
     )
 
     # Import options
@@ -134,7 +134,9 @@ async def main():
         if args.verbose:
             print_info(f"Loading workflow: {workflow_file.name}")
             if include_files:
-                print_info(f"Including files: {', '.join(Path(f).name for f in include_files)}")
+                print_info(
+                    f"Including files: {', '.join(Path(f).name for f in include_files)}"
+                )
 
         # Parse the workflow(s)
         parser = Parser()
@@ -158,7 +160,9 @@ async def main():
         if args.inputs:
             for input_str in args.inputs:
                 if "=" not in input_str:
-                    print_error(f"Invalid input format: {input_str}. Expected KEY=VALUE")
+                    print_error(
+                        f"Invalid input format: {input_str}. Expected KEY=VALUE"
+                    )
                     sys.exit(1)
 
                 key, value = input_str.split("=", 1)
@@ -183,7 +187,7 @@ async def main():
         if args.output_file:
             if args.verbose:
                 print_info(f"Redirecting output to: {args.output_file}")
-            output_file = open(args.output_file, 'w')
+            output_file = open(args.output_file, "w")
 
         try:
             # Create engine with optional metrics
@@ -202,10 +206,12 @@ async def main():
                     metrics_json = engine.metrics.to_json(indent=2)
 
                     if args.metrics_output:
-                        with open(args.metrics_output, 'w') as f:
+                        with open(args.metrics_output, "w") as f:
                             f.write(metrics_json)
                         if args.verbose:
-                            print_success(f"Metrics JSON written to: {args.metrics_output}")
+                            print_success(
+                                f"Metrics JSON written to: {args.metrics_output}"
+                            )
                     else:
                         # Print to stdout (stderr if output file is stdout)
                         target = sys.stderr if not args.output_file else sys.stdout
@@ -216,10 +222,12 @@ async def main():
                     metrics_report = engine.get_metrics_report(top_n=args.metrics_top)
 
                     if args.metrics_output:
-                        with open(args.metrics_output, 'w') as f:
+                        with open(args.metrics_output, "w") as f:
                             f.write(metrics_report)
                         if args.verbose:
-                            print_success(f"Metrics report written to: {args.metrics_output}")
+                            print_success(
+                                f"Metrics report written to: {args.metrics_output}"
+                            )
                     else:
                         # Print to stdout (stderr if output file is stdout)
                         target = sys.stderr if not args.output_file else sys.stdout

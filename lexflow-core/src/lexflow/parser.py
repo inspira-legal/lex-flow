@@ -165,12 +165,12 @@ class ControlFlowHandler(NodeHandler):
         inputs = node.get("inputs", {})
 
         handlers = {
-            "control_if": self._handle_if,
-            "control_if_else": self._handle_if_else,
-            "control_while": self._handle_while,
-            "control_for": self._handle_for,
-            "control_foreach": self._handle_foreach,
-            "control_fork": self._handle_fork,
+            "control_if": lambda i, c: self._handle_if(node_id, i, c),
+            "control_if_else": lambda i, c: self._handle_if_else(node_id, i, c),
+            "control_while": lambda i, c: self._handle_while(node_id, i, c),
+            "control_for": lambda i, c: self._handle_for(node_id, i, c),
+            "control_foreach": lambda i, c: self._handle_foreach(node_id, i, c),
+            "control_fork": lambda i, c: self._handle_fork(node_id, i, c),
         }
 
         handler = handlers.get(opcode)
@@ -178,37 +178,37 @@ class ControlFlowHandler(NodeHandler):
             return handler(inputs, context)
         return None
 
-    def _handle_if(self, inputs: dict, context: ParseContext) -> If:
+    def _handle_if(self, node_id: str, inputs: dict, context: ParseContext) -> If:
         cond = context.parser._parse_input(inputs.get("CONDITION", []), context)
         then_branch = context.parser._parse_branch(inputs.get("THEN", []), context)
-        return If(cond=cond, then=then_branch, else_=None)
+        return If(cond=cond, then=then_branch, else_=None, node_id=node_id)
 
-    def _handle_if_else(self, inputs: dict, context: ParseContext) -> If:
+    def _handle_if_else(self, node_id: str, inputs: dict, context: ParseContext) -> If:
         cond = context.parser._parse_input(inputs.get("CONDITION", []), context)
         then_branch = context.parser._parse_branch(inputs.get("THEN", []), context)
         else_branch = context.parser._parse_branch(inputs.get("ELSE", []), context)
-        return If(cond=cond, then=then_branch, else_=else_branch)
+        return If(cond=cond, then=then_branch, else_=else_branch, node_id=node_id)
 
-    def _handle_while(self, inputs: dict, context: ParseContext) -> While:
+    def _handle_while(self, node_id: str, inputs: dict, context: ParseContext) -> While:
         cond = context.parser._parse_input(inputs.get("CONDITION", []), context)
         body = context.parser._parse_branch(inputs.get("BODY", []), context)
-        return While(cond=cond, body=body)
+        return While(cond=cond, body=body, node_id=node_id)
 
-    def _handle_for(self, inputs: dict, context: ParseContext) -> For:
+    def _handle_for(self, node_id: str, inputs: dict, context: ParseContext) -> For:
         var_name = self._extract_variable_name(inputs.get("VAR", {}), "control_for")
         start = context.parser._parse_input(inputs.get("START", {}), context)
         end = context.parser._parse_input(inputs.get("END", {}), context)
         step = context.parser._parse_input(inputs.get("STEP", {}), context) if "STEP" in inputs else None
         body = context.parser._parse_branch(inputs.get("BODY", {}), context)
-        return For(var_name=var_name, start=start, end=end, step=step, body=body)
+        return For(var_name=var_name, start=start, end=end, step=step, body=body, node_id=node_id)
 
-    def _handle_foreach(self, inputs: dict, context: ParseContext) -> ForEach:
+    def _handle_foreach(self, node_id: str, inputs: dict, context: ParseContext) -> ForEach:
         var_name = self._extract_variable_name(inputs.get("VAR", {}), "control_foreach")
         iterable = context.parser._parse_input(inputs.get("ITERABLE", {}), context)
         body = context.parser._parse_branch(inputs.get("BODY", {}), context)
-        return ForEach(var_name=var_name, iterable=iterable, body=body)
+        return ForEach(var_name=var_name, iterable=iterable, body=body, node_id=node_id)
 
-    def _handle_fork(self, inputs: dict, context: ParseContext) -> Fork:
+    def _handle_fork(self, node_id: str, inputs: dict, context: ParseContext) -> Fork:
         branches = []
         i = 1
         while f"BRANCH{i}" in inputs:
@@ -216,7 +216,7 @@ class ControlFlowHandler(NodeHandler):
             if branch:
                 branches.append(branch)
             i += 1
-        return Fork(branches=branches)
+        return Fork(branches=branches, node_id=node_id)
 
     def _extract_variable_name(self, var_input: dict, opcode: str) -> str:
         if isinstance(var_input, dict) and "literal" in var_input:
@@ -237,21 +237,21 @@ class DataHandler(NodeHandler):
         inputs = node.get("inputs", {})
 
         if opcode in ("data_set_variable_to", "assign"):
-            return self._handle_assign(inputs, context)
+            return self._handle_assign(node_id, inputs, context)
         elif opcode in ("workflow_return", "return"):
-            return self._handle_return(inputs, context)
+            return self._handle_return(node_id, inputs, context)
         return None
 
-    def _handle_assign(self, inputs: dict, context: ParseContext) -> Assign:
+    def _handle_assign(self, node_id: str, inputs: dict, context: ParseContext) -> Assign:
         var_input = inputs.get("VARIABLE", {})
         if not isinstance(var_input, dict) or "literal" not in var_input:
             raise ParseError("Invalid VARIABLE input in assignment", {"input": var_input})
 
         var_name = var_input["literal"]
         value = context.parser._parse_input(inputs.get("VALUE", {}), context)
-        return Assign(name=var_name, value=value)
+        return Assign(name=var_name, value=value, node_id=node_id)
 
-    def _handle_return(self, inputs: dict, context: ParseContext) -> Return:
+    def _handle_return(self, node_id: str, inputs: dict, context: ParseContext) -> Return:
         values = []
 
         # Check for multiple return values (VALUE1, VALUE2, ...)
@@ -266,7 +266,7 @@ class DataHandler(NodeHandler):
             value_expr = context.parser._parse_input(inputs["VALUE"], context)
             values.append(value_expr)
 
-        return Return(values=values)
+        return Return(values=values, node_id=node_id)
 
 
 class WorkflowHandler(NodeHandler):
@@ -282,7 +282,7 @@ class WorkflowHandler(NodeHandler):
         workflow_name = self._extract_workflow_name(inputs)
         args = self._extract_arguments(inputs, context)
         call_expr = Call(name=workflow_name, args=args)
-        return ExprStmt(expr=call_expr)
+        return ExprStmt(expr=call_expr, node_id=node_id)
 
     def _extract_workflow_name(self, inputs: dict) -> str:
         workflow_input = inputs.get("WORKFLOW", {})
@@ -313,12 +313,12 @@ class ExceptionHandler(NodeHandler):
         inputs = node.get("inputs", {})
 
         if opcode in ("control_try", "try_catch"):
-            return self._handle_try(inputs, context)
+            return self._handle_try(node_id, inputs, context)
         elif opcode == "control_throw":
-            return self._handle_throw(inputs, context)
+            return self._handle_throw(node_id, inputs, context)
         return None
 
-    def _handle_try(self, inputs: dict, context: ParseContext) -> Try:
+    def _handle_try(self, node_id: str, inputs: dict, context: ParseContext) -> Try:
         try_body = context.parser._parse_branch(inputs.get("TRY", {}), context)
 
         handlers = []
@@ -331,11 +331,11 @@ class ExceptionHandler(NodeHandler):
         if "FINALLY" in inputs:
             finally_body = context.parser._parse_branch(inputs["FINALLY"], context)
 
-        return Try(body=try_body, handlers=handlers, finally_=finally_body)
+        return Try(body=try_body, handlers=handlers, finally_=finally_body, node_id=node_id)
 
-    def _handle_throw(self, inputs: dict, context: ParseContext) -> Throw:
+    def _handle_throw(self, node_id: str, inputs: dict, context: ParseContext) -> Throw:
         value = context.parser._parse_input(inputs.get("VALUE", {}), context)
-        return Throw(value=value)
+        return Throw(value=value, node_id=node_id)
 
     def _parse_catch_handler(self, catch_input: dict, context: ParseContext) -> Catch:
         exception_type = catch_input.get("exception_type")
@@ -361,7 +361,7 @@ class DefaultHandler(NodeHandler):
             arg_expr = context.parser._parse_input(param_input, context)
             args.append(arg_expr)
 
-        return OpStmt(name=opcode, args=args)
+        return OpStmt(name=opcode, args=args, node_id=node_id)
 
 
 class Parser:

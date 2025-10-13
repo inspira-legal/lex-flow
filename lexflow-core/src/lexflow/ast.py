@@ -39,12 +39,14 @@ class Assign(BaseModel):
 
     name: str
     value: Expression
+    node_id: Optional[str] = None
 
 
 class Block(BaseModel):
     """Statement sequence"""
 
     stmts: list["Statement"]
+    node_id: Optional[str] = None
 
 
 class If(BaseModel):
@@ -53,6 +55,7 @@ class If(BaseModel):
     cond: Expression
     then: "Statement"
     else_: Optional["Statement"] = None
+    node_id: Optional[str] = None
 
 
 class While(BaseModel):
@@ -60,6 +63,7 @@ class While(BaseModel):
 
     cond: Expression
     body: "Statement"
+    node_id: Optional[str] = None
 
 
 class For(BaseModel):
@@ -70,6 +74,7 @@ class For(BaseModel):
     end: Expression
     step: Optional[Expression] = None
     body: "Statement"
+    node_id: Optional[str] = None
 
 
 class ForEach(BaseModel):
@@ -78,24 +83,28 @@ class ForEach(BaseModel):
     var_name: str
     iterable: Expression
     body: "Statement"
+    node_id: Optional[str] = None
 
 
 class Fork(BaseModel):
     """Fork: execute branches concurrently"""
 
     branches: list["Statement"]
+    node_id: Optional[str] = None
 
 
 class Return(BaseModel):
     """Return from function - supports returning multiple values"""
 
     values: list[Expression] = []
+    node_id: Optional[str] = None
 
 
 class ExprStmt(BaseModel):
     """Expression as statement (for side effects)"""
 
     expr: Expression
+    node_id: Optional[str] = None
 
 
 class OpStmt(BaseModel):
@@ -103,6 +112,7 @@ class OpStmt(BaseModel):
 
     name: str
     args: list[Expression]
+    node_id: Optional[str] = None
 
 
 class Catch(BaseModel):
@@ -119,12 +129,14 @@ class Try(BaseModel):
     body: "Statement"
     handlers: list[Catch]
     finally_: Optional["Statement"] = None
+    node_id: Optional[str] = None
 
 
 class Throw(BaseModel):
     """Throw an exception."""
 
-    value: Expression  # Evaluates to error message/exception
+    value: Expression
+    node_id: Optional[str] = None
 
 
 # Union type for all statements

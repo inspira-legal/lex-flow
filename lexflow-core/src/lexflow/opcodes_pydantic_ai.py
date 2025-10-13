@@ -12,11 +12,13 @@ Authentication:
 """
 
 from typing import Any, Optional
+from .opcodes import default_registry
 
 try:
     from pydantic_ai import Agent
     from pydantic_ai.models.google import GoogleModel
     from pydantic_ai.providers.google import GoogleProvider
+
     PYDANTIC_AI_AVAILABLE = True
 except ImportError:
     PYDANTIC_AI_AVAILABLE = False
@@ -38,13 +40,9 @@ def register_pydantic_ai_opcodes():
     if not PYDANTIC_AI_AVAILABLE:
         return
 
-    from .opcodes import default_registry
-
     @default_registry.register()
     async def pydantic_ai_create_vertex_model(
-        model_name: str,
-        project: Optional[str] = None,
-        location: Optional[str] = None
+        model_name: str, project: Optional[str] = None, location: Optional[str] = None
     ) -> Any:
         """Create a Google Vertex AI model instance.
 
@@ -79,9 +77,7 @@ def register_pydantic_ai_opcodes():
 
     @default_registry.register()
     async def pydantic_ai_create_agent(
-        model: Any,
-        instructions: str = '',
-        system_prompt: str = ''
+        model: Any, instructions: str = "", system_prompt: str = ""
     ) -> Any:
         """Create a pydantic_ai Agent.
 
@@ -109,10 +105,7 @@ def register_pydantic_ai_opcodes():
         return agent
 
     @default_registry.register()
-    async def pydantic_ai_run_sync(
-        agent: Any,
-        prompt: str
-    ) -> str:
+    async def pydantic_ai_run_sync(agent: Any, prompt: str) -> str:
         """Run agent with a prompt.
 
         Args:
@@ -137,10 +130,7 @@ def register_pydantic_ai_opcodes():
         return result.output
 
     @default_registry.register()
-    async def pydantic_ai_run(
-        agent: Any,
-        prompt: str
-    ) -> str:
+    async def pydantic_ai_run(agent: Any, prompt: str) -> str:
         """Run agent asynchronously with a prompt.
 
         Args:

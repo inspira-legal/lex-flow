@@ -10,8 +10,11 @@ from .opcodes import OpcodeRegistry, default_registry, opcode
 from .workflows import WorkflowManager
 from .metrics import ExecutionMetrics, NullMetrics
 from .opcodes_pydantic_ai import register_pydantic_ai_opcodes
+from .opcodes_pygame import register_pygame_opcodes
 
+# Register optional opcode modules
 register_pydantic_ai_opcodes()
+register_pygame_opcodes()
 
 # Main exports for API users
 __all__ = [

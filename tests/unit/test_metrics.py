@@ -496,3 +496,58 @@ async def test_metrics_measure_context_manager():
     # Check that operation was recorded with metadata
     assert len(metrics.operations) == 1
     assert metrics.operations[0].metadata == {"key": "value"}
+
+
+async def test_node_level_metrics():
+    """Test that node-level metrics are collected with node IDs."""
+    parser = Parser()
+    program = parser.parse_dict(CONTROL_FLOW_WORKFLOW)
+
+    output_buffer = io.StringIO()
+    engine = Engine(program, output=output_buffer, metrics=True)
+
+    result = await engine.run()
+
+    # Check for node-level metrics
+    node_metrics = engine.metrics.get_aggregated("node")
+
+    # Should have metrics for named nodes from the workflow
+    assert len(node_metrics) > 0
+
+    # Check that specific nodes are tracked (node IDs from CONTROL_FLOW_WORKFLOW)
+    # The parser preserves node IDs like "loop", "loop_body", "add_counter", "print_done"
+    assert "loop" in node_metrics
+    assert "print_done" in node_metrics
+
+    # Verify loop node was executed once
+    assert node_metrics["loop"].count == 1
+    assert node_metrics["loop"].total_time > 0
+
+    # Verify print_done node was executed once
+    assert node_metrics["print_done"].count == 1
+    assert node_metrics["print_done"].total_time > 0
+
+    # loop_body should be executed 5 times (once per iteration)
+    if "loop_body" in node_metrics:
+        assert node_metrics["loop_body"].count == 5
+
+
+async def test_node_metrics_in_report():
+    """Test that node metrics appear in the formatted report."""
+    parser = Parser()
+    program = parser.parse_dict(SIMPLE_WORKFLOW)
+
+    engine = Engine(program, output=io.StringIO(), metrics=True)
+    result = await engine.run()
+
+    report = engine.get_metrics_report(top_n=10)
+
+    # Node metrics section should be included
+    assert "NODE METRICS" in report
+
+    # Should show timing for nodes by their ID
+    node_metrics = engine.metrics.get_aggregated("node")
+    if node_metrics:
+        # At least one node name should appear in the report
+        node_names = list(node_metrics.keys())
+        assert any(node_name in report for node_name in node_names)

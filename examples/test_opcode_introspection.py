@@ -1,11 +1,11 @@
 """Test script to demonstrate opcode introspection capabilities."""
 
 import asyncio
-from lexflow.opcodes import OpcodeRegistry
+from lexflow.opcodes import default_registry
 
 
 async def main():
-    registry = OpcodeRegistry()
+    registry = default_registry
 
     print("=" * 60)
     print("OPCODE INTROSPECTION DEMONSTRATION")
@@ -32,7 +32,7 @@ async def main():
         interface = registry.get_interface(opcode_name)
         print(f"📦 {interface['name']}")
         print(f"   {interface['doc']}")
-        print(f"\n   Parameters:")
+        print("\n   Parameters:")
         for param in interface["parameters"]:
             required = "required" if param["required"] else "optional"
             default = f" = {param.get('default', '')}" if not param["required"] else ""

@@ -363,7 +363,7 @@ workflows:
           WORKFLOW:
             literal: draw_wavy_string
           ARG1:
-            literal: "Inspira"
+            literal: " Inspira"
           ARG2:
             literal: 425
           ARG3:

@@ -3,7 +3,7 @@
     {
       "name": "main",
       "variables": {
-        "counter": "1"
+        "counter": 1
       },
       "nodes": {
         "start": {
@@ -22,7 +22,7 @@
           "opcode": "operator_less_than",
           "inputs": {
             "OPERAND1": { "variable": "counter" },
-            "OPERAND2": { "literal": "4" }
+            "OPERAND2": { "literal": 4 }
           },
           "isReporter": true
         },
@@ -58,7 +58,7 @@
           "opcode": "operator_add",
           "inputs": {
             "OPERAND1": { "variable": "counter" },
-            "OPERAND2": { "literal": "1" }
+            "OPERAND2": { "literal": 1 }
           },
           "isReporter": true
         }

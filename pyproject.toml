@@ -22,13 +22,14 @@ dependencies = [
     "pydantic",
     "aiofiles",
     "pyyaml",
-    "pydantic-ai-slim[google]",
 ]
 
 [project.optional-dependencies]
+ai = ["pydantic-ai-slim[google]"]
+pygame = ["pygame>=2.6.1"]
 file = ["pymupdf"]
 dev = ["pytest", "pytest-asyncio"]
-all = ["lexflow[file]"]
+all = ["lexflow[ai,pygame,file]"]
 
 [project.scripts]
 lexflow = "lexflow_cli.main:cli_main"

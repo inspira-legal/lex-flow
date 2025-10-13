@@ -52,6 +52,9 @@ class Executor:
         start_time = time.perf_counter()
         stmt_type = type(stmt).__name__
 
+        # Extract node_id if available (all statements have this field)
+        node_id = getattr(stmt, 'node_id', None)
+
         try:
             match stmt:
                 case Assign(name=n, value=v):
@@ -104,6 +107,10 @@ class Executor:
         finally:
             duration = time.perf_counter() - start_time
             self.metrics.record("statement", stmt_type, duration)
+
+            # Also record node-level metrics if node_id is present
+            if node_id:
+                self.metrics.record("node", node_id, duration)
 
     async def _exec_assign(self, name: str, value) -> Flow:
         """Execute assignment statement."""
