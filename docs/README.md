@@ -2,7 +2,20 @@
 
 Welcome to the LexFlow documentation! This directory contains comprehensive guides for using and understanding LexFlow.
 
+Before you keep reading keep in mind that LexFlow is still in early development and is not yet standardized. It means the language features are going to change and we do not guarantee backwards compatibility so expect braking changes in your workflows as we improve the language.
+
 ## Documentation Files
+
+### Getting Started
+
+**[GETTING_STARTED.md](GETTING_STARTED.md)** - Installation and first steps
+
+- Installing UV and dependencies
+- Setting up your environment
+- Running your first workflow
+- Common CLI commands
+- Development workflow
+- Troubleshooting guide
 
 ### Core Language
 
@@ -42,9 +55,18 @@ Welcome to the LexFlow documentation! This directory contains comprehensive guid
 
 ## Getting Started
 
+### 0. Installation
+
+Start with [GETTING_STARTED.md](GETTING_STARTED.md) to:
+
+- Install UV and set up your environment
+- Install dependencies and activate virtualenv
+- Run your first workflow
+- Learn common CLI commands
+
 ### 1. Learn the Basics
 
-Start with [GRAMMAR.md](GRAMMAR.md) to understand:
+Then read [GRAMMAR.md](GRAMMAR.md) to understand:
 
 - How workflows are structured
 - Node chains and execution flow
@@ -143,11 +165,10 @@ workflows:
 You can extend LexFlow with custom opcodes:
 
 ```python
-from lexflow.opcodes import OpcodeRegistry
+from lexflow import opcode
 
-registry = OpcodeRegistry()
 
-@registry.register()
+@opcode()
 async def my_custom_opcode(x: int, y: int) -> int:
     """My custom operation."""
     return x * y + 42
