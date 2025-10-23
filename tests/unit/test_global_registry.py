@@ -33,23 +33,19 @@ async def test_global_registry_simple():
                     "start": {
                         "opcode": "workflow_start",
                         "next": "use_custom",
-                        "inputs": {}
+                        "inputs": {},
                     },
                     "use_custom": {
                         "opcode": "multiply_by_100",
                         "next": "print_result",
-                        "inputs": {
-                            "x": {"literal": 5}
-                        }
+                        "inputs": {"x": {"literal": 5}},
                     },
                     "print_result": {
                         "opcode": "io_print",
                         "next": None,
-                        "inputs": {
-                            "STRING": {"node": "use_custom"}
-                        }
-                    }
-                }
+                        "inputs": {"STRING": {"node": "use_custom"}},
+                    },
+                },
             }
         ]
     }
@@ -81,23 +77,19 @@ async def test_global_registry_with_custom_name():
                     "start": {
                         "opcode": "workflow_start",
                         "next": "use_custom",
-                        "inputs": {}
+                        "inputs": {},
                     },
                     "use_custom": {
                         "opcode": "custom_named_op",
                         "next": "print_result",
-                        "inputs": {
-                            "text": {"literal": "Hello"}
-                        }
+                        "inputs": {"text": {"literal": "Hello"}},
                     },
                     "print_result": {
                         "opcode": "io_print",
                         "next": None,
-                        "inputs": {
-                            "STRING": {"node": "use_custom"}
-                        }
-                    }
-                }
+                        "inputs": {"STRING": {"node": "use_custom"}},
+                    },
+                },
             }
         ]
     }
@@ -142,12 +134,8 @@ async def test_engine_uses_default_registry():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -173,12 +161,8 @@ async def test_engine_with_custom_registry():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -203,12 +187,8 @@ async def test_multiple_engines_share_global_registry():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }

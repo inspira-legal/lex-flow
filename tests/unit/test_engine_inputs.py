@@ -13,35 +13,25 @@ GREETING_WORKFLOW = {
     "workflows": [
         {
             "name": "main",
-            "interface": {
-                "inputs": ["name", "age"],
-                "outputs": []
-            },
-            "variables": {
-                "name": "Guest",
-                "age": 0
-            },
+            "interface": {"inputs": ["name", "age"], "outputs": []},
+            "variables": {"name": "Guest", "age": 0},
             "nodes": {
                 "start": {
                     "opcode": "workflow_start",
                     "next": "print_name",
-                    "inputs": {}
+                    "inputs": {},
                 },
                 "print_name": {
                     "opcode": "io_print",
                     "next": "print_age",
-                    "inputs": {
-                        "STRING": {"variable": "name"}
-                    }
+                    "inputs": {"STRING": {"variable": "name"}},
                 },
                 "print_age": {
                     "opcode": "io_print",
                     "next": None,
-                    "inputs": {
-                        "STRING": {"variable": "age"}
-                    }
-                }
-            }
+                    "inputs": {"STRING": {"variable": "age"}},
+                },
+            },
         }
     ]
 }
@@ -184,43 +174,30 @@ async def test_engine_run_type_conversion():
         "workflows": [
             {
                 "name": "main",
-                "interface": {
-                    "inputs": ["text", "number", "flag"],
-                    "outputs": []
-                },
-                "variables": {
-                    "text": "",
-                    "number": 0,
-                    "flag": False
-                },
+                "interface": {"inputs": ["text", "number", "flag"], "outputs": []},
+                "variables": {"text": "", "number": 0, "flag": False},
                 "nodes": {
                     "start": {
                         "opcode": "workflow_start",
                         "next": "print_text",
-                        "inputs": {}
+                        "inputs": {},
                     },
                     "print_text": {
                         "opcode": "io_print",
                         "next": "print_number",
-                        "inputs": {
-                            "STRING": {"variable": "text"}
-                        }
+                        "inputs": {"STRING": {"variable": "text"}},
                     },
                     "print_number": {
                         "opcode": "io_print",
                         "next": "print_flag",
-                        "inputs": {
-                            "STRING": {"variable": "number"}
-                        }
+                        "inputs": {"STRING": {"variable": "number"}},
                     },
                     "print_flag": {
                         "opcode": "io_print",
                         "next": None,
-                        "inputs": {
-                            "STRING": {"variable": "flag"}
-                        }
-                    }
-                }
+                        "inputs": {"STRING": {"variable": "flag"}},
+                    },
+                },
             }
         ]
     }
@@ -233,11 +210,7 @@ async def test_engine_run_type_conversion():
     engine = Engine(program, output=output_buffer)
 
     # Run with various types
-    result = await engine.run(inputs={
-        "text": "Hello",
-        "number": 42,
-        "flag": True
-    })
+    result = await engine.run(inputs={"text": "Hello", "number": 42, "flag": True})
 
     # Verify all types were used
     captured = output_buffer.getvalue()
@@ -254,16 +227,12 @@ async def test_engine_run_no_params():
                 "name": "main",
                 "interface": {
                     "inputs": [],  # No parameters
-                    "outputs": []
+                    "outputs": [],
                 },
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -285,16 +254,12 @@ async def test_engine_run_no_params_with_inputs():
                 "name": "main",
                 "interface": {
                     "inputs": [],  # No parameters
-                    "outputs": []
+                    "outputs": [],
                 },
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }

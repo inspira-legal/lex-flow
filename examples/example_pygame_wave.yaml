@@ -16,7 +16,7 @@ workflows:
         next: draw_loop
         inputs: {}
 
-      # Loop through each character index using for loop
+      # Itera por cada caracter da string
       draw_loop:
         opcode: control_for
         next: null

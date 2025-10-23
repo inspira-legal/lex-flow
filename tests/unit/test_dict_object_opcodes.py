@@ -9,6 +9,7 @@ pytestmark = pytest.mark.asyncio
 
 # ============ Dictionary Operation Tests ============
 
+
 async def test_dict_create_empty():
     """Test creating empty dictionary."""
     result = await default_registry.call("dict_create", [])
@@ -176,6 +177,7 @@ async def test_dict_with_non_string_keys():
 
 
 # ============ Object Operation Tests ============
+
 
 async def test_object_create():
     """Test creating empty object."""

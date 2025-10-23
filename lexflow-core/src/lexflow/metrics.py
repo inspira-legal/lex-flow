@@ -29,7 +29,7 @@ class AggregatedMetrics:
 
     count: int = 0
     total_time: float = 0.0
-    min_time: float = float('inf')
+    min_time: float = float("inf")
     max_time: float = 0.0
     avg_time: float = 0.0
 
@@ -46,7 +46,7 @@ class AggregatedMetrics:
         return {
             "count": self.count,
             "total_time": self.total_time,
-            "min_time": self.min_time if self.min_time != float('inf') else 0.0,
+            "min_time": self.min_time if self.min_time != float("inf") else 0.0,
             "max_time": self.max_time,
             "avg_time": self.avg_time,
         }
@@ -91,7 +91,7 @@ class ExecutionMetrics:
         operation_type: str,
         name: str,
         duration: float,
-        metadata: Optional[dict[str, Any]] = None
+        metadata: Optional[dict[str, Any]] = None,
     ):
         """Record a single operation execution.
 
@@ -107,7 +107,7 @@ class ExecutionMetrics:
             name=name,
             duration=duration,
             timestamp=timestamp,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
         self.operations.append(metric)
 
@@ -117,10 +117,7 @@ class ExecutionMetrics:
 
     @contextmanager
     def measure(
-        self,
-        operation_type: str,
-        name: str,
-        metadata: Optional[dict[str, Any]] = None
+        self, operation_type: str, name: str, metadata: Optional[dict[str, Any]] = None
     ):
         """Context manager for measuring operation duration.
 
@@ -148,10 +145,7 @@ class ExecutionMetrics:
         return {}
 
     def get_top_operations(
-        self,
-        operation_type: str,
-        n: int = 10,
-        sort_by: str = "total_time"
+        self, operation_type: str, n: int = 10, sort_by: str = "total_time"
     ) -> list[tuple[str, AggregatedMetrics]]:
         """Get top N operations by a specific metric.
 
@@ -165,9 +159,7 @@ class ExecutionMetrics:
         """
         aggregated = self._aggregated.get(operation_type, {})
         sorted_ops = sorted(
-            aggregated.items(),
-            key=lambda x: getattr(x[1], sort_by),
-            reverse=True
+            aggregated.items(), key=lambda x: getattr(x[1], sort_by), reverse=True
         )
         return sorted_ops[:n]
 
@@ -177,10 +169,7 @@ class ExecutionMetrics:
             "total_execution_time": self.get_total_time(),
             "operation_count": len(self.operations),
             "aggregated": {
-                op_type: {
-                    name: metrics.to_dict()
-                    for name, metrics in agg.items()
-                }
+                op_type: {name: metrics.to_dict() for name, metrics in agg.items()}
                 for op_type, agg in self._aggregated.items()
             },
             "operations": [
@@ -192,7 +181,7 @@ class ExecutionMetrics:
                     "metadata": op.metadata,
                 }
                 for op in self.operations
-            ]
+            ],
         }
 
     def to_json(self, indent: int = 2) -> str:
@@ -233,7 +222,9 @@ class ExecutionMetrics:
             top_ops = self.get_top_operations(op_type, n=top_n, sort_by="total_time")
 
             if top_ops:
-                lines.append(f"{'Name':<30} {'Count':>8} {'Total(s)':>12} {'Avg(s)':>12} {'Min(s)':>12} {'Max(s)':>12}")
+                lines.append(
+                    f"{'Name':<30} {'Count':>8} {'Total(s)':>12} {'Avg(s)':>12} {'Min(s)':>12} {'Max(s)':>12}"
+                )
                 lines.append("-" * 80)
 
                 for name, metrics in top_ops:
@@ -267,8 +258,7 @@ class ExecutionMetrics:
 
         if type_counts:
             type_summary = ", ".join(
-                f"{op_type}: {count}"
-                for op_type, count in sorted(type_counts.items())
+                f"{op_type}: {count}" for op_type, count in sorted(type_counts.items())
             )
             summary_parts.append(f"({type_summary})")
 
@@ -289,11 +279,19 @@ class NullMetrics:
     def end_execution(self):
         pass
 
-    def record(self, operation_type: str, name: str, duration: float, metadata: Optional[dict[str, Any]] = None):
+    def record(
+        self,
+        operation_type: str,
+        name: str,
+        duration: float,
+        metadata: Optional[dict[str, Any]] = None,
+    ):
         pass
 
     @contextmanager
-    def measure(self, operation_type: str, name: str, metadata: Optional[dict[str, Any]] = None):
+    def measure(
+        self, operation_type: str, name: str, metadata: Optional[dict[str, Any]] = None
+    ):
         yield
 
     def get_total_time(self) -> float:
@@ -302,7 +300,9 @@ class NullMetrics:
     def get_aggregated(self, operation_type: str) -> dict[str, AggregatedMetrics]:
         return {}
 
-    def get_top_operations(self, operation_type: str, n: int = 10, sort_by: str = "total_time") -> list:
+    def get_top_operations(
+        self, operation_type: str, n: int = 10, sort_by: str = "total_time"
+    ) -> list:
         return []
 
     def to_dict(self) -> dict[str, Any]:

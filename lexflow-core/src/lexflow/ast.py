@@ -140,7 +140,20 @@ class Throw(BaseModel):
 
 
 # Union type for all statements
-Statement = Assign | Block | If | While | For | ForEach | Fork | Return | ExprStmt | OpStmt | Try | Throw
+Statement = (
+    Assign
+    | Block
+    | If
+    | While
+    | For
+    | ForEach
+    | Fork
+    | Return
+    | ExprStmt
+    | OpStmt
+    | Try
+    | Throw
+)
 
 
 # ============ Top Level ============

@@ -1,0 +1,187 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      main_var: "exists in main"
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_before
+        inputs: {}
+
+      print_before:
+        opcode: io_print
+        next: call_looper
+        inputs:
+          STRING:
+            literal: "=== Before calling workflow with for loop ===\n"
+
+      call_looper:
+        opcode: workflow_call
+        next: print_after
+        inputs:
+          WORKFLOW:
+            literal: workflow_with_for_loop
+
+      print_after:
+        opcode: io_print
+        next: try_access_i
+        inputs:
+          STRING:
+            literal: "\n=== Back in main after workflow call ===\n"
+
+      # Try to access the loop variable 'i' that was created in the called workflow
+      try_access_i:
+        opcode: control_try
+        next: try_access_item
+        inputs:
+          TRY:
+            branch: try_i_block
+          CATCH1:
+            exception_type: "NameError"
+            var: "err"
+            body:
+              branch: catch_i_block
+
+      try_i_block:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: get_i
+
+      get_i:
+        opcode: data_get_variable
+        inputs:
+          VARIABLE:
+            literal: "i"
+        isReporter: true
+
+      catch_i_block:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "✓ Loop variable 'i' does not exist in main (properly cleaned up)\n"
+
+      # Try to access foreach loop variable 'item'
+      try_access_item:
+        opcode: control_try
+        next: done
+        inputs:
+          TRY:
+            branch: try_item_block
+          CATCH1:
+            exception_type: "NameError"
+            var: "err"
+            body:
+              branch: catch_item_block
+
+      try_item_block:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: get_item
+
+      get_item:
+        opcode: data_get_variable
+        inputs:
+          VARIABLE:
+            literal: "item"
+        isReporter: true
+
+      catch_item_block:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "✓ Loop variable 'item' does not exist in main (properly cleaned up)\n"
+
+      done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n=== Test Complete ===\n"
+
+  - name: workflow_with_for_loop
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_in_workflow
+        inputs: {}
+
+      print_in_workflow:
+        opcode: io_print
+        next: for_loop
+        inputs:
+          STRING:
+            literal: "\n[Inside workflow_with_for_loop]\n"
+
+      # For loop that creates variable 'i'
+      for_loop:
+        opcode: control_for
+        next: foreach_loop
+        inputs:
+          VAR:
+            literal: "i"
+          START:
+            literal: 0
+          END:
+            literal: 3
+          BODY:
+            branch: for_body
+
+      for_body:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: get_i_in_loop
+
+      get_i_in_loop:
+        opcode: data_get_variable
+        inputs:
+          VARIABLE:
+            literal: "i"
+        isReporter: true
+
+      # Foreach loop that creates variable 'item'
+      foreach_loop:
+        opcode: control_foreach
+        next: print_after_loops
+        inputs:
+          VAR:
+            literal: "item"
+          ITERABLE:
+            literal: ["apple", "banana", "cherry"]
+          BODY:
+            branch: foreach_body
+
+      foreach_body:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: get_item_in_loop
+
+      get_item_in_loop:
+        opcode: data_get_variable
+        inputs:
+          VARIABLE:
+            literal: "item"
+        isReporter: true
+
+      print_after_loops:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n[Loops completed in workflow]\n"

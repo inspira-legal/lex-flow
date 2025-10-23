@@ -145,7 +145,9 @@ async def example_ai_opcodes():
     result = await default_registry.call("ai_sentiment", ["This is awesome and great!"])
     print(f"\n✓ ai_sentiment('This is awesome and great!') = {result}")
 
-    result = await default_registry.call("ai_sentiment", ["This is terrible and awful!"])
+    result = await default_registry.call(
+        "ai_sentiment", ["This is terrible and awful!"]
+    )
     print(f"✓ ai_sentiment('This is terrible and awful!') = {result}")
 
     long_text = "This is a very long piece of text that needs to be summarized."

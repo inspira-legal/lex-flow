@@ -35,7 +35,9 @@ class Engine:
 
         # Plugin systems
         self.opcodes = opcodes if opcodes is not None else default_registry
-        self.workflows = WorkflowManager(program.externals, self.executor, self.runtime, self.metrics)
+        self.workflows = WorkflowManager(
+            program.externals, self.executor, self.runtime, self.metrics
+        )
 
         # Wire up dependencies
         self.evaluator.opcodes = self.opcodes

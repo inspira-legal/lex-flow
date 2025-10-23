@@ -136,46 +136,6 @@ workflows:
             literal: "Complete!\n"
 ```
 
-## Language Features
-
-### Core Features
-
-✅ Visual node-based workflows
-✅ Stack-based execution model
-✅ Async-native operation
-✅ Variable scoping
-✅ Workflow calls (functions)
-✅ JSON and YAML support
-
-### Control Flow
-
-✅ Sequential execution
-✅ If/else conditionals
-✅ While loops
-✅ Try-catch-finally
-✅ Workflow returns
-
-### Data Types
-
-✅ Numbers (int, float)
-✅ Strings
-✅ Booleans
-✅ Lists
-✅ Dictionaries
-
-### Operations
-
-✅ 75+ built-in opcodes
-✅ Arithmetic operations
-✅ Comparison and logic
-✅ String manipulation
-✅ List operations
-✅ Dictionary operations
-✅ Object operations
-✅ AI operations (pydantic-ai)
-✅ Exception handling
-✅ Custom opcode support
-
 ## Advanced Topics
 
 ### Custom Opcodes
@@ -258,27 +218,7 @@ Parser → AST → Executor
 
 For questions, issues, or contributions:
 
-- Check the documentation first
+- Talk to me on slack
+- Check the documentation
 - Look at example programs
-- Search existing issues
-- Create detailed bug reports
 
-## Version History
-
-### Current Version (MVP)
-
-- ✅ Exception handling (try-catch-finally)
-- ✅ 75+ built-in opcodes
-- ✅ Dictionary and object operations
-- ✅ AI integration (Google Vertex AI via pydantic-ai)
-- ✅ Workflow input parameters
-- ✅ Output redirection and capture
-- ✅ Workflow calls on reporter nodes
-- ✅ JSON and YAML support
-- ✅ Multi-file workflows
-- ✅ Async-native execution
-- ✅ Type-hinted opcodes with introspection
-
-## License
-
-See the main project LICENSE file.

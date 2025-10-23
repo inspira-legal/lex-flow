@@ -14,7 +14,7 @@ class WorkflowManager:
         workflows: dict[str, Workflow],
         executor: Executor,
         runtime: Runtime,
-        metrics: Union[ExecutionMetrics, NullMetrics] = None
+        metrics: Union[ExecutionMetrics, NullMetrics] = None,
     ):
         self.workflows = workflows
         self.executor = executor

@@ -13,12 +13,8 @@ def test_parse_dict_simple():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -38,17 +34,10 @@ def test_parse_dict_with_variables():
             {
                 "name": "main",
                 "interface": {"inputs": [], "outputs": []},
-                "variables": {
-                    "count": 42,
-                    "message": "Hello"
-                },
+                "variables": {"count": 42, "message": "Hello"},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -66,21 +55,11 @@ def test_parse_dict_with_inputs():
         "workflows": [
             {
                 "name": "main",
-                "interface": {
-                    "inputs": ["name", "age"],
-                    "outputs": []
-                },
-                "variables": {
-                    "name": "Guest",
-                    "age": 0
-                },
+                "interface": {"inputs": ["name", "age"], "outputs": []},
+                "variables": {"name": "Guest", "age": 0},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -101,25 +80,17 @@ def test_parse_dict_with_externals():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             },
             {
                 "name": "helper",
                 "interface": {"inputs": ["x"], "outputs": []},
                 "variables": {"x": 0},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
-            }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
+            },
         ]
     }
 
@@ -150,12 +121,8 @@ def test_parse_dict_no_main():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -174,12 +141,8 @@ def test_parse_dicts_simple():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -191,12 +154,8 @@ def test_parse_dicts_simple():
                 "interface": {"inputs": ["x"], "outputs": []},
                 "variables": {"x": 0},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -218,12 +177,8 @@ def test_parse_dicts_multiple_includes():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -235,12 +190,8 @@ def test_parse_dicts_multiple_includes():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -252,12 +203,8 @@ def test_parse_dicts_multiple_includes():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -280,12 +227,8 @@ def test_parse_dicts_duplicate_names():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -297,12 +240,8 @@ def test_parse_dicts_duplicate_names():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -314,12 +253,8 @@ def test_parse_dicts_duplicate_names():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }
@@ -338,12 +273,8 @@ def test_parse_dicts_no_includes():
                 "interface": {"inputs": [], "outputs": []},
                 "variables": {},
                 "nodes": {
-                    "start": {
-                        "opcode": "workflow_start",
-                        "next": None,
-                        "inputs": {}
-                    }
-                }
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
         ]
     }

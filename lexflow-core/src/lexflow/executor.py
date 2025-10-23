@@ -40,7 +40,7 @@ class Executor:
         self,
         runtime: Runtime,
         evaluator: Evaluator,
-        metrics: Union[ExecutionMetrics, NullMetrics] = None
+        metrics: Union[ExecutionMetrics, NullMetrics] = None,
     ):
         self.rt = runtime
         self.ev = evaluator
@@ -53,7 +53,7 @@ class Executor:
         stmt_type = type(stmt).__name__
 
         # Extract node_id if available (all statements have this field)
-        node_id = getattr(stmt, 'node_id', None)
+        node_id = getattr(stmt, "node_id", None)
 
         try:
             match stmt:

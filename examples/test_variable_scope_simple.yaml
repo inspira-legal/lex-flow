@@ -1,0 +1,168 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      outer_var: "I am in main\n"
+      shared_name: "main's value"
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_before
+        inputs: {}
+
+      print_before:
+        opcode: io_print
+        next: print_outer_before
+        inputs:
+          STRING:
+            literal: "=== Before calling helper ===\n"
+
+      print_outer_before:
+        opcode: io_print
+        next: print_shared_before
+        inputs:
+          STRING:
+            variable: outer_var
+
+      print_shared_before:
+        opcode: io_print
+        next: call_helper
+        inputs:
+          STRING:
+            variable: shared_name
+
+      call_helper:
+        opcode: workflow_call
+        next: print_after
+        inputs:
+          WORKFLOW:
+            literal: helper_workflow
+
+      print_after:
+        opcode: io_print
+        next: print_outer_after
+        inputs:
+          STRING:
+            literal: "\n=== After calling helper ===\n"
+
+      print_outer_after:
+        opcode: io_print
+        next: print_shared_after
+        inputs:
+          STRING:
+            node: get_outer_after
+
+      get_outer_after:
+        opcode: data_get_variable
+        inputs:
+          VARIABLE:
+            literal: "outer_var"
+        isReporter: true
+
+      print_shared_after:
+        opcode: io_print
+        inputs:
+          STRING:
+            node: get_shared_after
+
+      get_shared_after:
+        opcode: data_get_variable
+        inputs:
+          VARIABLE:
+            literal: "shared_name"
+        isReporter: true
+
+  - name: helper_workflow
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      inner_var: "I only exist in helper\n"
+      shared_name: "helper's initial value"
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_helper_start
+        inputs: {}
+
+      print_helper_start:
+        opcode: io_print
+        next: print_inner
+        inputs:
+          STRING:
+            literal: "\n[Inside helper_workflow]\n"
+
+      print_inner:
+        opcode: io_print
+        next: print_shared
+        inputs:
+          STRING:
+            node: get_inner
+
+      get_inner:
+        opcode: data_get_variable
+        inputs:
+          VARIABLE:
+            literal: "inner_var"
+        isReporter: true
+
+      print_shared:
+        opcode: io_print
+        next: modify_shared
+        inputs:
+          STRING:
+            node: get_shared
+
+      get_shared:
+        opcode: data_get_variable
+        inputs:
+          VARIABLE:
+            literal: "shared_name"
+        isReporter: true
+
+      modify_shared:
+        opcode: data_set_variable_to
+        next: print_modified
+        inputs:
+          VARIABLE:
+            literal: "shared_name"
+          VALUE:
+            literal: "modified by helper"
+
+      print_modified:
+        opcode: io_print
+        next: create_new_var
+        inputs:
+          STRING:
+            node: get_shared_after_modify
+
+      get_shared_after_modify:
+        opcode: data_get_variable
+        inputs:
+          VARIABLE:
+            literal: "shared_name"
+        isReporter: true
+
+      create_new_var:
+        opcode: data_set_variable_to
+        next: print_created
+        inputs:
+          VARIABLE:
+            literal: "helper_created_var"
+          VALUE:
+            literal: "created inside helper"
+
+      print_created:
+        opcode: io_print
+        inputs:
+          STRING:
+            node: get_created
+
+      get_created:
+        opcode: data_get_variable
+        inputs:
+          VARIABLE:
+            literal: "helper_created_var"
+        isReporter: true

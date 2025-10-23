@@ -17,27 +17,18 @@ SIMPLE_WORKFLOW = {
             "interface": {"inputs": [], "outputs": []},
             "variables": {"x": 10, "y": 20},
             "nodes": {
-                "start": {
-                    "opcode": "workflow_start",
-                    "next": "add",
-                    "inputs": {}
-                },
+                "start": {"opcode": "workflow_start", "next": "add", "inputs": {}},
                 "add": {
                     "opcode": "operator_add",
                     "next": "print",
-                    "inputs": {
-                        "A": {"variable": "x"},
-                        "B": {"variable": "y"}
-                    }
+                    "inputs": {"A": {"variable": "x"}, "B": {"variable": "y"}},
                 },
                 "print": {
                     "opcode": "io_print",
                     "next": None,
-                    "inputs": {
-                        "STRING": {"node": "add"}
-                    }
-                }
-            }
+                    "inputs": {"STRING": {"node": "add"}},
+                },
+            },
         }
     ]
 }
@@ -51,11 +42,7 @@ CONTROL_FLOW_WORKFLOW = {
             "interface": {"inputs": [], "outputs": []},
             "variables": {"counter": 0},
             "nodes": {
-                "start": {
-                    "opcode": "workflow_start",
-                    "next": "loop",
-                    "inputs": {}
-                },
+                "start": {"opcode": "workflow_start", "next": "loop", "inputs": {}},
                 "loop": {
                     "opcode": "control_for",
                     "next": "print_done",
@@ -63,33 +50,28 @@ CONTROL_FLOW_WORKFLOW = {
                         "VAR": {"literal": "i"},
                         "START": {"literal": 0},
                         "END": {"literal": 5},
-                        "BODY": {"branch": "loop_body"}
-                    }
+                        "BODY": {"branch": "loop_body"},
+                    },
                 },
                 "loop_body": {
                     "opcode": "data_set_variable_to",
                     "next": None,
                     "inputs": {
                         "VARIABLE": {"literal": "counter"},
-                        "VALUE": {"node": "add_counter"}
-                    }
+                        "VALUE": {"node": "add_counter"},
+                    },
                 },
                 "add_counter": {
                     "opcode": "operator_add",
                     "next": None,
-                    "inputs": {
-                        "A": {"variable": "counter"},
-                        "B": {"literal": 1}
-                    }
+                    "inputs": {"A": {"variable": "counter"}, "B": {"literal": 1}},
                 },
                 "print_done": {
                     "opcode": "io_print",
                     "next": None,
-                    "inputs": {
-                        "STRING": {"literal": "Done"}
-                    }
-                }
-            }
+                    "inputs": {"STRING": {"literal": "Done"}},
+                },
+            },
         }
     ]
 }
@@ -106,7 +88,7 @@ WORKFLOW_CALL_EXAMPLE = {
                 "start": {
                     "opcode": "workflow_start",
                     "next": "call_helper",
-                    "inputs": {}
+                    "inputs": {},
                 },
                 "call_helper": {
                     "opcode": "workflow_call",
@@ -114,45 +96,34 @@ WORKFLOW_CALL_EXAMPLE = {
                     "inputs": {
                         "WORKFLOW": {"literal": "helper"},
                         "ARG1": {"literal": 5},
-                        "ARG2": {"literal": 10}
-                    }
+                        "ARG2": {"literal": 10},
+                    },
                 },
                 "print_result": {
                     "opcode": "io_print",
                     "next": None,
-                    "inputs": {
-                        "STRING": {"node": "call_helper"}
-                    }
-                }
-            }
+                    "inputs": {"STRING": {"node": "call_helper"}},
+                },
+            },
         },
         {
             "name": "helper",
             "interface": {"inputs": ["a", "b"], "outputs": []},
             "variables": {"a": 0, "b": 0},
             "nodes": {
-                "start": {
-                    "opcode": "workflow_start",
-                    "next": "multiply",
-                    "inputs": {}
-                },
+                "start": {"opcode": "workflow_start", "next": "multiply", "inputs": {}},
                 "multiply": {
                     "opcode": "operator_multiply",
                     "next": "return_result",
-                    "inputs": {
-                        "A": {"variable": "a"},
-                        "B": {"variable": "b"}
-                    }
+                    "inputs": {"A": {"variable": "a"}, "B": {"variable": "b"}},
                 },
                 "return_result": {
                     "opcode": "workflow_return",
                     "next": None,
-                    "inputs": {
-                        "VALUE": {"node": "multiply"}
-                    }
-                }
-            }
-        }
+                    "inputs": {"VALUE": {"node": "multiply"}},
+                },
+            },
+        },
     ]
 }
 
@@ -189,6 +160,7 @@ async def test_metrics_disabled_by_default():
 
     # Should have NullMetrics
     from lexflow.metrics import NullMetrics
+
     assert isinstance(engine.metrics, NullMetrics)
 
 
@@ -303,6 +275,7 @@ async def test_metrics_to_json():
     result = await engine.run()
 
     import json
+
     metrics_json = engine.metrics.to_json()
 
     # Verify it's valid JSON
@@ -430,16 +403,14 @@ async def test_metrics_with_errors():
                     "start": {
                         "opcode": "workflow_start",
                         "next": "throw_error",
-                        "inputs": {}
+                        "inputs": {},
                     },
                     "throw_error": {
                         "opcode": "control_throw",
                         "next": None,
-                        "inputs": {
-                            "VALUE": {"literal": "Test error"}
-                        }
-                    }
-                }
+                        "inputs": {"VALUE": {"literal": "Test error"}},
+                    },
+                },
             }
         ]
     }
@@ -473,7 +444,10 @@ async def test_aggregated_metrics_accuracy():
         assert add_metrics.count == 5
 
         # Average should equal total / count
-        assert abs(add_metrics.avg_time - (add_metrics.total_time / add_metrics.count)) < 1e-9
+        assert (
+            abs(add_metrics.avg_time - (add_metrics.total_time / add_metrics.count))
+            < 1e-9
+        )
 
         # Min should be <= max
         assert add_metrics.min_time <= add_metrics.max_time

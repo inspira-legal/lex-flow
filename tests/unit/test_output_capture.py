@@ -73,7 +73,7 @@ async def test_string_io_capture():
     """Test capturing output to StringIO buffer."""
     # Parse workflow
     parser = Parser()
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         f.write(SIMPLE_HELLO_WORKFLOW)
         temp_path = Path(f.name)
 
@@ -97,24 +97,24 @@ async def test_file_output():
     """Test redirecting output to a file."""
     # Parse workflow
     parser = Parser()
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         f.write(SIMPLE_HELLO_WORKFLOW)
         temp_workflow = Path(f.name)
 
     # Create output file
-    with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         temp_output = Path(f.name)
 
     try:
         program = parser.parse_file(str(temp_workflow))
 
         # Run with file output
-        with open(temp_output, 'w') as output_file:
+        with open(temp_output, "w") as output_file:
             engine = Engine(program, output=output_file)
             await engine.run()
 
         # Verify file contents
-        with open(temp_output, 'r') as f:
+        with open(temp_output, "r") as f:
             content = f.read()
 
         assert "Hello, World!" in content
@@ -128,12 +128,12 @@ async def test_tee_output():
     """Test writing to multiple outputs simultaneously."""
     # Parse workflow
     parser = Parser()
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         f.write(MULTI_LINE_WORKFLOW)
         temp_workflow = Path(f.name)
 
     # Create output file
-    with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         temp_file = Path(f.name)
 
     try:
@@ -141,14 +141,14 @@ async def test_tee_output():
 
         # Create TeeOutput to write to both StringIO and file
         string_buffer = io.StringIO()
-        with open(temp_file, 'w') as file_buffer:
+        with open(temp_file, "w") as file_buffer:
             tee = TeeOutput(string_buffer, file_buffer)
             engine = Engine(program, output=tee)
             await engine.run()
 
         # Verify both outputs received the same content
         string_content = string_buffer.getvalue()
-        with open(temp_file, 'r') as f:
+        with open(temp_file, "r") as f:
             file_content = f.read()
 
         assert string_content == file_content
@@ -164,7 +164,7 @@ async def test_streaming_output():
     """Test streaming output to a callback."""
     # Parse workflow
     parser = Parser()
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         f.write(MULTI_LINE_WORKFLOW)
         temp_path = Path(f.name)
 
@@ -196,7 +196,7 @@ async def test_output_capture_context_manager():
     """Test OutputCapture as a context manager."""
     # Parse workflow
     parser = Parser()
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         f.write(SIMPLE_HELLO_WORKFLOW)
         temp_path = Path(f.name)
 
@@ -218,7 +218,7 @@ async def test_no_output_redirection():
     """Test that engine works without output redirection (default behavior)."""
     # Parse workflow
     parser = Parser()
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         f.write(SIMPLE_HELLO_WORKFLOW)
         temp_path = Path(f.name)
 
@@ -239,7 +239,7 @@ async def test_multi_line_capture():
     """Test capturing multiple lines of output."""
     # Parse workflow
     parser = Parser()
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         f.write(MULTI_LINE_WORKFLOW)
         temp_path = Path(f.name)
 
@@ -253,7 +253,7 @@ async def test_multi_line_capture():
 
         # Verify all lines captured
         captured = output_buffer.getvalue()
-        lines = captured.split('\n')
+        lines = captured.split("\n")
 
         assert "Line 1" in captured
         assert "Line 2" in captured

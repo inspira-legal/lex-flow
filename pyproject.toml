@@ -22,6 +22,7 @@ dependencies = [
     "pydantic",
     "aiofiles",
     "pyyaml",
+    "rich",
 ]
 
 [project.optional-dependencies]
@@ -36,3 +37,8 @@ lexflow = "lexflow_cli.main:cli_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["lexflow-core/src/lexflow", "lexflow-cli/src/lexflow_cli"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.1",
+]

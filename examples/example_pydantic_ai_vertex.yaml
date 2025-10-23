@@ -27,7 +27,7 @@ workflows:
           model_name:
             literal: "gemini-2.5-flash"
           project:
-            literal: "inspira-development"
+            literal: "your-project-id"
           location:
             literal: "us-central1"
 

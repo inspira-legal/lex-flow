@@ -12,7 +12,6 @@ Authentication:
 """
 
 from typing import Any, Optional
-from .opcodes import default_registry
 
 try:
     from pydantic_ai import Agent
@@ -39,6 +38,8 @@ def register_pydantic_ai_opcodes():
     """Register pydantic_ai opcodes to the default registry."""
     if not PYDANTIC_AI_AVAILABLE:
         return
+
+    from .opcodes import default_registry
 
     @default_registry.register()
     async def pydantic_ai_create_vertex_model(

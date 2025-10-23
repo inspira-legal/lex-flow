@@ -12,9 +12,7 @@ class Evaluator:
     """Evaluate expressions to values."""
 
     def __init__(
-        self,
-        runtime: Runtime,
-        metrics: Union[ExecutionMetrics, NullMetrics] = None
+        self, runtime: Runtime, metrics: Union[ExecutionMetrics, NullMetrics] = None
     ):
         from .workflows import WorkflowManager
 

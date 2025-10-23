@@ -2,9 +2,11 @@ import argparse
 import asyncio
 import json
 import sys
+import yaml
 from pathlib import Path
 
 from lexflow import Parser, Engine
+from lexflow.visualizer import WorkflowVisualizer
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -19,6 +21,8 @@ Examples:
   lexflow main.json --include util.json lib.yaml    # Include multiple files (JSON/YAML)
   lexflow workflow.json --verbose                   # Verbose output
   lexflow workflow.json --validate-only             # Validate without executing
+  lexflow workflow.json --visualize                 # Show workflow visualization
+  lexflow workflow.json --visualize --validate-only # Visualize without executing
   lexflow workflow.json --output-file output.txt    # Redirect output to file
   lexflow workflow.json --metrics                   # Show performance metrics
   lexflow workflow.json --metrics --metrics-json    # Export metrics as JSON
@@ -54,6 +58,12 @@ Examples:
         help="Only validate workflow without executing",
     )
     parser.add_argument(
+        "--visualize",
+        "--show-flow",
+        action="store_true",
+        help="Visualize workflow structure as ASCII art (can combine with --validate-only)",
+    )
+    parser.add_argument(
         "--output-file",
         "-o",
         dest="output_file",
@@ -79,7 +89,7 @@ Examples:
     parser.add_argument(
         "--metrics-json",
         action="store_true",
-        help="Export metrics as JSON (requires --metrics). Output to stdout or --metrics-output file",
+        help="Export metrics as JSON (implicitly enables metrics). Output to stdout or --metrics-output file",
     )
     parser.add_argument(
         "--metrics-output",
@@ -95,6 +105,32 @@ Examples:
     )
 
     return parser
+
+
+def _load_workflow_data(file_path: str) -> dict:
+    """Load raw workflow data from YAML/JSON file.
+
+    Args:
+        file_path: Path to workflow file
+
+    Returns:
+        Raw workflow dictionary
+    """
+    path = Path(file_path)
+
+    with open(file_path, "r") as f:
+        # Detect file format by extension
+        if path.suffix.lower() in [".yaml", ".yml"]:
+            return yaml.safe_load(f)
+        elif path.suffix.lower() == ".json":
+            return json.load(f)
+        else:
+            # Try JSON first, fallback to YAML
+            content = f.read()
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError:
+                return yaml.safe_load(content)
 
 
 def print_success(message: str):
@@ -151,6 +187,28 @@ async def main():
             if program.externals:
                 print_info(f"External workflows: {', '.join(program.externals.keys())}")
 
+        # Visualize workflow if requested
+        if args.visualize:
+            if args.verbose:
+                print_info("Generating workflow visualization...")
+
+            # Load raw workflow data for visualization
+            workflow_data = _load_workflow_data(str(workflow_file))
+
+            # If there are included files, merge their workflows
+            if include_files:
+                all_workflows = workflow_data.get("workflows", [])
+                for include_file in include_files:
+                    include_data = _load_workflow_data(include_file)
+                    all_workflows.extend(include_data.get("workflows", []))
+                workflow_data["workflows"] = all_workflows
+
+            visualizer = WorkflowVisualizer()
+
+            # Visualize all workflows in the program
+            visualization = visualizer.visualize_program(workflow_data)
+            print("\n" + visualization + "\n")
+
         if args.validate_only:
             print_success("Workflow is valid!")
             return
@@ -190,8 +248,9 @@ async def main():
             output_file = open(args.output_file, "w")
 
         try:
-            # Create engine with optional metrics
-            engine = Engine(program, output=output_file, metrics=args.metrics)
+            # Create engine with optional metrics (enabled if --metrics or --metrics-json)
+            enable_metrics = args.metrics or args.metrics_json
+            engine = Engine(program, output=output_file, metrics=enable_metrics)
             result = await engine.run(inputs=inputs_dict if inputs_dict else None)
 
             if args.verbose:
@@ -200,7 +259,7 @@ async def main():
                     print_info(f"Result: {result}")
 
             # Handle metrics output
-            if args.metrics:
+            if enable_metrics:
                 if args.metrics_json:
                     # Export as JSON
                     metrics_json = engine.metrics.to_json(indent=2)

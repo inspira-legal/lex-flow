@@ -18,6 +18,7 @@ except ImportError:
 # Pygame Initialization & Window Management
 # ============================================================================
 
+
 @opcode()
 async def pygame_init() -> None:
     """Initialize pygame engine."""
@@ -43,6 +44,7 @@ async def pygame_quit() -> None:
 # ============================================================================
 # Event Handling (for workflow-controlled loops)
 # ============================================================================
+
 
 @opcode()
 async def pygame_should_quit() -> bool:
@@ -103,6 +105,7 @@ async def pygame_get_key_pressed(key_name: str) -> bool:
 # ============================================================================
 # Drawing Operations
 # ============================================================================
+
 
 @opcode()
 async def pygame_fill_screen(screen: pygame.Surface, color: list) -> None:
@@ -195,6 +198,7 @@ async def pygame_draw_circle(
 # Display & Timing
 # ============================================================================
 
+
 @opcode()
 async def pygame_update_display() -> None:
     """Update the display to show all drawn elements."""
@@ -225,6 +229,7 @@ async def pygame_get_ticks() -> int:
 # Math Helpers (for animations)
 # ============================================================================
 
+
 @opcode()
 async def math_sin(angle: float) -> float:
     """Calculate sine of an angle (in radians).
@@ -236,6 +241,7 @@ async def math_sin(angle: float) -> float:
         Sine value between -1 and 1
     """
     import math
+
     return math.sin(float(angle))
 
 
@@ -250,6 +256,7 @@ async def math_cos(angle: float) -> float:
         Cosine value between -1 and 1
     """
     import math
+
     return math.cos(float(angle))
 
 
@@ -316,6 +323,7 @@ async def string_char_at(text: str, index: int) -> str:
 # Color & Math Helpers
 # ============================================================================
 
+
 @opcode()
 async def pygame_create_color(r: int, g: int, b: int) -> list:
     """Create an RGB color list.
@@ -346,6 +354,7 @@ async def pygame_get_screen_height(screen: pygame.Surface) -> int:
 # ============================================================================
 # Helper opcodes for game logic (list operations)
 # ============================================================================
+
 
 @opcode()
 async def list_create_pair(x: int, y: int) -> list:
