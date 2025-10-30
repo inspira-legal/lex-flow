@@ -58,7 +58,7 @@ async def test_global_registry_simple():
     engine = Engine(program, output=output_buffer)
 
     # Run engine - should use globally registered opcode
-    result = await engine.run()
+    _result = await engine.run()
 
     # Verify output
     captured = output_buffer.getvalue()
@@ -100,7 +100,7 @@ async def test_global_registry_with_custom_name():
     output_buffer = io.StringIO()
     engine = Engine(program, output=output_buffer)
 
-    result = await engine.run()
+    _result = await engine.run()
 
     captured = output_buffer.getvalue()
     assert "Custom: Hello" in captured

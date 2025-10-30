@@ -235,7 +235,6 @@ class WorkflowVisualizer:
             Tree representing the control flow structure
         """
         opcode = node.get("opcode", "")
-        inputs = node.get("inputs", {})
 
         if opcode == "control_fork":
             return self._render_fork(node_id, node, all_nodes)

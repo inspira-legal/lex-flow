@@ -172,7 +172,7 @@ async def test_basic_metrics_collection():
     output_buffer = io.StringIO()
     engine = Engine(program, output=output_buffer, metrics=True)
 
-    result = await engine.run()
+    _result = await engine.run()
 
     # Verify execution completed
     assert "30" in output_buffer.getvalue()
@@ -208,7 +208,7 @@ async def test_control_flow_metrics():
     output_buffer = io.StringIO()
     engine = Engine(program, output=output_buffer, metrics=True)
 
-    result = await engine.run()
+    _result = await engine.run()
 
     # Check for For statement metrics
     stmt_metrics = engine.metrics.get_aggregated("statement")
@@ -231,7 +231,7 @@ async def test_workflow_call_metrics():
     output_buffer = io.StringIO()
     engine = Engine(program, output=output_buffer, metrics=True)
 
-    result = await engine.run()
+    _result = await engine.run()
 
     # Verify result
     assert "50" in output_buffer.getvalue()
@@ -250,7 +250,7 @@ async def test_metrics_to_dict():
     program = parser.parse_dict(SIMPLE_WORKFLOW)
 
     engine = Engine(program, output=io.StringIO(), metrics=True)
-    result = await engine.run()
+    _result = await engine.run()
 
     metrics_dict = engine.metrics.to_dict()
 
@@ -272,7 +272,7 @@ async def test_metrics_to_json():
     program = parser.parse_dict(SIMPLE_WORKFLOW)
 
     engine = Engine(program, output=io.StringIO(), metrics=True)
-    result = await engine.run()
+    _result = await engine.run()
 
     import json
 
@@ -290,7 +290,7 @@ async def test_get_metrics_report():
     program = parser.parse_dict(SIMPLE_WORKFLOW)
 
     engine = Engine(program, output=io.StringIO(), metrics=True)
-    result = await engine.run()
+    _result = await engine.run()
 
     report = engine.get_metrics_report(top_n=5)
 
@@ -306,7 +306,7 @@ async def test_get_metrics_summary():
     program = parser.parse_dict(SIMPLE_WORKFLOW)
 
     engine = Engine(program, output=io.StringIO(), metrics=True)
-    result = await engine.run()
+    _result = await engine.run()
 
     summary = engine.get_metrics_summary()
 
@@ -321,7 +321,7 @@ async def test_get_top_operations():
     program = parser.parse_dict(CONTROL_FLOW_WORKFLOW)
 
     engine = Engine(program, output=io.StringIO(), metrics=True)
-    result = await engine.run()
+    _result = await engine.run()
 
     # Get top opcodes by total time
     top_opcodes = engine.metrics.get_top_operations("opcode", n=5, sort_by="total_time")
@@ -339,7 +339,7 @@ async def test_opcode_timing():
     program = parser.parse_dict(SIMPLE_WORKFLOW)
 
     engine = Engine(program, output=io.StringIO(), metrics=True)
-    result = await engine.run()
+    _result = await engine.run()
 
     opcode_metrics = engine.metrics.get_aggregated("opcode")
 
@@ -361,7 +361,7 @@ async def test_statement_timing():
     program = parser.parse_dict(SIMPLE_WORKFLOW)
 
     engine = Engine(program, output=io.StringIO(), metrics=True)
-    result = await engine.run()
+    _result = await engine.run()
 
     stmt_metrics = engine.metrics.get_aggregated("statement")
 
@@ -381,7 +381,7 @@ async def test_null_metrics_no_overhead():
     # Engine without metrics
     engine = Engine(program, output=io.StringIO())
 
-    result = await engine.run()
+    _result = await engine.run()
 
     # Should return empty/default values
     assert engine.metrics.get_total_time() == 0.0
@@ -434,7 +434,7 @@ async def test_aggregated_metrics_accuracy():
     program = parser.parse_dict(CONTROL_FLOW_WORKFLOW)
 
     engine = Engine(program, output=io.StringIO(), metrics=True)
-    result = await engine.run()
+    _result = await engine.run()
 
     opcode_metrics = engine.metrics.get_aggregated("opcode")
 
@@ -460,7 +460,7 @@ async def test_metrics_measure_context_manager():
     # Use measure context manager
     with metrics.measure("test", "test_operation", {"key": "value"}):
         # Simulate some work
-        total = sum(range(100))
+        _total = sum(range(100))
 
     # Verify metric was recorded
     test_metrics = metrics.get_aggregated("test")
@@ -480,7 +480,7 @@ async def test_node_level_metrics():
     output_buffer = io.StringIO()
     engine = Engine(program, output=output_buffer, metrics=True)
 
-    result = await engine.run()
+    _result = await engine.run()
 
     # Check for node-level metrics
     node_metrics = engine.metrics.get_aggregated("node")
@@ -512,7 +512,7 @@ async def test_node_metrics_in_report():
     program = parser.parse_dict(SIMPLE_WORKFLOW)
 
     engine = Engine(program, output=io.StringIO(), metrics=True)
-    result = await engine.run()
+    _result = await engine.run()
 
     report = engine.get_metrics_report(top_n=10)
 

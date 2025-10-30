@@ -47,7 +47,7 @@ async def test_engine_run_with_inputs():
     engine = Engine(program, output=output_buffer)
 
     # Run with inputs
-    result = await engine.run(inputs={"name": "Alice", "age": 30})
+    _result = await engine.run(inputs={"name": "Alice", "age": 30})
 
     # Verify inputs were used
     captured = output_buffer.getvalue()
@@ -65,7 +65,7 @@ async def test_engine_run_without_inputs():
     engine = Engine(program, output=output_buffer)
 
     # Run without inputs - should use defaults
-    result = await engine.run()
+    _result = await engine.run()
 
     # Verify defaults were used
     captured = output_buffer.getvalue()
@@ -83,7 +83,7 @@ async def test_engine_run_partial_inputs():
     engine = Engine(program, output=output_buffer)
 
     # Run with only name input
-    result = await engine.run(inputs={"name": "Bob"})
+    _result = await engine.run(inputs={"name": "Bob"})
 
     # Verify name was overridden but age used default
     captured = output_buffer.getvalue()
@@ -142,7 +142,7 @@ async def test_engine_run_empty_inputs():
     engine = Engine(program, output=output_buffer)
 
     # Run with empty inputs dict
-    result = await engine.run(inputs={})
+    _result = await engine.run(inputs={})
 
     # Should use defaults
     captured = output_buffer.getvalue()
@@ -160,7 +160,7 @@ async def test_engine_run_none_inputs():
     engine = Engine(program, output=output_buffer)
 
     # Run with None inputs
-    result = await engine.run(inputs=None)
+    _result = await engine.run(inputs=None)
 
     # Should use defaults
     captured = output_buffer.getvalue()
@@ -210,7 +210,7 @@ async def test_engine_run_type_conversion():
     engine = Engine(program, output=output_buffer)
 
     # Run with various types
-    result = await engine.run(inputs={"text": "Hello", "number": 42, "flag": True})
+    _result = await engine.run(inputs={"text": "Hello", "number": 42, "flag": True})
 
     # Verify all types were used
     captured = output_buffer.getvalue()
@@ -243,7 +243,7 @@ async def test_engine_run_no_params():
     engine = Engine(program)
 
     # Should work fine with no inputs
-    result = await engine.run(inputs={})
+    _result = await engine.run(inputs={})
 
 
 async def test_engine_run_no_params_with_inputs():

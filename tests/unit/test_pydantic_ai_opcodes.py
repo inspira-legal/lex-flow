@@ -1,5 +1,6 @@
 """Tests for pydantic_ai opcodes."""
 
+import importlib.util
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
 from lexflow import default_registry
@@ -7,12 +8,7 @@ from lexflow import default_registry
 pytestmark = pytest.mark.asyncio
 
 
-try:
-    import pydantic_ai
-
-    PYDANTIC_AI_AVAILABLE = True
-except ImportError:
-    PYDANTIC_AI_AVAILABLE = False
+PYDANTIC_AI_AVAILABLE = importlib.util.find_spec("pydantic_ai") is not None
 
 
 @pytest.mark.skipif(not PYDANTIC_AI_AVAILABLE, reason="pydantic-ai not installed")

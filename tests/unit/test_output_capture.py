@@ -258,7 +258,7 @@ async def test_multi_line_capture():
         assert "Line 1" in captured
         assert "Line 2" in captured
         assert "Line 3" in captured
-        assert len([l for l in lines if l.strip()]) == 3  # 3 non-empty lines
+        assert len([line for line in lines if line.strip()]) == 3  # 3 non-empty lines
     finally:
         temp_path.unlink()
 
