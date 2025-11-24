@@ -1,4 +1,4 @@
-from .ast import Program
+from .ast import Program, Workflow
 from .runtime import Runtime
 from .evaluator import Evaluator
 from .executor import Executor
@@ -12,14 +12,14 @@ from typing import Any, Optional, TextIO, Union
 class Engine:
     def __init__(
         self,
-        program: Program,
+        program: Optional[Program] = None,
         output: Optional[TextIO] = None,
         opcodes: Optional[OpcodeRegistry] = None,
         metrics: Optional[Union[ExecutionMetrics, bool]] = None,
     ):
-        self.program = program
-        self.runtime = Runtime(program)
+        # Store configuration
         self.output = output
+        self._opcodes_registry = opcodes if opcodes is not None else default_registry
 
         # Metrics collection
         if metrics is True:
@@ -29,12 +29,34 @@ class Engine:
         else:
             self.metrics = NullMetrics()
 
-        # Create components
+        # Create components (will be initialized when program is loaded)
+        self.program: Optional[Program] = None
+        self.runtime: Optional[Runtime] = None
+        self.evaluator: Optional[Evaluator] = None
+        self.executor: Optional[Executor] = None
+        self.opcodes = self._opcodes_registry
+        self.workflows: Optional[WorkflowManager] = None
+
+        # Load program if provided
+        if program is not None:
+            self.load_program(program)
+
+    def load_program(self, program: Program) -> None:
+        """Load a program into the engine, reinitializing all components.
+
+        Args:
+            program: The program to load
+        """
+        self.program = program
+
+        # Reinitialize runtime with new program state
+        self.runtime = Runtime(program)
+
+        # Create evaluator and executor
         self.evaluator = Evaluator(self.runtime, self.metrics)
         self.executor = Executor(self.runtime, self.evaluator, self.metrics)
 
-        # Plugin systems
-        self.opcodes = opcodes if opcodes is not None else default_registry
+        # Recreate workflow manager with new externals
         self.workflows = WorkflowManager(
             program.externals, self.executor, self.runtime, self.metrics
         )

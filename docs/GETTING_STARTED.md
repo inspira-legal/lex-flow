@@ -200,3 +200,125 @@ python --version
 uv python list
 uv python install 3.12  # Install specific version if needed
 ```
+
+## Program Serialization (v0.2.0+)
+
+LexFlow Programs can be serialized to JSON for caching, persistence, or network transmission. This is useful for API services, databases, and distributed systems.
+
+### Basic Serialization
+
+```python
+from lexflow import Parser, Program
+
+# Parse a workflow
+parser = Parser()
+workflow_data = {
+    "workflows": [{
+        "name": "main",
+        "interface": {"inputs": [], "outputs": []},
+        "variables": {"x": 10},
+        "nodes": {
+            "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+        }
+    }]
+}
+program = parser.parse_dict(workflow_data)
+
+# Serialize to JSON string
+program_json = program.model_dump_json()
+
+# Deserialize from JSON string
+program2 = Program.model_validate_json(program_json)
+
+# Programs are now identical
+assert program2.main.name == program.main.name
+```
+
+### Use Cases
+
+**1. Redis Caching:**
+```python
+import redis
+from lexflow import Parser, Program
+
+# Parse and cache
+parser = Parser()
+program = parser.parse_dict(workflow_data)
+
+redis_client = redis.Redis()
+redis_client.set(f"workflow:{id}", program.model_dump_json())
+
+# Retrieve and execute
+program_json = redis_client.get(f"workflow:{id}")
+program = Program.model_validate_json(program_json)
+
+from lexflow import Engine
+engine = Engine(program)
+result = await engine.run()
+```
+
+**2. Database Storage:**
+```python
+from sqlalchemy import Column, String, JSON
+from lexflow import Program
+
+class WorkflowModel(Base):
+    __tablename__ = "workflows"
+    id = Column(String, primary_key=True)
+    program_data = Column(JSON)  # Store as JSONB in PostgreSQL
+
+# Save
+program_dict = program.model_dump(mode='python')
+db_workflow = WorkflowModel(id="workflow-123", program_data=program_dict)
+session.add(db_workflow)
+session.commit()
+
+# Load
+db_workflow = session.query(WorkflowModel).get("workflow-123")
+program = Program.model_validate(db_workflow.program_data)
+```
+
+**3. FastAPI Service:**
+```python
+from fastapi import FastAPI
+from lexflow import Parser, Engine, Program
+
+app = FastAPI()
+
+@app.post("/parse")
+async def parse_workflow(workflow_data: dict):
+    parser = Parser()
+    program = parser.parse_dict(workflow_data)
+    # Return serialized program
+    return {"program_json": program.model_dump_json()}
+
+@app.post("/execute")
+async def execute_workflow(program_json: str, inputs: dict = {}):
+    # Deserialize program
+    program = Program.model_validate_json(program_json)
+
+    # Execute
+    engine = Engine(program)
+    result = await engine.run(inputs=inputs)
+
+    return {"result": result}
+```
+
+### How It Works
+
+LexFlow uses Pydantic discriminated unions with type discriminators:
+
+```python
+# Each AST node has a 'type' field
+literal = Literal(value=42)
+print(literal.type)  # "Literal"
+
+variable = Variable(name="x")
+print(variable.type)  # "Variable"
+
+# JSON includes type information
+{"type": "Literal", "value": 42}
+{"type": "Variable", "name": "x"}
+```
+
+This allows Pydantic to correctly reconstruct the union types (Expression and Statement) when deserializing from JSON.

@@ -453,7 +453,7 @@ class Parser:
         """
         return self.parse_json(data)
 
-    def parse_dicts(self, main_data: dict, include_data: list[dict] = None) -> Program:
+    def parse_dicts(self, main_data: dict, include_data: list[dict] = []) -> Program:
         """Parse multiple dictionaries (main + includes) into a single Program.
 
         Args:

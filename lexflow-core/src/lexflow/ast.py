@@ -1,23 +1,26 @@
-from typing import Any, Optional
-from pydantic import BaseModel
+from typing import Any, Optional, Literal as LiteralType, Annotated
+from pydantic import BaseModel, Field
 
 
 # ============ Expressions ============
 class Literal(BaseModel):
     """Literal value: 42, "hello", True, None"""
 
+    type: LiteralType["Literal"] = "Literal"
     value: Any
 
 
 class Variable(BaseModel):
     """Variable reference: x, count, flag"""
 
+    type: LiteralType["Variable"] = "Variable"
     name: str
 
 
 class Call(BaseModel):
     """Function call: add(x, y)"""
 
+    type: LiteralType["Call"] = "Call"
     name: str
     args: list["Expression"]
 
@@ -25,18 +28,23 @@ class Call(BaseModel):
 class Opcode(BaseModel):
     """Opcode invocation for plugins"""
 
+    type: LiteralType["Opcode"] = "Opcode"
     name: str
     args: list["Expression"]
 
 
 # Union type for all expressions
-Expression = Literal | Variable | Call | Opcode
+Expression = Annotated[
+    Literal | Variable | Call | Opcode,
+    Field(discriminator='type')
+]
 
 
 # ============ Statements ============
 class Assign(BaseModel):
     """Assignment: x = 5"""
 
+    type: LiteralType["Assign"] = "Assign"
     name: str
     value: Expression
     node_id: Optional[str] = None
@@ -45,6 +53,7 @@ class Assign(BaseModel):
 class Block(BaseModel):
     """Statement sequence"""
 
+    type: LiteralType["Block"] = "Block"
     stmts: list["Statement"]
     node_id: Optional[str] = None
 
@@ -52,6 +61,7 @@ class Block(BaseModel):
 class If(BaseModel):
     """Conditional: if cond then else"""
 
+    type: LiteralType["If"] = "If"
     cond: Expression
     then: "Statement"
     else_: Optional["Statement"] = None
@@ -61,6 +71,7 @@ class If(BaseModel):
 class While(BaseModel):
     """Loop: while cond do body"""
 
+    type: LiteralType["While"] = "While"
     cond: Expression
     body: "Statement"
     node_id: Optional[str] = None
@@ -69,6 +80,7 @@ class While(BaseModel):
 class For(BaseModel):
     """For loop: for var in range(start, end, step)"""
 
+    type: LiteralType["For"] = "For"
     var_name: str
     start: Expression
     end: Expression
@@ -80,6 +92,7 @@ class For(BaseModel):
 class ForEach(BaseModel):
     """ForEach loop: for var in iterable"""
 
+    type: LiteralType["ForEach"] = "ForEach"
     var_name: str
     iterable: Expression
     body: "Statement"
@@ -89,6 +102,7 @@ class ForEach(BaseModel):
 class Fork(BaseModel):
     """Fork: execute branches concurrently"""
 
+    type: LiteralType["Fork"] = "Fork"
     branches: list["Statement"]
     node_id: Optional[str] = None
 
@@ -96,6 +110,7 @@ class Fork(BaseModel):
 class Return(BaseModel):
     """Return from function - supports returning multiple values"""
 
+    type: LiteralType["Return"] = "Return"
     values: list[Expression] = []
     node_id: Optional[str] = None
 
@@ -103,6 +118,7 @@ class Return(BaseModel):
 class ExprStmt(BaseModel):
     """Expression as statement (for side effects)"""
 
+    type: LiteralType["ExprStmt"] = "ExprStmt"
     expr: Expression
     node_id: Optional[str] = None
 
@@ -110,6 +126,7 @@ class ExprStmt(BaseModel):
 class OpStmt(BaseModel):
     """Opcode as statement"""
 
+    type: LiteralType["OpStmt"] = "OpStmt"
     name: str
     args: list[Expression]
     node_id: Optional[str] = None
@@ -126,6 +143,7 @@ class Catch(BaseModel):
 class Try(BaseModel):
     """Try-catch-finally statement."""
 
+    type: LiteralType["Try"] = "Try"
     body: "Statement"
     handlers: list[Catch]
     finally_: Optional["Statement"] = None
@@ -135,25 +153,17 @@ class Try(BaseModel):
 class Throw(BaseModel):
     """Throw an exception."""
 
+    type: LiteralType["Throw"] = "Throw"
     value: Expression
     node_id: Optional[str] = None
 
 
 # Union type for all statements
-Statement = (
-    Assign
-    | Block
-    | If
-    | While
-    | For
-    | ForEach
-    | Fork
-    | Return
-    | ExprStmt
-    | OpStmt
-    | Try
-    | Throw
-)
+Statement = Annotated[
+    Assign | Block | If | While | For | ForEach | Fork |
+    Return | ExprStmt | OpStmt | Try | Throw,
+    Field(discriminator='type')
+]
 
 
 # ============ Top Level ============
