@@ -86,6 +86,18 @@ class ExecutionMetrics:
         """Mark the end of workflow execution."""
         self.end_time = time.perf_counter()
 
+    def clear(self):
+        """Clear all collected metrics and reset to initial state.
+
+        This allows reusing the same metrics instance across multiple workflow executions.
+        Useful for benchmarking, testing, or running multiple workflows with the same
+        metrics collector.
+        """
+        self.operations.clear()
+        self.start_time = None
+        self.end_time = None
+        self._aggregated.clear()
+
     def record(
         self,
         operation_type: str,
@@ -277,6 +289,10 @@ class NullMetrics:
         pass
 
     def end_execution(self):
+        pass
+
+    def clear(self):
+        """No-op clear for consistency with ExecutionMetrics interface."""
         pass
 
     def record(

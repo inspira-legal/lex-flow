@@ -525,3 +525,85 @@ async def test_node_metrics_in_report():
         # At least one node name should appear in the report
         node_names = list(node_metrics.keys())
         assert any(node_name in report for node_name in node_names)
+
+
+async def test_metrics_clear():
+    """Test that clear() resets all metrics state."""
+    parser = Parser()
+    program = parser.parse_dict(SIMPLE_WORKFLOW)
+
+    metrics = ExecutionMetrics()
+    engine = Engine(program, output=io.StringIO(), metrics=metrics)
+
+    # Run workflow first time
+    await engine.run()
+
+    # Verify metrics were collected
+    assert len(metrics.operations) > 0
+    assert metrics.start_time is not None
+    assert metrics.end_time is not None
+    assert len(metrics._aggregated) > 0
+    first_total_time = metrics.get_total_time()
+    assert first_total_time > 0
+
+    # Clear metrics
+    metrics.clear()
+
+    # Verify all state is reset
+    assert len(metrics.operations) == 0
+    assert metrics.start_time is None
+    assert metrics.end_time is None
+    assert len(metrics._aggregated) == 0
+    assert metrics.get_total_time() == 0.0
+
+    # Verify aggregated metrics are empty
+    assert metrics.get_aggregated("opcode") == {}
+    assert metrics.get_aggregated("statement") == {}
+    assert metrics.get_aggregated("expression") == {}
+    assert metrics.get_aggregated("node") == {}
+    assert metrics.get_aggregated("workflow_call") == {}
+
+
+async def test_metrics_clear_and_reuse():
+    """Test that metrics can be reused after clearing."""
+    parser = Parser()
+    program = parser.parse_dict(SIMPLE_WORKFLOW)
+
+    metrics = ExecutionMetrics()
+
+    # First run
+    engine1 = Engine(program, output=io.StringIO(), metrics=metrics)
+    await engine1.run()
+    first_op_count = len(metrics.operations)
+    assert first_op_count > 0
+
+    # Clear and second run
+    metrics.clear()
+    engine2 = Engine(program, output=io.StringIO(), metrics=metrics)
+    await engine2.run()
+    second_op_count = len(metrics.operations)
+
+    # Second run should have similar operation count as first
+    # (not doubled, which would indicate metrics weren't cleared)
+    assert second_op_count > 0
+    assert second_op_count == first_op_count  # Same workflow, same ops
+
+    # Verify aggregated metrics reflect only second run
+    opcode_metrics = metrics.get_aggregated("opcode")
+    if "operator_add" in opcode_metrics:
+        # Should be 1 (from second run only), not 2 (accumulated)
+        assert opcode_metrics["operator_add"].count == 1
+
+
+async def test_null_metrics_clear():
+    """Test that NullMetrics.clear() works (no-op)."""
+    from lexflow.metrics import NullMetrics
+
+    metrics = NullMetrics()
+
+    # Should not raise any errors
+    metrics.clear()
+
+    # Should still return empty/default values
+    assert metrics.get_total_time() == 0.0
+    assert metrics.get_aggregated("opcode") == {}
