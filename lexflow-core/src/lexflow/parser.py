@@ -630,7 +630,11 @@ class Parser:
 
         # Parse interface
         interface = wf_data.get("interface", {})
+
         params = interface.get("inputs", [])
+        if params:
+            if isinstance(params[0], dict):
+                params = [input.get("name") for input in params]
 
         # Parse variables - only name-based format supported
         variables = wf_data.get("variables", {})
