@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LexFlow Web</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <h1>LexFlow Web</h1>
+            <select id="examples-select">
+                <option value="">-- Select Example --</option>
+            </select>
+        </div>
+        <div class="header-center">
+            <div class="zoom-controls">
+                <button id="zoom-out-btn" class="icon-btn" title="Zoom Out">-</button>
+                <span id="zoom-level">100%</span>
+                <button id="zoom-in-btn" class="icon-btn" title="Zoom In">+</button>
+                <button id="zoom-reset-btn" class="icon-btn" title="Reset Zoom">Reset</button>
+            </div>
+        </div>
+        <div class="header-right">
+            <span id="parse-status" class="status"></span>
+            <button id="execute-btn" class="primary">Execute</button>
+        </div>
+    </header>
+
+    <main>
+        <aside id="editor-panel" class="editor-panel">
+            <div class="panel-header">
+                <h2>Editor</h2>
+                <button id="toggle-editor-btn" class="icon-btn" title="Toggle Editor">&lt;</button>
+            </div>
+            <textarea id="editor" placeholder="Enter YAML or JSON workflow here..."></textarea>
+        </aside>
+
+        <section class="canvas-section">
+            <div id="visualization" class="tree-container">
+                <div class="tree-canvas" id="tree-canvas">
+                    <div class="placeholder">Enter a workflow to see visualization</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bottom-bar">
+        <div class="panel inputs-panel">
+            <div class="panel-header">
+                <h2>Inputs</h2>
+                <button id="toggle-inputs-btn" class="icon-btn small" title="Toggle">^</button>
+            </div>
+            <div id="inputs-container" class="collapsible-content">
+                <div class="placeholder">No inputs defined</div>
+            </div>
+        </div>
+
+        <div class="panel output-panel">
+            <div class="panel-header">
+                <h2>Output</h2>
+                <button id="clear-output-btn" class="icon-btn small">Clear</button>
+            </div>
+            <div id="output" class="output-container collapsible-content">
+                <div class="placeholder">Click Execute to run the workflow</div>
+            </div>
+            <div id="result-container" class="result-container hidden">
+                <h3>Result:</h3>
+                <pre id="result"></pre>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Node Editor Modal -->
+    <div id="node-editor-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Edit Node</h3>
+                <button id="modal-close-btn" class="icon-btn">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Dynamic content -->
+            </div>
+            <div class="modal-footer">
+                <button id="modal-cancel-btn">Cancel</button>
+                <button id="modal-save-btn" class="primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

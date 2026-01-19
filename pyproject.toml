@@ -28,14 +28,16 @@ dependencies = [
 ai = ["pydantic-ai-slim[google]"]
 pygame = ["pygame>=2.6.1"]
 file = ["pymupdf"]
+web = ["fastapi>=0.100.0", "uvicorn[standard]>=0.23.0"]
 dev = ["pytest", "pytest-asyncio"]
-all = ["lexflow[ai,pygame,file]"]
+all = ["lexflow[ai,pygame,file,web]"]
 
 [project.scripts]
 lexflow = "lexflow_cli.main:cli_main"
+lexflow-web = "lexflow_web.app:run"
 
 [tool.hatch.build.targets.wheel]
-packages = ["lexflow-core/src/lexflow", "lexflow-cli/src/lexflow_cli"]
+packages = ["lexflow-core/src/lexflow", "lexflow-cli/src/lexflow_cli", "lexflow-web/src/lexflow_web"]
 
 [dependency-groups]
 dev = [
