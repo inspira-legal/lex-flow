@@ -3,13 +3,15 @@
 // State
 const state = {
     treeData: null,
-    rawWorkflow: null,  // Original parsed workflow data
     interface: null,
     ws: null,
     isExecuting: false,
     zoom: 1.0,
     collapsedBranches: new Set(),
-    editingNode: null
+    collapsedWorkflows: new Set(),
+    editingNode: null,
+    isResizing: false,
+    lastDownY: 0
 };
 
 // DOM Elements
@@ -36,7 +38,10 @@ const elements = {
     modalBody: document.getElementById('modal-body'),
     modalCloseBtn: document.getElementById('modal-close-btn'),
     modalCancelBtn: document.getElementById('modal-cancel-btn'),
-    modalSaveBtn: document.getElementById('modal-save-btn')
+    modalSaveBtn: document.getElementById('modal-save-btn'),
+    bottomBar: document.getElementById('bottom-bar'),
+    resizeHandle: document.getElementById('resize-handle'),
+    toggleInputsBtn: document.getElementById('toggle-inputs-btn')
 };
 
 // Debounce utility
@@ -88,11 +93,59 @@ async function init() {
         }
     });
 
+    // Bottom bar events
+    initBottomBar();
+
     // Parse initial content
     if (elements.editor.value.trim()) {
         parseWorkflow();
     }
 }
+
+// Initialize bottom bar resizing and toggling
+function initBottomBar() {
+    // Toggling
+    elements.toggleInputsBtn.addEventListener('click', () => {
+        elements.bottomBar.classList.toggle('collapsed');
+        elements.toggleInputsBtn.textContent = elements.bottomBar.classList.contains('collapsed') ? 'v' : '^';
+    });
+
+    // Handle click on collapsed bar to expand
+    elements.bottomBar.addEventListener('click', (e) => {
+        if (elements.bottomBar.classList.contains('collapsed') && e.target === elements.bottomBar) {
+             elements.bottomBar.classList.remove('collapsed');
+             elements.toggleInputsBtn.textContent = '^';
+        }
+    });
+
+    // Resizing
+    elements.resizeHandle.addEventListener('mousedown', (e) => {
+        state.isResizing = true;
+        state.lastDownY = e.clientY;
+        document.body.style.cursor = 'ns-resize';
+        e.preventDefault(); // Prevent text selection
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!state.isResizing) return;
+        
+        const delta = state.lastDownY - e.clientY;
+        state.lastDownY = e.clientY;
+        
+        const currentHeight = parseInt(getComputedStyle(elements.bottomBar).height);
+        const newHeight = Math.max(100, Math.min(window.innerHeight - 100, currentHeight + delta));
+        
+        document.documentElement.style.setProperty('--bottom-bar-height', `${newHeight}px`);
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (state.isResizing) {
+            state.isResizing = false;
+            document.body.style.cursor = '';
+        }
+    });
+}
+
 
 // Toggle editor panel
 function toggleEditor() {
@@ -163,7 +216,6 @@ async function parseWorkflow() {
         elements.treeCanvas.innerHTML = '<div class="placeholder">Enter a workflow to see visualization</div>';
         elements.inputsContainer.innerHTML = '<div class="placeholder">No inputs defined</div>';
         state.treeData = null;
-        state.rawWorkflow = null;
         state.interface = null;
         return;
     }
@@ -185,14 +237,6 @@ async function parseWorkflow() {
             elements.parseStatus.className = 'status valid';
             state.treeData = data.tree;
             state.interface = data.interface;
-            // Parse the raw workflow for editing
-            try {
-                state.rawWorkflow = content.trim().startsWith('{')
-                    ? JSON.parse(content)
-                    : jsyaml ? jsyaml.load(content) : null;
-            } catch {
-                state.rawWorkflow = null;
-            }
             renderVisualization();
             renderInputs();
         } else {
@@ -214,7 +258,17 @@ function renderVisualization() {
         return;
     }
 
-    elements.treeCanvas.innerHTML = renderWorkflowTree(state.treeData);
+    let html = '';
+    
+    // Check if we have a project with multiple workflows
+    if (state.treeData.type === 'project' && state.treeData.workflows) {
+        html = state.treeData.workflows.map(renderWorkflowTree).join('<div style="height: 40px;"></div>');
+    } else {
+        // Fallback for single workflow or old format
+        html = renderWorkflowTree(state.treeData);
+    }
+
+    elements.treeCanvas.innerHTML = html;
 
     // Add click handlers to nodes
     document.querySelectorAll('.node-panel').forEach(panel => {
@@ -235,12 +289,21 @@ function renderVisualization() {
         });
     });
 
-    // Add fold toggle handlers
+    // Add fold toggle handlers for branches
     document.querySelectorAll('.fold-toggle').forEach(toggle => {
         toggle.addEventListener('click', (e) => {
             e.stopPropagation();
             const nodeId = toggle.dataset.nodeId;
             if (nodeId) toggleBranch(nodeId);
+        });
+    });
+
+    // Add fold toggle handlers for workflows
+    document.querySelectorAll('.workflow-fold-toggle').forEach(toggle => {
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const workflowName = toggle.dataset.workflowName;
+            if (workflowName) toggleWorkflow(workflowName);
         });
     });
 }
@@ -255,8 +318,19 @@ function toggleBranch(nodeId) {
     renderVisualization();
 }
 
+// Toggle workflow collapse
+function toggleWorkflow(name) {
+    if (state.collapsedWorkflows.has(name)) {
+        state.collapsedWorkflows.delete(name);
+    } else {
+        state.collapsedWorkflows.add(name);
+    }
+    renderVisualization();
+}
+
 // Render workflow tree
 function renderWorkflowTree(tree) {
+    const isCollapsed = state.collapsedWorkflows.has(tree.name);
     const variables = tree.variables || {};
     const varStr = Object.entries(variables)
         .map(([k, v]) => `${k}=${formatValueShort(v)}`)
@@ -278,15 +352,25 @@ function renderWorkflowTree(tree) {
         meta += `<div class="workflow-meta">Variables: ${escapeHtml(varStr)}</div>`;
     }
 
-    const childrenHtml = tree.children?.length > 0
-        ? `<div class="tree-children">${tree.children.map(renderNode).join('')}</div>`
-        : '';
+    let childrenHtml = '';
+    if (!isCollapsed) {
+        childrenHtml = tree.children?.length > 0
+            ? `<div class="tree-children">${tree.children.map(renderNode).join('')}</div>`
+            : '';
+    } else {
+        childrenHtml = `<div style="padding: 12px; color: var(--color-dim); font-style: italic;">Workflow collapsed</div>`;
+    }
 
     return `
         <div class="tree-workflow">
-            <div class="tree-header">
-                <span class="workflow-name">WORKFLOW: ${escapeHtml(tree.name)}</span>
-                ${meta}
+            <div class="tree-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <span class="workflow-name">WORKFLOW: ${escapeHtml(tree.name)}</span>
+                    ${!isCollapsed ? meta : ''}
+                </div>
+                <button class="icon-btn small workflow-fold-toggle" data-workflow-name="${escapeHtml(tree.name)}" style="border: 1px solid var(--color-border); background: var(--bg-input); color: var(--color-cyan); margin-left: 10px;">
+                    ${isCollapsed ? 'Show' : 'Hide'}
+                </button>
             </div>
             ${childrenHtml}
         </div>
@@ -467,6 +551,15 @@ function formatValueShort(value) {
 function findNodeInTree(tree, nodeId, path = []) {
     if (!tree) return null;
 
+    // Handle Project Root (Multi-workflow)
+    if (tree.type === 'project' && tree.workflows) {
+        for (let i = 0; i < tree.workflows.length; i++) {
+            const result = findNodeInTree(tree.workflows[i], nodeId, [...path, 'workflows', i]);
+            if (result) return result;
+        }
+        return null;
+    }
+
     // Check if this node matches
     if (tree.id === nodeId) {
         return { node: tree, path };
@@ -628,68 +721,18 @@ function closeModal() {
 function saveNodeChanges() {
     if (!state.editingNode) return;
 
-    const newNodeId = document.getElementById('edit-node-id').value.trim();
-    const newOpcode = document.getElementById('edit-opcode').value.trim();
-
-    // Collect input changes
-    const inputChanges = {};
-    document.querySelectorAll('[data-input-key]').forEach(el => {
-        const key = el.dataset.inputKey;
-        inputChanges[key] = parseEditedValue(el.value);
-    });
-
-    // Collect config changes
-    const configChanges = {};
-    document.querySelectorAll('[data-config-key]').forEach(el => {
-        const key = el.dataset.configKey;
-        const value = el.value.trim();
-        // Try to parse as number or keep as string
-        configChanges[key] = isNaN(value) ? value : Number(value);
-    });
-
-    // Update the tree data
-    const { node, path, nodeId } = state.editingNode;
-
-    // Update node properties
-    if (newOpcode) node.opcode = newOpcode;
-
-    // Update inputs
-    for (const [key, value] of Object.entries(inputChanges)) {
-        if (node.inputs) {
-            node.inputs[key] = value;
-        }
-    }
-
-    // Update config
-    for (const [key, value] of Object.entries(configChanges)) {
-        if (node.config) {
-            node.config[key] = { type: 'literal', value };
-        }
-    }
-
-    // Handle node ID change
-    if (newNodeId !== nodeId) {
-        node.id = newNodeId;
-    }
-
-    // Re-render visualization
-    renderVisualization();
-
-    // Sync changes back to YAML (simplified - just update the editor with a note)
+    // Just close the modal, reverting logic to original state where no save happens
+    console.log("Save disabled due to known issues with YAML sync.");
+    
+    // Sync back to editor (stub)
     syncTreeToEditor();
 
     closeModal();
 }
 
-// Sync tree changes back to editor (simplified version)
+// Sync tree changes back to editor (Stub)
 function syncTreeToEditor() {
-    // For now, add a comment indicating changes were made via visualization
-    // Full YAML regeneration would require a YAML library
-    const currentContent = elements.editor.value;
-    if (!currentContent.includes('# Modified via visualization')) {
-        // Don't modify - just show a notification that changes were made visually
-        console.log('Node changes applied to visualization. Re-parse to sync with editor.');
-    }
+     console.log('Node changes apply to visualization only (for now).');
 }
 
 // Render inputs form

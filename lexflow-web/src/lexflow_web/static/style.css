@@ -1,26 +1,31 @@
 /* LexFlow Web - Interactive Visualization Theme */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;700&display=swap');
 
 :root {
-    /* CLI-inspired colors from Rich library */
-    --color-cyan: #00bcd4;
-    --color-magenta: #e91e63;
-    --color-yellow: #ffeb3b;
-    --color-green: #4caf50;
-    --color-blue: #2196f3;
-    --color-red: #f44336;
-    --color-dim: #888;
+    /* --- Inspira Dark Palette (Slate & Blue) --- */
+    
+    /* Functional Colors (Mapped to Inspira Brand) */
+    --color-cyan: #22D3EE;    /* Cyan 400 - Highlights */
+    --color-magenta: #F472B6; /* Pink 400 - Accents */
+    --color-yellow: #FACC15;  /* Yellow 400 - Warnings/Labels */
+    --color-green: #34D399;   /* Emerald 400 - Success/Reporters */
+    --color-blue: #3B82F6;    /* Blue 500 - Primary Action */
+    --color-red: #F87171;     /* Red 400 - Errors/Exceptions */
+    --color-dim: #94A3B8;     /* Slate 400 - Muted Text */
 
-    /* Theme colors */
-    --bg-primary: #1a1a2e;
-    --bg-secondary: #16213e;
-    --bg-panel: #0f0f1a;
-    --bg-input: #0a0a14;
-    --text-primary: #e0e0e0;
-    --text-secondary: #aaa;
-    --border-color: #333;
-    --border-highlight: #555;
+    /* Theme Structural Colors */
+    --bg-primary: #0F172A;    /* Slate 900 - Main Background */
+    --bg-secondary: #1E293B;  /* Slate 800 - Headers/Toolbars */
+    --bg-panel: #1E293B;      /* Slate 800 - Sidebars/Cards */
+    --bg-input: #020617;      /* Slate 950 - Deep Background for Inputs */
+    
+    --text-primary: #F8FAFC;  /* Slate 50 - Main Text */
+    --text-secondary: #CBD5E1;/* Slate 300 - Secondary Text */
+    
+    --border-color: #334155;     /* Slate 700 - Borders */
+    --border-highlight: #475569; /* Slate 600 - Hover/Active Borders */
 
-    /* Layout */
+    /* Layout (Unchanged) */
     --editor-width: 280px;
     --header-height: 50px;
     --bottom-bar-height: 150px;
@@ -38,7 +43,7 @@
 }
 
 body {
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     background: var(--bg-primary);
     color: var(--text-primary);
     height: 100vh;
@@ -281,6 +286,56 @@ main {
     background: var(--bg-secondary);
     border-top: 1px solid var(--border-color);
     flex-shrink: 0;
+    position: relative; /* For absolute positioning of handle */
+    transition: height 0.1s; /* Smooth-ish resizing, but fast enough */
+}
+
+/* Resize Handle */
+.resize-handle {
+    position: absolute;
+    top: -5px;
+    left: 0;
+    right: 0;
+    height: 10px;
+    cursor: ns-resize;
+    background: transparent;
+    z-index: 20;
+}
+
+.resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.resize-handle:hover::after {
+    background: var(--color-blue);
+}
+
+.bottom-bar.collapsed {
+    height: 40px !important;
+}
+
+.bottom-bar.collapsed .panel {
+    display: none;
+}
+
+/* Show a simple bar when collapsed */
+.bottom-bar.collapsed::before {
+    content: 'Output & Inputs (Collapsed)';
+    display: block;
+    width: 100%;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    padding: 10px;
+    cursor: pointer;
 }
 
 .bottom-bar .panel {
@@ -311,14 +366,17 @@ main {
 
 .collapsible-content {
     flex: 1;
-    overflow: auto;
+    overflow-y: auto;
     padding: 8px;
     font-size: 0.8rem;
+    min-height: 0; /* Crucial for flexbox scrolling */
 }
 
 .output-container {
     white-space: pre-wrap;
     word-break: break-word;
+    height: 100%;
+    overflow-y: auto;
 }
 
 .output-line {
@@ -347,6 +405,12 @@ main {
     font-size: 0.8rem;
     color: var(--text-primary);
     white-space: pre-wrap;
+    max-height: 100px; /* Adjust as needed */
+    overflow-y: auto;
+    background: var(--bg-input);
+    padding: 8px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
 }
 
 .result-container.error {

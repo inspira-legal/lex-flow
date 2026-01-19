@@ -8,18 +8,23 @@ def workflow_to_tree(workflow_data: dict) -> dict:
     workflows = workflow_data.get("workflows", [])
 
     if not workflows:
+        # Check if it's a single implicit workflow (keys at root)
+        if "nodes" in workflow_data:
+             return {
+                "type": "project",
+                "workflows": [_build_workflow_tree(workflow_data)]
+             }
         return {"error": "No workflows found"}
 
-    # Find main workflow
-    main_workflow = next(
-        (w for w in workflows if w.get("name") == "main"),
-        workflows[0] if workflows else None,
-    )
+    # Build tree for all workflows
+    workflow_trees = []
+    for w in workflows:
+        workflow_trees.append(_build_workflow_tree(w))
 
-    if not main_workflow:
-        return {"error": "No main workflow found"}
-
-    return _build_workflow_tree(main_workflow)
+    return {
+        "type": "project",
+        "workflows": workflow_trees
+    }
 
 
 def _build_workflow_tree(workflow: dict) -> dict:
