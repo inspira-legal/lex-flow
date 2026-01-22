@@ -70,6 +70,7 @@ export interface WorkflowNode {
   interface: WorkflowInterface
   variables: Record<string, unknown>
   children: TreeNode[]
+  orphans?: TreeNode[]  // Nodes not connected to the main chain
 }
 
 export interface TreeNode {

@@ -1,11 +1,16 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { useUiStore, useWorkflowStore } from '../../store'
 import { WorkflowNode } from './WorkflowNode'
+import { StartNode, START_NODE_WIDTH, START_NODE_HEIGHT } from './StartNode'
 import { Connection } from './Connection'
+import { WireDragPreview } from './WireDragPreview'
+import { OrphanDragPreview } from './OrphanDragPreview'
+import { VariableDragPreview } from './VariableDragPreview'
 import { MiniMap } from './MiniMap'
 import { NodeSearch } from './NodeSearch'
 import { WorkflowGroup } from './WorkflowGroup'
-import type { TreeNode, WorkflowNode as WorkflowNodeType, FormattedValue } from '../../api/types'
+import { findNearestPort } from '../../utils/wireUtils'
+import type { TreeNode, WorkflowNode as WorkflowNodeType, FormattedValue, WorkflowInterface } from '../../api/types'
 import styles from './Canvas.module.css'
 
 interface LayoutNode {
@@ -14,6 +19,7 @@ interface LayoutNode {
   y: number
   width: number
   height: number
+  isOrphan?: boolean  // Whether this node is disconnected from the main chain
 }
 
 interface LayoutConnection {
@@ -36,10 +42,19 @@ interface LayoutWorkflowGroup {
   isMain: boolean
 }
 
+interface LayoutStartNode {
+  workflowName: string
+  workflowInterface: WorkflowInterface
+  variables: Record<string, unknown>
+  x: number
+  y: number
+}
+
 interface FullLayout {
   nodes: LayoutNode[]
   connections: LayoutConnection[]
   groups: LayoutWorkflowGroup[]
+  startNodes: LayoutStartNode[]
 }
 
 const NODE_WIDTH = 180
@@ -113,8 +128,36 @@ function formatValueShort(value: FormattedValue): string {
 }
 
 export function Canvas() {
-  const { zoom, panX, panY, setZoom, setPan, resetView, workflowPositions, setWorkflowPosition, isDraggingWorkflow } = useUiStore()
-  const { tree, parseError, selectNode } = useWorkflowStore()
+  const {
+    zoom,
+    panX,
+    panY,
+    setZoom,
+    setPan,
+    resetView,
+    workflowPositions,
+    setWorkflowPosition,
+    isDraggingWorkflow,
+    draggingWire,
+    setDraggingWire,
+    updateDraggingWire,
+    draggingOrphan,
+    setDraggingOrphan,
+    updateDraggingOrphanEnd,
+    draggingVariable,
+    setDraggingVariable,
+    updateDraggingVariableEnd,
+    nodePositions,
+    setNodePosition,
+    resetNodePositions,
+    layoutMode,
+    setLayoutMode,
+    isDraggingNode,
+    selectStartNode,
+    selectedConnection,
+    selectConnection,
+  } = useUiStore()
+  const { tree, parseError, selectNode, connectNodes, disconnectConnection } = useWorkflowStore()
 
   const svgRef = useRef<SVGSVGElement>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -137,57 +180,10 @@ export function Canvas() {
     return () => window.removeEventListener('resize', updateSize)
   }, [])
 
-  // Handle zoom
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault()
-        const delta = e.deltaY > 0 ? -0.1 : 0.1
-        setZoom(zoom + delta)
-      }
-    },
-    [zoom, setZoom]
-  )
-
-  // Handle pan
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (isDraggingWorkflow) return
-      if (e.target === svgRef.current || (e.target as Element).classList.contains(styles.background)) {
-        setIsDragging(true)
-        setDragStart({ x: e.clientX - panX, y: e.clientY - panY })
-        selectNode(null)
-      }
-    },
-    [panX, panY, selectNode, isDraggingWorkflow]
-  )
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (isDraggingWorkflow) return
-      if (isDragging) {
-        setPan(e.clientX - dragStart.x, e.clientY - dragStart.y)
-      }
-    },
-    [isDragging, dragStart, setPan, isDraggingWorkflow]
-  )
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false)
-  }, [])
-
-  // Handle minimap navigation
-  const handleMinimapNavigate = useCallback(
-    (newPanX: number, newPanY: number) => {
-      setPan(newPanX, newPanY)
-    },
-    [setPan]
-  )
-
-  // Layout all workflows
-  const { nodes: layoutNodes, connections, groups } = tree
-    ? layoutAllWorkflows(tree.workflows, workflowPositions)
-    : { nodes: [], connections: [], groups: [] }
+  // Layout all workflows (moved up for centerX/centerY calculation)
+  const { nodes: layoutNodes, connections, groups, startNodes } = tree
+    ? layoutAllWorkflows(tree.workflows, workflowPositions, nodePositions)
+    : { nodes: [], connections: [], groups: [], startNodes: [] }
 
   // Calculate canvas bounds (include group padding)
   const groupPadding = 24
@@ -227,6 +223,138 @@ export function Canvas() {
     }
   }, [tree])
 
+  // Handle zoom
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        const delta = e.deltaY > 0 ? -0.1 : 0.1
+        setZoom(zoom + delta)
+      }
+    },
+    [zoom, setZoom]
+  )
+
+  // Handle pan
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (isDraggingWorkflow || isDraggingNode) return
+      if (e.target === svgRef.current || (e.target as Element).classList.contains(styles.background)) {
+        setIsDragging(true)
+        setDragStart({ x: e.clientX - panX, y: e.clientY - panY })
+        selectNode(null)
+        selectStartNode(null)
+        selectConnection(null)
+      }
+    },
+    [panX, panY, selectNode, selectStartNode, selectConnection, isDraggingWorkflow, isDraggingNode]
+  )
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      // Handle wire dragging - update wire end position with proximity detection
+      if (draggingWire && svgRef.current) {
+        const rect = svgRef.current.getBoundingClientRect()
+        // Convert screen coordinates to canvas coordinates (accounting for pan/zoom)
+        const canvasX = (e.clientX - rect.left - panX - rect.width / 2) / zoom + centerX
+        const canvasY = (e.clientY - rect.top - panY - rect.height / 2) / zoom + centerY
+
+        // Find nearest valid port
+        const nearbyPort = findNearestPort(
+          canvasX,
+          canvasY,
+          draggingWire.sourceNodeId,
+          draggingWire.sourcePort,
+          layoutNodes
+        )
+
+        // Update state with drag position and nearby port
+        updateDraggingWire({
+          dragX: canvasX,
+          dragY: canvasY,
+          nearbyPort,
+        })
+        return
+      }
+
+      // Handle orphan dragging - update orphan end position
+      if (draggingOrphan && svgRef.current) {
+        const rect = svgRef.current.getBoundingClientRect()
+        const canvasX = (e.clientX - rect.left - panX - rect.width / 2) / zoom + centerX
+        const canvasY = (e.clientY - rect.top - panY - rect.height / 2) / zoom + centerY
+        updateDraggingOrphanEnd(canvasX, canvasY)
+        return
+      }
+
+      // Handle variable dragging - update variable end position
+      if (draggingVariable && svgRef.current) {
+        const rect = svgRef.current.getBoundingClientRect()
+        const canvasX = (e.clientX - rect.left - panX - rect.width / 2) / zoom + centerX
+        const canvasY = (e.clientY - rect.top - panY - rect.height / 2) / zoom + centerY
+        updateDraggingVariableEnd(canvasX, canvasY)
+        return
+      }
+
+      if (isDraggingWorkflow || isDraggingNode) return
+      if (isDragging) {
+        setPan(e.clientX - dragStart.x, e.clientY - dragStart.y)
+      }
+    },
+    [
+      isDragging,
+      dragStart,
+      setPan,
+      isDraggingWorkflow,
+      isDraggingNode,
+      draggingWire,
+      updateDraggingWire,
+      draggingOrphan,
+      updateDraggingOrphanEnd,
+      draggingVariable,
+      updateDraggingVariableEnd,
+      zoom,
+      panX,
+      panY,
+      centerX,
+      centerY,
+      layoutNodes,
+    ]
+  )
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false)
+    // Complete wire connection if near a valid port, otherwise cancel
+    if (draggingWire) {
+      if (draggingWire.nearbyPort) {
+        // Complete the connection
+        if (draggingWire.sourcePort === 'output') {
+          // Dragging from output to input
+          connectNodes(draggingWire.sourceNodeId, draggingWire.nearbyPort.nodeId)
+        } else {
+          // Dragging from input to output (reverse direction)
+          connectNodes(draggingWire.nearbyPort.nodeId, draggingWire.sourceNodeId)
+        }
+      }
+      setDraggingWire(null)
+    }
+    // Cancel orphan dragging if mouse released outside a valid drop target
+    if (draggingOrphan) {
+      setDraggingOrphan(null)
+    }
+    // Cancel variable dragging if mouse released outside a valid drop target
+    if (draggingVariable) {
+      setDraggingVariable(null)
+    }
+  }, [draggingWire, setDraggingWire, draggingOrphan, setDraggingOrphan, draggingVariable, setDraggingVariable, connectNodes])
+
+  // Handle minimap navigation
+  const handleMinimapNavigate = useCallback(
+    (newPanX: number, newPanY: number) => {
+      setPan(newPanX, newPanY)
+    },
+    [setPan]
+  )
+
   return (
     <div className={styles.canvas}>
       {/* Node Search */}
@@ -244,6 +372,29 @@ export function Canvas() {
         <button onClick={resetView} title="Reset View">
           ⌂
         </button>
+      </div>
+
+      {/* Layout Mode Controls */}
+      <div className={styles.layoutControls}>
+        <button
+          className={layoutMode === 'auto' ? styles.active : ''}
+          onClick={() => setLayoutMode('auto')}
+          title="Auto Layout"
+        >
+          Auto
+        </button>
+        <button
+          className={layoutMode === 'free' ? styles.active : ''}
+          onClick={() => setLayoutMode('free')}
+          title="Free Layout (drag nodes)"
+        >
+          Free
+        </button>
+        {layoutMode === 'free' && Object.keys(nodePositions).length > 0 && (
+          <button onClick={resetNodePositions} title="Reset Node Positions">
+            Reset
+          </button>
+        )}
       </div>
 
       {/* Mini-map */}
@@ -309,19 +460,75 @@ export function Canvas() {
           {connections.map((conn, i) => (
             <Connection
               key={`${conn.from}-${conn.to}-${i}`}
+              fromNodeId={conn.from}
+              toNodeId={conn.to}
               x1={conn.x1}
               y1={conn.y1}
               x2={conn.x2}
               y2={conn.y2}
               color={conn.color}
               label={conn.label}
+              isSelected={
+                selectedConnection?.fromNodeId === conn.from &&
+                selectedConnection?.toNodeId === conn.to
+              }
+              onSelect={() => selectConnection({ fromNodeId: conn.from, toNodeId: conn.to })}
+              onDelete={() => {
+                disconnectConnection(conn.from, conn.to)
+                selectConnection(null)
+              }}
+            />
+          ))}
+
+          {/* Start Nodes */}
+          {startNodes.map((sn) => (
+            <StartNode
+              key={`start-${sn.workflowName}`}
+              workflowName={sn.workflowName}
+              workflowInterface={sn.workflowInterface}
+              variables={sn.variables}
+              x={sn.x}
+              y={sn.y}
+              zoom={zoom}
+              onDrag={
+                layoutMode === 'free'
+                  ? (dx, dy) => {
+                      const currentOffset = workflowPositions[sn.workflowName] || { x: 0, y: 0 }
+                      setWorkflowPosition(sn.workflowName, currentOffset.x + dx, currentOffset.y + dy)
+                    }
+                  : undefined
+              }
             />
           ))}
 
           {/* Nodes */}
           {layoutNodes.map((ln) => (
-            <WorkflowNode key={ln.node.id} node={ln.node} x={ln.x} y={ln.y} />
+            <WorkflowNode
+              key={ln.node.id}
+              node={ln.node}
+              x={ln.x}
+              y={ln.y}
+              isOrphan={ln.isOrphan}
+              zoom={zoom}
+              onDrag={
+                layoutMode === 'free'
+                  ? (dx, dy) => {
+                      const currentOffset = nodePositions[ln.node.id] || { x: 0, y: 0 }
+                      setNodePosition(ln.node.id, currentOffset.x + dx, currentOffset.y + dy)
+                    }
+                  : undefined
+              }
+            />
           ))}
+
+          {/* Wire drag preview (rendered last, on top) */}
+          <WireDragPreview />
+
+          {/* Orphan drag preview */}
+          <OrphanDragPreview />
+
+          {/* Variable drag preview */}
+          <VariableDragPreview />
         </g>
       </svg>
 
@@ -336,14 +543,19 @@ export function Canvas() {
   )
 }
 
+// Gap between start node and first real node
+const START_NODE_GAP = 40
+
 // Layout all workflows with custom position offsets
 function layoutAllWorkflows(
   workflows: WorkflowNodeType[],
-  positionOffsets: Record<string, { x: number; y: number }>
+  positionOffsets: Record<string, { x: number; y: number }>,
+  nodePositionOffsets: Record<string, { x: number; y: number }> = {}
 ): FullLayout {
   const allNodes: LayoutNode[] = []
   const allConnections: LayoutConnection[] = []
   const groups: LayoutWorkflowGroup[] = []
+  const startNodes: LayoutStartNode[] = []
 
   // First pass: calculate default positions (stacked vertically)
   let defaultY = 0
@@ -362,10 +574,13 @@ function layoutAllWorkflows(
     const offset = positionOffsets[workflow.name] || { x: 0, y: 0 }
     const pos = { x: defaultPos.x + offset.x, y: defaultPos.y + offset.y }
 
-    const { nodes, connections, bounds } = layoutSingleWorkflow(workflow, pos.x, pos.y)
+    const { nodes, connections, bounds, startNode } = layoutSingleWorkflow(workflow, pos.x, pos.y, nodePositionOffsets)
 
     allNodes.push(...nodes)
     allConnections.push(...connections)
+    if (startNode) {
+      startNodes.push(startNode)
+    }
 
     // Add workflow group
     groups.push({
@@ -378,22 +593,38 @@ function layoutAllWorkflows(
     })
   }
 
-  return { nodes: allNodes, connections: allConnections, groups }
+  return { nodes: allNodes, connections: allConnections, groups, startNodes }
 }
 
 // Layout a single workflow starting at given offset
 function layoutSingleWorkflow(
   workflow: WorkflowNodeType,
   offsetX: number,
-  offsetY: number
+  offsetY: number,
+  nodePositionOffsets: Record<string, { x: number; y: number }> = {}
 ): {
   nodes: LayoutNode[]
   connections: LayoutConnection[]
   bounds: { minX: number; minY: number; maxX: number; maxY: number }
+  startNode: LayoutStartNode | null
 } {
   const layoutNodes: LayoutNode[] = []
   const connections: LayoutConnection[] = []
   const nodePositions = new Map<string, { x: number; y: number; height: number }>()
+
+  // Calculate start node position
+  const startNodeX = offsetX
+  const startNodeY = offsetY
+  const startNode: LayoutStartNode = {
+    workflowName: workflow.name,
+    workflowInterface: workflow.interface,
+    variables: workflow.variables,
+    x: startNodeX,
+    y: startNodeY,
+  }
+
+  // Offset for real nodes (after the start node)
+  const realNodeOffsetX = offsetX + START_NODE_WIDTH + START_NODE_GAP
 
   // Track bounds
   let minX = Infinity,
@@ -533,13 +764,32 @@ function layoutSingleWorkflow(
     return maxX
   }
 
-  // Layout all nodes in the workflow
-  let x = offsetX
+  // Include start node in bounds
+  updateBounds(startNodeX, startNodeY, START_NODE_WIDTH, START_NODE_HEIGHT)
+
+  // Layout all nodes in the workflow (starting after the start node)
+  let x = realNodeOffsetX
   let prevNode: TreeNode | null = null
+  let isFirstNode = true
 
   for (const node of workflow.children) {
     const y = offsetY
     const nextX = layoutNode(node, x, y)
+
+    // Connect start node to first real node
+    if (isFirstNode) {
+      const currPos = nodePositions.get(node.id)!
+      connections.push({
+        from: `start-${workflow.name}`,
+        to: node.id,
+        x1: startNodeX + START_NODE_WIDTH,
+        y1: startNodeY + 30, // Output port Y position
+        x2: currPos.x,
+        y2: currPos.y + currPos.height / 2,
+        color: '#22C55E', // Green color for start connection
+      })
+      isFirstNode = false
+    }
 
     // Connect sequential nodes
     if (prevNode) {
@@ -560,18 +810,66 @@ function layoutSingleWorkflow(
     x = nextX
   }
 
-  // Handle empty workflow
-  if (minX === Infinity) {
-    minX = offsetX
-    minY = offsetY
-    maxX = offsetX + 200
-    maxY = offsetY + 60
+  // Handle empty workflow (just start node)
+  if (workflow.children.length === 0) {
+    minX = Math.min(minX, startNodeX)
+    minY = Math.min(minY, startNodeY)
+    maxX = Math.max(maxX, startNodeX + START_NODE_WIDTH + 20)
+    maxY = Math.max(maxY, startNodeY + START_NODE_HEIGHT)
   }
+
+  // Layout orphan nodes in a separate row below the main workflow
+  const orphans = workflow.orphans || []
+  if (orphans.length > 0) {
+    const orphanY = maxY + WORKFLOW_GAP
+    let orphanX = startNodeX
+
+    for (const orphan of orphans) {
+      const height = calculateNodeHeight(orphan.inputs)
+      layoutNodes.push({
+        node: orphan,
+        x: orphanX,
+        y: orphanY,
+        width: NODE_WIDTH,
+        height,
+        isOrphan: true,
+      })
+      nodePositions.set(orphan.id, { x: orphanX, y: orphanY, height })
+      updateBounds(orphanX, orphanY, NODE_WIDTH, height)
+      orphanX += NODE_WIDTH + H_GAP
+    }
+  }
+
+  // Apply node position offsets (for free layout mode)
+  for (const layoutNode of layoutNodes) {
+    const offset = nodePositionOffsets[layoutNode.node.id]
+    if (offset) {
+      layoutNode.x += offset.x
+      layoutNode.y += offset.y
+      // Update bounds
+      updateBounds(layoutNode.x, layoutNode.y, layoutNode.width, layoutNode.height)
+    }
+  }
+
+  // Recalculate connections with updated positions
+  const updatedConnections = connections.map((conn) => {
+    const fromOffset = nodePositionOffsets[conn.from] || { x: 0, y: 0 }
+    const toOffset = nodePositionOffsets[conn.to] || { x: 0, y: 0 }
+
+    return {
+      ...conn,
+      x1: conn.x1 + fromOffset.x,
+      y1: conn.y1 + fromOffset.y,
+      x2: conn.x2 + toOffset.x,
+      y2: conn.y2 + toOffset.y,
+    }
+  })
 
   return {
     nodes: layoutNodes,
-    connections,
+    connections: updatedConnections,
     bounds: { minX, minY, maxX, maxY },
+    startNode,
   }
 }
 

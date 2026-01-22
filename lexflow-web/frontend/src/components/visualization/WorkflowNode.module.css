@@ -71,12 +71,29 @@
   stroke: var(--border-color);
   stroke-width: 2;
   transition: all 0.15s ease;
+  cursor: pointer;
 }
 
 .nodeGroup:hover .inputPort,
 .nodeGroup:hover .outputPort {
   stroke: var(--color-cyan);
   fill: var(--bg-panel);
+}
+
+.outputPort:hover {
+  stroke: var(--color-green);
+  fill: var(--color-green);
+  filter: drop-shadow(0 0 4px var(--color-green));
+}
+
+/* Proximity highlight for nearby port during wire drag */
+.inputPort.nearbyTarget,
+.outputPort.nearbyTarget {
+  stroke: var(--color-green);
+  fill: var(--color-green);
+  filter: drop-shadow(0 0 8px var(--color-green));
+  transform: scale(1.15);
+  transition: all 0.1s ease-out;
 }
 
 /* Status animations */
@@ -163,4 +180,142 @@
   font-size: 8px;
   font-family: 'JetBrains Mono', monospace;
   fill: var(--text-secondary);
+}
+
+/* Orphan node styling */
+.nodeGroup.orphan .card {
+  stroke-dasharray: 8 4;
+  opacity: 0.85;
+  stroke: var(--color-yellow);
+}
+
+.nodeGroup.orphan:hover .card {
+  stroke: var(--color-yellow);
+  opacity: 1;
+}
+
+.nodeGroup.orphan.selected .card {
+  stroke: var(--color-cyan);
+  stroke-dasharray: none;
+  opacity: 1;
+}
+
+.orphanBadge {
+  cursor: grab;
+  pointer-events: all;
+}
+
+.orphanBadge:active {
+  cursor: grabbing;
+}
+
+.orphanBadge rect {
+  fill: var(--color-yellow);
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.orphanBadge:hover rect {
+  filter: brightness(1.2) drop-shadow(0 0 4px var(--color-yellow));
+}
+
+.orphanBadgeText {
+  font-size: 10px;
+  fill: var(--bg-primary);
+  font-weight: bold;
+  pointer-events: none;
+}
+
+/* Input slot (droppable area for orphan-to-reporter) */
+.inputSlot {
+  pointer-events: all;
+}
+
+.inputSlotBg {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 1;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.inputSlotBg.dropTarget {
+  fill: rgba(148, 163, 184, 0.1);
+  stroke: var(--slot-color, #94A3B8);
+  stroke-dasharray: 4 2;
+}
+
+.inputSlotBg.dropTarget.compatible {
+  fill: rgba(52, 211, 153, 0.15);
+  stroke: var(--color-green);
+  stroke-dasharray: none;
+  animation: pulse-slot 0.6s ease infinite alternate;
+}
+
+.inputSlotBg.dropTarget.incompatible {
+  fill: rgba(248, 113, 113, 0.15);
+  stroke: var(--color-red);
+  stroke-dasharray: none;
+}
+
+@keyframes pulse-slot {
+  from {
+    fill: rgba(52, 211, 153, 0.15);
+  }
+  to {
+    fill: rgba(52, 211, 153, 0.25);
+  }
+}
+
+.typeHint {
+  font-size: 8px;
+  fill: var(--text-muted);
+  font-style: italic;
+}
+
+/* Orphan node drag handle */
+.nodeGroup.orphan .dragHandle {
+  cursor: grab;
+}
+
+.nodeGroup.orphan .dragHandle:active {
+  cursor: grabbing;
+}
+
+/* Node dragging in free mode */
+.nodeDragHandle {
+  cursor: grab;
+  pointer-events: all;
+}
+
+.nodeDragHandle:active {
+  cursor: grabbing;
+}
+
+/* Reporter delete button */
+.reporterDeleteBtn {
+  cursor: pointer;
+  pointer-events: all;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.reporterClickable:hover .reporterDeleteBtn {
+  opacity: 1;
+}
+
+.reporterDeleteBtn circle {
+  fill: var(--color-red);
+  opacity: 0.8;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.reporterDeleteBtn:hover circle {
+  opacity: 1;
+  filter: brightness(1.2) drop-shadow(0 0 4px var(--color-red));
+}
+
+.reporterDeleteBtn text {
+  font-size: 12px;
+  font-weight: bold;
+  fill: white;
+  pointer-events: none;
 }

@@ -10,27 +10,23 @@ def workflow_to_tree(workflow_data: dict) -> dict:
     if not workflows:
         # Check if it's a single implicit workflow (keys at root)
         if "nodes" in workflow_data:
-             return {
+            return {
                 "type": "project",
-                "workflows": [_build_workflow_tree(workflow_data)]
-             }
+                "workflows": [_build_workflow_tree(workflow_data)],
+            }
         return {"error": "No workflows found"}
 
     # Build tree for all workflows
     workflow_trees = []
     main_interface = {"inputs": [], "outputs": []}
-    
+
     for w in workflows:
         tree = _build_workflow_tree(w)
         workflow_trees.append(tree)
         if tree.get("name") == "main" or not main_interface["inputs"]:
             main_interface = tree.get("interface", {})
 
-    return {
-        "type": "project",
-        "workflows": workflow_trees,
-        "interface": main_interface
-    }
+    return {"type": "project", "workflows": workflow_trees, "interface": main_interface}
 
 
 def _build_workflow_tree(workflow: dict) -> dict:
@@ -47,31 +43,64 @@ def _build_workflow_tree(workflow: dict) -> dict:
         },
         "variables": workflow.get("variables", {}),
         "children": [],
+        "orphans": [],
     }
+
+    # Track all visited nodes (including branch nodes and reporters)
+    all_visited = set()
 
     # Follow node chain from start
     start_node = nodes.get("start", {})
     current_id = start_node.get("next")
-    visited = set()
 
-    while current_id and current_id not in visited:
-        visited.add(current_id)
+    while current_id and current_id not in all_visited:
+        all_visited.add(current_id)
         node = nodes.get(current_id)
         if not node:
             break
 
-        tree_node = _node_to_tree(current_id, node, nodes, visited.copy())
+        tree_node = _node_to_tree(current_id, node, nodes, all_visited)
         tree["children"].append(tree_node)
         current_id = node.get("next")
+
+    # Find orphan nodes (nodes not in the connected chain)
+    # First, collect reporter IDs from ALL potential orphan nodes
+    # This ensures that if orphan A references orphan B as a reporter,
+    # B won't appear as a separate orphan
+    all_node_ids = set(nodes.keys()) - {"start"}
+    potential_orphan_ids = all_node_ids - all_visited
+
+    for node_id in potential_orphan_ids:
+        node = nodes.get(node_id, {})
+        _collect_reporter_ids(node.get("inputs", {}), nodes, all_visited)
+
+    # Now recalculate orphan_ids with reporter references accounted for
+    orphan_ids = all_node_ids - all_visited
+
+    for node_id in sorted(orphan_ids):  # Sort for consistent ordering
+        node = nodes[node_id]
+        # Skip reporter nodes (they're embedded in other nodes)
+        if node.get("isReporter"):
+            continue
+        # Pass all_visited to track any deeply nested reporters
+        orphan_tree = _node_to_tree(node_id, node, nodes, all_visited)
+        tree["orphans"].append(orphan_tree)
 
     return tree
 
 
-def _node_to_tree(node_id: str, node: dict, all_nodes: dict, visited: set) -> dict:
-    """Convert a single node to tree node."""
+def _node_to_tree(node_id: str, node: dict, all_nodes: dict, all_visited: set) -> dict:
+    """Convert a single node to tree node.
+
+    Args:
+        all_visited: Set that accumulates ALL visited node IDs (mutated in place)
+    """
     opcode = node.get("opcode", "")
     inputs = node.get("inputs", {})
     is_reporter = node.get("isReporter", False)
+
+    # Track reporter nodes referenced in inputs
+    _collect_reporter_ids(inputs, all_nodes, all_visited)
 
     tree_node = {
         "id": node_id,
@@ -89,7 +118,7 @@ def _node_to_tree(node_id: str, node: dict, all_nodes: dict, visited: set) -> di
         body_branch = body_input.get("branch") if isinstance(body_input, dict) else None
         if body_branch:
             tree_node["children"].append(
-                _build_branch("BODY", body_branch, all_nodes, visited.copy())
+                _build_branch("BODY", body_branch, all_nodes, all_visited)
             )
 
     elif opcode in ("control_if", "control_if_else"):
@@ -97,23 +126,40 @@ def _node_to_tree(node_id: str, node: dict, all_nodes: dict, visited: set) -> di
         then_branch = then_input.get("branch") if isinstance(then_input, dict) else None
         if then_branch:
             tree_node["children"].append(
-                _build_branch("THEN", then_branch, all_nodes, visited.copy())
+                _build_branch("THEN", then_branch, all_nodes, all_visited)
             )
 
         else_input = inputs.get("ELSE", inputs.get("else", {}))
         else_branch = else_input.get("branch") if isinstance(else_input, dict) else None
         if else_branch:
             tree_node["children"].append(
-                _build_branch("ELSE", else_branch, all_nodes, visited.copy())
+                _build_branch("ELSE", else_branch, all_nodes, all_visited)
             )
 
     elif opcode == "control_fork":
-        tree_node["children"] = _extract_fork_branches(inputs, all_nodes, visited)
+        tree_node["children"] = _extract_fork_branches(inputs, all_nodes, all_visited)
 
     elif opcode == "control_try":
-        tree_node["children"] = _extract_try_branches(inputs, all_nodes, visited)
+        tree_node["children"] = _extract_try_branches(inputs, all_nodes, all_visited)
 
     return tree_node
+
+
+def _collect_reporter_ids(inputs: dict, all_nodes: dict, all_visited: set) -> None:
+    """Collect all reporter node IDs referenced in inputs."""
+    for value in inputs.values():
+        if isinstance(value, dict):
+            if "node" in value:
+                node_id = value["node"]
+                if node_id not in all_visited:
+                    all_visited.add(node_id)
+                    node = all_nodes.get(node_id, {})
+                    # Recursively collect from reporter's inputs
+                    node_inputs = node.get("inputs", {})
+                    _collect_reporter_ids(node_inputs, all_nodes, all_visited)
+            elif "branch" in value:
+                # Branch references are handled separately
+                pass
 
 
 def _get_node_type(opcode: str) -> str:
@@ -213,8 +259,12 @@ def _get_raw_value(value: Any) -> Any:
     return value
 
 
-def _build_branch(name: str, start_id: str, all_nodes: dict, visited: set) -> dict:
-    """Build a branch subtree."""
+def _build_branch(name: str, start_id: str, all_nodes: dict, all_visited: set) -> dict:
+    """Build a branch subtree.
+
+    Args:
+        all_visited: Set that accumulates ALL visited node IDs (mutated in place)
+    """
     branch = {
         "type": "branch",
         "name": name,
@@ -222,20 +272,20 @@ def _build_branch(name: str, start_id: str, all_nodes: dict, visited: set) -> di
     }
 
     current_id = start_id
-    while current_id and current_id not in visited:
-        visited.add(current_id)
+    while current_id and current_id not in all_visited:
+        all_visited.add(current_id)
         node = all_nodes.get(current_id)
         if not node:
             break
         branch["children"].append(
-            _node_to_tree(current_id, node, all_nodes, visited.copy())
+            _node_to_tree(current_id, node, all_nodes, all_visited)
         )
         current_id = node.get("next")
 
     return branch
 
 
-def _extract_fork_branches(inputs: dict, all_nodes: dict, visited: set) -> list:
+def _extract_fork_branches(inputs: dict, all_nodes: dict, all_visited: set) -> list:
     """Extract branches from fork node."""
     branches = []
 
@@ -248,7 +298,7 @@ def _extract_fork_branches(inputs: dict, all_nodes: dict, visited: set) -> list:
             )
             if branch_id:
                 branches.append(
-                    _build_branch(f"BRANCH{i}", branch_id, all_nodes, visited.copy())
+                    _build_branch(f"BRANCH{i}", branch_id, all_nodes, all_visited)
                 )
     else:
         # Try individual keys
@@ -260,14 +310,14 @@ def _extract_fork_branches(inputs: dict, all_nodes: dict, visited: set) -> list:
             )
             if branch_id:
                 branches.append(
-                    _build_branch(f"BRANCH{i}", branch_id, all_nodes, visited.copy())
+                    _build_branch(f"BRANCH{i}", branch_id, all_nodes, all_visited)
                 )
             i += 1
 
     return branches
 
 
-def _extract_try_branches(inputs: dict, all_nodes: dict, visited: set) -> list:
+def _extract_try_branches(inputs: dict, all_nodes: dict, all_visited: set) -> list:
     """Extract branches from try-catch-finally node."""
     branches = []
 
@@ -275,7 +325,7 @@ def _extract_try_branches(inputs: dict, all_nodes: dict, visited: set) -> list:
     try_input = inputs.get("TRY", inputs.get("BODY", inputs.get("body", {})))
     try_branch = try_input.get("branch") if isinstance(try_input, dict) else None
     if try_branch:
-        branches.append(_build_branch("TRY", try_branch, all_nodes, visited.copy()))
+        branches.append(_build_branch("TRY", try_branch, all_nodes, all_visited))
 
     # CATCH handlers
     handlers = inputs.get("HANDLERS", inputs.get("handlers", []))
@@ -285,7 +335,7 @@ def _extract_try_branches(inputs: dict, all_nodes: dict, visited: set) -> list:
                 handler_branch = handler.get("branch")
                 if handler_branch:
                     branch = _build_branch(
-                        "CATCH", handler_branch, all_nodes, visited.copy()
+                        "CATCH", handler_branch, all_nodes, all_visited
                     )
                     branch["exception_type"] = handler.get(
                         "exception_type", "Exception"
@@ -304,7 +354,7 @@ def _extract_try_branches(inputs: dict, all_nodes: dict, visited: set) -> list:
                 )
                 if handler_branch:
                     branch = _build_branch(
-                        "CATCH", handler_branch, all_nodes, visited.copy()
+                        "CATCH", handler_branch, all_nodes, all_visited
                     )
                     branch["exception_type"] = catch_input.get(
                         "exception_type", "Exception"
@@ -322,7 +372,7 @@ def _extract_try_branches(inputs: dict, all_nodes: dict, visited: set) -> list:
     )
     if finally_branch:
         branches.append(
-            _build_branch("FINALLY", finally_branch, all_nodes, visited.copy())
+            _build_branch("FINALLY", finally_branch, all_nodes, all_visited)
         )
 
     return branches

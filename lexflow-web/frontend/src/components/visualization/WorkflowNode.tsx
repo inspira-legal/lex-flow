@@ -1,13 +1,18 @@
-import type { ReactElement } from 'react'
+import { useRef, type ReactElement } from 'react'
 import { useWorkflowStore, useUiStore } from '../../store'
 import type { SelectedReporter } from '../../store/uiStore'
-import type { TreeNode, FormattedValue, NodeType } from '../../api/types'
+import type { TreeNode, FormattedValue, NodeType, OpcodeParameter } from '../../api/types'
+import { InputSlot } from './InputSlot'
+import { NODE_WIDTH } from '../../utils/wireUtils'
 import styles from './WorkflowNode.module.css'
 
 interface WorkflowNodeProps {
   node: TreeNode
   x: number
   y: number
+  isOrphan?: boolean
+  zoom?: number
+  onDrag?: (dx: number, dy: number) => void
 }
 
 const NODE_COLORS: Record<NodeType | string, string> = {
@@ -36,9 +41,33 @@ const REPORTER_COLORS: Record<string, string> = {
   default: '#64748B',
 }
 
-export function WorkflowNode({ node, x, y }: WorkflowNodeProps) {
-  const { selectedNodeId, selectNode } = useWorkflowStore()
-  const { openNodeEditor, nodeStatus, searchResults, selectReporter, selectedReporter } = useUiStore()
+export function WorkflowNode({ node, x, y, isOrphan, zoom = 1, onDrag }: WorkflowNodeProps) {
+  const { selectedNodeId, selectNode, connectNodes, opcodes } = useWorkflowStore()
+  const {
+    openNodeEditor,
+    nodeStatus,
+    searchResults,
+    selectReporter,
+    selectedReporter,
+    draggingWire,
+    setDraggingWire,
+    draggingOrphan,
+    setDraggingOrphan,
+    draggingVariable,
+    layoutMode,
+    setIsDraggingNode,
+  } = useUiStore()
+
+  // Get opcode info for this node
+  const opcodeInfo = opcodes.find((op) => op.name === node.opcode)
+
+  // Get parameter info map for quick lookup
+  const paramInfoMap: Record<string, OpcodeParameter | undefined> = {}
+  if (opcodeInfo) {
+    for (const param of opcodeInfo.parameters) {
+      paramInfoMap[param.name.toUpperCase()] = param
+    }
+  }
 
   const color = NODE_COLORS[node.type] || NODE_COLORS.opcode
   const icon = NODE_ICONS[node.type] || NODE_ICONS.opcode
@@ -46,12 +75,152 @@ export function WorkflowNode({ node, x, y }: WorkflowNodeProps) {
   const isSearchMatch = searchResults.includes(node.id)
   const status = nodeStatus[node.id] || 'idle'
 
+  // Track if we just dragged to prevent opening editor after drag
+  const justDraggedRef = useRef(false)
+
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
+    // Don't open editor if we just finished dragging
+    if (justDraggedRef.current) {
+      justDraggedRef.current = false
+      return
+    }
     selectNode(node.id)
     selectReporter(null) // Clear any selected reporter
     openNodeEditor()
   }
+
+  // Handle dragging from output port
+  const handleOutputPortMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    // Start wire dragging from this node's output port
+    const outputX = x + NODE_WIDTH // Output port is at right edge of node
+    const outputY = y + 30 // Port is at vertical center (approximately)
+    setDraggingWire({
+      sourceNodeId: node.id,
+      sourcePort: 'output',
+      sourceX: outputX,
+      sourceY: outputY,
+      dragX: outputX,
+      dragY: outputY,
+      nearbyPort: null,
+    })
+  }
+
+  // Handle dragging from input port (reverse direction)
+  const handleInputPortMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+
+    // Start wire drag from input port (reverse direction)
+    const inputX = x // Input port is at left edge
+    const inputY = y + 30
+    setDraggingWire({
+      sourceNodeId: node.id,
+      sourcePort: 'input',
+      sourceX: inputX,
+      sourceY: inputY,
+      dragX: inputX,
+      dragY: inputY,
+      nearbyPort: null,
+    })
+  }
+
+  // Handle completing connection when dragging from input to output
+  const handleOutputPortMouseUp = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    if (draggingWire && draggingWire.sourcePort === 'input' && draggingWire.sourceNodeId !== node.id) {
+      // Connect this node's output to the source node's input
+      connectNodes(node.id, draggingWire.sourceNodeId)
+      setDraggingWire(null)
+    }
+  }
+
+  // Handle dropping on input port
+  const handleInputPortMouseUp = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    // Only complete connection when dragging from output port
+    if (draggingWire && draggingWire.sourcePort === 'output' && draggingWire.sourceNodeId !== node.id) {
+      connectNodes(draggingWire.sourceNodeId, node.id)
+      setDraggingWire(null)
+    }
+  }
+
+  // Check if this node's ports should be highlighted based on proximity
+  const isInputPortHighlighted =
+    draggingWire?.nearbyPort?.nodeId === node.id && draggingWire?.nearbyPort?.port === 'input'
+  const isOutputPortHighlighted =
+    draggingWire?.nearbyPort?.nodeId === node.id && draggingWire?.nearbyPort?.port === 'output'
+
+  // Is this node a valid drop target for output port (when dragging from output)?
+  const isValidDropTarget = draggingWire && draggingWire.sourcePort === 'output' && draggingWire.sourceNodeId !== node.id
+  // Is this node a valid drop target for input port (when dragging from input)?
+  const isValidOutputDropTarget = draggingWire && draggingWire.sourcePort === 'input' && draggingWire.sourceNodeId !== node.id
+
+  // Handle orphan drag start (for orphan-to-reporter conversion)
+  const handleOrphanDragStart = (e: React.MouseEvent) => {
+    if (!isOrphan) return
+    e.stopPropagation()
+    e.preventDefault()
+
+    const centerX = x + 90 // Center of node (width=180)
+    const centerY = y + 30 // Approximate center
+
+    setDraggingOrphan({
+      nodeId: node.id,
+      opcode: node.opcode,
+      returnType: opcodeInfo?.return_type,
+      fromX: centerX,
+      fromY: centerY,
+      toX: centerX,
+      toY: centerY,
+    })
+  }
+
+  // Handle node drag in free layout mode
+  const handleNodeDragStart = (e: React.MouseEvent) => {
+    if (layoutMode !== 'free' || !onDrag) return
+    e.stopPropagation()
+    e.preventDefault()
+
+    setIsDraggingNode(true)
+
+    const startX = e.clientX
+    const startY = e.clientY
+    let hasMoved = false
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const dx = (moveEvent.clientX - startX) / zoom
+      const dy = (moveEvent.clientY - startY) / zoom
+      // Only consider it a drag if moved more than 3 pixels
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        hasMoved = true
+        onDrag(dx, dy)
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsDraggingNode(false)
+      if (hasMoved) {
+        justDraggedRef.current = true
+      }
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+  }
+
+  // Determine if we show input slots (when orphan or variable is being dragged)
+  // - Always show for variables (any node can receive a variable)
+  // - For orphans, show unless dragging the SAME orphan onto itself
+  const showInputSlots =
+    draggingVariable ||
+    (draggingOrphan && draggingOrphan.nodeId !== node.id)
 
   // Extract display name from opcode
   const displayName = formatOpcodeName(node.opcode)
@@ -86,7 +255,7 @@ export function WorkflowNode({ node, x, y }: WorkflowNodeProps) {
 
   return (
     <g
-      className={`${styles.nodeGroup} ${isSelected ? styles.selected : ''} ${isSearchMatch ? styles.searchMatch : ''} ${styles[status]}`}
+      className={`${styles.nodeGroup} ${isSelected ? styles.selected : ''} ${isSearchMatch ? styles.searchMatch : ''} ${isOrphan ? styles.orphan : ''} ${styles[status]}`}
       transform={`translate(${x}, ${y})`}
       onClick={handleClick}
     >
@@ -117,17 +286,34 @@ export function WorkflowNode({ node, x, y }: WorkflowNodeProps) {
         {node.id}
       </text>
 
-      {/* Regular input preview */}
-      {inputPreview.map((input, i) => (
-        <g key={input.key}>
-          <text className={styles.inputKey} x={12} y={56 + i * 18}>
-            {input.key}:
-          </text>
-          <text className={styles.input} x={12 + (input.key.length + 1) * 6} y={56 + i * 18}>
-            {input.formatted}
-          </text>
-        </g>
-      ))}
+      {/* Regular input preview / Input slots */}
+      {showInputSlots ? (
+        // Show input slots when an orphan is being dragged (drop targets)
+        regularInputs.slice(0, 3).map(({ key }, i) => (
+          <InputSlot
+            key={key}
+            nodeId={node.id}
+            inputKey={key}
+            value={regularInputs[i].value}
+            paramInfo={paramInfoMap[key]}
+            x={8}
+            y={52 + i * 18}
+            width={164}
+          />
+        ))
+      ) : (
+        // Show regular input preview
+        inputPreview.map((input, i) => (
+          <g key={input.key}>
+            <text className={styles.inputKey} x={12} y={56 + i * 18}>
+              {input.key}:
+            </text>
+            <text className={styles.input} x={12 + (input.key.length + 1) * 6} y={56 + i * 18}>
+              {input.formatted}
+            </text>
+          </g>
+        ))
+      )}
 
       {/* Nested reporter blocks */}
       {reporterInputs.length > 0 && (
@@ -137,8 +323,47 @@ export function WorkflowNode({ node, x, y }: WorkflowNodeProps) {
       )}
 
       {/* Connection points */}
-      <circle className={styles.inputPort} cx={0} cy={30} r={5} />
-      <circle className={styles.outputPort} cx={180} cy={30} r={5} />
+      {/* Larger invisible hit area for input port when wire is being dragged from output */}
+      {isValidDropTarget && (
+        <circle
+          cx={0}
+          cy={30}
+          r={20}
+          fill="transparent"
+          style={{ cursor: 'pointer' }}
+          onMouseUp={handleInputPortMouseUp}
+        />
+      )}
+      {/* Larger invisible hit area for output port when wire is being dragged from input */}
+      {isValidOutputDropTarget && (
+        <circle
+          cx={NODE_WIDTH}
+          cy={30}
+          r={20}
+          fill="transparent"
+          style={{ cursor: 'pointer' }}
+          onMouseUp={handleOutputPortMouseUp}
+        />
+      )}
+      <circle
+        className={`${styles.inputPort} ${isInputPortHighlighted ? styles.nearbyTarget : ''}`}
+        cx={0}
+        cy={30}
+        r={6}
+        onMouseDown={handleInputPortMouseDown}
+        onMouseUp={handleInputPortMouseUp}
+        onMouseEnter={(e) => e.stopPropagation()}
+        style={{ cursor: draggingWire ? 'pointer' : 'crosshair' }}
+      />
+      <circle
+        className={`${styles.outputPort} ${isOutputPortHighlighted ? styles.nearbyTarget : ''}`}
+        cx={NODE_WIDTH}
+        cy={30}
+        r={6}
+        onMouseDown={handleOutputPortMouseDown}
+        onMouseUp={handleOutputPortMouseUp}
+        style={{ cursor: 'crosshair' }}
+      />
 
       {/* Status indicator */}
       {status !== 'idle' && (
@@ -148,6 +373,35 @@ export function WorkflowNode({ node, x, y }: WorkflowNodeProps) {
           cy={10}
           r={6}
           fill={status === 'running' ? '#FACC15' : status === 'success' ? '#34D399' : '#F87171'}
+        />
+      )}
+
+      {/* Orphan indicator - click badge to start orphan-to-reporter drag */}
+      {isOrphan && (
+        <g
+          className={styles.orphanBadge}
+          onMouseDown={handleOrphanDragStart}
+          style={{ cursor: 'grab' }}
+        >
+          <rect x={148} y={-10} width={36} height={20} rx={4} />
+          <text x={166} y={4} textAnchor="middle" className={styles.orphanBadgeText}>
+            ◇
+          </text>
+          {/* Tooltip hint */}
+          <title>Drag to slot as reporter</title>
+        </g>
+      )}
+
+      {/* Node drag handle for free layout mode (all nodes including orphans) */}
+      {layoutMode === 'free' && onDrag && (
+        <rect
+          className={styles.nodeDragHandle}
+          x={4}
+          y={0}
+          width={isOrphan ? 140 : 172}
+          height={40}
+          fill="transparent"
+          onMouseDown={handleNodeDragStart}
         />
       )}
     </g>
@@ -185,6 +439,7 @@ function renderNestedReporters(
           selectReporter({
             parentNodeId,
             inputPath: currentPath,
+            reporterNodeId: value.id,
             opcode: value.opcode || '',
             inputs: value.inputs || {},
           })
@@ -321,6 +576,7 @@ function renderNestedReporterWithLabels(
           selectReporter({
             parentNodeId,
             inputPath: currentPath,
+            reporterNodeId: value.id,
             opcode: value.opcode || '',
             inputs: value.inputs || {},
           })
@@ -479,3 +735,4 @@ function formatValueShort(value: FormattedValue): string {
       return ''
   }
 }
+

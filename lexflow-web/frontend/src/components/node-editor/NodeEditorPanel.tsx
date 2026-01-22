@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useWorkflowStore, useUiStore } from '../../store'
 import type { SelectedReporter } from '../../store/uiStore'
 import type { TreeNode, FormattedValue, NodeType } from '../../api/types'
+import { StartNodeEditorPanel } from './StartNodeEditorPanel'
 import styles from './NodeEditorPanel.module.css'
 
 const NODE_TYPE_LABELS: Record<NodeType | string, string> = {
@@ -31,9 +32,22 @@ const REPORTER_COLORS: Record<string, string> = {
 }
 
 export function NodeEditorPanel() {
-  const { tree, selectedNodeId, selectNode, source, opcodes, deleteNode, duplicateNode, updateNodeInput } = useWorkflowStore()
-  const { closeNodeEditor, selectedReporter, selectReporter } = useUiStore()
+  const { tree, selectedNodeId, selectNode, source, opcodes, deleteNode, duplicateNode, updateNodeInput, updateReporterInput, deleteReporter } = useWorkflowStore()
+  const { closeNodeEditor, selectedReporter, selectReporter, selectedStartNode, selectStartNode } = useUiStore()
   const [copied, setCopied] = useState(false)
+
+  // Show start node editor if a start node is selected
+  if (selectedStartNode) {
+    return (
+      <StartNodeEditorPanel
+        workflowName={selectedStartNode}
+        onClose={() => {
+          selectStartNode(null)
+          closeNodeEditor()
+        }}
+      />
+    )
+  }
 
   // Find the selected node in the tree
   const selectedNode = selectedNodeId ? findNode(tree, selectedNodeId) : null
@@ -101,6 +115,70 @@ export function NodeEditorPanel() {
     selectReporter(null)
   }
 
+  const handleUpdateReporterInput = (inputKey: string, newValue: string) => {
+    if (selectedReporter && selectedReporter.reporterNodeId) {
+      const success = updateReporterInput(selectedReporter.reporterNodeId, inputKey, newValue)
+      if (success) {
+        // Update the selected reporter state with the new value
+        const updatedInputs = { ...selectedReporter.inputs }
+        // Parse the new value to create the appropriate FormattedValue
+        if (newValue.startsWith('$')) {
+          updatedInputs[inputKey] = { type: 'variable', name: newValue.slice(1) }
+        } else {
+          try {
+            const parsed = JSON.parse(newValue)
+            updatedInputs[inputKey] = { type: 'literal', value: parsed }
+          } catch {
+            updatedInputs[inputKey] = { type: 'literal', value: newValue }
+          }
+        }
+        selectReporter({ ...selectedReporter, inputs: updatedInputs })
+      }
+    } else {
+      console.warn('Cannot update reporter: no reporter node ID available')
+    }
+  }
+
+  const handleDeleteReporter = () => {
+    if (selectedReporter) {
+      if (confirm(`Delete this reporter? It will be replaced with null. This action can be undone with Ctrl+Z.`)) {
+        deleteReporter(selectedReporter.parentNodeId, selectedReporter.inputPath)
+        selectReporter(null)
+      }
+    }
+  }
+
+  const handleFindReporterInSource = () => {
+    if (selectedReporter) {
+      const lines = source.split('\n')
+
+      // If we have the reporter node ID, find its definition directly
+      if (selectedReporter.reporterNodeId) {
+        for (let i = 0; i < lines.length; i++) {
+          // Look for the node definition line (e.g., "  reporter_id:")
+          if (lines[i].match(new RegExp(`^\\s+${selectedReporter.reporterNodeId}:\\s*$`))) {
+            window.dispatchEvent(new CustomEvent('lexflow:goto-line', { detail: { line: i + 1 } }))
+            return
+          }
+        }
+      }
+
+      // Fallback: find in parent node's inputs
+      const pathKey = selectedReporter.inputPath[selectedReporter.inputPath.length - 1]
+      let inParentNode = false
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        if (line.includes(selectedReporter.parentNodeId + ':')) {
+          inParentNode = true
+        }
+        if (inParentNode && line.includes(pathKey + ':')) {
+          window.dispatchEvent(new CustomEvent('lexflow:goto-line', { detail: { line: i + 1 } }))
+          break
+        }
+      }
+    }
+  }
+
   // Show reporter panel if a reporter is selected
   if (selectedReporter) {
     return (
@@ -112,6 +190,9 @@ export function NodeEditorPanel() {
         onCopyPath={handleCopyPath}
         onBackToNode={handleBackToNode}
         onClose={handleClose}
+        onUpdateInput={handleUpdateReporterInput}
+        onDelete={handleDeleteReporter}
+        onFindInSource={handleFindReporterInSource}
       />
     )
   }
@@ -251,6 +332,9 @@ interface ReporterPanelProps {
   onCopyPath: () => void
   onBackToNode: () => void
   onClose: () => void
+  onUpdateInput: (inputKey: string, newValue: string) => void
+  onDelete: () => void
+  onFindInSource: () => void
 }
 
 function ReporterPanel({
@@ -261,6 +345,9 @@ function ReporterPanel({
   onCopyPath,
   onBackToNode,
   onClose,
+  onUpdateInput,
+  onDelete,
+  onFindInSource,
 }: ReporterPanelProps) {
   const color = getReporterColor(reporter.opcode)
   const typeLabel = getReporterTypeLabel(reporter.opcode)
@@ -321,6 +408,7 @@ function ReporterPanel({
                 name={key}
                 value={value}
                 paramInfo={opcodeInfo?.parameters.find((p) => p.name.toUpperCase() === key)}
+                onUpdate={onUpdateInput}
               />
             ))
           )}
@@ -343,6 +431,20 @@ function ReporterPanel({
             </div>
           </div>
         )}
+      </div>
+
+      {/* Actions */}
+      <div className={styles.actions}>
+        <button className={styles.actionBtn} onClick={onFindInSource}>
+          Find in Source
+        </button>
+        <button
+          className={styles.actionBtnDanger}
+          onClick={onDelete}
+          title="Delete reporter (replace with null)"
+        >
+          Delete
+        </button>
       </div>
     </div>
   )
@@ -494,6 +596,10 @@ function findNode(tree: any, nodeId: string): TreeNode | null {
   for (const workflow of tree.workflows || []) {
     const found = searchNodes(workflow.children || [])
     if (found) return found
+
+    // Search orphans
+    const orphanFound = searchNodes(workflow.orphans || [])
+    if (orphanFound) return orphanFound
   }
 
   return null

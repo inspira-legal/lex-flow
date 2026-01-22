@@ -1,44 +1,12 @@
 import Editor, { type Monaco } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 import { useWorkflowStore } from '../../store'
-import { api } from '../../api'
 import { useEffect, useRef } from 'react'
 import styles from './CodeEditor.module.css'
 
 export function CodeEditor() {
-  const { source, setSource, setTree, setParseError, setIsParsing, isParsing } =
-    useWorkflowStore()
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { source, setSource, isParsing } = useWorkflowStore()
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
-
-  // Parse on source change (debounced)
-  useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current)
-    }
-
-    debounceRef.current = setTimeout(async () => {
-      setIsParsing(true)
-      try {
-        const result = await api.parse(source)
-        if (result.success && result.tree) {
-          setTree(result.tree)
-        } else {
-          setParseError(result.error || 'Parse failed')
-        }
-      } catch (err) {
-        setParseError(err instanceof Error ? err.message : 'Parse failed')
-      } finally {
-        setIsParsing(false)
-      }
-    }, 500)
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-      }
-    }
-  }, [source, setTree, setParseError, setIsParsing])
 
   // Listen for goto-line events from the node editor
   useEffect(() => {

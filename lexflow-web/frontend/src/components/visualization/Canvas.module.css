@@ -98,3 +98,49 @@
 .emptyState p {
   font-size: 0.9rem;
 }
+
+/* Layout Mode Controls */
+.layoutControls {
+  position: absolute;
+  bottom: 56px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-panel);
+  padding: 4px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-color);
+  z-index: 10;
+  box-shadow: var(--shadow-md);
+}
+
+.layoutControls button {
+  padding: 4px 10px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.layoutControls button:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.layoutControls button.active {
+  background: var(--color-cyan);
+  color: var(--bg-primary);
+}
+
+.layoutControls button.active:hover {
+  background: var(--color-cyan);
+  filter: brightness(1.1);
+}

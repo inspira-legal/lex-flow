@@ -36,6 +36,27 @@ interface WorkflowState {
   addNode: (opcode: OpcodeInterface, workflowName?: string) => string | null
   duplicateNode: (nodeId: string) => string | null
   updateNodeInput: (nodeId: string, inputKey: string, newValue: string) => boolean
+  connectNodes: (fromNodeId: string, toNodeId: string) => boolean
+  disconnectNode: (nodeId: string) => boolean
+  disconnectConnection: (fromNodeId: string, toNodeId: string, branchLabel?: string) => boolean
+  convertOrphanToReporter: (
+    orphanNodeId: string,
+    targetNodeId: string,
+    inputKey: string,
+    isCompatible: boolean | null
+  ) => boolean
+  updateReporterInput: (
+    reporterNodeId: string,
+    inputKey: string,
+    newValue: string
+  ) => boolean
+  deleteReporter: (parentNodeId: string, inputPath: string[]) => boolean
+
+  // Variable and interface operations
+  updateWorkflowInterface: (workflowName: string, inputs: string[], outputs: string[]) => boolean
+  addVariable: (workflowName: string, name: string, defaultValue: unknown) => boolean
+  updateVariable: (workflowName: string, oldName: string, newName: string, newValue: unknown) => boolean
+  deleteVariable: (workflowName: string, name: string) => boolean
 
   // Examples
   examples: ExampleInfo[]
@@ -506,6 +527,695 @@ export const useWorkflowStore = create<WorkflowState>()(
         return true
       },
 
+      // Connect two nodes (set fromNodeId.next = toNodeId)
+      connectNodes: (fromNodeId, toNodeId) => {
+        console.log('[connectNodes] Connecting', fromNodeId, '->', toNodeId)
+        const state = get()
+        const { source } = state
+        const lines = source.split('\n')
+
+        // Find the fromNode's starting line
+        let nodeStartLine = -1
+        let nodeIndent = -1
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          const match = line.match(/^(\s+)([a-zA-Z_][a-zA-Z0-9_]*):\s*$/)
+          if (match && match[2] === fromNodeId) {
+            nodeStartLine = i
+            nodeIndent = match[1].length
+            break
+          }
+        }
+
+        if (nodeStartLine === -1) {
+          console.warn(`[connectNodes] Node "${fromNodeId}" not found in source`)
+          return false
+        }
+
+        // Find the next: line within this node, or add one if it doesn't exist
+        let nextLineIndex = -1
+        let nodeEndLine = nodeStartLine + 1
+
+        while (nodeEndLine < lines.length) {
+          const line = lines[nodeEndLine]
+          if (line.trim() === '' || line.trim().startsWith('#')) {
+            nodeEndLine++
+            continue
+          }
+          const currentIndent = line.search(/\S/)
+          if (currentIndent !== -1 && currentIndent <= nodeIndent) {
+            break
+          }
+
+          // Check for next: line
+          if (line.match(/^\s+next:\s*/)) {
+            nextLineIndex = nodeEndLine
+          }
+
+          nodeEndLine++
+        }
+
+        const inputIndent = ' '.repeat(nodeIndent + 2)
+
+        if (nextLineIndex !== -1) {
+          // Replace existing next line
+          lines[nextLineIndex] = `${inputIndent}next: ${toNodeId}`
+        } else {
+          // Insert next line after the node header (before opcode or first property)
+          // Find the first property line
+          let insertIndex = nodeStartLine + 1
+          while (insertIndex < nodeEndLine) {
+            const line = lines[insertIndex]
+            if (line.trim() !== '' && !line.trim().startsWith('#')) {
+              break
+            }
+            insertIndex++
+          }
+
+          lines.splice(insertIndex, 0, `${inputIndent}next: ${toNodeId}`)
+        }
+
+        const newSource = lines.join('\n')
+        state.setSource(newSource)
+        console.log('[connectNodes] Successfully connected nodes')
+        return true
+      },
+
+      // Disconnect a node (set its next: to null)
+      disconnectNode: (nodeId) => {
+        console.log('[disconnectNode] Disconnecting node:', nodeId)
+        const state = get()
+        const { source } = state
+        const lines = source.split('\n')
+
+        // Find the node's starting line
+        let nodeStartLine = -1
+        let nodeIndent = -1
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          const match = line.match(/^(\s+)([a-zA-Z_][a-zA-Z0-9_]*):\s*$/)
+          if (match && match[2] === nodeId) {
+            nodeStartLine = i
+            nodeIndent = match[1].length
+            break
+          }
+        }
+
+        if (nodeStartLine === -1) {
+          console.warn(`[disconnectNode] Node "${nodeId}" not found in source`)
+          return false
+        }
+
+        // Find the next: line within this node
+        let nodeEndLine = nodeStartLine + 1
+
+        while (nodeEndLine < lines.length) {
+          const line = lines[nodeEndLine]
+          if (line.trim() === '' || line.trim().startsWith('#')) {
+            nodeEndLine++
+            continue
+          }
+          const currentIndent = line.search(/\S/)
+          if (currentIndent !== -1 && currentIndent <= nodeIndent) {
+            break
+          }
+
+          // Check for next: line and set to null
+          if (line.match(/^\s+next:\s*/)) {
+            const indent = line.match(/^(\s+)next:/)?.[1] || ' '.repeat(nodeIndent + 2)
+            lines[nodeEndLine] = `${indent}next: null`
+
+            const newSource = lines.join('\n')
+            state.setSource(newSource)
+            console.log('[disconnectNode] Successfully disconnected node')
+            return true
+          }
+
+          nodeEndLine++
+        }
+
+        // No next: line found, nothing to do
+        console.log('[disconnectNode] No next: line found, node already disconnected')
+        return true
+      },
+
+      // Convert an orphan node to a reporter by linking it to a target node's input
+      convertOrphanToReporter: (orphanNodeId, targetNodeId, inputKey, isCompatible) => {
+        console.log(
+          '[convertOrphanToReporter] Converting orphan:',
+          orphanNodeId,
+          'to reporter for:',
+          targetNodeId,
+          'input:',
+          inputKey
+        )
+
+        // Show confirmation if types are incompatible
+        if (isCompatible === false) {
+          if (
+            !confirm(
+              `Type mismatch detected. The orphan node's return type may not be compatible with the input "${inputKey}". Continue anyway?`
+            )
+          ) {
+            return false
+          }
+        }
+
+        const state = get()
+        const { source } = state
+        const lines = source.split('\n')
+
+        // Find the target node's starting line
+        let nodeStartLine = -1
+        let nodeIndent = -1
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          const match = line.match(/^(\s+)([a-zA-Z_][a-zA-Z0-9_]*):\s*$/)
+          if (match && match[2] === targetNodeId) {
+            nodeStartLine = i
+            nodeIndent = match[1].length
+            break
+          }
+        }
+
+        if (nodeStartLine === -1) {
+          console.warn(`[convertOrphanToReporter] Target node "${targetNodeId}" not found in source`)
+          return false
+        }
+
+        // Find the inputs: section and the specific input
+        let inputsLineIndex = -1
+        let targetInputLine = -1
+
+        for (let i = nodeStartLine + 1; i < lines.length; i++) {
+          const line = lines[i]
+
+          // Check if we've left the node block
+          if (line.trim() !== '' && !line.trim().startsWith('#')) {
+            const currentIndent = line.search(/\S/)
+            if (currentIndent !== -1 && currentIndent <= nodeIndent) {
+              break
+            }
+          }
+
+          // Find inputs:
+          if (line.match(/^\s+inputs:\s*$/)) {
+            inputsLineIndex = i
+            continue
+          }
+
+          // Find the specific input key
+          if (inputsLineIndex !== -1) {
+            const inputMatch = line.match(new RegExp(`^(\\s+)(${inputKey}):\\s*(.*)$`))
+            if (inputMatch) {
+              targetInputLine = i
+              break
+            }
+          }
+        }
+
+        if (targetInputLine === -1) {
+          console.warn(
+            `[convertOrphanToReporter] Input "${inputKey}" not found in node "${targetNodeId}"`
+          )
+          return false
+        }
+
+        // Replace the input line with a node reference
+        const indent = lines[targetInputLine].match(/^(\s+)/)?.[1] || '          '
+        lines[targetInputLine] = `${indent}${inputKey}: { node: "${orphanNodeId}" }`
+
+        const newSource = lines.join('\n')
+        state.setSource(newSource)
+
+        console.log('[convertOrphanToReporter] Successfully converted orphan to reporter')
+        return true
+      },
+
+      // Update a reporter's input value (reporters are nodes, so we just use updateNodeInput logic)
+      updateReporterInput: (reporterNodeId, inputKey, newValue) => {
+        console.log('[updateReporterInput] reporterNodeId:', reporterNodeId, 'key:', inputKey, 'value:', newValue)
+
+        if (!reporterNodeId) {
+          console.warn('[updateReporterInput] No reporter node ID provided')
+          return false
+        }
+
+        // Reporter nodes are just nodes, so use the same logic as updateNodeInput
+        return get().updateNodeInput(reporterNodeId, inputKey, newValue)
+      },
+
+      // Delete a reporter (replace with a literal placeholder)
+      deleteReporter: (parentNodeId, inputPath) => {
+        console.log('[deleteReporter] parentNodeId:', parentNodeId, 'path:', inputPath)
+
+        if (inputPath.length === 0) {
+          console.warn('[deleteReporter] Empty input path')
+          return false
+        }
+
+        const state = get()
+        const { source } = state
+        const lines = source.split('\n')
+
+        // Find the parent node's starting line
+        let nodeStartLine = -1
+        let nodeIndent = -1
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          const match = line.match(/^(\s+)([a-zA-Z_][a-zA-Z0-9_]*):\s*$/)
+          if (match && match[2] === parentNodeId) {
+            nodeStartLine = i
+            nodeIndent = match[1].length
+            break
+          }
+        }
+
+        if (nodeStartLine === -1) {
+          console.warn(`[deleteReporter] Parent node "${parentNodeId}" not found`)
+          return false
+        }
+
+        // Navigate to find the reporter's parent input and the reporter block
+        let currentLine = nodeStartLine
+        let currentIndent = nodeIndent
+        let inputsSectionFound = false
+
+        // Find inputs: section
+        for (let i = nodeStartLine + 1; i < lines.length; i++) {
+          const line = lines[i]
+          if (line.trim() === '' || line.trim().startsWith('#')) continue
+          const lineIndent = line.search(/\S/)
+          if (lineIndent !== -1 && lineIndent <= nodeIndent) break
+          if (line.match(/^\s+inputs:\s*$/)) {
+            inputsSectionFound = true
+            currentLine = i
+            currentIndent = lineIndent
+            break
+          }
+        }
+
+        if (!inputsSectionFound) {
+          console.warn('[deleteReporter] inputs: section not found')
+          return false
+        }
+
+        // Navigate through path (except last element which is the reporter input key)
+        for (let pathIdx = 0; pathIdx < inputPath.length - 1; pathIdx++) {
+          const pathKey = inputPath[pathIdx]
+          let found = false
+
+          for (let i = currentLine + 1; i < lines.length; i++) {
+            const line = lines[i]
+            if (line.trim() === '' || line.trim().startsWith('#')) continue
+            const lineIndent = line.search(/\S/)
+            if (lineIndent !== -1 && lineIndent <= currentIndent) break
+
+            const keyMatch = line.match(new RegExp(`^(\\s+)(${pathKey}):\\s*`))
+            if (keyMatch) {
+              currentLine = i
+              currentIndent = keyMatch[1].length
+              found = true
+
+              // Find nested inputs section
+              for (let j = i + 1; j < lines.length; j++) {
+                const nestedLine = lines[j]
+                if (nestedLine.trim() === '' || nestedLine.trim().startsWith('#')) continue
+                const nestedIndent = nestedLine.search(/\S/)
+                if (nestedIndent !== -1 && nestedIndent <= currentIndent) break
+                if (nestedLine.match(/^\s+inputs:\s*$/)) {
+                  currentLine = j
+                  currentIndent = nestedIndent
+                  break
+                }
+              }
+              break
+            }
+          }
+
+          if (!found) {
+            console.warn(`[deleteReporter] Path key "${pathKey}" not found`)
+            return false
+          }
+        }
+
+        // Find the target input key (last element in path)
+        const targetKey = inputPath[inputPath.length - 1]
+        let targetLine = -1
+        let targetIndent = -1
+
+        for (let i = currentLine + 1; i < lines.length; i++) {
+          const line = lines[i]
+          if (line.trim() === '' || line.trim().startsWith('#')) continue
+          const lineIndent = line.search(/\S/)
+          if (lineIndent !== -1 && lineIndent <= currentIndent) break
+
+          const keyMatch = line.match(new RegExp(`^(\\s+)(${targetKey}):\\s*`))
+          if (keyMatch) {
+            targetLine = i
+            targetIndent = keyMatch[1].length
+            break
+          }
+        }
+
+        if (targetLine === -1) {
+          console.warn(`[deleteReporter] Target key "${targetKey}" not found`)
+          return false
+        }
+
+        // Find where the reporter block ends
+        let blockEndLine = targetLine + 1
+        while (blockEndLine < lines.length) {
+          const line = lines[blockEndLine]
+          if (line.trim() === '' || line.trim().startsWith('#')) {
+            blockEndLine++
+            continue
+          }
+          const lineIndent = line.search(/\S/)
+          if (lineIndent !== -1 && lineIndent <= targetIndent) break
+          blockEndLine++
+        }
+
+        // Replace the reporter block with a simple literal
+        const indent = ' '.repeat(targetIndent)
+        const newLines = [
+          ...lines.slice(0, targetLine),
+          `${indent}${targetKey}: { literal: null }`,
+          ...lines.slice(blockEndLine),
+        ]
+
+        const newSource = newLines.join('\n')
+        state.setSource(newSource)
+
+        console.log('[deleteReporter] Successfully deleted reporter')
+        return true
+      },
+
+      // Update workflow interface (inputs/outputs)
+      updateWorkflowInterface: (workflowName, inputs, outputs) => {
+        console.log('[updateWorkflowInterface] workflowName:', workflowName, 'inputs:', inputs, 'outputs:', outputs)
+        const state = get()
+        const { source } = state
+        const lines = source.split('\n')
+
+        // Find the workflow and its interface section
+        let inTargetWorkflow = false
+        let interfaceStartLine = -1
+        let interfaceEndLine = -1
+        let interfaceIndent = -1
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+
+          // Detect workflow name
+          const nameMatch = line.match(/^\s*-?\s*name:\s*(\w+)/)
+          if (nameMatch) {
+            inTargetWorkflow = nameMatch[1] === workflowName
+          }
+
+          // Find interface: in target workflow
+          if (inTargetWorkflow) {
+            const interfaceMatch = line.match(/^(\s*)interface:\s*$/)
+            if (interfaceMatch) {
+              interfaceStartLine = i
+              interfaceIndent = interfaceMatch[1].length
+              // Find where interface section ends
+              let j = i + 1
+              while (j < lines.length) {
+                const nextLine = lines[j]
+                if (nextLine.trim() === '' || nextLine.trim().startsWith('#')) {
+                  j++
+                  continue
+                }
+                const nextIndent = nextLine.search(/\S/)
+                if (nextIndent !== -1 && nextIndent <= interfaceIndent) {
+                  break
+                }
+                j++
+              }
+              interfaceEndLine = j
+              break
+            }
+          }
+        }
+
+        if (interfaceStartLine === -1) {
+          console.warn(`[updateWorkflowInterface] Interface section not found for workflow "${workflowName}"`)
+          return false
+        }
+
+        // Build new interface YAML
+        const indent = ' '.repeat(interfaceIndent)
+        const propIndent = ' '.repeat(interfaceIndent + 2)
+        const inputsStr = inputs.length > 0 ? `[${inputs.map(i => `"${i}"`).join(', ')}]` : '[]'
+        const outputsStr = outputs.length > 0 ? `[${outputs.map(o => `"${o}"`).join(', ')}]` : '[]'
+        const newInterfaceYaml = [
+          `${indent}interface:`,
+          `${propIndent}inputs: ${inputsStr}`,
+          `${propIndent}outputs: ${outputsStr}`,
+        ]
+
+        // Replace interface section
+        const newLines = [
+          ...lines.slice(0, interfaceStartLine),
+          ...newInterfaceYaml,
+          ...lines.slice(interfaceEndLine),
+        ]
+        const newSource = newLines.join('\n')
+        state.setSource(newSource)
+
+        console.log('[updateWorkflowInterface] Successfully updated interface')
+        return true
+      },
+
+      // Add a new variable to a workflow
+      addVariable: (workflowName, name, defaultValue) => {
+        console.log('[addVariable] workflowName:', workflowName, 'name:', name, 'value:', defaultValue)
+        const state = get()
+        const { source } = state
+        const lines = source.split('\n')
+
+        // Find the workflow and its variables section
+        let inTargetWorkflow = false
+        let variablesLine = -1
+        let variablesIndent = -1
+        let variablesEndLine = -1
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+
+          // Detect workflow name
+          const nameMatch = line.match(/^\s*-?\s*name:\s*(\w+)/)
+          if (nameMatch) {
+            inTargetWorkflow = nameMatch[1] === workflowName
+          }
+
+          // Find variables: in target workflow
+          if (inTargetWorkflow) {
+            const varsMatch = line.match(/^(\s*)variables:\s*(.*)$/)
+            if (varsMatch) {
+              variablesLine = i
+              variablesIndent = varsMatch[1].length
+              const restOfLine = varsMatch[2].trim()
+
+              // Check if it's inline empty {} or has content
+              if (restOfLine === '{}' || restOfLine === '') {
+                // Empty variables, need to expand it
+                variablesEndLine = i + 1
+              } else {
+                // Find where variables section ends
+                let j = i + 1
+                while (j < lines.length) {
+                  const nextLine = lines[j]
+                  if (nextLine.trim() === '' || nextLine.trim().startsWith('#')) {
+                    j++
+                    continue
+                  }
+                  const nextIndent = nextLine.search(/\S/)
+                  if (nextIndent !== -1 && nextIndent <= variablesIndent) {
+                    break
+                  }
+                  j++
+                }
+                variablesEndLine = j
+              }
+              break
+            }
+          }
+        }
+
+        if (variablesLine === -1) {
+          console.warn(`[addVariable] Variables section not found for workflow "${workflowName}"`)
+          return false
+        }
+
+        const varIndent = ' '.repeat(variablesIndent + 2)
+        const valueStr = formatYamlValue(defaultValue)
+
+        // Check if variables: {} is on single line
+        if (lines[variablesLine].includes('{}')) {
+          // Replace inline {} with block format
+          const indent = ' '.repeat(variablesIndent)
+          const newLines = [
+            ...lines.slice(0, variablesLine),
+            `${indent}variables:`,
+            `${varIndent}${name}: ${valueStr}`,
+            ...lines.slice(variablesLine + 1),
+          ]
+          state.setSource(newLines.join('\n'))
+        } else {
+          // Add new variable at end of variables section
+          const newLines = [
+            ...lines.slice(0, variablesEndLine),
+            `${varIndent}${name}: ${valueStr}`,
+            ...lines.slice(variablesEndLine),
+          ]
+          state.setSource(newLines.join('\n'))
+        }
+
+        console.log('[addVariable] Successfully added variable')
+        return true
+      },
+
+      // Update an existing variable
+      updateVariable: (workflowName, oldName, newName, newValue) => {
+        console.log('[updateVariable] workflowName:', workflowName, 'oldName:', oldName, 'newName:', newName, 'value:', newValue)
+        const state = get()
+        const { source } = state
+        const lines = source.split('\n')
+
+        // Find the workflow and the specific variable
+        let inTargetWorkflow = false
+        let inVariables = false
+        let variablesIndent = -1
+        let varLine = -1
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+
+          // Detect workflow name
+          const nameMatch = line.match(/^\s*-?\s*name:\s*(\w+)/)
+          if (nameMatch) {
+            inTargetWorkflow = nameMatch[1] === workflowName
+            inVariables = false
+          }
+
+          // Find variables: in target workflow
+          if (inTargetWorkflow) {
+            const varsMatch = line.match(/^(\s*)variables:\s*/)
+            if (varsMatch) {
+              inVariables = true
+              variablesIndent = varsMatch[1].length
+              continue
+            }
+
+            // Check if we've left the variables section
+            if (inVariables) {
+              const lineIndent = line.search(/\S/)
+              if (line.trim() !== '' && !line.trim().startsWith('#') && lineIndent !== -1 && lineIndent <= variablesIndent) {
+                inVariables = false
+                continue
+              }
+
+              // Find the variable
+              const varMatch = line.match(new RegExp(`^(\\s+)${oldName}:\\s*(.*)$`))
+              if (varMatch) {
+                varLine = i
+                break
+              }
+            }
+          }
+        }
+
+        if (varLine === -1) {
+          console.warn(`[updateVariable] Variable "${oldName}" not found in workflow "${workflowName}"`)
+          return false
+        }
+
+        const varIndent = lines[varLine].match(/^(\s+)/)?.[1] || '    '
+        const valueStr = formatYamlValue(newValue)
+        lines[varLine] = `${varIndent}${newName}: ${valueStr}`
+
+        state.setSource(lines.join('\n'))
+        console.log('[updateVariable] Successfully updated variable')
+        return true
+      },
+
+      // Disconnect a specific connection between two nodes
+      disconnectConnection: (fromNodeId, toNodeId, _branchLabel) => {
+        console.log('[disconnectConnection] Disconnecting', fromNodeId, '->', toNodeId)
+        // For now, this just disconnects the fromNode (sets next: null)
+        // In the future, this could handle branch-specific disconnections
+        return get().disconnectNode(fromNodeId)
+      },
+
+      // Delete a variable from a workflow
+      deleteVariable: (workflowName, name) => {
+        console.log('[deleteVariable] workflowName:', workflowName, 'name:', name)
+        const state = get()
+        const { source } = state
+        const lines = source.split('\n')
+
+        // Find the workflow and the specific variable
+        let inTargetWorkflow = false
+        let inVariables = false
+        let variablesIndent = -1
+        let varLine = -1
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+
+          // Detect workflow name
+          const nameMatch = line.match(/^\s*-?\s*name:\s*(\w+)/)
+          if (nameMatch) {
+            inTargetWorkflow = nameMatch[1] === workflowName
+            inVariables = false
+          }
+
+          // Find variables: in target workflow
+          if (inTargetWorkflow) {
+            const varsMatch = line.match(/^(\s*)variables:\s*/)
+            if (varsMatch) {
+              inVariables = true
+              variablesIndent = varsMatch[1].length
+              continue
+            }
+
+            // Check if we've left the variables section
+            if (inVariables) {
+              const lineIndent = line.search(/\S/)
+              if (line.trim() !== '' && !line.trim().startsWith('#') && lineIndent !== -1 && lineIndent <= variablesIndent) {
+                inVariables = false
+                continue
+              }
+
+              // Find the variable
+              const varMatch = line.match(new RegExp(`^(\\s+)${name}:\\s*(.*)$`))
+              if (varMatch) {
+                varLine = i
+                break
+              }
+            }
+          }
+        }
+
+        if (varLine === -1) {
+          console.warn(`[deleteVariable] Variable "${name}" not found in workflow "${workflowName}"`)
+          return false
+        }
+
+        // Remove the variable line
+        const newLines = [...lines.slice(0, varLine), ...lines.slice(varLine + 1)]
+        state.setSource(newLines.join('\n'))
+
+        console.log('[deleteVariable] Successfully deleted variable')
+        return true
+      },
+
       // Examples
       examples: [],
       setExamples: (examples) => set({ examples }),
@@ -547,3 +1257,26 @@ export const useWorkflowStore = create<WorkflowState>()(
     }
   )
 )
+
+// Helper function to format a value for YAML
+function formatYamlValue(value: unknown): string {
+  if (value === null) return 'null'
+  if (value === undefined) return 'null'
+  if (typeof value === 'string') {
+    // Check if string needs quoting
+    if (value === '' || value.includes(':') || value.includes('#') || value.includes('\n') ||
+        value.startsWith(' ') || value.endsWith(' ') || /^[\[\]{}>|*&!%@`]/.test(value)) {
+      return JSON.stringify(value)
+    }
+    // Check if it looks like a number, boolean, or null
+    if (/^-?\d+(\.\d+)?$/.test(value) || value === 'true' || value === 'false' || value === 'null') {
+      return JSON.stringify(value)
+    }
+    return value
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+  // For arrays and objects, use JSON format
+  return JSON.stringify(value)
+}

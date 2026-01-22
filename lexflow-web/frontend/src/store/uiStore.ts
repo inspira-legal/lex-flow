@@ -7,8 +7,52 @@ import type { FormattedValue, OpcodeInterface } from '../api/types'
 export interface SelectedReporter {
   parentNodeId: string
   inputPath: string[] // Path to reach this reporter (e.g., ['condition'] or ['condition', 'left'])
+  reporterNodeId: string | undefined // The actual reporter node's ID (for editing/finding)
   opcode: string
   inputs: Record<string, FormattedValue>
+}
+
+// Wire dragging info
+export interface DraggingWire {
+  sourceNodeId: string
+  sourcePort: 'input' | 'output'
+  sourceX: number
+  sourceY: number
+  dragX: number
+  dragY: number
+  nearbyPort: {
+    nodeId: string
+    port: 'input' | 'output'
+    x: number
+    y: number
+  } | null
+}
+
+// Orphan node dragging info (for orphan-to-reporter conversion)
+export interface DraggingOrphan {
+  nodeId: string
+  opcode: string
+  returnType: string | undefined
+  fromX: number
+  fromY: number
+  toX: number
+  toY: number
+}
+
+// Variable dragging info (for dragging variables from palette to input slots)
+export interface DraggingVariable {
+  name: string
+  workflowName: string
+  fromX: number
+  fromY: number
+  toX: number
+  toY: number
+}
+
+// Selected connection info
+export interface SelectedConnection {
+  fromNodeId: string
+  toNodeId: string
 }
 
 interface UiState {
@@ -57,6 +101,43 @@ interface UiState {
   // Drag-drop from palette
   draggingOpcode: OpcodeInterface | null
   setDraggingOpcode: (opcode: OpcodeInterface | null) => void
+
+  // Wire dragging for connections
+  draggingWire: DraggingWire | null
+  setDraggingWire: (wire: DraggingWire | null) => void
+  updateDraggingWire: (updates: Partial<DraggingWire>) => void
+
+  // Selected connection (for delete)
+  selectedConnection: SelectedConnection | null
+  selectConnection: (conn: SelectedConnection | null) => void
+
+  // Orphan dragging for orphan-to-reporter conversion
+  draggingOrphan: DraggingOrphan | null
+  setDraggingOrphan: (orphan: DraggingOrphan | null) => void
+  updateDraggingOrphanEnd: (toX: number, toY: number) => void
+
+  // Node positions (offsets from auto-layout)
+  nodePositions: Record<string, { x: number; y: number }>
+  setNodePosition: (nodeId: string, x: number, y: number) => void
+  resetNodePositions: () => void
+  clearNodePosition: (nodeId: string) => void
+
+  // Layout mode
+  layoutMode: 'auto' | 'free'
+  setLayoutMode: (mode: 'auto' | 'free') => void
+
+  // Node dragging (prevent canvas pan during node drag)
+  isDraggingNode: boolean
+  setIsDraggingNode: (dragging: boolean) => void
+
+  // Selected start node (for editing workflow variables/interface)
+  selectedStartNode: string | null
+  selectStartNode: (workflowName: string | null) => void
+
+  // Variable dragging for palette to input slot
+  draggingVariable: DraggingVariable | null
+  setDraggingVariable: (v: DraggingVariable | null) => void
+  updateDraggingVariableEnd: (toX: number, toY: number) => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -108,4 +189,56 @@ export const useUiStore = create<UiState>((set) => ({
   // Drag-drop from palette
   draggingOpcode: null,
   setDraggingOpcode: (opcode) => set({ draggingOpcode: opcode }),
+
+  // Wire dragging for connections
+  draggingWire: null,
+  setDraggingWire: (wire) => set({ draggingWire: wire }),
+  updateDraggingWire: (updates) =>
+    set((s) => ({
+      draggingWire: s.draggingWire ? { ...s.draggingWire, ...updates } : null,
+    })),
+
+  // Selected connection (for delete)
+  selectedConnection: null,
+  selectConnection: (conn) => set({ selectedConnection: conn }),
+
+  // Orphan dragging for orphan-to-reporter conversion
+  draggingOrphan: null,
+  setDraggingOrphan: (orphan) => set({ draggingOrphan: orphan }),
+  updateDraggingOrphanEnd: (toX, toY) =>
+    set((s) => ({
+      draggingOrphan: s.draggingOrphan ? { ...s.draggingOrphan, toX, toY } : null,
+    })),
+
+  // Node positions (offsets from auto-layout)
+  nodePositions: {},
+  setNodePosition: (nodeId, x, y) =>
+    set((s) => ({ nodePositions: { ...s.nodePositions, [nodeId]: { x, y } } })),
+  resetNodePositions: () => set({ nodePositions: {} }),
+  clearNodePosition: (nodeId) =>
+    set((s) => {
+      const { [nodeId]: _, ...rest } = s.nodePositions
+      return { nodePositions: rest }
+    }),
+
+  // Layout mode
+  layoutMode: 'auto',
+  setLayoutMode: (mode) => set({ layoutMode: mode }),
+
+  // Node dragging
+  isDraggingNode: false,
+  setIsDraggingNode: (dragging) => set({ isDraggingNode: dragging }),
+
+  // Selected start node
+  selectedStartNode: null,
+  selectStartNode: (workflowName) =>
+    set({ selectedStartNode: workflowName, ...(workflowName ? { isNodeEditorOpen: true } : {}) }),
+
+  // Variable dragging
+  draggingVariable: null,
+  setDraggingVariable: (v) => set({ draggingVariable: v }),
+  updateDraggingVariableEnd: (toX, toY) =>
+    set((s) => ({
+      draggingVariable: s.draggingVariable ? { ...s.draggingVariable, toX, toY } : null,
+    })),
 }))

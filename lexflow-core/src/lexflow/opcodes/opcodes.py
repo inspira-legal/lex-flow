@@ -596,7 +596,7 @@ class OpcodeRegistry:
             )
 
         @self.register()
-        async def data_set_variable_to(var_name: str, value: Any) -> None:
+        async def data_set_variable_to(variable: str, value: Any) -> None:
             """Set variable - handled specially by parser/executor."""
             raise NotImplementedError(
                 "data_set_variable_to should be handled by parser"

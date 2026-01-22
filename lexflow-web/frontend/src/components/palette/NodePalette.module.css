@@ -210,6 +210,56 @@
   color: var(--text-muted);
 }
 
+/* Variable items */
+.variableItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 0 8px 4px 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: grab;
+  transition: all var(--transition-fast);
+}
+
+.variableItem:hover {
+  border-color: #22C55E;
+  transform: translateX(2px);
+}
+
+.variableItem:active {
+  cursor: grabbing;
+}
+
+.variableName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4ADE80;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.variableValue {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.variableWorkflow {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.emptyVariables {
+  padding: 12px 16px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+}
+
 /* Footer */
 .footer {
   padding: 12px 16px;

@@ -16,10 +16,22 @@ const CATEGORIES = [
 ]
 
 export function NodePalette() {
-  const { opcodes } = useWorkflowStore()
-  const { togglePalette } = useUiStore()
+  const { opcodes, tree } = useWorkflowStore()
+  const { togglePalette, setDraggingVariable } = useUiStore()
   const [search, setSearch] = useState('')
-  const [expandedCategory, setExpandedCategory] = useState<string | null>('control')
+  const [expandedCategory, setExpandedCategory] = useState<string | null>('variables')
+
+  // Get variables from all workflows
+  const allVariables = useMemo(() => {
+    if (!tree) return []
+    const vars: Array<{ name: string; value: unknown; workflowName: string }> = []
+    for (const workflow of tree.workflows) {
+      for (const [name, value] of Object.entries(workflow.variables)) {
+        vars.push({ name, value, workflowName: workflow.name })
+      }
+    }
+    return vars
+  }, [tree])
 
   // Group opcodes by category
   const grouped = useMemo(() => {
@@ -92,6 +104,45 @@ export function NodePalette() {
         ) : (
           // Category list
           <>
+            {/* Variables category (always at top) */}
+            <div className={styles.category}>
+              <button
+                className={styles.categoryHeader}
+                onClick={() =>
+                  setExpandedCategory(expandedCategory === 'variables' ? null : 'variables')
+                }
+                style={{ '--cat-color': '#22C55E' } as React.CSSProperties}
+              >
+                <span className={styles.categoryIcon}>$</span>
+                <span className={styles.categoryLabel}>Variables</span>
+                <span className={styles.categoryCount}>{allVariables.length}</span>
+                <span className={styles.expandIcon}>
+                  {expandedCategory === 'variables' ? '▼' : '▶'}
+                </span>
+              </button>
+
+              {expandedCategory === 'variables' && (
+                <div className={styles.categoryItems}>
+                  {allVariables.length === 0 ? (
+                    <div className={styles.emptyVariables}>
+                      No variables defined. Add variables in the Start Node editor.
+                    </div>
+                  ) : (
+                    allVariables.map((v) => (
+                      <VariableItem
+                        key={`${v.workflowName}-${v.name}`}
+                        name={v.name}
+                        value={v.value}
+                        workflowName={v.workflowName}
+                        onDragStart={setDraggingVariable}
+                        onDragEnd={() => setDraggingVariable(null)}
+                      />
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
             {CATEGORIES.map((cat) => (
               <div key={cat.id} className={styles.category}>
                 <button
@@ -233,4 +284,83 @@ function OpcodeItem({ opcode }: { opcode: OpcodeInterface }) {
       )}
     </div>
   )
+}
+
+interface VariableItemProps {
+  name: string
+  value: unknown
+  workflowName: string
+  onDragStart: (v: { name: string; workflowName: string; fromX: number; fromY: number; toX: number; toY: number }) => void
+  onDragEnd: () => void
+}
+
+function VariableItem({ name, value, workflowName, onDragStart, onDragEnd }: VariableItemProps) {
+  const { togglePalette } = useUiStore()
+  const isDraggingRef = useRef(false)
+  const startPosRef = useRef({ x: 0, y: 0 })
+  const itemRef = useRef<HTMLDivElement>(null)
+
+  const displayValue = formatVariableValue(value)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault() // Prevent text selection
+    startPosRef.current = { x: e.clientX, y: e.clientY }
+    isDraggingRef.current = false
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      moveEvent.preventDefault() // Prevent text selection during drag
+      const dx = Math.abs(moveEvent.clientX - startPosRef.current.x)
+      const dy = Math.abs(moveEvent.clientY - startPosRef.current.y)
+
+      if (!isDraggingRef.current && (dx > 5 || dy > 5)) {
+        isDraggingRef.current = true
+        // For variable drag, we only need cursor position (no wire from source)
+        onDragStart({
+          name,
+          workflowName,
+          fromX: 0, // Not used - variable drag only shows ghost at cursor
+          fromY: 0,
+          toX: 0, // Will be updated by canvas
+          toY: 0,
+        })
+        togglePalette()
+      }
+    }
+
+    const handleMouseUp = () => {
+      if (isDraggingRef.current) {
+        onDragEnd()
+      }
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+  }
+
+  return (
+    <div ref={itemRef} className={styles.variableItem} onMouseDown={handleMouseDown}>
+      <span className={styles.variableName}>${name}</span>
+      <span className={styles.variableValue}>{displayValue}</span>
+      {workflowName !== 'main' && (
+        <span className={styles.variableWorkflow}>({workflowName})</span>
+      )}
+    </div>
+  )
+}
+
+function formatVariableValue(value: unknown): string {
+  if (value === null) return 'null'
+  if (value === undefined) return 'undefined'
+  if (typeof value === 'string') {
+    if (value.length > 15) return `"${value.slice(0, 15)}..."`
+    return `"${value}"`
+  }
+  if (typeof value === 'object') {
+    const str = JSON.stringify(value)
+    if (str.length > 15) return str.slice(0, 15) + '...'
+    return str
+  }
+  return String(value)
 }

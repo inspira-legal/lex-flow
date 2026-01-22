@@ -6,7 +6,7 @@ import { ExecutionPanel } from './components/execution'
 import { NodeEditorPanel } from './components/node-editor'
 import { NodePalette, DragPreview } from './components/palette'
 import { useWorkflowStore } from './store'
-import { useKeyboardShortcuts } from './hooks'
+import { useKeyboardShortcuts, useWorkflowParsing } from './hooks'
 import { api } from './api'
 
 export function App() {
@@ -14,6 +14,9 @@ export function App() {
 
   // Enable keyboard shortcuts
   useKeyboardShortcuts()
+
+  // Parse workflow on source changes (runs regardless of editor visibility)
+  useWorkflowParsing()
 
   // Load examples and opcodes on mount
   useEffect(() => {
