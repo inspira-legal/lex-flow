@@ -26,6 +26,7 @@ export interface DraggingWire {
     x: number
     y: number
   } | null
+  branchLabel?: string // For branch connections: "THEN", "ELSE", "BODY", "TRY", "CATCH1", "FINALLY"
 }
 
 // Orphan node dragging info (for orphan-to-reporter conversion)

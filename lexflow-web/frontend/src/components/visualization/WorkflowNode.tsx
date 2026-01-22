@@ -1,10 +1,62 @@
 import { useRef, type ReactElement } from 'react'
 import { useWorkflowStore, useUiStore } from '../../store'
 import type { SelectedReporter } from '../../store/uiStore'
-import type { TreeNode, FormattedValue, NodeType, OpcodeParameter } from '../../api/types'
+import type { TreeNode, FormattedValue, NodeType, OpcodeParameter, BranchNode } from '../../api/types'
 import { InputSlot } from './InputSlot'
 import { NODE_WIDTH } from '../../utils/wireUtils'
 import styles from './WorkflowNode.module.css'
+
+// Branch slot colors matching Canvas.tsx getBranchColor
+const BRANCH_COLORS: Record<string, string> = {
+  THEN: '#34D399', // Green
+  ELSE: '#F87171', // Red
+  BODY: '#22D3EE', // Cyan
+  TRY: '#3B82F6', // Blue
+  FINALLY: '#FACC15', // Yellow
+}
+
+function getBranchColor(name: string): string {
+  if (name.startsWith('CATCH')) return '#F87171' // Red
+  return BRANCH_COLORS[name] || '#9C27B0' // Purple default
+}
+
+// Get available branch slots for a control flow opcode
+function getBranchSlots(opcode: string, children: BranchNode[]): Array<{ name: string; connected: boolean }> {
+  const connectedNames = new Set(children.map((c) => c.name))
+
+  switch (opcode) {
+    case 'control_if':
+      return [{ name: 'THEN', connected: connectedNames.has('THEN') }]
+    case 'control_if_else':
+      return [
+        { name: 'THEN', connected: connectedNames.has('THEN') },
+        { name: 'ELSE', connected: connectedNames.has('ELSE') },
+      ]
+    case 'control_for':
+    case 'control_while':
+    case 'control_foreach':
+      return [{ name: 'BODY', connected: connectedNames.has('BODY') }]
+    case 'control_try': {
+      const slots: Array<{ name: string; connected: boolean }> = [
+        { name: 'TRY', connected: connectedNames.has('TRY') },
+      ]
+      // Find all CATCH branches
+      const catchBranches = children.filter((c) => c.name.startsWith('CATCH')).map((c) => c.name)
+      // Always show at least CATCH1 slot, plus any existing catches
+      const maxCatch = catchBranches.length > 0
+        ? Math.max(...catchBranches.map((n) => parseInt(n.replace('CATCH', '')) || 1))
+        : 0
+      for (let i = 1; i <= Math.max(1, maxCatch); i++) {
+        const name = `CATCH${i}`
+        slots.push({ name, connected: connectedNames.has(name) })
+      }
+      slots.push({ name: 'FINALLY', connected: connectedNames.has('FINALLY') })
+      return slots
+    }
+    default:
+      return []
+  }
+}
 
 interface WorkflowNodeProps {
   node: TreeNode
@@ -105,6 +157,24 @@ export function WorkflowNode({ node, x, y, isOrphan, zoom = 1, onDrag }: Workflo
       dragX: outputX,
       dragY: outputY,
       nearbyPort: null,
+    })
+  }
+
+  // Handle dragging from a branch output port (at bottom of node)
+  const handleBranchPortMouseDown = (e: React.MouseEvent, branchName: string, portX: number, portY: number) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const outputX = x + portX
+    const outputY = y + portY
+    setDraggingWire({
+      sourceNodeId: node.id,
+      sourcePort: 'output',
+      sourceX: outputX,
+      sourceY: outputY,
+      dragX: outputX,
+      dragY: outputY,
+      nearbyPort: null,
+      branchLabel: branchName,
     })
   }
 
@@ -251,7 +321,10 @@ export function WorkflowNode({ node, x, y, isOrphan, zoom = 1, onDrag }: Workflo
   const reporterSectionHeight = reporterInputs.reduce((acc, { value }) => {
     return acc + calculateReporterTotalHeight(value) + 4
   }, 0)
-  const totalHeight = baseHeight + reporterSectionHeight
+  // Add extra height for branch slots at bottom for control flow nodes
+  const branchSlots = getBranchSlots(node.opcode, node.children)
+  const branchSlotsHeight = branchSlots.length > 0 ? 28 : 0
+  const totalHeight = baseHeight + reporterSectionHeight + branchSlotsHeight
 
   return (
     <g
@@ -364,6 +437,46 @@ export function WorkflowNode({ node, x, y, isOrphan, zoom = 1, onDrag }: Workflo
         onMouseUp={handleOutputPortMouseUp}
         style={{ cursor: 'crosshair' }}
       />
+
+      {/* Branch output ports for control flow nodes - at bottom */}
+      {branchSlots.length > 0 && (
+        <g>
+          {branchSlots.map((slot, index) => {
+            // Spread ports horizontally along the bottom
+            const slotWidth = NODE_WIDTH / branchSlots.length
+            const portX = slotWidth * index + slotWidth / 2
+            const portY = totalHeight
+            return (
+              <g key={slot.name}>
+                {/* Branch label above port */}
+                <text
+                  className={styles.branchLabel}
+                  x={portX}
+                  y={totalHeight - 10}
+                  textAnchor="middle"
+                  fill={getBranchColor(slot.name)}
+                  fontSize={9}
+                  fontWeight={500}
+                >
+                  {slot.name}
+                </text>
+                {/* Branch port */}
+                <circle
+                  className={styles.branchPort}
+                  cx={portX}
+                  cy={portY}
+                  r={5}
+                  fill={slot.connected ? getBranchColor(slot.name) : 'transparent'}
+                  stroke={getBranchColor(slot.name)}
+                  strokeWidth={2}
+                  onMouseDown={(e) => handleBranchPortMouseDown(e, slot.name, portX, portY)}
+                  style={{ cursor: 'crosshair' }}
+                />
+              </g>
+            )
+          })}
+        </g>
+      )}
 
       {/* Status indicator */}
       {status !== 'idle' && (

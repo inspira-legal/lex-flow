@@ -35,9 +35,24 @@ export function Connection({
   // Create a bezier curve for smooth connection
   const midX = (x1 + x2) / 2
   const midY = (y1 + y2) / 2
-  const controlOffset = Math.min(Math.abs(x2 - x1) / 2, 80)
 
-  const path = `M ${x1} ${y1} C ${x1 + controlOffset} ${y1}, ${x2 - controlOffset} ${y2}, ${x2} ${y2}`
+  // Determine if this is more of a vertical or horizontal connection
+  const dx = Math.abs(x2 - x1)
+  const dy = Math.abs(y2 - y1)
+  const isMoreVertical = dy > dx * 0.5  // If vertical distance is significant
+
+  let path: string
+  if (isMoreVertical && y2 > y1) {
+    // Vertical/diagonal connection (like branch connections from bottom)
+    // Control points extend vertically
+    const controlOffsetY = Math.min(dy / 2, 60)
+    path = `M ${x1} ${y1} C ${x1} ${y1 + controlOffsetY}, ${x2} ${y2 - controlOffsetY}, ${x2} ${y2}`
+  } else {
+    // Horizontal connection (standard left-to-right)
+    // Control points extend horizontally
+    const controlOffsetX = Math.min(dx / 2, 80)
+    path = `M ${x1} ${y1} C ${x1 + controlOffsetX} ${y1}, ${x2 - controlOffsetX} ${y2}, ${x2} ${y2}`
+  }
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()

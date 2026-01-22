@@ -37,6 +37,7 @@ interface WorkflowState {
   duplicateNode: (nodeId: string) => string | null
   updateNodeInput: (nodeId: string, inputKey: string, newValue: string) => boolean
   connectNodes: (fromNodeId: string, toNodeId: string) => boolean
+  connectBranch: (fromNodeId: string, toNodeId: string, branchLabel: string) => boolean
   disconnectNode: (nodeId: string) => boolean
   disconnectConnection: (fromNodeId: string, toNodeId: string, branchLabel?: string) => boolean
   convertOrphanToReporter: (
@@ -600,6 +601,227 @@ export const useWorkflowStore = create<WorkflowState>()(
         state.setSource(newSource)
         console.log('[connectNodes] Successfully connected nodes')
         return true
+      },
+
+      // Connect a branch (set branch: toNodeId in the appropriate branch slot)
+      connectBranch: (fromNodeId, toNodeId, branchLabel) => {
+        console.log('[connectBranch] Connecting branch', branchLabel, 'from', fromNodeId, 'to', toNodeId)
+        const state = get()
+        const { source } = state
+        const lines = source.split('\n')
+
+        // Find the node's starting line
+        let nodeStartLine = -1
+        let nodeIndent = -1
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          const match = line.match(/^(\s+)([a-zA-Z_][a-zA-Z0-9_]*):\s*$/)
+          if (match && match[2] === fromNodeId) {
+            nodeStartLine = i
+            nodeIndent = match[1].length
+            break
+          }
+        }
+
+        if (nodeStartLine === -1) {
+          console.warn(`[connectBranch] Node "${fromNodeId}" not found in source`)
+          return false
+        }
+
+        // Find the inputs: section within this node
+        let inputsLine = -1
+        let inputsIndent = -1
+        let nodeEndLine = nodeStartLine + 1
+
+        while (nodeEndLine < lines.length) {
+          const line = lines[nodeEndLine]
+          if (line.trim() === '' || line.trim().startsWith('#')) {
+            nodeEndLine++
+            continue
+          }
+
+          const lineIndent = line.match(/^(\s*)/)?.[1].length || 0
+          if (lineIndent <= nodeIndent && line.trim()) {
+            break // Left node scope
+          }
+
+          const inputsMatch = line.match(/^(\s+)inputs:\s*$/)
+          if (inputsMatch) {
+            inputsLine = nodeEndLine
+            inputsIndent = inputsMatch[1].length
+            break
+          }
+
+          nodeEndLine++
+        }
+
+        if (inputsLine === -1) {
+          console.warn(`[connectBranch] No inputs: section found for node "${fromNodeId}"`)
+          return false
+        }
+
+        const isCatchBranch = branchLabel.startsWith('CATCH')
+        const branchIndent = ' '.repeat(inputsIndent + 2)
+        const branchValueIndent = ' '.repeat(inputsIndent + 4)
+
+        // Find the branch label line within inputs, or find where to insert it
+        let branchLabelLine = -1
+        let inputsEndLine = inputsLine + 1
+
+        while (inputsEndLine < lines.length) {
+          const line = lines[inputsEndLine]
+          if (line.trim() === '' || line.trim().startsWith('#')) {
+            inputsEndLine++
+            continue
+          }
+
+          const lineIndent = line.match(/^(\s*)/)?.[1].length || 0
+          if (lineIndent <= inputsIndent && line.trim()) {
+            break // Left inputs scope
+          }
+
+          // Look for the branch label
+          const labelMatch = line.match(/^\s+([A-Z]+\d*):\s*$/)
+          if (labelMatch && labelMatch[1] === branchLabel) {
+            branchLabelLine = inputsEndLine
+            break
+          }
+
+          inputsEndLine++
+        }
+
+        if (branchLabelLine !== -1) {
+          // Branch label exists, find and update or insert the branch: line
+          const branchLabelIndent = lines[branchLabelLine].match(/^(\s*)/)?.[1].length || 0
+          let searchLine = branchLabelLine + 1
+
+          if (isCatchBranch) {
+            // For CATCH branches, we need to find or create body: { branch: ... }
+            let bodyLine = -1
+            while (searchLine < lines.length) {
+              const line = lines[searchLine]
+              if (line.trim() === '' || line.trim().startsWith('#')) {
+                searchLine++
+                continue
+              }
+              const lineIndent = line.match(/^(\s*)/)?.[1].length || 0
+              if (lineIndent <= branchLabelIndent && line.trim()) {
+                break // Left branch label scope
+              }
+
+              if (line.match(/^\s+body:\s*$/)) {
+                bodyLine = searchLine
+                break
+              }
+              searchLine++
+            }
+
+            if (bodyLine !== -1) {
+              // Find branch: inside body and update it
+              const bodyIndent = lines[bodyLine].match(/^(\s*)/)?.[1].length || 0
+              let bodySearchLine = bodyLine + 1
+              while (bodySearchLine < lines.length) {
+                const line = lines[bodySearchLine]
+                if (line.trim() === '' || line.trim().startsWith('#')) {
+                  bodySearchLine++
+                  continue
+                }
+                const lineIndent = line.match(/^(\s*)/)?.[1].length || 0
+                if (lineIndent <= bodyIndent && line.trim()) {
+                  break
+                }
+                const branchMatch = line.match(/^(\s+)branch:\s*/)
+                if (branchMatch) {
+                  lines[bodySearchLine] = `${branchMatch[1]}branch: ${toNodeId}`
+                  state.setSource(lines.join('\n'))
+                  console.log('[connectBranch] Updated CATCH branch')
+                  return true
+                }
+                bodySearchLine++
+              }
+              // branch: not found inside body, insert it
+              const bodyBranchIndent = ' '.repeat(bodyIndent + 2)
+              lines.splice(bodyLine + 1, 0, `${bodyBranchIndent}branch: ${toNodeId}`)
+              state.setSource(lines.join('\n'))
+              console.log('[connectBranch] Inserted branch inside CATCH body')
+              return true
+            } else {
+              // body: not found, insert body: with branch:
+              const catchBodyIndent = ' '.repeat(branchLabelIndent + 2)
+              const catchBranchIndent = ' '.repeat(branchLabelIndent + 4)
+              // Find end of CATCH section to insert body
+              let insertLine = branchLabelLine + 1
+              while (insertLine < lines.length) {
+                const line = lines[insertLine]
+                if (line.trim() === '' || line.trim().startsWith('#')) {
+                  insertLine++
+                  continue
+                }
+                const lineIndent = line.match(/^(\s*)/)?.[1].length || 0
+                if (lineIndent <= branchLabelIndent && line.trim()) {
+                  break
+                }
+                insertLine++
+              }
+              lines.splice(insertLine, 0, `${catchBodyIndent}body:`, `${catchBranchIndent}branch: ${toNodeId}`)
+              state.setSource(lines.join('\n'))
+              console.log('[connectBranch] Inserted body with branch for CATCH')
+              return true
+            }
+          } else {
+            // Standard branch: find and update or insert branch: line
+            while (searchLine < lines.length) {
+              const line = lines[searchLine]
+              if (line.trim() === '' || line.trim().startsWith('#')) {
+                searchLine++
+                continue
+              }
+              const lineIndent = line.match(/^(\s*)/)?.[1].length || 0
+              if (lineIndent <= branchLabelIndent && line.trim()) {
+                break // Left branch label scope
+              }
+
+              const branchMatch = line.match(/^(\s+)branch:\s*/)
+              if (branchMatch) {
+                lines[searchLine] = `${branchMatch[1]}branch: ${toNodeId}`
+                state.setSource(lines.join('\n'))
+                console.log('[connectBranch] Updated branch')
+                return true
+              }
+              searchLine++
+            }
+
+            // branch: not found, insert it
+            lines.splice(branchLabelLine + 1, 0, `${branchValueIndent}branch: ${toNodeId}`)
+            state.setSource(lines.join('\n'))
+            console.log('[connectBranch] Inserted branch line')
+            return true
+          }
+        } else {
+          // Branch label doesn't exist, create it with branch: value
+          // Insert at end of inputs section
+          if (isCatchBranch) {
+            // For CATCH branches, create full structure with exception_type and body
+            const catchBodyIndent = ' '.repeat(inputsIndent + 4)
+            const catchBranchIndent = ' '.repeat(inputsIndent + 6)
+            lines.splice(inputsEndLine, 0,
+              `${branchIndent}${branchLabel}:`,
+              `${catchBodyIndent}exception_type: "Exception"`,
+              `${catchBodyIndent}body:`,
+              `${catchBranchIndent}branch: ${toNodeId}`
+            )
+          } else {
+            // Standard branch
+            lines.splice(inputsEndLine, 0,
+              `${branchIndent}${branchLabel}:`,
+              `${branchValueIndent}branch: ${toNodeId}`
+            )
+          }
+          state.setSource(lines.join('\n'))
+          console.log('[connectBranch] Created new branch entry')
+          return true
+        }
       },
 
       // Disconnect a node (set its next: to null)

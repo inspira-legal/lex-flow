@@ -92,8 +92,6 @@
   stroke: var(--color-green);
   fill: var(--color-green);
   filter: drop-shadow(0 0 8px var(--color-green));
-  transform: scale(1.15);
-  transition: all 0.1s ease-out;
 }
 
 /* Status animations */
@@ -318,4 +316,19 @@
   font-weight: bold;
   fill: white;
   pointer-events: none;
+}
+
+/* Branch output ports for control flow nodes */
+.branchPort {
+  cursor: crosshair;
+  transition: filter 0.15s ease;
+}
+
+.branchPort:hover {
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+.branchLabel {
+  pointer-events: none;
+  user-select: none;
 }

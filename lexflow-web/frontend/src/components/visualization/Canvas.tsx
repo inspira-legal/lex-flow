@@ -62,24 +62,39 @@ const NODE_HEIGHT = 80
 const H_GAP = 60
 const V_GAP = 40
 const WORKFLOW_GAP = 80
+const PORT_Y_OFFSET = 30  // Y offset of input/output ports from top of node
 
-// Calculate additional height needed for nested reporters in a node
-export function calculateNodeHeight(inputs: Record<string, FormattedValue>): number {
-  let baseHeight = NODE_HEIGHT
-  let reporterHeight = 0
+// Control flow opcodes that have branch slots
+const CONTROL_FLOW_OPCODES = ['control_if', 'control_if_else', 'control_for', 'control_while', 'control_foreach', 'control_try']
 
-  for (const [_key, value] of Object.entries(inputs)) {
+// Calculate node height - must match WorkflowNode.tsx calculation exactly
+export function calculateNodeHeight(inputs: Record<string, FormattedValue>, opcode?: string): number {
+  // Separate reporter inputs from regular inputs (same logic as WorkflowNode)
+  const reporterInputs: FormattedValue[] = []
+  const regularInputs: FormattedValue[] = []
+
+  for (const value of Object.values(inputs)) {
     if (value.type === 'reporter' && value.opcode) {
-      // Each reporter adds height, plus nested reporters
-      reporterHeight += calculateReporterTotalHeight(value) + 4
+      reporterInputs.push(value)
+    } else {
+      regularInputs.push(value)
     }
   }
 
-  // Add some base height for non-reporter inputs preview
-  const nonReporterInputs = Object.values(inputs).filter((v) => v.type !== 'reporter').length
-  baseHeight += Math.min(nonReporterInputs, 2) * 18
+  // Base height: 60 + preview of first 2 regular inputs (same as WorkflowNode)
+  const inputPreviewCount = Math.min(regularInputs.length, 2)
+  const baseHeight = 60 + inputPreviewCount * 18
 
-  return baseHeight + reporterHeight
+  // Reporter section height
+  const reporterSectionHeight = reporterInputs.reduce((acc, value) => {
+    return acc + calculateReporterTotalHeight(value) + 4
+  }, 0)
+
+  // Branch slots height for control flow nodes
+  const hasBranchSlots = opcode && CONTROL_FLOW_OPCODES.includes(opcode)
+  const branchSlotsHeight = hasBranchSlots ? 28 : 0
+
+  return baseHeight + reporterSectionHeight + branchSlotsHeight
 }
 
 // Calculate total height of a reporter pill (including its content and label)
@@ -157,7 +172,7 @@ export function Canvas() {
     selectedConnection,
     selectConnection,
   } = useUiStore()
-  const { tree, parseError, selectNode, connectNodes, disconnectConnection } = useWorkflowStore()
+  const { tree, parseError, selectNode, connectNodes, connectBranch, disconnectConnection } = useWorkflowStore()
 
   const svgRef = useRef<SVGSVGElement>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -326,12 +341,15 @@ export function Canvas() {
     // Complete wire connection if near a valid port, otherwise cancel
     if (draggingWire) {
       if (draggingWire.nearbyPort) {
-        // Complete the connection
-        if (draggingWire.sourcePort === 'output') {
-          // Dragging from output to input
+        // Check if this is a branch connection
+        if (draggingWire.branchLabel) {
+          // Branch connection: connect branch to target node
+          connectBranch(draggingWire.sourceNodeId, draggingWire.nearbyPort.nodeId, draggingWire.branchLabel)
+        } else if (draggingWire.sourcePort === 'output') {
+          // Regular connection: dragging from output to input
           connectNodes(draggingWire.sourceNodeId, draggingWire.nearbyPort.nodeId)
         } else {
-          // Dragging from input to output (reverse direction)
+          // Reverse connection: dragging from input to output
           connectNodes(draggingWire.nearbyPort.nodeId, draggingWire.sourceNodeId)
         }
       }
@@ -345,7 +363,7 @@ export function Canvas() {
     if (draggingVariable) {
       setDraggingVariable(null)
     }
-  }, [draggingWire, setDraggingWire, draggingOrphan, setDraggingOrphan, draggingVariable, setDraggingVariable, connectNodes])
+  }, [draggingWire, setDraggingWire, draggingOrphan, setDraggingOrphan, draggingVariable, setDraggingVariable, connectNodes, connectBranch])
 
   // Handle minimap navigation
   const handleMinimapNavigate = useCallback(
@@ -644,7 +662,7 @@ function layoutSingleWorkflow(
   // Layout main flow
   function layoutNode(node: TreeNode, x: number, y: number, isOrphan: boolean = false): number {
     // Calculate height including nested reporters
-    const height = calculateNodeHeight(node.inputs)
+    const height = calculateNodeHeight(node.inputs, node.opcode)
 
     layoutNodes.push({
       node,
@@ -662,18 +680,25 @@ function layoutSingleWorkflow(
     // Layout branch children
     if (node.children.length > 0) {
       let branchOffset = y + height + V_GAP
+      const numBranches = node.children.length
 
-      for (const branch of node.children) {
+      for (let branchIndex = 0; branchIndex < numBranches; branchIndex++) {
+        const branch = node.children[branchIndex]
         const branchColor = getBranchColor(branch.name)
+
+        // Calculate branch port position at bottom of node
+        const slotWidth = NODE_WIDTH / numBranches
+        const branchPortX = x + slotWidth * branchIndex + slotWidth / 2
+        const branchPortY = y + height
 
         // Layout branch nodes
         let branchX = x + NODE_WIDTH + H_GAP
         let prevNodeId = node.id
-        let prevX = x + NODE_WIDTH
-        let prevY = y + height / 2
+        let prevX = branchPortX  // Start from bottom port
+        let prevY = branchPortY
 
         for (const childNode of branch.children) {
-          const childHeight = calculateNodeHeight(childNode.inputs)
+          const childHeight = calculateNodeHeight(childNode.inputs, childNode.opcode)
 
           layoutNodes.push({
             node: childNode,
@@ -685,21 +710,21 @@ function layoutSingleWorkflow(
           nodePositions.set(childNode.id, { x: branchX, y: branchOffset, height: childHeight })
           updateBounds(branchX, branchOffset, NODE_WIDTH, childHeight)
 
-          // Connection
+          // Connection - endpoints at actual port positions
           connections.push({
             from: prevNodeId,
             to: childNode.id,
             x1: prevX,
             y1: prevY,
             x2: branchX,
-            y2: branchOffset + childHeight / 2,
+            y2: branchOffset + PORT_Y_OFFSET,  // Input port is at y + 30
             color: branchColor,
             label: prevNodeId === node.id ? branch.name : undefined,
           })
 
           prevNodeId = childNode.id
           prevX = branchX + NODE_WIDTH
-          prevY = branchOffset + childHeight / 2
+          prevY = branchOffset + PORT_Y_OFFSET  // Output port is at y + 30
           branchX += NODE_WIDTH + H_GAP
 
           // Recursively layout nested branches
@@ -718,20 +743,29 @@ function layoutSingleWorkflow(
 
   function layoutBranches(node: TreeNode, startX: number, startY: number): number {
     let maxX = startX
-    let branchY = startY + NODE_HEIGHT + V_GAP
+    const nodePos = nodePositions.get(node.id)
+    const nodeHeight = nodePos?.height || NODE_HEIGHT
+    let branchY = startY + nodeHeight + V_GAP
+    const numBranches = node.children.length
 
-    for (const branch of node.children) {
+    for (let branchIndex = 0; branchIndex < numBranches; branchIndex++) {
+      const branch = node.children[branchIndex]
       const branchColor = getBranchColor(branch.name)
       let branchX = startX
 
+      // Calculate branch port position at bottom of node
+      const nodeX = nodePos?.x || startX
+      const nodeY = nodePos?.y || startY
+      const slotWidth = NODE_WIDTH / numBranches
+      const branchPortX = nodeX + slotWidth * branchIndex + slotWidth / 2
+      const branchPortY = nodeY + nodeHeight
+
       let prevNodeId = node.id
-      let prevX = nodePositions.get(node.id)?.x || startX
-      prevX += NODE_WIDTH
-      let prevY = nodePositions.get(node.id)?.y || startY
-      prevY += NODE_HEIGHT / 2
+      let prevX = branchPortX  // Start from bottom port
+      let prevY = branchPortY
 
       for (const childNode of branch.children) {
-        const childHeight = calculateNodeHeight(childNode.inputs)
+        const childHeight = calculateNodeHeight(childNode.inputs, childNode.opcode)
 
         layoutNodes.push({
           node: childNode,
@@ -749,14 +783,14 @@ function layoutSingleWorkflow(
           x1: prevX,
           y1: prevY,
           x2: branchX,
-          y2: branchY + childHeight / 2,
+          y2: branchY + PORT_Y_OFFSET,  // Input port is at y + 30
           color: branchColor,
           label: prevNodeId === node.id ? branch.name : undefined,
         })
 
         prevNodeId = childNode.id
         prevX = branchX + NODE_WIDTH
-        prevY = branchY + childHeight / 2
+        prevY = branchY + PORT_Y_OFFSET  // Output port is at y + 30
         branchX += NODE_WIDTH + H_GAP
       }
 
@@ -786,9 +820,9 @@ function layoutSingleWorkflow(
         from: `start-${workflow.name}`,
         to: node.id,
         x1: startNodeX + START_NODE_WIDTH,
-        y1: startNodeY + 30, // Output port Y position
+        y1: startNodeY + PORT_Y_OFFSET,
         x2: currPos.x,
-        y2: currPos.y + currPos.height / 2,
+        y2: currPos.y + PORT_Y_OFFSET,
         color: '#22C55E', // Green color for start connection
       })
       isFirstNode = false
@@ -802,9 +836,9 @@ function layoutSingleWorkflow(
         from: prevNode.id,
         to: node.id,
         x1: prevPos.x + NODE_WIDTH,
-        y1: prevPos.y + NODE_HEIGHT / 2,
+        y1: prevPos.y + PORT_Y_OFFSET,
         x2: currPos.x,
-        y2: currPos.y + NODE_HEIGHT / 2,
+        y2: currPos.y + PORT_Y_OFFSET,
         color: '#475569',
       })
     }
@@ -842,9 +876,9 @@ function layoutSingleWorkflow(
             from: orphan.id,
             to: orphan.next,
             x1: fromPos.x + NODE_WIDTH,
-            y1: fromPos.y + fromPos.height / 2,
+            y1: fromPos.y + PORT_Y_OFFSET,
             x2: toPos.x,
-            y2: toPos.y + toPos.height / 2,
+            y2: toPos.y + PORT_Y_OFFSET,
             color: '#6B7280', // Gray color for orphan chains
           })
         }

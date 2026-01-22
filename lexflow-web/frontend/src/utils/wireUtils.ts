@@ -1,6 +1,6 @@
 // Wire utilities for proximity detection and port calculations
 
-export const WIRE_SNAP_DISTANCE = 40
+export const WIRE_SNAP_DISTANCE = 25
 export const NODE_WIDTH = 180
 
 export function calculateDistance(x1: number, y1: number, x2: number, y2: number): number {
