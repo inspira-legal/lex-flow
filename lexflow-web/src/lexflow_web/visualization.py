@@ -77,14 +77,42 @@ def _build_workflow_tree(workflow: dict) -> dict:
     # Now recalculate orphan_ids with reporter references accounted for
     orphan_ids = all_node_ids - all_visited
 
-    for node_id in sorted(orphan_ids):  # Sort for consistent ordering
-        node = nodes[node_id]
-        # Skip reporter nodes (they're embedded in other nodes)
-        if node.get("isReporter"):
-            continue
-        # Pass all_visited to track any deeply nested reporters
-        orphan_tree = _node_to_tree(node_id, node, nodes, all_visited)
-        tree["orphans"].append(orphan_tree)
+    # Build orphan chains: find chain heads (orphans not pointed to by other orphans)
+    # and follow their next pointers to maintain chain order
+    orphan_next_targets = set()
+    for node_id in orphan_ids:
+        node = nodes.get(node_id, {})
+        next_id = node.get("next")
+        if next_id and next_id in orphan_ids:
+            orphan_next_targets.add(next_id)
+
+    # Chain heads are orphans that no other orphan points to
+    orphan_heads = [oid for oid in orphan_ids if oid not in orphan_next_targets]
+
+    # Process each orphan chain starting from its head
+    processed_orphans = set()
+    for head_id in sorted(orphan_heads):
+        current_id = head_id
+        while current_id and current_id not in processed_orphans:
+            node = nodes.get(current_id)
+            if not node:
+                break
+            # Skip reporter nodes (they're embedded in other nodes)
+            if node.get("isReporter"):
+                processed_orphans.add(current_id)
+                current_id = node.get("next") if node.get("next") in orphan_ids else None
+                continue
+
+            processed_orphans.add(current_id)
+            orphan_tree = _node_to_tree(current_id, node, nodes, all_visited)
+
+            # Include next pointer if it points to another orphan (for chain visualization)
+            next_id = node.get("next")
+            if next_id and next_id in orphan_ids:
+                orphan_tree["next"] = next_id
+
+            tree["orphans"].append(orphan_tree)
+            current_id = next_id if next_id in orphan_ids else None
 
     return tree
 
@@ -335,7 +363,7 @@ def _extract_try_branches(inputs: dict, all_nodes: dict, all_visited: set) -> li
                 handler_branch = handler.get("branch")
                 if handler_branch:
                     branch = _build_branch(
-                        "CATCH", handler_branch, all_nodes, all_visited
+                        f"CATCH{i}", handler_branch, all_nodes, all_visited
                     )
                     branch["exception_type"] = handler.get(
                         "exception_type", "Exception"
@@ -354,7 +382,7 @@ def _extract_try_branches(inputs: dict, all_nodes: dict, all_visited: set) -> li
                 )
                 if handler_branch:
                     branch = _build_branch(
-                        "CATCH", handler_branch, all_nodes, all_visited
+                        f"CATCH{i}", handler_branch, all_nodes, all_visited
                     )
                     branch["exception_type"] = catch_input.get(
                         "exception_type", "Exception"

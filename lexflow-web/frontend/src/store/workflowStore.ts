@@ -1146,11 +1146,164 @@ export const useWorkflowStore = create<WorkflowState>()(
       },
 
       // Disconnect a specific connection between two nodes
-      disconnectConnection: (fromNodeId, toNodeId, _branchLabel) => {
-        console.log('[disconnectConnection] Disconnecting', fromNodeId, '->', toNodeId)
-        // For now, this just disconnects the fromNode (sets next: null)
-        // In the future, this could handle branch-specific disconnections
-        return get().disconnectNode(fromNodeId)
+      disconnectConnection: (fromNodeId, toNodeId, branchLabel) => {
+        console.log('[disconnectConnection] Disconnecting', fromNodeId, '->', toNodeId, 'branch:', branchLabel)
+
+        // If no branch label, disconnect via next: null
+        if (!branchLabel) {
+          return get().disconnectNode(fromNodeId)
+        }
+
+        // Branch-specific disconnection for control flow nodes
+        const state = get()
+        const { source } = state
+        const lines = source.split('\n')
+
+        // Find the node's starting line
+        let nodeStartLine = -1
+        let nodeIndent = -1
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          const match = line.match(/^(\s+)([a-zA-Z_][a-zA-Z0-9_]*):\s*$/)
+          if (match && match[2] === fromNodeId) {
+            nodeStartLine = i
+            nodeIndent = match[1].length
+            break
+          }
+        }
+
+        if (nodeStartLine === -1) {
+          console.warn(`[disconnectConnection] Node "${fromNodeId}" not found in source`)
+          return false
+        }
+
+        // Find the inputs: section within this node
+        let inputsLine = -1
+        let inputsIndent = -1
+        let nodeEndLine = nodeStartLine + 1
+
+        while (nodeEndLine < lines.length) {
+          const line = lines[nodeEndLine]
+          if (line.trim() === '' || line.trim().startsWith('#')) {
+            nodeEndLine++
+            continue
+          }
+
+          const lineIndent = line.match(/^(\s*)/)?.[1].length || 0
+          if (lineIndent <= nodeIndent && line.trim()) {
+            break // Left node scope
+          }
+
+          const inputsMatch = line.match(/^(\s+)inputs:\s*$/)
+          if (inputsMatch) {
+            inputsLine = nodeEndLine
+            inputsIndent = inputsMatch[1].length
+            break
+          }
+
+          nodeEndLine++
+        }
+
+        if (inputsLine === -1) {
+          console.warn(`[disconnectConnection] No inputs: section found for node "${fromNodeId}"`)
+          return false
+        }
+
+        // Find the branch label within inputs
+        // Handle CATCH branches which have nested body: { branch: ... } structure
+        const isCatchBranch = branchLabel.startsWith('CATCH')
+        let branchLabelLine = -1
+        let searchLine = inputsLine + 1
+
+        while (searchLine < lines.length) {
+          const line = lines[searchLine]
+          if (line.trim() === '' || line.trim().startsWith('#')) {
+            searchLine++
+            continue
+          }
+
+          const lineIndent = line.match(/^(\s*)/)?.[1].length || 0
+          if (lineIndent <= inputsIndent && line.trim()) {
+            break // Left inputs scope
+          }
+
+          // Look for the branch label (e.g., "THEN:", "ELSE:", "BODY:", "TRY:", "CATCH1:", "FINALLY:")
+          const labelMatch = line.match(/^\s+([A-Z]+\d*):\s*$/)
+          if (labelMatch && labelMatch[1] === branchLabel) {
+            branchLabelLine = searchLine
+            break
+          }
+
+          searchLine++
+        }
+
+        if (branchLabelLine === -1) {
+          console.warn(`[disconnectConnection] Branch label "${branchLabel}" not found in inputs`)
+          return false
+        }
+
+        // Find the branch: line within this branch section
+        const branchLabelIndent = lines[branchLabelLine].match(/^(\s*)/)?.[1].length || 0
+        let branchLineIndex = branchLabelLine + 1
+
+        while (branchLineIndex < lines.length) {
+          const line = lines[branchLineIndex]
+          if (line.trim() === '' || line.trim().startsWith('#')) {
+            branchLineIndex++
+            continue
+          }
+
+          const lineIndent = line.match(/^(\s*)/)?.[1].length || 0
+          if (lineIndent <= branchLabelIndent && line.trim()) {
+            break // Left branch label scope
+          }
+
+          // For CATCH branches, we need to find body: then branch: inside body
+          if (isCatchBranch) {
+            const bodyMatch = line.match(/^(\s+)body:\s*$/)
+            if (bodyMatch) {
+              // Now find branch: inside body
+              const bodyIndent = bodyMatch[1].length
+              let bodyLine = branchLineIndex + 1
+              while (bodyLine < lines.length) {
+                const innerLine = lines[bodyLine]
+                if (innerLine.trim() === '' || innerLine.trim().startsWith('#')) {
+                  bodyLine++
+                  continue
+                }
+                const innerIndent = innerLine.match(/^(\s*)/)?.[1].length || 0
+                if (innerIndent <= bodyIndent && innerLine.trim()) {
+                  break
+                }
+                const branchMatch = innerLine.match(/^(\s+)branch:\s*(\S+)/)
+                if (branchMatch && branchMatch[2] === toNodeId) {
+                  const indent = branchMatch[1]
+                  lines[bodyLine] = `${indent}branch: null`
+                  state.setSource(lines.join('\n'))
+                  console.log('[disconnectConnection] Disconnected CATCH branch')
+                  return true
+                }
+                bodyLine++
+              }
+            }
+          } else {
+            // Standard branch: for THEN, ELSE, BODY, TRY, FINALLY
+            const branchMatch = line.match(/^(\s+)branch:\s*(\S+)/)
+            if (branchMatch && branchMatch[2] === toNodeId) {
+              const indent = branchMatch[1]
+              lines[branchLineIndex] = `${indent}branch: null`
+              state.setSource(lines.join('\n'))
+              console.log('[disconnectConnection] Disconnected branch')
+              return true
+            }
+          }
+
+          branchLineIndex++
+        }
+
+        console.warn(`[disconnectConnection] Could not find branch reference to "${toNodeId}"`)
+        return false
       },
 
       // Delete a variable from a workflow

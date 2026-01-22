@@ -53,6 +53,7 @@ export interface DraggingVariable {
 export interface SelectedConnection {
   fromNodeId: string
   toNodeId: string
+  label?: string // "THEN", "ELSE", "BODY", "TRY", "CATCH", "FINALLY", etc.
 }
 
 interface UiState {

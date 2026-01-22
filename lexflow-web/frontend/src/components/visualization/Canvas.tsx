@@ -472,9 +472,11 @@ export function Canvas() {
                 selectedConnection?.fromNodeId === conn.from &&
                 selectedConnection?.toNodeId === conn.to
               }
-              onSelect={() => selectConnection({ fromNodeId: conn.from, toNodeId: conn.to })}
+              onSelect={() =>
+                selectConnection({ fromNodeId: conn.from, toNodeId: conn.to, label: conn.label })
+              }
               onDelete={() => {
-                disconnectConnection(conn.from, conn.to)
+                disconnectConnection(conn.from, conn.to, conn.label)
                 selectConnection(null)
               }}
             />
@@ -640,7 +642,7 @@ function layoutSingleWorkflow(
   }
 
   // Layout main flow
-  function layoutNode(node: TreeNode, x: number, y: number): number {
+  function layoutNode(node: TreeNode, x: number, y: number, isOrphan: boolean = false): number {
     // Calculate height including nested reporters
     const height = calculateNodeHeight(node.inputs)
 
@@ -650,6 +652,7 @@ function layoutSingleWorkflow(
       y,
       width: NODE_WIDTH,
       height,
+      isOrphan,
     })
     nodePositions.set(node.id, { x, y, height })
     updateBounds(x, y, NODE_WIDTH, height)
@@ -825,18 +828,27 @@ function layoutSingleWorkflow(
     let orphanX = startNodeX
 
     for (const orphan of orphans) {
-      const height = calculateNodeHeight(orphan.inputs)
-      layoutNodes.push({
-        node: orphan,
-        x: orphanX,
-        y: orphanY,
-        width: NODE_WIDTH,
-        height,
-        isOrphan: true,
-      })
-      nodePositions.set(orphan.id, { x: orphanX, y: orphanY, height })
-      updateBounds(orphanX, orphanY, NODE_WIDTH, height)
-      orphanX += NODE_WIDTH + H_GAP
+      // Use layoutNode to properly handle branches and connections
+      orphanX = layoutNode(orphan, orphanX, orphanY, true)
+    }
+
+    // Create connections between orphan chain nodes
+    for (const orphan of orphans) {
+      if (orphan.next) {
+        const fromPos = nodePositions.get(orphan.id)
+        const toPos = nodePositions.get(orphan.next)
+        if (fromPos && toPos) {
+          connections.push({
+            from: orphan.id,
+            to: orphan.next,
+            x1: fromPos.x + NODE_WIDTH,
+            y1: fromPos.y + fromPos.height / 2,
+            x2: toPos.x,
+            y2: toPos.y + toPos.height / 2,
+            color: '#6B7280', // Gray color for orphan chains
+          })
+        }
+      }
     }
   }
 
@@ -874,6 +886,10 @@ function layoutSingleWorkflow(
 }
 
 function getBranchColor(name: string): string {
+  // Handle CATCH1, CATCH2, etc.
+  if (name.startsWith('CATCH')) {
+    return '#F87171' // Red
+  }
   switch (name) {
     case 'THEN':
       return '#34D399' // Green
@@ -883,8 +899,6 @@ function getBranchColor(name: string): string {
       return '#22D3EE' // Cyan
     case 'TRY':
       return '#3B82F6' // Blue
-    case 'CATCH':
-      return '#F87171' // Red
     case 'FINALLY':
       return '#FACC15' // Yellow
     default:

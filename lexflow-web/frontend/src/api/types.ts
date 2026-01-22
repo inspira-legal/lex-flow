@@ -81,6 +81,7 @@ export interface TreeNode {
   inputs: Record<string, FormattedValue>
   config?: LoopConfig
   children: BranchNode[]
+  next?: string  // Next node in chain (used for orphan chain visualization)
 }
 
 export interface BranchNode {
