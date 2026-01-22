@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { useWorkflowStore } from '../store'
-import { api } from '../api'
+import { useBackendProvider } from '../providers'
 
 // Hook to handle workflow parsing - runs regardless of editor visibility
+// Uses the BackendProvider for client-side parsing (no API calls needed)
 export function useWorkflowParsing() {
   const { source, setTree, setParseError, setIsParsing } = useWorkflowStore()
+  const provider = useBackendProvider()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -15,7 +17,7 @@ export function useWorkflowParsing() {
     debounceRef.current = setTimeout(async () => {
       setIsParsing(true)
       try {
-        const result = await api.parse(source)
+        const result = await provider.parseWorkflow(source)
         if (result.success && result.tree) {
           setTree(result.tree)
         } else {
@@ -33,5 +35,5 @@ export function useWorkflowParsing() {
         clearTimeout(debounceRef.current)
       }
     }
-  }, [source, setTree, setParseError, setIsParsing])
+  }, [source, setTree, setParseError, setIsParsing, provider])
 }

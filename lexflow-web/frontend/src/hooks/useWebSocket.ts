@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react'
 import { useWorkflowStore } from '../store'
+import { useBackendProvider } from '../providers'
 
 interface ExecuteMessage {
   type: 'start'
@@ -28,6 +29,7 @@ type ServerMessage = OutputMessage | CompleteMessage | ErrorMessage
 
 export function useWebSocketExecution() {
   const wsRef = useRef<WebSocket | null>(null)
+  const provider = useBackendProvider()
   const {
     setIsExecuting,
     appendExecutionOutput,
@@ -37,7 +39,7 @@ export function useWebSocketExecution() {
   } = useWorkflowStore()
 
   const execute = useCallback(
-    (workflow: string, inputs?: Record<string, unknown>, includeMetrics?: boolean) => {
+    async (workflow: string, inputs?: Record<string, unknown>, includeMetrics?: boolean) => {
       // Close existing connection
       if (wsRef.current) {
         wsRef.current.close()
@@ -46,10 +48,30 @@ export function useWebSocketExecution() {
       clearExecution()
       setIsExecuting(true)
 
-      // Determine WebSocket URL
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = `${protocol}//${window.location.host}/ws/execute`
+      // Get WebSocket URL from provider
+      const wsUrl = provider.getWebSocketUrl()
 
+      // Fallback to REST execution if WebSocket not supported
+      if (!wsUrl) {
+        try {
+          const result = await provider.executeWorkflow(workflow, inputs, includeMetrics)
+          if (result.success) {
+            if (result.output) {
+              appendExecutionOutput(result.output)
+            }
+            setExecutionResult(result.result)
+          } else {
+            setExecutionError(result.error || 'Execution failed')
+          }
+        } catch (err) {
+          setExecutionError(err instanceof Error ? err.message : 'Execution failed')
+        } finally {
+          setIsExecuting(false)
+        }
+        return
+      }
+
+      // Use WebSocket for streaming execution
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
 
@@ -98,7 +120,7 @@ export function useWebSocketExecution() {
         wsRef.current = null
       }
     },
-    [clearExecution, setIsExecuting, appendExecutionOutput, setExecutionResult, setExecutionError]
+    [provider, clearExecution, setIsExecuting, appendExecutionOutput, setExecutionResult, setExecutionError]
   )
 
   const cancel = useCallback(() => {

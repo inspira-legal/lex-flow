@@ -7,10 +7,11 @@ import { NodeEditorPanel } from './components/node-editor'
 import { NodePalette, DragPreview } from './components/palette'
 import { useWorkflowStore } from './store'
 import { useKeyboardShortcuts, useWorkflowParsing } from './hooks'
-import { api } from './api'
+import { useBackendProvider, supportsExamples } from './providers'
 
 export function App() {
   const { setExamples, setOpcodes } = useWorkflowStore()
+  const provider = useBackendProvider()
 
   // Enable keyboard shortcuts
   useKeyboardShortcuts()
@@ -20,9 +21,14 @@ export function App() {
 
   // Load examples and opcodes on mount
   useEffect(() => {
-    api.listExamples().then(setExamples).catch(console.error)
-    api.listOpcodes().then(setOpcodes).catch(console.error)
-  }, [setExamples, setOpcodes])
+    // Load opcodes from provider
+    provider.listOpcodes().then(setOpcodes).catch(console.error)
+
+    // Load examples if provider supports them
+    if (supportsExamples(provider)) {
+      provider.listExamples().then(setExamples).catch(console.error)
+    }
+  }, [setExamples, setOpcodes, provider])
 
   return (
     <>
