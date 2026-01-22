@@ -171,8 +171,7 @@ workflows:
 For a visual approach to building workflows, use [LexFlow Web](../lexflow-web/README.md):
 
 ```bash
-cd lexflow-web
-uv run python -m lexflow_web.app
+uv run lexflow-web
 ```
 
 Open http://localhost:8000 to access the visual editor with:

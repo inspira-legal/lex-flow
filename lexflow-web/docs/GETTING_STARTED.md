@@ -23,8 +23,7 @@ cd lex-flow
 uv sync --all-extras
 
 # Start the server
-cd lexflow-web
-uv run python -m lexflow_web.app
+uv run lexflow-web
 ```
 
 Open http://localhost:8000 in your browser. The pre-built frontend is served from `src/lexflow_web/static/`.
@@ -49,9 +48,8 @@ npm install
 **Start both servers:**
 
 ```bash
-# Terminal 1: Backend (from lexflow-web directory)
-cd lexflow-web
-uv run python -m lexflow_web.app --reload --port 8000
+# Terminal 1: Backend
+uv run lexflow-web --reload --port 8000
 
 # Terminal 2: Frontend dev server (from frontend directory)
 cd lexflow-web/frontend
@@ -64,13 +62,13 @@ The frontend dev server runs on http://localhost:5173 and proxies API requests t
 
 ```bash
 # Start on custom host/port
-uv run python -m lexflow_web.app --host 0.0.0.0 --port 3000
+uv run lexflow-web --host 0.0.0.0 --port 3000
 
 # Enable auto-reload for development
-uv run python -m lexflow_web.app --reload
+uv run lexflow-web --reload
 
 # View all options
-uv run python -m lexflow_web.app --help
+uv run lexflow-web --help
 ```
 
 ## Building the Frontend
@@ -147,7 +145,7 @@ uv pip list | grep lexflow
 **Port already in use:**
 ```bash
 # Use a different port
-uv run python -m lexflow_web.app --port 3000
+uv run lexflow-web --port 3000
 ```
 
 ### Frontend dev server issues

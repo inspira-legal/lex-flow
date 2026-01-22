@@ -31,8 +31,7 @@ cd lex-flow
 uv sync --all-extras
 
 # Start the server
-cd lexflow-web
-uv run python -m lexflow_web.app
+uv run lexflow-web
 ```
 
 Open http://localhost:8000 in your browser.
@@ -43,8 +42,7 @@ For frontend development with hot reload:
 
 ```bash
 # Terminal 1: Start backend
-cd lexflow-web
-uv run python -m lexflow_web.app --reload
+uv run lexflow-web --reload
 
 # Terminal 2: Start frontend dev server
 cd lexflow-web/frontend
