@@ -6,6 +6,14 @@ Before you keep reading keep in mind that LexFlow is still in early development 
 
 ## Documentation Files
 
+### LexFlow Web (Visual Editor)
+
+**[LexFlow Web](../lexflow-web/README.md)** - Visual workflow editor and execution environment
+
+- [Getting Started](../lexflow-web/docs/GETTING_STARTED.md) - Installation and setup
+- [User Guide](../lexflow-web/docs/USER_GUIDE.md) - How to use the visual editor
+- [Customization](../lexflow-web/docs/CUSTOMIZATION.md) - Custom backends and providers
+
 ### Getting Started
 
 **[GETTING_STARTED.md](GETTING_STARTED.md)** - Installation and first steps
@@ -157,6 +165,20 @@ workflows:
           STRING:
             literal: "Complete!\n"
 ```
+
+## LexFlow Web
+
+For a visual approach to building workflows, use [LexFlow Web](../lexflow-web/README.md):
+
+```bash
+cd lexflow-web
+uv run python -m lexflow_web.app
+```
+
+Open http://localhost:8000 to access the visual editor with:
+- Drag-and-drop node creation
+- Live code synchronization
+- Real-time execution with streaming output
 
 ## Advanced Topics
 

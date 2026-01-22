@@ -1,0 +1,86 @@
+.connection {
+  cursor: pointer;
+}
+
+/* Invisible wider hit area for easier clicking */
+.hitArea {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  stroke-linecap: round;
+  pointer-events: stroke;
+}
+
+.hitArea:hover + .pathShadow + .path {
+  stroke-width: 3;
+}
+
+.pathShadow {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.path {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  pointer-events: none;
+  transition: stroke-width 0.15s ease, stroke 0.15s ease;
+}
+
+.path.dotted {
+  stroke-dasharray: 6 4;
+  stroke-width: 1.5;
+}
+
+.flowDot {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.label {
+  font-size: 10px;
+  fill: var(--text-muted);
+  text-anchor: middle;
+  font-weight: 500;
+  pointer-events: none;
+}
+
+/* Selected state */
+.connection.selected .path {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.5));
+}
+
+.connection.selected .pathShadow {
+  opacity: 0.3;
+  stroke: #22D3EE;
+}
+
+/* Delete button */
+.deleteButton {
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.deleteButton circle {
+  fill: var(--color-red);
+  stroke: var(--bg-primary);
+  stroke-width: 2;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.deleteButton:hover circle {
+  filter: brightness(1.2) drop-shadow(0 0 4px var(--color-red));
+  transform: scale(1.1);
+}
+
+.deleteButton text {
+  font-size: 16px;
+  font-weight: bold;
+  fill: white;
+  pointer-events: none;
+}

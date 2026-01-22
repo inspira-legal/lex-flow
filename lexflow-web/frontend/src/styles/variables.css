@@ -1,0 +1,97 @@
+/* LexFlow Web - Inspira Dark Theme Variables */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;700&display=swap');
+
+:root {
+  /* Inspira Dark Palette (Slate & Blue) */
+  --color-cyan: #22D3EE;
+  --color-magenta: #F472B6;
+  --color-yellow: #FACC15;
+  --color-green: #34D399;
+  --color-blue: #3B82F6;
+  --color-red: #F87171;
+  --color-dim: #94A3B8;
+
+  /* Node Category Colors (Scratch-inspired) */
+  --node-control: #FF9500;
+  --node-data: #4CAF50;
+  --node-io: #22D3EE;
+  --node-operator: #9C27B0;
+  --node-workflow: #E91E63;
+  --node-generic: #64748B;
+
+  /* Theme Structural Colors */
+  --bg-primary: #0F172A;
+  --bg-secondary: #1E293B;
+  --bg-panel: #1E293B;
+  --bg-input: #020617;
+  --bg-node: #1E293B;
+  --bg-node-hover: #334155;
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted: #64748B;
+
+  --border-color: #334155;
+  --border-highlight: #475569;
+
+  /* Layout */
+  --header-height: 50px;
+  --panel-width: 320px;
+  --bottom-panel-height: 200px;
+  --gap: 8px;
+  --radius: 6px;
+  --radius-lg: 12px;
+
+  /* Canvas */
+  --canvas-dot-color: #334155;
+  --canvas-dot-size: 1px;
+  --canvas-dot-gap: 20px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-highlight);
+}

@@ -1,0 +1,84 @@
+.startNodeGroup {
+  cursor: pointer;
+}
+
+.card {
+  fill: var(--bg-node);
+  stroke: #22C55E;
+  stroke-width: 2;
+  transition: stroke 0.15s ease, stroke-width 0.15s ease, filter 0.15s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.startNodeGroup:hover .card {
+  stroke: #4ADE80;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 4px 8px rgba(34, 197, 94, 0.3));
+}
+
+.startNodeGroup.selected .card {
+  stroke: var(--color-cyan);
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.4));
+}
+
+.colorBar {
+  fill: #22C55E;
+  pointer-events: none;
+}
+
+.flagIcon {
+  font-size: 14px;
+}
+
+.name {
+  font-size: 13px;
+  font-weight: 700;
+  fill: var(--text-primary);
+}
+
+.interfaceLabel {
+  font-size: 9px;
+  fill: var(--text-secondary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.variable {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  fill: #4ADE80;
+}
+
+.moreVars {
+  font-size: 9px;
+  fill: var(--text-muted);
+  font-style: italic;
+}
+
+/* Output port */
+.outputPort {
+  fill: var(--bg-secondary);
+  stroke: #22C55E;
+  stroke-width: 2;
+  transition: all 0.15s ease;
+}
+
+.startNodeGroup:hover .outputPort {
+  stroke: #4ADE80;
+  fill: var(--bg-panel);
+}
+
+.outputPort:hover {
+  fill: #22C55E;
+  filter: drop-shadow(0 0 4px #22C55E);
+}
+
+/* Drag handle for free layout mode */
+.dragHandle {
+  cursor: grab;
+  pointer-events: all;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
