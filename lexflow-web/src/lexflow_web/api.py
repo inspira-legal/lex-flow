@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from lexflow import Engine, Parser
+from lexflow.opcodes import default_registry
 from lexflow_web.visualization import workflow_to_tree
 
 router = APIRouter()
@@ -213,3 +214,13 @@ async def get_example(category: str, filename: str):
         path=f"{category}/{filename}",
         content=content,
     )
+
+
+@router.get("/opcodes")
+async def list_opcodes():
+    """List all available opcodes with their interfaces."""
+    opcodes = []
+    for name in default_registry.list_opcodes():
+        interface = default_registry.get_interface(name)
+        opcodes.append(interface)
+    return opcodes

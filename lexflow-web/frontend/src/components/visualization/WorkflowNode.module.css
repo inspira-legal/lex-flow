@@ -1,0 +1,166 @@
+.nodeGroup {
+  cursor: pointer;
+}
+
+.card {
+  fill: var(--bg-node);
+  stroke: var(--border-color);
+  stroke-width: 1;
+  transition: stroke 0.15s ease, stroke-width 0.15s ease, filter 0.15s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.nodeGroup:hover .card {
+  stroke: var(--node-color);
+  stroke-width: 2;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+}
+
+.nodeGroup.selected .card {
+  stroke: var(--color-cyan);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.4));
+}
+
+.nodeGroup.searchMatch .card {
+  stroke: #FACC15;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.5));
+}
+
+.nodeGroup.searchMatch.selected .card {
+  stroke: var(--color-cyan);
+}
+
+.colorBar {
+  pointer-events: none;
+}
+
+.icon {
+  font-size: 14px;
+  fill: var(--text-secondary);
+}
+
+.name {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--text-primary);
+}
+
+.id {
+  font-size: 10px;
+  fill: var(--text-muted);
+}
+
+.inputKey {
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--color-magenta);
+}
+
+.input {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  fill: var(--text-secondary);
+}
+
+/* Connection ports */
+.inputPort,
+.outputPort {
+  fill: var(--bg-secondary);
+  stroke: var(--border-color);
+  stroke-width: 2;
+  transition: all 0.15s ease;
+}
+
+.nodeGroup:hover .inputPort,
+.nodeGroup:hover .outputPort {
+  stroke: var(--color-cyan);
+  fill: var(--bg-panel);
+}
+
+/* Status animations */
+.nodeGroup.running .card {
+  animation: pulse 1s infinite;
+}
+
+.nodeGroup.success .card {
+  stroke: var(--color-green);
+}
+
+.nodeGroup.error .card {
+  stroke: var(--color-red);
+}
+
+.statusDot {
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    stroke-opacity: 1;
+  }
+  50% {
+    stroke-opacity: 0.5;
+  }
+}
+
+/* Nested reporter pills */
+.reporterLabel {
+  font-size: 9px;
+  font-weight: 600;
+  fill: var(--color-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.reporterNestedLabel {
+  font-size: 8px;
+  font-weight: 600;
+  fill: var(--color-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.reporterClickable {
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.reporterClickable:hover > .reporterPill {
+  filter: brightness(1.15);
+  stroke-width: 2;
+}
+
+.reporterSelected > .reporterPill {
+  stroke: var(--color-cyan);
+  stroke-width: 2;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.5));
+}
+
+.reporterPill {
+  fill: var(--bg-secondary);
+  stroke: var(--reporter-color);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 2;
+  transition: filter 0.15s ease, stroke-width 0.15s ease;
+}
+
+.reporterName {
+  font-size: 9px;
+  font-weight: 600;
+  fill: var(--text-primary);
+}
+
+.reporterInputKey {
+  font-size: 8px;
+  font-weight: 600;
+  fill: var(--color-magenta);
+}
+
+.reporterInputValue {
+  font-size: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  fill: var(--text-secondary);
+}

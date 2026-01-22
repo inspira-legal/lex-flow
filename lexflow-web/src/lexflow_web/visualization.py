@@ -18,12 +18,18 @@ def workflow_to_tree(workflow_data: dict) -> dict:
 
     # Build tree for all workflows
     workflow_trees = []
+    main_interface = {"inputs": [], "outputs": []}
+    
     for w in workflows:
-        workflow_trees.append(_build_workflow_tree(w))
+        tree = _build_workflow_tree(w)
+        workflow_trees.append(tree)
+        if tree.get("name") == "main" or not main_interface["inputs"]:
+            main_interface = tree.get("interface", {})
 
     return {
         "type": "project",
-        "workflows": workflow_trees
+        "workflows": workflow_trees,
+        "interface": main_interface
     }
 
 
@@ -142,9 +148,7 @@ def _format_inputs(inputs: dict, all_nodes: dict) -> dict:
 
 
 def _format_value(value: Any, all_nodes: dict, depth: int = 0) -> dict:
-    """Format a value for display."""
-    if depth > 3:
-        return {"type": "truncated", "display": "..."}
+    """Format a value for display. No depth limit - show full reporter tree."""
 
     if isinstance(value, dict):
         if "literal" in value:
