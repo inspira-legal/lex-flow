@@ -138,8 +138,14 @@ function formatValueShort(value: FormattedValue): string {
   switch (value.type) {
     case "literal":
       const v = value.value;
-      if (typeof v === "string")
+      if (typeof v === "string") {
         return `"${v.length > 10 ? v.slice(0, 10) + "..." : v}"`;
+      }
+      if (typeof v === "object" && v !== null) {
+        // Format arrays/objects compactly
+        const json = JSON.stringify(v);
+        return json.length > 20 ? json.slice(0, 17) + "..." : json;
+      }
       return String(v);
     case "variable":
       return `$${value.name}`;

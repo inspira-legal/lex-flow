@@ -641,6 +641,9 @@ function formatValue(value: FormattedValue): string {
   switch (value.type) {
     case "literal":
       if (typeof value.value === "string") return `"${value.value}"`;
+      if (typeof value.value === "object" && value.value !== null) {
+        return JSON.stringify(value.value, null, 2);
+      }
       return String(value.value);
     case "variable":
       return `$${value.name}`;
@@ -651,7 +654,7 @@ function formatValue(value: FormattedValue): string {
     case "branch":
       return `→ ${value.target}`;
     case "dict":
-      return JSON.stringify(value.value);
+      return JSON.stringify(value.value, null, 2);
     case "truncated":
       return value.display || "...";
     default:

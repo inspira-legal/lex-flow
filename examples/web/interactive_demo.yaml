@@ -1,0 +1,196 @@
+# Interactive Web Demo
+# Run this with the web frontend to see interactive web opcodes in action
+
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      user_name: ""
+      favorite_color: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: greet
+        inputs: {}
+
+      greet:
+        opcode: web_markdown
+        next: save_name
+        inputs:
+          content:
+            literal: "# Welcome to LexFlow!\n\nThis demo shows interactive web opcodes."
+
+      # Reporter: prompts for name input
+      ask_name:
+        opcode: web_input
+        isReporter: true
+        inputs:
+          prompt:
+            literal: "What is your name?"
+
+      save_name:
+        opcode: data_set_variable_to
+        next: show_greeting
+        inputs:
+          VARIABLE:
+            literal: "user_name"
+          VALUE:
+            node: ask_name
+
+      # Reporter: builds greeting message
+      greeting_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Hello, "
+          right:
+            node: add_exclaim
+
+      add_exclaim:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: user_name
+          right:
+            literal: "!"
+
+      show_greeting:
+        opcode: web_alert
+        next: save_color
+        inputs:
+          message:
+            node: greeting_msg
+          variant:
+            literal: "success"
+
+      # Reporter: prompts for color selection
+      ask_color:
+        opcode: web_select
+        isReporter: true
+        inputs:
+          options:
+            literal: ["Red", "Green", "Blue", "Purple"]
+          prompt:
+            literal: "What's your favorite color?"
+
+      save_color:
+        opcode: data_set_variable_to
+        next: show_color
+        inputs:
+          VARIABLE:
+            literal: "favorite_color"
+          VALUE:
+            node: ask_color
+
+      # Reporter: builds color message
+      color_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "You chose: **"
+          right:
+            node: color_msg_end
+
+      color_msg_end:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: favorite_color
+          right:
+            literal: "**"
+
+      show_color:
+        opcode: web_markdown
+        next: check_confirm
+        inputs:
+          content:
+            node: color_msg
+
+      # Reporter: prompts for confirmation
+      confirm_done:
+        opcode: web_confirm
+        isReporter: true
+        inputs:
+          message:
+            literal: "Would you like to see a progress demo?"
+
+      check_confirm:
+        opcode: control_if
+        next: finish
+        inputs:
+          CONDITION:
+            node: confirm_done
+          THEN:
+            branch: progress_demo
+
+      progress_demo:
+        opcode: web_progress
+        next: progress_50
+        inputs:
+          value:
+            literal: 25
+          max:
+            literal: 100
+          label:
+            literal: "Loading..."
+
+      progress_50:
+        opcode: web_progress
+        next: progress_75
+        inputs:
+          value:
+            literal: 50
+          max:
+            literal: 100
+          label:
+            literal: "Processing..."
+
+      progress_75:
+        opcode: web_progress
+        next: progress_100
+        inputs:
+          value:
+            literal: 75
+          max:
+            literal: 100
+          label:
+            literal: "Almost done..."
+
+      progress_100:
+        opcode: web_progress
+        next: show_table
+        inputs:
+          value:
+            literal: 100
+          max:
+            literal: 100
+          label:
+            literal: "Complete!"
+
+      show_table:
+        opcode: web_table
+        next: null
+        inputs:
+          data:
+            literal:
+              - name: Alice
+                score: 95
+              - name: Bob
+                score: 87
+              - name: Charlie
+                score: 92
+
+      finish:
+        opcode: web_alert
+        next: null
+        inputs:
+          message:
+            literal: "Demo complete! Thanks for trying LexFlow."
+          variant:
+            literal: "info"

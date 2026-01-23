@@ -392,3 +392,78 @@
 .editInput:focus {
   outline: none;
 }
+
+/* Complex value (object/array) display */
+.complex .valueContent {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* Textarea editor for complex values */
+.textareaWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editTextarea {
+  width: 100%;
+  padding: 10px;
+  background: var(--bg-input);
+  border: 2px solid var(--color-cyan);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: "JetBrains Mono", monospace;
+  line-height: 1.4;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.editTextarea:focus {
+  outline: none;
+}
+
+.textareaActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.textareaHint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.saveBtn {
+  padding: 4px 12px;
+  background: var(--color-cyan);
+  border: none;
+  border-radius: 4px;
+  color: var(--bg-primary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.saveBtn:hover {
+  filter: brightness(1.1);
+}
+
+.cancelBtn {
+  padding: 4px 12px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.cancelBtn:hover {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}

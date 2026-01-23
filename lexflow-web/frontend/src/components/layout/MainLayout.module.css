@@ -38,13 +38,12 @@
   background-position: center center;
 }
 
-/* Bottom Panel (Execution) */
+/* Bottom Panel (Execution) - height controlled by ExecutionPanel */
 .bottomPanel {
-  height: var(--bottom-panel-height);
   background: var(--bg-panel);
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Node Editor Panel (Right - Slide-in) */

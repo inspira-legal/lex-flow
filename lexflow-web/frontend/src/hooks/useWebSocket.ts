@@ -25,7 +25,75 @@ interface ErrorMessage {
   message: string;
 }
 
-type ServerMessage = OutputMessage | CompleteMessage | ErrorMessage;
+// Web opcode messages
+interface InputRequestMessage {
+  type: "input_request";
+  prompt: string;
+}
+
+interface SelectRequestMessage {
+  type: "select_request";
+  prompt: string;
+  options: string[];
+}
+
+interface ConfirmRequestMessage {
+  type: "confirm_request";
+  message: string;
+}
+
+interface RenderHtmlMessage {
+  type: "render_html";
+  html: string;
+}
+
+interface RenderMarkdownMessage {
+  type: "render_markdown";
+  content: string;
+}
+
+interface RenderTableMessage {
+  type: "render_table";
+  data: Record<string, unknown>[];
+}
+
+interface RenderImageMessage {
+  type: "render_image";
+  src: string;
+  alt: string;
+}
+
+interface ProgressMessage {
+  type: "progress";
+  value: number;
+  max: number;
+  label: string;
+}
+
+interface AlertMessage {
+  type: "alert";
+  message: string;
+  variant: "info" | "success" | "warning" | "error";
+}
+
+interface ClearContentMessage {
+  type: "clear_content";
+}
+
+type ServerMessage =
+  | OutputMessage
+  | CompleteMessage
+  | ErrorMessage
+  | InputRequestMessage
+  | SelectRequestMessage
+  | ConfirmRequestMessage
+  | RenderHtmlMessage
+  | RenderMarkdownMessage
+  | RenderTableMessage
+  | RenderImageMessage
+  | ProgressMessage
+  | AlertMessage
+  | ClearContentMessage;
 
 export function useWebSocketExecution() {
   const wsRef = useRef<WebSocket | null>(null);
@@ -36,7 +104,27 @@ export function useWebSocketExecution() {
     setExecutionResult,
     setExecutionError,
     clearExecution,
+    setPendingPrompt,
+    addRenderedContent,
+    clearRenderedContent,
+    addAlert,
+    setProgress,
   } = useExecutionStore();
+
+  const respondToPrompt = useCallback((value: unknown) => {
+    const ws = wsRef.current;
+    const { pendingPrompt } = useExecutionStore.getState();
+
+    if (!ws || !pendingPrompt) return;
+
+    ws.send(
+      JSON.stringify({
+        type: `${pendingPrompt.type}_response`,
+        value,
+      }),
+    );
+    setPendingPrompt(null);
+  }, [setPendingPrompt]);
 
   const execute = useCallback(
     async (
@@ -107,6 +195,7 @@ export function useWebSocketExecution() {
             case "complete":
               setExecutionResult(data.result);
               setIsExecuting(false);
+              // Don't auto-clear progress - let workflow control it via web_clear
               ws.close();
               break;
 
@@ -114,6 +203,62 @@ export function useWebSocketExecution() {
               setExecutionError(data.message);
               setIsExecuting(false);
               ws.close();
+              break;
+
+            // Web opcode messages
+            case "input_request":
+              setPendingPrompt({ type: "input", prompt: data.prompt });
+              break;
+
+            case "select_request":
+              setPendingPrompt({
+                type: "select",
+                prompt: data.prompt,
+                options: data.options,
+              });
+              break;
+
+            case "confirm_request":
+              setPendingPrompt({
+                type: "confirm",
+                prompt: data.message,
+                message: data.message,
+              });
+              break;
+
+            case "render_html":
+              addRenderedContent({ type: "html", content: data.html });
+              break;
+
+            case "render_markdown":
+              addRenderedContent({ type: "markdown", content: data.content });
+              break;
+
+            case "render_table":
+              addRenderedContent({ type: "table", content: data.data });
+              break;
+
+            case "render_image":
+              addRenderedContent({
+                type: "image",
+                content: { src: data.src, alt: data.alt },
+              });
+              break;
+
+            case "progress":
+              setProgress({
+                value: data.value,
+                max: data.max,
+                label: data.label,
+              });
+              break;
+
+            case "alert":
+              addAlert({ message: data.message, variant: data.variant });
+              break;
+
+            case "clear_content":
+              clearRenderedContent();
               break;
           }
         } catch (err) {
@@ -137,6 +282,11 @@ export function useWebSocketExecution() {
       appendExecutionOutput,
       setExecutionResult,
       setExecutionError,
+      setPendingPrompt,
+      addRenderedContent,
+      clearRenderedContent,
+      addAlert,
+      setProgress,
     ],
   );
 
@@ -145,8 +295,9 @@ export function useWebSocketExecution() {
       wsRef.current.close();
       wsRef.current = null;
       setIsExecuting(false);
+      setPendingPrompt(null);
     }
-  }, [setIsExecuting]);
+  }, [setIsExecuting, setPendingPrompt]);
 
-  return { execute, cancel };
+  return { execute, cancel, respondToPrompt };
 }

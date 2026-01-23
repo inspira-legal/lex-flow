@@ -9,26 +9,28 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from lexflow import Engine, Parser
 
+# Import web opcodes to register them with the default registry
+from . import opcodes as web_opcodes
+
 router = APIRouter()
 
 
-class WebSocketOutput:
-    """Output handler that sends to WebSocket asynchronously."""
+class StreamingWebSocketOutput:
+    """Output handler that streams to WebSocket in real-time."""
 
-    def __init__(self, websocket: WebSocket, loop: asyncio.AbstractEventLoop):
+    def __init__(self, websocket: WebSocket, send_queue: asyncio.Queue):
         self.websocket = websocket
-        self.loop = loop
+        self.send_queue = send_queue
         self.buffer = ""
 
     def write(self, text: str) -> int:
-        """Write text and send to websocket on newlines."""
+        """Write text and queue lines for sending."""
         self.buffer += text
 
         if "\n" in text:
             lines = self.buffer.split("\n")
             for line in lines[:-1]:
-                # Schedule async send
-                asyncio.run_coroutine_threadsafe(self._send_line(line), self.loop)
+                self.send_queue.put_nowait({"type": "output", "line": line})
             self.buffer = lines[-1]
 
         return len(text)
@@ -36,45 +38,48 @@ class WebSocketOutput:
     def flush(self):
         """Flush remaining buffer."""
         if self.buffer:
-            asyncio.run_coroutine_threadsafe(self._send_line(self.buffer), self.loop)
+            self.send_queue.put_nowait({"type": "output", "line": self.buffer})
             self.buffer = ""
 
-    async def _send_line(self, line: str):
-        """Send a line to websocket."""
-        try:
-            await self.websocket.send_json({"type": "output", "line": line})
-        except Exception:
-            pass  # Client may have disconnected
 
+class WebContext:
+    """Context manager for web opcodes providing send/receive via WebSocket."""
 
-class SimpleWebSocketOutput:
-    """Simpler output handler that buffers everything for later sending."""
+    def __init__(self, websocket: WebSocket, send_queue: asyncio.Queue):
+        self.websocket = websocket
+        self.send_queue = send_queue
+        self.response_queue: asyncio.Queue[dict] = asyncio.Queue()
+        self._send_token = None
+        self._receive_token = None
 
-    def __init__(self):
-        self.lines = []
-        self.buffer = ""
+    async def send(self, message: dict) -> None:
+        """Send a message to the frontend via the send queue."""
+        await self.send_queue.put(message)
 
-    def write(self, text: str) -> int:
-        """Write text and buffer lines."""
-        self.buffer += text
+    async def receive(self) -> dict:
+        """Wait for a response from the frontend."""
+        return await self.response_queue.get()
 
-        if "\n" in text:
-            lines = self.buffer.split("\n")
-            for line in lines[:-1]:
-                self.lines.append(line)
-            self.buffer = lines[-1]
+    def route_message(self, message: dict) -> bool:
+        """Route incoming message. Returns True if it was a response message."""
+        msg_type = message.get("type", "")
+        if msg_type.endswith("_response"):
+            self.response_queue.put_nowait(message)
+            return True
+        return False
 
-        return len(text)
+    def __enter__(self):
+        """Set context variables for web opcodes."""
+        self._send_token = web_opcodes.web_send.set(self.send)
+        self._receive_token = web_opcodes.web_receive.set(self.receive)
+        return self
 
-    def flush(self):
-        """Flush remaining buffer."""
-        if self.buffer:
-            self.lines.append(self.buffer)
-            self.buffer = ""
-
-    def get_lines(self) -> list[str]:
-        """Get all buffered lines."""
-        return self.lines
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Reset context variables."""
+        if self._send_token:
+            web_opcodes.web_send.reset(self._send_token)
+        if self._receive_token:
+            web_opcodes.web_receive.reset(self._receive_token)
 
 
 def _parse_workflow_content(content: str) -> dict:
@@ -96,9 +101,10 @@ async def websocket_execute(websocket: WebSocket):
             data = await websocket.receive_json()
 
             if data.get("type") != "start":
-                await websocket.send_json(
-                    {"type": "error", "message": "Expected 'start' message"}
-                )
+                if not data.get("type", "").endswith("_response"):
+                    await websocket.send_json(
+                        {"type": "error", "message": "Expected 'start' message"}
+                    )
                 continue
 
             workflow_content = data.get("workflow", "")
@@ -112,19 +118,17 @@ async def websocket_execute(websocket: WebSocket):
                 parser = Parser()
                 program = parser.parse_dict(workflow_data)
 
-                # Use simple buffered output for cleaner async handling
-                output = SimpleWebSocketOutput()
+                # Queue for outgoing messages
+                send_queue: asyncio.Queue[dict] = asyncio.Queue()
+
+                # Create output handler and web context
+                output = StreamingWebSocketOutput(websocket, send_queue)
                 engine = Engine(program, output=output, metrics=include_metrics)
 
-                # Execute workflow
-                result = await engine.run(inputs=inputs if inputs else None)
-
-                # Flush any remaining output
-                output.flush()
-
-                # Send buffered output lines
-                for line in output.get_lines():
-                    await websocket.send_json({"type": "output", "line": line})
+                with WebContext(websocket, send_queue) as web_ctx:
+                    result = await _execute_with_messaging(
+                        engine, inputs, websocket, web_ctx, output, send_queue
+                    )
 
                 # Send completion message
                 response: dict[str, Any] = {
@@ -150,6 +154,64 @@ async def websocket_execute(websocket: WebSocket):
 
     except WebSocketDisconnect:
         pass
+
+
+async def _execute_with_messaging(
+    engine: Engine,
+    inputs: dict | None,
+    websocket: WebSocket,
+    web_ctx: WebContext,
+    output: StreamingWebSocketOutput,
+    send_queue: asyncio.Queue,
+) -> Any:
+    """Execute workflow with bidirectional WebSocket messaging."""
+
+    async def sender():
+        """Send queued messages to WebSocket."""
+        while True:
+            msg = await send_queue.get()
+            if msg is None:  # Shutdown signal
+                break
+            try:
+                await websocket.send_json(msg)
+            except Exception:
+                break
+
+    async def receiver():
+        """Receive messages from WebSocket and route responses."""
+        while True:
+            try:
+                msg = await websocket.receive_json()
+                web_ctx.route_message(msg)
+            except WebSocketDisconnect:
+                break
+            except Exception:
+                break
+
+    # Start sender and receiver tasks
+    sender_task = asyncio.create_task(sender())
+    receiver_task = asyncio.create_task(receiver())
+
+    try:
+        # Execute workflow
+        result = await engine.run(inputs=inputs if inputs else None)
+
+        # Flush any remaining output
+        output.flush()
+
+        # Signal sender to stop and wait for it to drain the queue
+        await send_queue.put(None)
+        await sender_task
+
+        return result
+    finally:
+        # Cancel receiver
+        receiver_task.cancel()
+
+        try:
+            await receiver_task
+        except asyncio.CancelledError:
+            pass
 
 
 def _serialize_result(result: Any) -> Any:
