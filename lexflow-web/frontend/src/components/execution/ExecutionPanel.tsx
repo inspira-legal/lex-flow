@@ -1,7 +1,7 @@
-import { useRef, useEffect } from 'react'
-import { useWorkflowStore, useUiStore } from '../../store'
-import { useWebSocketExecution } from '../../hooks'
-import styles from './ExecutionPanel.module.css'
+import { useRef, useEffect } from "react";
+import { useWorkflowStore, useUiStore } from "../../store";
+import { useWebSocketExecution } from "../../hooks";
+import styles from "./ExecutionPanel.module.css";
 
 export function ExecutionPanel() {
   const {
@@ -12,27 +12,27 @@ export function ExecutionPanel() {
     executionError,
     workflowInputs,
     tree,
-  } = useWorkflowStore()
-  const { toggleExecutionPanel } = useUiStore()
-  const { execute, cancel } = useWebSocketExecution()
-  const outputRef = useRef<HTMLPreElement>(null)
+  } = useWorkflowStore();
+  const { toggleExecutionPanel } = useUiStore();
+  const { execute, cancel } = useWebSocketExecution();
+  const outputRef = useRef<HTMLPreElement>(null);
 
   // Auto-scroll output to bottom
   useEffect(() => {
     if (outputRef.current) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
-  }, [executionOutput])
+  }, [executionOutput]);
 
   const handleRun = () => {
-    execute(source, workflowInputs)
-  }
+    execute(source, workflowInputs);
+  };
 
   const handleCancel = () => {
-    cancel()
-  }
+    cancel();
+  };
 
-  const inputs = tree?.interface?.inputs || []
+  const inputs = tree?.interface?.inputs || [];
 
   return (
     <div className={styles.panel}>
@@ -93,12 +93,12 @@ export function ExecutionPanel() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function InputField({ name }: { name: string }) {
-  const { workflowInputs, setWorkflowInput } = useWorkflowStore()
-  const value = workflowInputs[name] ?? ''
+  const { workflowInputs, setWorkflowInput } = useWorkflowStore();
+  const value = workflowInputs[name] ?? "";
 
   return (
     <div className={styles.inputField}>
@@ -108,15 +108,15 @@ function InputField({ name }: { name: string }) {
         value={String(value)}
         onChange={(e) => {
           // Try to parse as JSON, fall back to string
-          const raw = e.target.value
+          const raw = e.target.value;
           try {
-            setWorkflowInput(name, JSON.parse(raw))
+            setWorkflowInput(name, JSON.parse(raw));
           } catch {
-            setWorkflowInput(name, raw)
+            setWorkflowInput(name, raw);
           }
         }}
         placeholder={`Enter ${name}`}
       />
     </div>
-  )
+  );
 }

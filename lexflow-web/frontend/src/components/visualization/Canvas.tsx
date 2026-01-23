@@ -1,144 +1,168 @@
-import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
-import { useUiStore, useWorkflowStore } from '../../store'
-import { WorkflowNode } from './WorkflowNode'
-import { StartNode, START_NODE_WIDTH, START_NODE_HEIGHT } from './StartNode'
-import { Connection } from './Connection'
-import { WireDragPreview } from './WireDragPreview'
-import { OrphanDragPreview } from './OrphanDragPreview'
-import { VariableDragPreview } from './VariableDragPreview'
-import { MiniMap } from './MiniMap'
-import { NodeSearch } from './NodeSearch'
-import { WorkflowGroup } from './WorkflowGroup'
-import { findNearestPort } from '../../utils/wireUtils'
-import type { TreeNode, WorkflowNode as WorkflowNodeType, FormattedValue, WorkflowInterface } from '../../api/types'
-import styles from './Canvas.module.css'
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import { useUiStore, useWorkflowStore } from "../../store";
+import { WorkflowNode } from "./WorkflowNode";
+import { StartNode, START_NODE_WIDTH, START_NODE_HEIGHT } from "./StartNode";
+import { Connection } from "./Connection";
+import { WireDragPreview } from "./WireDragPreview";
+import { OrphanDragPreview } from "./OrphanDragPreview";
+import { VariableDragPreview } from "./VariableDragPreview";
+import { MiniMap } from "./MiniMap";
+import { NodeSearch } from "./NodeSearch";
+import { WorkflowGroup } from "./WorkflowGroup";
+import { findNearestPortFromRegistry } from "../../utils/wireUtils";
+import type {
+  TreeNode,
+  WorkflowNode as WorkflowNodeType,
+  FormattedValue,
+  WorkflowInterface,
+} from "../../api/types";
+import styles from "./Canvas.module.css";
 
 interface LayoutNode {
-  node: TreeNode
-  x: number
-  y: number
-  width: number
-  height: number
-  isOrphan?: boolean  // Whether this node is disconnected from the main chain
+  node: TreeNode;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  isOrphan?: boolean; // Whether this node is disconnected from the main chain
 }
 
 interface LayoutConnection {
-  from: string
-  to: string
-  x1: number
-  y1: number
-  x2: number
-  y2: number
-  color: string
-  label?: string
+  from: string;
+  to: string;
+  fromPort: "input" | "output" | string; // string for branch names
+  toPort: "input" | "output";
+  color: string;
+  label?: string;
 }
 
 interface LayoutWorkflowGroup {
-  name: string
-  x: number
-  y: number
-  width: number
-  height: number
-  isMain: boolean
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  isMain: boolean;
 }
 
 interface LayoutStartNode {
-  workflowName: string
-  workflowInterface: WorkflowInterface
-  variables: Record<string, unknown>
-  x: number
-  y: number
+  workflowName: string;
+  workflowInterface: WorkflowInterface;
+  variables: Record<string, unknown>;
+  x: number;
+  y: number;
 }
 
 interface FullLayout {
-  nodes: LayoutNode[]
-  connections: LayoutConnection[]
-  groups: LayoutWorkflowGroup[]
-  startNodes: LayoutStartNode[]
+  nodes: LayoutNode[];
+  connections: LayoutConnection[];
+  groups: LayoutWorkflowGroup[];
+  startNodes: LayoutStartNode[];
 }
 
-const NODE_WIDTH = 180
-const NODE_HEIGHT = 80
-const H_GAP = 60
-const V_GAP = 40
-const WORKFLOW_GAP = 80
-const PORT_Y_OFFSET = 30  // Y offset of input/output ports from top of node
+const NODE_WIDTH = 180;
+const NODE_HEIGHT = 80;
+const H_GAP = 60;
+const V_GAP = 40;
+const WORKFLOW_GAP = 80;
 
 // Control flow opcodes that have branch slots
-const CONTROL_FLOW_OPCODES = ['control_if', 'control_if_else', 'control_for', 'control_while', 'control_foreach', 'control_try']
+const CONTROL_FLOW_OPCODES = [
+  "control_if",
+  "control_if_else",
+  "control_for",
+  "control_while",
+  "control_foreach",
+  "control_try",
+];
 
 // Calculate node height - must match WorkflowNode.tsx calculation exactly
-export function calculateNodeHeight(inputs: Record<string, FormattedValue>, opcode?: string): number {
+export function calculateNodeHeight(
+  inputs: Record<string, FormattedValue>,
+  opcode?: string,
+): number {
   // Separate reporter inputs from regular inputs (same logic as WorkflowNode)
-  const reporterInputs: FormattedValue[] = []
-  const regularInputs: FormattedValue[] = []
+  const reporterInputs: FormattedValue[] = [];
+  const regularInputs: FormattedValue[] = [];
 
   for (const value of Object.values(inputs)) {
-    if (value.type === 'reporter' && value.opcode) {
-      reporterInputs.push(value)
+    if (value.type === "reporter" && value.opcode) {
+      reporterInputs.push(value);
     } else {
-      regularInputs.push(value)
+      regularInputs.push(value);
     }
   }
 
   // Base height: 60 + preview of first 2 regular inputs (same as WorkflowNode)
-  const inputPreviewCount = Math.min(regularInputs.length, 2)
-  const baseHeight = 60 + inputPreviewCount * 18
+  const inputPreviewCount = Math.min(regularInputs.length, 2);
+  const baseHeight = 60 + inputPreviewCount * 18;
 
   // Reporter section height
   const reporterSectionHeight = reporterInputs.reduce((acc, value) => {
-    return acc + calculateReporterTotalHeight(value) + 4
-  }, 0)
+    return acc + calculateReporterTotalHeight(value) + 4;
+  }, 0);
 
   // Branch slots height for control flow nodes
-  const hasBranchSlots = opcode && CONTROL_FLOW_OPCODES.includes(opcode)
-  const branchSlotsHeight = hasBranchSlots ? 28 : 0
+  const hasBranchSlots = opcode && CONTROL_FLOW_OPCODES.includes(opcode);
+  const branchSlotsHeight = hasBranchSlots ? 28 : 0;
 
-  return baseHeight + reporterSectionHeight + branchSlotsHeight
+  return baseHeight + reporterSectionHeight + branchSlotsHeight;
 }
 
 // Calculate total height of a reporter pill (including its content and label)
-function calculateReporterTotalHeight(value: FormattedValue, includeLabel: boolean = true): number {
-  if (value.type !== 'reporter') return 0
+function calculateReporterTotalHeight(
+  value: FormattedValue,
+  includeLabel: boolean = true,
+): number {
+  if (value.type !== "reporter") return 0;
 
-  const labelHeight = includeLabel ? 14 : 0
-  const headerHeight = 22
+  const labelHeight = includeLabel ? 14 : 0;
+  const headerHeight = 22;
 
   // Count regular inputs and nested reporters
-  let regularInputsCount = 0
-  let nestedReportersCount = 0
-  let nestedReportersHeight = 0
+  let regularInputsCount = 0;
+  let nestedReportersCount = 0;
+  let nestedReportersHeight = 0;
 
   if (value.inputs) {
     for (const nestedValue of Object.values(value.inputs)) {
-      if (nestedValue.type === 'reporter' && nestedValue.opcode) {
-        nestedReportersCount++
-        nestedReportersHeight += calculateReporterTotalHeight(nestedValue, true) + 4
+      if (nestedValue.type === "reporter" && nestedValue.opcode) {
+        nestedReportersCount++;
+        nestedReportersHeight +=
+          calculateReporterTotalHeight(nestedValue, true) + 4;
       } else {
-        const formatted = formatValueShort(nestedValue)
-        if (formatted) regularInputsCount++
+        const formatted = formatValueShort(nestedValue);
+        if (formatted) regularInputsCount++;
       }
     }
   }
 
-  const nestedLabelHeight = nestedReportersCount * 14
-  return labelHeight + headerHeight + regularInputsCount * 14 + nestedLabelHeight + nestedReportersHeight + 4
+  const nestedLabelHeight = nestedReportersCount * 14;
+  return (
+    labelHeight +
+    headerHeight +
+    regularInputsCount * 14 +
+    nestedLabelHeight +
+    nestedReportersHeight +
+    4
+  );
 }
 
 function formatValueShort(value: FormattedValue): string {
   switch (value.type) {
-    case 'literal':
-      const v = value.value
-      if (typeof v === 'string') return `"${v.length > 10 ? v.slice(0, 10) + '...' : v}"`
-      return String(v)
-    case 'variable':
-      return `$${value.name}`
-    case 'reporter':
-      return `[reporter]`
-    case 'workflow_call':
-      return `→ ${value.name}`
+    case "literal":
+      const v = value.value;
+      if (typeof v === "string")
+        return `"${v.length > 10 ? v.slice(0, 10) + "..." : v}"`;
+      return String(v);
+    case "variable":
+      return `$${value.name}`;
+    case "reporter":
+      return `[reporter]`;
+    case "workflow_call":
+      return `→ ${value.name}`;
     default:
-      return ''
+      return "";
   }
 }
 
@@ -171,13 +195,21 @@ export function Canvas() {
     selectStartNode,
     selectedConnection,
     selectConnection,
-  } = useUiStore()
-  const { tree, parseError, selectNode, connectNodes, connectBranch, disconnectConnection } = useWorkflowStore()
+    slotPositions,
+  } = useUiStore();
+  const {
+    tree,
+    parseError,
+    selectNode,
+    connectNodes,
+    connectBranch,
+    disconnectConnection,
+  } = useWorkflowStore();
 
-  const svgRef = useRef<SVGSVGElement>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
 
   // Track canvas size for minimap viewport calculation
   useEffect(() => {
@@ -186,23 +218,28 @@ export function Canvas() {
         setCanvasSize({
           width: svgRef.current.clientWidth,
           height: svgRef.current.clientHeight,
-        })
+        });
       }
-    }
+    };
 
-    updateSize()
-    window.addEventListener('resize', updateSize)
-    return () => window.removeEventListener('resize', updateSize)
-  }, [])
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
 
   // Layout all workflows (moved up for centerX/centerY calculation)
-  const { nodes: layoutNodes, connections, groups, startNodes } = tree
+  const {
+    nodes: layoutNodes,
+    connections,
+    groups,
+    startNodes,
+  } = tree
     ? layoutAllWorkflows(tree.workflows, workflowPositions, nodePositions)
-    : { nodes: [], connections: [], groups: [], startNodes: [] }
+    : { nodes: [], connections: [], groups: [], startNodes: [] };
 
   // Calculate canvas bounds (include group padding)
-  const groupPadding = 24
-  const labelHeight = 28
+  const groupPadding = 24;
+  const labelHeight = 28;
   const bounds =
     groups.length > 0
       ? groups.reduce(
@@ -212,16 +249,16 @@ export function Canvas() {
             maxX: Math.max(acc.maxX, g.x + g.width + groupPadding),
             maxY: Math.max(acc.maxY, g.y + g.height + groupPadding),
           }),
-          { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+          { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
         )
-      : { minX: 0, minY: 0, maxX: 800, maxY: 600 }
+      : { minX: 0, minY: 0, maxX: 800, maxY: 600 };
 
   // Calculate initial center only when tree changes (not when dragging workflows)
   const { centerX, centerY } = useMemo(() => {
-    if (!tree) return { centerX: 400, centerY: 300 }
+    if (!tree) return { centerX: 400, centerY: 300 };
 
     // Calculate bounds based on default layout (no position offsets)
-    const defaultLayout = layoutAllWorkflows(tree.workflows, {})
+    const defaultLayout = layoutAllWorkflows(tree.workflows, {});
     const defaultBounds = defaultLayout.groups.reduce(
       (acc, g) => ({
         minX: Math.min(acc.minX, g.x - groupPadding),
@@ -229,90 +266,107 @@ export function Canvas() {
         maxX: Math.max(acc.maxX, g.x + g.width + groupPadding),
         maxY: Math.max(acc.maxY, g.y + g.height + groupPadding),
       }),
-      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
-    )
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+    );
 
     return {
       centerX: (defaultBounds.maxX + defaultBounds.minX) / 2,
       centerY: (defaultBounds.maxY + defaultBounds.minY) / 2,
-    }
-  }, [tree])
+    };
+  }, [tree]);
 
   // Handle zoom
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
-        e.preventDefault()
-        const delta = e.deltaY > 0 ? -0.1 : 0.1
-        setZoom(zoom + delta)
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        setZoom(zoom + delta);
       }
     },
-    [zoom, setZoom]
-  )
+    [zoom, setZoom],
+  );
 
   // Handle pan
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      if (isDraggingWorkflow || isDraggingNode) return
-      if (e.target === svgRef.current || (e.target as Element).classList.contains(styles.background)) {
-        setIsDragging(true)
-        setDragStart({ x: e.clientX - panX, y: e.clientY - panY })
-        selectNode(null)
-        selectStartNode(null)
-        selectConnection(null)
+      if (isDraggingWorkflow || isDraggingNode) return;
+      if (
+        e.target === svgRef.current ||
+        (e.target as Element).classList.contains(styles.background)
+      ) {
+        setIsDragging(true);
+        setDragStart({ x: e.clientX - panX, y: e.clientY - panY });
+        selectNode(null);
+        selectStartNode(null);
+        selectConnection(null);
       }
     },
-    [panX, panY, selectNode, selectStartNode, selectConnection, isDraggingWorkflow, isDraggingNode]
-  )
+    [
+      panX,
+      panY,
+      selectNode,
+      selectStartNode,
+      selectConnection,
+      isDraggingWorkflow,
+      isDraggingNode,
+    ],
+  );
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
       // Handle wire dragging - update wire end position with proximity detection
       if (draggingWire && svgRef.current) {
-        const rect = svgRef.current.getBoundingClientRect()
+        const rect = svgRef.current.getBoundingClientRect();
         // Convert screen coordinates to canvas coordinates (accounting for pan/zoom)
-        const canvasX = (e.clientX - rect.left - panX - rect.width / 2) / zoom + centerX
-        const canvasY = (e.clientY - rect.top - panY - rect.height / 2) / zoom + centerY
+        const canvasX =
+          (e.clientX - rect.left - panX - rect.width / 2) / zoom + centerX;
+        const canvasY =
+          (e.clientY - rect.top - panY - rect.height / 2) / zoom + centerY;
 
-        // Find nearest valid port
-        const nearbyPort = findNearestPort(
+        // Find nearest valid port using slot registry
+        const nearbyPort = findNearestPortFromRegistry(
           canvasX,
           canvasY,
           draggingWire.sourceNodeId,
           draggingWire.sourcePort,
-          layoutNodes
-        )
+          slotPositions,
+        );
 
         // Update state with drag position and nearby port
         updateDraggingWire({
           dragX: canvasX,
           dragY: canvasY,
           nearbyPort,
-        })
-        return
+        });
+        return;
       }
 
       // Handle orphan dragging - update orphan end position
       if (draggingOrphan && svgRef.current) {
-        const rect = svgRef.current.getBoundingClientRect()
-        const canvasX = (e.clientX - rect.left - panX - rect.width / 2) / zoom + centerX
-        const canvasY = (e.clientY - rect.top - panY - rect.height / 2) / zoom + centerY
-        updateDraggingOrphanEnd(canvasX, canvasY)
-        return
+        const rect = svgRef.current.getBoundingClientRect();
+        const canvasX =
+          (e.clientX - rect.left - panX - rect.width / 2) / zoom + centerX;
+        const canvasY =
+          (e.clientY - rect.top - panY - rect.height / 2) / zoom + centerY;
+        updateDraggingOrphanEnd(canvasX, canvasY);
+        return;
       }
 
       // Handle variable dragging - update variable end position
       if (draggingVariable && svgRef.current) {
-        const rect = svgRef.current.getBoundingClientRect()
-        const canvasX = (e.clientX - rect.left - panX - rect.width / 2) / zoom + centerX
-        const canvasY = (e.clientY - rect.top - panY - rect.height / 2) / zoom + centerY
-        updateDraggingVariableEnd(canvasX, canvasY)
-        return
+        const rect = svgRef.current.getBoundingClientRect();
+        const canvasX =
+          (e.clientX - rect.left - panX - rect.width / 2) / zoom + centerX;
+        const canvasY =
+          (e.clientY - rect.top - panY - rect.height / 2) / zoom + centerY;
+        updateDraggingVariableEnd(canvasX, canvasY);
+        return;
       }
 
-      if (isDraggingWorkflow || isDraggingNode) return
+      if (isDraggingWorkflow || isDraggingNode) return;
       if (isDragging) {
-        setPan(e.clientX - dragStart.x, e.clientY - dragStart.y)
+        setPan(e.clientX - dragStart.x, e.clientY - dragStart.y);
       }
     },
     [
@@ -332,46 +386,65 @@ export function Canvas() {
       panY,
       centerX,
       centerY,
-      layoutNodes,
-    ]
-  )
+      slotPositions,
+    ],
+  );
 
   const handleMouseUp = useCallback(() => {
-    setIsDragging(false)
+    setIsDragging(false);
     // Complete wire connection if near a valid port, otherwise cancel
     if (draggingWire) {
       if (draggingWire.nearbyPort) {
         // Check if this is a branch connection
         if (draggingWire.branchLabel) {
           // Branch connection: connect branch to target node
-          connectBranch(draggingWire.sourceNodeId, draggingWire.nearbyPort.nodeId, draggingWire.branchLabel)
-        } else if (draggingWire.sourcePort === 'output') {
+          connectBranch(
+            draggingWire.sourceNodeId,
+            draggingWire.nearbyPort.nodeId,
+            draggingWire.branchLabel,
+          );
+        } else if (draggingWire.sourcePort === "output") {
           // Regular connection: dragging from output to input
-          connectNodes(draggingWire.sourceNodeId, draggingWire.nearbyPort.nodeId)
+          connectNodes(
+            draggingWire.sourceNodeId,
+            draggingWire.nearbyPort.nodeId,
+          );
         } else {
           // Reverse connection: dragging from input to output
-          connectNodes(draggingWire.nearbyPort.nodeId, draggingWire.sourceNodeId)
+          connectNodes(
+            draggingWire.nearbyPort.nodeId,
+            draggingWire.sourceNodeId,
+          );
         }
       }
-      setDraggingWire(null)
+      setDraggingWire(null);
     }
     // Cancel orphan dragging if mouse released outside a valid drop target
     if (draggingOrphan) {
-      setDraggingOrphan(null)
+      setDraggingOrphan(null);
     }
     // Cancel variable dragging if mouse released outside a valid drop target
     if (draggingVariable) {
-      setDraggingVariable(null)
+      setDraggingVariable(null);
     }
-  }, [draggingWire, setDraggingWire, draggingOrphan, setDraggingOrphan, draggingVariable, setDraggingVariable, connectNodes, connectBranch])
+  }, [
+    draggingWire,
+    setDraggingWire,
+    draggingOrphan,
+    setDraggingOrphan,
+    draggingVariable,
+    setDraggingVariable,
+    connectNodes,
+    connectBranch,
+  ]);
 
   // Handle minimap navigation
   const handleMinimapNavigate = useCallback(
     (newPanX: number, newPanY: number) => {
-      setPan(newPanX, newPanY)
+      setPan(newPanX, newPanY);
     },
-    [setPan]
-  )
+    [setPan],
+  );
 
   return (
     <div className={styles.canvas}>
@@ -395,20 +468,20 @@ export function Canvas() {
       {/* Layout Mode Controls */}
       <div className={styles.layoutControls}>
         <button
-          className={layoutMode === 'auto' ? styles.active : ''}
-          onClick={() => setLayoutMode('auto')}
+          className={layoutMode === "auto" ? styles.active : ""}
+          onClick={() => setLayoutMode("auto")}
           title="Auto Layout"
         >
           Auto
         </button>
         <button
-          className={layoutMode === 'free' ? styles.active : ''}
-          onClick={() => setLayoutMode('free')}
+          className={layoutMode === "free" ? styles.active : ""}
+          onClick={() => setLayoutMode("free")}
           title="Free Layout (drag nodes)"
         >
           Free
         </button>
-        {layoutMode === 'free' && Object.keys(nodePositions).length > 0 && (
+        {layoutMode === "free" && Object.keys(nodePositions).length > 0 && (
           <button onClick={resetNodePositions} title="Reset Node Positions">
             Reset
           </button>
@@ -446,10 +519,15 @@ export function Canvas() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        style={{ cursor: isDragging ? "grabbing" : "grab" }}
       >
         {/* Background for click handling */}
-        <rect className={styles.background} width="100%" height="100%" fill="transparent" />
+        <rect
+          className={styles.background}
+          width="100%"
+          height="100%"
+          fill="transparent"
+        />
 
         {/* Main group with pan/zoom transform */}
         <g
@@ -468,8 +546,14 @@ export function Canvas() {
               zoom={zoom}
               onDrag={(dx, dy) => {
                 // Read current position from store to avoid stale closure
-                const currentOffset = useUiStore.getState().workflowPositions[group.name] || { x: 0, y: 0 }
-                setWorkflowPosition(group.name, currentOffset.x + dx, currentOffset.y + dy)
+                const currentOffset = useUiStore.getState().workflowPositions[
+                  group.name
+                ] || { x: 0, y: 0 };
+                setWorkflowPosition(
+                  group.name,
+                  currentOffset.x + dx,
+                  currentOffset.y + dy,
+                );
               }}
             />
           ))}
@@ -480,10 +564,8 @@ export function Canvas() {
               key={`${conn.from}-${conn.to}-${i}`}
               fromNodeId={conn.from}
               toNodeId={conn.to}
-              x1={conn.x1}
-              y1={conn.y1}
-              x2={conn.x2}
-              y2={conn.y2}
+              fromPort={conn.fromPort}
+              toPort={conn.toPort}
               color={conn.color}
               label={conn.label}
               isSelected={
@@ -491,11 +573,15 @@ export function Canvas() {
                 selectedConnection?.toNodeId === conn.to
               }
               onSelect={() =>
-                selectConnection({ fromNodeId: conn.from, toNodeId: conn.to, label: conn.label })
+                selectConnection({
+                  fromNodeId: conn.from,
+                  toNodeId: conn.to,
+                  label: conn.label,
+                })
               }
               onDelete={() => {
-                disconnectConnection(conn.from, conn.to, conn.label)
-                selectConnection(null)
+                disconnectConnection(conn.from, conn.to, conn.label);
+                selectConnection(null);
               }}
             />
           ))}
@@ -511,10 +597,16 @@ export function Canvas() {
               y={sn.y}
               zoom={zoom}
               onDrag={
-                layoutMode === 'free'
+                layoutMode === "free"
                   ? (dx, dy) => {
-                      const currentOffset = workflowPositions[sn.workflowName] || { x: 0, y: 0 }
-                      setWorkflowPosition(sn.workflowName, currentOffset.x + dx, currentOffset.y + dy)
+                      const currentOffset = workflowPositions[
+                        sn.workflowName
+                      ] || { x: 0, y: 0 };
+                      setWorkflowPosition(
+                        sn.workflowName,
+                        currentOffset.x + dx,
+                        currentOffset.y + dy,
+                      );
                     }
                   : undefined
               }
@@ -531,10 +623,17 @@ export function Canvas() {
               isOrphan={ln.isOrphan}
               zoom={zoom}
               onDrag={
-                layoutMode === 'free'
+                layoutMode === "free"
                   ? (dx, dy) => {
-                      const currentOffset = nodePositions[ln.node.id] || { x: 0, y: 0 }
-                      setNodePosition(ln.node.id, currentOffset.x + dx, currentOffset.y + dy)
+                      const currentOffset = nodePositions[ln.node.id] || {
+                        x: 0,
+                        y: 0,
+                      };
+                      setNodePosition(
+                        ln.node.id,
+                        currentOffset.x + dx,
+                        currentOffset.y + dy,
+                      );
                     }
                   : undefined
               }
@@ -560,46 +659,54 @@ export function Canvas() {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 // Gap between start node and first real node
-const START_NODE_GAP = 40
+const START_NODE_GAP = 40;
 
 // Layout all workflows with custom position offsets
 function layoutAllWorkflows(
   workflows: WorkflowNodeType[],
   positionOffsets: Record<string, { x: number; y: number }>,
-  nodePositionOffsets: Record<string, { x: number; y: number }> = {}
+  nodePositionOffsets: Record<string, { x: number; y: number }> = {},
 ): FullLayout {
-  const allNodes: LayoutNode[] = []
-  const allConnections: LayoutConnection[] = []
-  const groups: LayoutWorkflowGroup[] = []
-  const startNodes: LayoutStartNode[] = []
+  const allNodes: LayoutNode[] = [];
+  const allConnections: LayoutConnection[] = [];
+  const groups: LayoutWorkflowGroup[] = [];
+  const startNodes: LayoutStartNode[] = [];
 
   // First pass: calculate default positions (stacked vertically)
-  let defaultY = 0
-  const defaultPositions: Record<string, { x: number; y: number }> = {}
+  let defaultY = 0;
+  const defaultPositions: Record<string, { x: number; y: number }> = {};
 
   for (const workflow of workflows) {
-    defaultPositions[workflow.name] = { x: 0, y: defaultY }
+    defaultPositions[workflow.name] = { x: 0, y: defaultY };
     // Estimate height for default stacking
-    const estimatedHeight = Math.max(workflow.children.length * (NODE_HEIGHT + V_GAP), NODE_HEIGHT + 100)
-    defaultY += estimatedHeight + WORKFLOW_GAP
+    const estimatedHeight = Math.max(
+      workflow.children.length * (NODE_HEIGHT + V_GAP),
+      NODE_HEIGHT + 100,
+    );
+    defaultY += estimatedHeight + WORKFLOW_GAP;
   }
 
   // Second pass: layout each workflow at default position + offset
   for (const workflow of workflows) {
-    const defaultPos = defaultPositions[workflow.name]
-    const offset = positionOffsets[workflow.name] || { x: 0, y: 0 }
-    const pos = { x: defaultPos.x + offset.x, y: defaultPos.y + offset.y }
+    const defaultPos = defaultPositions[workflow.name];
+    const offset = positionOffsets[workflow.name] || { x: 0, y: 0 };
+    const pos = { x: defaultPos.x + offset.x, y: defaultPos.y + offset.y };
 
-    const { nodes, connections, bounds, startNode } = layoutSingleWorkflow(workflow, pos.x, pos.y, nodePositionOffsets)
+    const { nodes, connections, bounds, startNode } = layoutSingleWorkflow(
+      workflow,
+      pos.x,
+      pos.y,
+      nodePositionOffsets,
+    );
 
-    allNodes.push(...nodes)
-    allConnections.push(...connections)
+    allNodes.push(...nodes);
+    allConnections.push(...connections);
     if (startNode) {
-      startNodes.push(startNode)
+      startNodes.push(startNode);
     }
 
     // Add workflow group
@@ -609,11 +716,11 @@ function layoutAllWorkflows(
       y: bounds.minY,
       width: bounds.maxX - bounds.minX,
       height: bounds.maxY - bounds.minY,
-      isMain: workflow.name === 'main',
-    })
+      isMain: workflow.name === "main",
+    });
   }
 
-  return { nodes: allNodes, connections: allConnections, groups, startNodes }
+  return { nodes: allNodes, connections: allConnections, groups, startNodes };
 }
 
 // Layout a single workflow starting at given offset
@@ -621,48 +728,56 @@ function layoutSingleWorkflow(
   workflow: WorkflowNodeType,
   offsetX: number,
   offsetY: number,
-  nodePositionOffsets: Record<string, { x: number; y: number }> = {}
+  nodePositionOffsets: Record<string, { x: number; y: number }> = {},
 ): {
-  nodes: LayoutNode[]
-  connections: LayoutConnection[]
-  bounds: { minX: number; minY: number; maxX: number; maxY: number }
-  startNode: LayoutStartNode | null
+  nodes: LayoutNode[];
+  connections: LayoutConnection[];
+  bounds: { minX: number; minY: number; maxX: number; maxY: number };
+  startNode: LayoutStartNode | null;
 } {
-  const layoutNodes: LayoutNode[] = []
-  const connections: LayoutConnection[] = []
-  const nodePositions = new Map<string, { x: number; y: number; height: number }>()
+  const layoutNodes: LayoutNode[] = [];
+  const connections: LayoutConnection[] = [];
+  const nodePositions = new Map<
+    string,
+    { x: number; y: number; height: number }
+  >();
 
   // Calculate start node position
-  const startNodeX = offsetX
-  const startNodeY = offsetY
+  const startNodeX = offsetX;
+  const startNodeY = offsetY;
   const startNode: LayoutStartNode = {
     workflowName: workflow.name,
     workflowInterface: workflow.interface,
     variables: workflow.variables,
     x: startNodeX,
     y: startNodeY,
-  }
+  };
 
   // Offset for real nodes (after the start node)
-  const realNodeOffsetX = offsetX + START_NODE_WIDTH + START_NODE_GAP
+  const realNodeOffsetX = offsetX + START_NODE_WIDTH + START_NODE_GAP;
 
   // Track bounds
   let minX = Infinity,
     minY = Infinity,
     maxX = -Infinity,
-    maxY = -Infinity
+    maxY = -Infinity;
 
   function updateBounds(x: number, y: number, width: number, height: number) {
-    minX = Math.min(minX, x)
-    minY = Math.min(minY, y)
-    maxX = Math.max(maxX, x + width)
-    maxY = Math.max(maxY, y + height)
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + width);
+    maxY = Math.max(maxY, y + height);
   }
 
   // Layout main flow
-  function layoutNode(node: TreeNode, x: number, y: number, isOrphan: boolean = false): number {
+  function layoutNode(
+    node: TreeNode,
+    x: number,
+    y: number,
+    isOrphan: boolean = false,
+  ): number {
     // Calculate height including nested reporters
-    const height = calculateNodeHeight(node.inputs, node.opcode)
+    const height = calculateNodeHeight(node.inputs, node.opcode);
 
     layoutNodes.push({
       node,
@@ -671,34 +786,31 @@ function layoutSingleWorkflow(
       width: NODE_WIDTH,
       height,
       isOrphan,
-    })
-    nodePositions.set(node.id, { x, y, height })
-    updateBounds(x, y, NODE_WIDTH, height)
+    });
+    nodePositions.set(node.id, { x, y, height });
+    updateBounds(x, y, NODE_WIDTH, height);
 
-    let nextX = x + NODE_WIDTH + H_GAP
+    let nextX = x + NODE_WIDTH + H_GAP;
 
     // Layout branch children
     if (node.children.length > 0) {
-      let branchOffset = y + height + V_GAP
-      const numBranches = node.children.length
+      let branchOffset = y + height + V_GAP;
+      const numBranches = node.children.length;
 
       for (let branchIndex = 0; branchIndex < numBranches; branchIndex++) {
-        const branch = node.children[branchIndex]
-        const branchColor = getBranchColor(branch.name)
-
-        // Calculate branch port position at bottom of node
-        const slotWidth = NODE_WIDTH / numBranches
-        const branchPortX = x + slotWidth * branchIndex + slotWidth / 2
-        const branchPortY = y + height
+        const branch = node.children[branchIndex];
+        const branchColor = getBranchColor(branch.name);
 
         // Layout branch nodes
-        let branchX = x + NODE_WIDTH + H_GAP
-        let prevNodeId = node.id
-        let prevX = branchPortX  // Start from bottom port
-        let prevY = branchPortY
+        let branchX = x + NODE_WIDTH + H_GAP;
+        let prevNodeId = node.id;
+        let isFirstInBranch = true;
 
         for (const childNode of branch.children) {
-          const childHeight = calculateNodeHeight(childNode.inputs, childNode.opcode)
+          const childHeight = calculateNodeHeight(
+            childNode.inputs,
+            childNode.opcode,
+          );
 
           layoutNodes.push({
             node: childNode,
@@ -706,66 +818,69 @@ function layoutSingleWorkflow(
             y: branchOffset,
             width: NODE_WIDTH,
             height: childHeight,
-          })
-          nodePositions.set(childNode.id, { x: branchX, y: branchOffset, height: childHeight })
-          updateBounds(branchX, branchOffset, NODE_WIDTH, childHeight)
+          });
+          nodePositions.set(childNode.id, {
+            x: branchX,
+            y: branchOffset,
+            height: childHeight,
+          });
+          updateBounds(branchX, branchOffset, NODE_WIDTH, childHeight);
 
-          // Connection - endpoints at actual port positions
+          // Connection - use port names instead of coordinates
           connections.push({
             from: prevNodeId,
             to: childNode.id,
-            x1: prevX,
-            y1: prevY,
-            x2: branchX,
-            y2: branchOffset + PORT_Y_OFFSET,  // Input port is at y + 30
+            fromPort: isFirstInBranch ? branch.name : "output",
+            toPort: "input",
             color: branchColor,
-            label: prevNodeId === node.id ? branch.name : undefined,
-          })
+            label: isFirstInBranch ? branch.name : undefined,
+          });
 
-          prevNodeId = childNode.id
-          prevX = branchX + NODE_WIDTH
-          prevY = branchOffset + PORT_Y_OFFSET  // Output port is at y + 30
-          branchX += NODE_WIDTH + H_GAP
+          prevNodeId = childNode.id;
+          isFirstInBranch = false;
+          branchX += NODE_WIDTH + H_GAP;
 
           // Recursively layout nested branches
           if (childNode.children.length > 0) {
-            branchX = Math.max(branchX, layoutBranches(childNode, branchX, branchOffset))
+            branchX = Math.max(
+              branchX,
+              layoutBranches(childNode, branchX, branchOffset),
+            );
           }
         }
 
-        nextX = Math.max(nextX, branchX)
-        branchOffset += NODE_HEIGHT + V_GAP * 2
+        nextX = Math.max(nextX, branchX);
+        branchOffset += NODE_HEIGHT + V_GAP * 2;
       }
     }
 
-    return nextX
+    return nextX;
   }
 
-  function layoutBranches(node: TreeNode, startX: number, startY: number): number {
-    let maxX = startX
-    const nodePos = nodePositions.get(node.id)
-    const nodeHeight = nodePos?.height || NODE_HEIGHT
-    let branchY = startY + nodeHeight + V_GAP
-    const numBranches = node.children.length
+  function layoutBranches(
+    node: TreeNode,
+    startX: number,
+    startY: number,
+  ): number {
+    let maxX = startX;
+    const nodePos = nodePositions.get(node.id);
+    const nodeHeight = nodePos?.height || NODE_HEIGHT;
+    let branchY = startY + nodeHeight + V_GAP;
+    const numBranches = node.children.length;
 
     for (let branchIndex = 0; branchIndex < numBranches; branchIndex++) {
-      const branch = node.children[branchIndex]
-      const branchColor = getBranchColor(branch.name)
-      let branchX = startX
+      const branch = node.children[branchIndex];
+      const branchColor = getBranchColor(branch.name);
+      let branchX = startX;
 
-      // Calculate branch port position at bottom of node
-      const nodeX = nodePos?.x || startX
-      const nodeY = nodePos?.y || startY
-      const slotWidth = NODE_WIDTH / numBranches
-      const branchPortX = nodeX + slotWidth * branchIndex + slotWidth / 2
-      const branchPortY = nodeY + nodeHeight
-
-      let prevNodeId = node.id
-      let prevX = branchPortX  // Start from bottom port
-      let prevY = branchPortY
+      let prevNodeId = node.id;
+      let isFirstInBranch = true;
 
       for (const childNode of branch.children) {
-        const childHeight = calculateNodeHeight(childNode.inputs, childNode.opcode)
+        const childHeight = calculateNodeHeight(
+          childNode.inputs,
+          childNode.opcode,
+        );
 
         layoutNodes.push({
           node: childNode,
@@ -773,169 +888,151 @@ function layoutSingleWorkflow(
           y: branchY,
           width: NODE_WIDTH,
           height: childHeight,
-        })
-        nodePositions.set(childNode.id, { x: branchX, y: branchY, height: childHeight })
-        updateBounds(branchX, branchY, NODE_WIDTH, childHeight)
+        });
+        nodePositions.set(childNode.id, {
+          x: branchX,
+          y: branchY,
+          height: childHeight,
+        });
+        updateBounds(branchX, branchY, NODE_WIDTH, childHeight);
 
         connections.push({
           from: prevNodeId,
           to: childNode.id,
-          x1: prevX,
-          y1: prevY,
-          x2: branchX,
-          y2: branchY + PORT_Y_OFFSET,  // Input port is at y + 30
+          fromPort: isFirstInBranch ? branch.name : "output",
+          toPort: "input",
           color: branchColor,
-          label: prevNodeId === node.id ? branch.name : undefined,
-        })
+          label: isFirstInBranch ? branch.name : undefined,
+        });
 
-        prevNodeId = childNode.id
-        prevX = branchX + NODE_WIDTH
-        prevY = branchY + PORT_Y_OFFSET  // Output port is at y + 30
-        branchX += NODE_WIDTH + H_GAP
+        prevNodeId = childNode.id;
+        isFirstInBranch = false;
+        branchX += NODE_WIDTH + H_GAP;
       }
 
-      maxX = Math.max(maxX, branchX)
-      branchY += NODE_HEIGHT + V_GAP
+      maxX = Math.max(maxX, branchX);
+      branchY += NODE_HEIGHT + V_GAP;
     }
 
-    return maxX
+    return maxX;
   }
 
   // Include start node in bounds
-  updateBounds(startNodeX, startNodeY, START_NODE_WIDTH, START_NODE_HEIGHT)
+  updateBounds(startNodeX, startNodeY, START_NODE_WIDTH, START_NODE_HEIGHT);
 
   // Layout all nodes in the workflow (starting after the start node)
-  let x = realNodeOffsetX
-  let prevNode: TreeNode | null = null
-  let isFirstNode = true
+  let x = realNodeOffsetX;
+  let prevNode: TreeNode | null = null;
+  let isFirstNode = true;
 
   for (const node of workflow.children) {
-    const y = offsetY
-    const nextX = layoutNode(node, x, y)
+    const y = offsetY;
+    const nextX = layoutNode(node, x, y);
 
     // Connect start node to first real node
     if (isFirstNode) {
-      const currPos = nodePositions.get(node.id)!
       connections.push({
         from: `start-${workflow.name}`,
         to: node.id,
-        x1: startNodeX + START_NODE_WIDTH,
-        y1: startNodeY + PORT_Y_OFFSET,
-        x2: currPos.x,
-        y2: currPos.y + PORT_Y_OFFSET,
-        color: '#22C55E', // Green color for start connection
-      })
-      isFirstNode = false
+        fromPort: "output",
+        toPort: "input",
+        color: "#22C55E", // Green color for start connection
+      });
+      isFirstNode = false;
     }
 
     // Connect sequential nodes
     if (prevNode) {
-      const prevPos = nodePositions.get(prevNode.id)!
-      const currPos = nodePositions.get(node.id)!
       connections.push({
         from: prevNode.id,
         to: node.id,
-        x1: prevPos.x + NODE_WIDTH,
-        y1: prevPos.y + PORT_Y_OFFSET,
-        x2: currPos.x,
-        y2: currPos.y + PORT_Y_OFFSET,
-        color: '#475569',
-      })
+        fromPort: "output",
+        toPort: "input",
+        color: "#475569",
+      });
     }
 
-    prevNode = node
-    x = nextX
+    prevNode = node;
+    x = nextX;
   }
 
   // Handle empty workflow (just start node)
   if (workflow.children.length === 0) {
-    minX = Math.min(minX, startNodeX)
-    minY = Math.min(minY, startNodeY)
-    maxX = Math.max(maxX, startNodeX + START_NODE_WIDTH + 20)
-    maxY = Math.max(maxY, startNodeY + START_NODE_HEIGHT)
+    minX = Math.min(minX, startNodeX);
+    minY = Math.min(minY, startNodeY);
+    maxX = Math.max(maxX, startNodeX + START_NODE_WIDTH + 20);
+    maxY = Math.max(maxY, startNodeY + START_NODE_HEIGHT);
   }
 
   // Layout orphan nodes in a separate row below the main workflow
-  const orphans = workflow.orphans || []
+  const orphans = workflow.orphans || [];
   if (orphans.length > 0) {
-    const orphanY = maxY + WORKFLOW_GAP
-    let orphanX = startNodeX
+    const orphanY = maxY + WORKFLOW_GAP;
+    let orphanX = startNodeX;
 
     for (const orphan of orphans) {
       // Use layoutNode to properly handle branches and connections
-      orphanX = layoutNode(orphan, orphanX, orphanY, true)
+      orphanX = layoutNode(orphan, orphanX, orphanY, true);
     }
 
     // Create connections between orphan chain nodes
     for (const orphan of orphans) {
       if (orphan.next) {
-        const fromPos = nodePositions.get(orphan.id)
-        const toPos = nodePositions.get(orphan.next)
-        if (fromPos && toPos) {
-          connections.push({
-            from: orphan.id,
-            to: orphan.next,
-            x1: fromPos.x + NODE_WIDTH,
-            y1: fromPos.y + PORT_Y_OFFSET,
-            x2: toPos.x,
-            y2: toPos.y + PORT_Y_OFFSET,
-            color: '#6B7280', // Gray color for orphan chains
-          })
-        }
+        connections.push({
+          from: orphan.id,
+          to: orphan.next,
+          fromPort: "output",
+          toPort: "input",
+          color: "#6B7280", // Gray color for orphan chains
+        });
       }
     }
   }
 
   // Apply node position offsets (for free layout mode)
   for (const layoutNode of layoutNodes) {
-    const offset = nodePositionOffsets[layoutNode.node.id]
+    const offset = nodePositionOffsets[layoutNode.node.id];
     if (offset) {
-      layoutNode.x += offset.x
-      layoutNode.y += offset.y
+      layoutNode.x += offset.x;
+      layoutNode.y += offset.y;
       // Update bounds
-      updateBounds(layoutNode.x, layoutNode.y, layoutNode.width, layoutNode.height)
+      updateBounds(
+        layoutNode.x,
+        layoutNode.y,
+        layoutNode.width,
+        layoutNode.height,
+      );
     }
   }
 
-  // Recalculate connections with updated positions
-  const updatedConnections = connections.map((conn) => {
-    const fromOffset = nodePositionOffsets[conn.from] || { x: 0, y: 0 }
-    const toOffset = nodePositionOffsets[conn.to] || { x: 0, y: 0 }
-
-    return {
-      ...conn,
-      x1: conn.x1 + fromOffset.x,
-      y1: conn.y1 + fromOffset.y,
-      x2: conn.x2 + toOffset.x,
-      y2: conn.y2 + toOffset.y,
-    }
-  })
+  // Note: Connection coordinates are now read from slot registry (updated via useEffect in nodes)
+  // so no need to recalculate them here
 
   return {
     nodes: layoutNodes,
-    connections: updatedConnections,
+    connections,
     bounds: { minX, minY, maxX, maxY },
     startNode,
-  }
+  };
 }
 
 function getBranchColor(name: string): string {
   // Handle CATCH1, CATCH2, etc.
-  if (name.startsWith('CATCH')) {
-    return '#F87171' // Red
+  if (name.startsWith("CATCH")) {
+    return "#F87171"; // Red
   }
   switch (name) {
-    case 'THEN':
-      return '#34D399' // Green
-    case 'ELSE':
-      return '#F87171' // Red
-    case 'BODY':
-      return '#22D3EE' // Cyan
-    case 'TRY':
-      return '#3B82F6' // Blue
-    case 'FINALLY':
-      return '#FACC15' // Yellow
+    case "THEN":
+      return "#34D399"; // Green
+    case "ELSE":
+      return "#F87171"; // Red
+    case "BODY":
+      return "#22D3EE"; // Cyan
+    case "TRY":
+      return "#3B82F6"; // Blue
+    case "FINALLY":
+      return "#FACC15"; // Yellow
     default:
-      return '#9C27B0' // Purple
+      return "#9C27B0"; // Purple
   }
 }

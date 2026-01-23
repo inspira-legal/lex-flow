@@ -1,16 +1,16 @@
-import { useUiStore } from '../../store'
+import { useUiStore } from "../../store";
 
 export function VariableDragPreview() {
-  const { draggingVariable } = useUiStore()
+  const { draggingVariable } = useUiStore();
 
-  if (!draggingVariable) return null
+  if (!draggingVariable) return null;
 
-  const { toX, toY, name } = draggingVariable
+  const { toX, toY, name } = draggingVariable;
 
   // Variable drag just shows a ghost pill following the cursor
   // (no wire like orphan drag - variables come from "nowhere")
   return (
-    <g style={{ pointerEvents: 'none' }}>
+    <g style={{ pointerEvents: "none" }}>
       {/* Ghost variable pill at cursor */}
       <g transform={`translate(${toX - 40}, ${toY - 14})`}>
         <rect
@@ -30,12 +30,12 @@ export function VariableDragPreview() {
           fontWeight={600}
           fontFamily="'JetBrains Mono', monospace"
         >
-          ${name.length > 8 ? name.slice(0, 8) + '..' : name}
+          ${name.length > 8 ? name.slice(0, 8) + ".." : name}
         </text>
       </g>
 
       {/* Small cursor indicator */}
       <circle cx={toX} cy={toY} r={4} fill="#22C55E" />
     </g>
-  )
+  );
 }

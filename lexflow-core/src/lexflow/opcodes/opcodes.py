@@ -588,24 +588,79 @@ class OpcodeRegistry:
                 raise AssertionError(f"{message}: {left} != {right}")
 
         # ============ Special Operations (handled by parser) ============
+        # These opcodes exist for introspection/documentation purposes.
+        # Actual execution is handled by the parser and executor, not opcode dispatch.
+
         @self.register()
-        async def data_get_variable(var_name: str) -> None:
-            """Get variable value - should be handled by parser as Variable reference."""
+        async def data_get_variable(var_name: str) -> Any:
+            """Get variable value - handled by parser as Variable reference."""
             raise NotImplementedError(
                 "data_get_variable should be handled by parser as Variable"
             )
 
         @self.register()
         async def data_set_variable_to(variable: str, value: Any) -> None:
-            """Set variable - handled specially by parser/executor."""
+            """Set variable to a value."""
             raise NotImplementedError(
                 "data_set_variable_to should be handled by parser"
             )
 
         @self.register()
         async def workflow_return(value: Any = None) -> None:
-            """Return from workflow - handled by Return statement."""
+            """Return a value from the current workflow."""
             raise NotImplementedError("workflow_return should be handled by parser")
+
+        # ============ Control Flow (handled by parser/executor) ============
+        @self.register()
+        async def control_if(condition: bool, then_branch: Any) -> None:
+            """Execute branch if condition is true."""
+            raise NotImplementedError("control_if should be handled by parser")
+
+        @self.register()
+        async def control_if_else(
+            condition: bool, then_branch: Any, else_branch: Any
+        ) -> None:
+            """Execute then_branch if condition is true, else_branch otherwise."""
+            raise NotImplementedError("control_if_else should be handled by parser")
+
+        @self.register()
+        async def control_while(condition: bool, body: Any) -> None:
+            """Repeat body while condition is true."""
+            raise NotImplementedError("control_while should be handled by parser")
+
+        @self.register()
+        async def control_for(
+            var: str, start: int, end: int, step: int = 1, body: Any = None
+        ) -> None:
+            """Loop from start to end with step, binding each value to var."""
+            raise NotImplementedError("control_for should be handled by parser")
+
+        @self.register()
+        async def control_foreach(var: str, iterable: Any, body: Any) -> None:
+            """Iterate over items in iterable, binding each to var."""
+            raise NotImplementedError("control_foreach should be handled by parser")
+
+        @self.register()
+        async def control_fork(*branches: Any) -> None:
+            """Execute multiple branches concurrently."""
+            raise NotImplementedError("control_fork should be handled by parser")
+
+        @self.register()
+        async def control_try(
+            try_body: Any, catch_handlers: Any = None, finally_body: Any = None
+        ) -> None:
+            """Execute try_body with exception handling."""
+            raise NotImplementedError("control_try should be handled by parser")
+
+        @self.register()
+        async def control_throw(message: str) -> None:
+            """Throw a runtime error with the given message."""
+            raise NotImplementedError("control_throw should be handled by parser")
+
+        @self.register()
+        async def workflow_call(workflow: str, *args: Any) -> Any:
+            """Call another workflow by name with arguments."""
+            raise NotImplementedError("workflow_call should be handled by parser")
 
 
 # Default global registry instance

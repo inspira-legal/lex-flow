@@ -1,13 +1,13 @@
-import { useUiStore } from '../../store'
-import { Header } from './Header'
-import styles from './MainLayout.module.css'
+import { useUiStore } from "../../store";
+import { Header } from "./Header";
+import styles from "./MainLayout.module.css";
 
 interface MainLayoutProps {
-  canvas: React.ReactNode
-  editor?: React.ReactNode
-  nodeEditor?: React.ReactNode
-  executionPanel?: React.ReactNode
-  palette?: React.ReactNode
+  canvas: React.ReactNode;
+  editor?: React.ReactNode;
+  nodeEditor?: React.ReactNode;
+  executionPanel?: React.ReactNode;
+  palette?: React.ReactNode;
 }
 
 export function MainLayout({
@@ -22,7 +22,7 @@ export function MainLayout({
     isNodeEditorOpen,
     isPaletteOpen,
     isExecutionPanelOpen,
-  } = useUiStore()
+  } = useUiStore();
 
   return (
     <div className={styles.layout}>
@@ -46,7 +46,7 @@ export function MainLayout({
 
         {/* Right: Node Editor (slide-in) */}
         <aside
-          className={`${styles.nodeEditorPanel} ${isNodeEditorOpen ? styles.open : ''}`}
+          className={`${styles.nodeEditorPanel} ${isNodeEditorOpen ? styles.open : ""}`}
         >
           {nodeEditor}
         </aside>
@@ -59,5 +59,5 @@ export function MainLayout({
         </div>
       )}
     </div>
-  )
+  );
 }

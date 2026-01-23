@@ -1,1 +1,1 @@
-export { NodeEditorPanel } from './NodeEditorPanel'
+export { NodeEditorPanel } from "./NodeEditorPanel";

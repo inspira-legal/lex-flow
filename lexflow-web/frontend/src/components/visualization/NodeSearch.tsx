@@ -1,139 +1,146 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { useWorkflowStore, useUiStore } from '../../store'
-import styles from './NodeSearch.module.css'
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useWorkflowStore, useUiStore } from "../../store";
+import styles from "./NodeSearch.module.css";
 
 export function NodeSearch() {
-  const { tree, selectNode } = useWorkflowStore()
-  const { searchQuery, setSearchQuery, searchResults, setSearchResults } = useUiStore()
-  const [isOpen, setIsOpen] = useState(false)
-  const [currentResultIndex, setCurrentResultIndex] = useState(0)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const { tree, selectNode } = useWorkflowStore();
+  const { searchQuery, setSearchQuery, searchResults, setSearchResults } =
+    useUiStore();
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentResultIndex, setCurrentResultIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Find matching nodes when search query changes
   useEffect(() => {
     if (!tree || !searchQuery.trim()) {
-      setSearchResults([])
-      setCurrentResultIndex(0)
-      return
+      setSearchResults([]);
+      setCurrentResultIndex(0);
+      return;
     }
 
-    const query = searchQuery.toLowerCase()
-    const results: string[] = []
+    const query = searchQuery.toLowerCase();
+    const results: string[] = [];
 
     // Search through all workflows and nodes
     for (const workflow of tree.workflows) {
       const searchNodes = (children: typeof workflow.children) => {
         for (const node of children) {
-          const matchesId = node.id.toLowerCase().includes(query)
-          const matchesOpcode = node.opcode?.toLowerCase().includes(query)
-          const matchesType = node.type.toLowerCase().includes(query)
+          const matchesId = node.id.toLowerCase().includes(query);
+          const matchesOpcode = node.opcode?.toLowerCase().includes(query);
+          const matchesType = node.type.toLowerCase().includes(query);
 
           if (matchesId || matchesOpcode || matchesType) {
-            results.push(node.id)
+            results.push(node.id);
           }
 
           // Search branch children
           for (const branch of node.children) {
-            searchNodes(branch.children)
+            searchNodes(branch.children);
           }
         }
-      }
-      searchNodes(workflow.children)
+      };
+      searchNodes(workflow.children);
     }
 
-    setSearchResults(results)
-    setCurrentResultIndex(0)
-  }, [searchQuery, tree, setSearchResults])
+    setSearchResults(results);
+    setCurrentResultIndex(0);
+  }, [searchQuery, tree, setSearchResults]);
 
   // Keyboard shortcut to open search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl/Cmd + F to open search
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
-        const target = e.target as HTMLElement
-        const isMonaco = target.closest('.monaco-editor')
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        const target = e.target as HTMLElement;
+        const isMonaco = target.closest(".monaco-editor");
         if (!isMonaco) {
-          e.preventDefault()
-          setIsOpen(true)
-          setTimeout(() => inputRef.current?.focus(), 50)
+          e.preventDefault();
+          setIsOpen(true);
+          setTimeout(() => inputRef.current?.focus(), 50);
         }
       }
 
       // Escape to close search
-      if (e.key === 'Escape' && isOpen) {
-        handleClose()
+      if (e.key === "Escape" && isOpen) {
+        handleClose();
       }
-    }
+    };
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen])
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
 
   const handleClose = useCallback(() => {
-    setIsOpen(false)
-    setSearchQuery('')
-    setSearchResults([])
-    setCurrentResultIndex(0)
-  }, [setSearchQuery, setSearchResults])
+    setIsOpen(false);
+    setSearchQuery("");
+    setSearchResults([]);
+    setCurrentResultIndex(0);
+  }, [setSearchQuery, setSearchResults]);
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchQuery(e.target.value)
+      setSearchQuery(e.target.value);
     },
-    [setSearchQuery]
-  )
+    [setSearchQuery],
+  );
 
   const navigateToResult = useCallback(
     (index: number) => {
       if (searchResults.length > 0) {
-        const nodeId = searchResults[index]
-        selectNode(nodeId)
-        setCurrentResultIndex(index)
+        const nodeId = searchResults[index];
+        selectNode(nodeId);
+        setCurrentResultIndex(index);
       }
     },
-    [searchResults, selectNode]
-  )
+    [searchResults, selectNode],
+  );
 
   const handlePrevious = useCallback(() => {
     if (searchResults.length > 0) {
-      const newIndex = currentResultIndex > 0 ? currentResultIndex - 1 : searchResults.length - 1
-      navigateToResult(newIndex)
+      const newIndex =
+        currentResultIndex > 0
+          ? currentResultIndex - 1
+          : searchResults.length - 1;
+      navigateToResult(newIndex);
     }
-  }, [currentResultIndex, searchResults.length, navigateToResult])
+  }, [currentResultIndex, searchResults.length, navigateToResult]);
 
   const handleNext = useCallback(() => {
     if (searchResults.length > 0) {
-      const newIndex = currentResultIndex < searchResults.length - 1 ? currentResultIndex + 1 : 0
-      navigateToResult(newIndex)
+      const newIndex =
+        currentResultIndex < searchResults.length - 1
+          ? currentResultIndex + 1
+          : 0;
+      navigateToResult(newIndex);
     }
-  }, [currentResultIndex, searchResults.length, navigateToResult])
+  }, [currentResultIndex, searchResults.length, navigateToResult]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
+      if (e.key === "Enter") {
         if (e.shiftKey) {
-          handlePrevious()
+          handlePrevious();
         } else {
-          handleNext()
+          handleNext();
         }
       }
     },
-    [handlePrevious, handleNext]
-  )
+    [handlePrevious, handleNext],
+  );
 
   if (!isOpen) {
     return (
       <button
         className={styles.searchButton}
         onClick={() => {
-          setIsOpen(true)
-          setTimeout(() => inputRef.current?.focus(), 50)
+          setIsOpen(true);
+          setTimeout(() => inputRef.current?.focus(), 50);
         }}
         title="Search Nodes (Ctrl+F)"
       >
         <SearchIcon />
       </button>
-    )
+    );
   }
 
   return (
@@ -153,7 +160,7 @@ export function NodeSearch() {
         <span className={styles.resultCount}>
           {searchResults.length > 0
             ? `${currentResultIndex + 1}/${searchResults.length}`
-            : 'No results'}
+            : "No results"}
         </span>
       )}
       <div className={styles.navButtons}>
@@ -174,42 +181,74 @@ export function NodeSearch() {
           <ChevronDownIcon />
         </button>
       </div>
-      <button onClick={handleClose} className={styles.closeBtn} title="Close (Escape)">
+      <button
+        onClick={handleClose}
+        className={styles.closeBtn}
+        title="Close (Escape)"
+      >
         <CloseIcon />
       </button>
     </div>
-  )
+  );
 }
 
 function SearchIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <circle cx="11" cy="11" r="8" />
       <path d="M21 21l-4.35-4.35" />
     </svg>
-  )
+  );
 }
 
 function ChevronUpIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <path d="M18 15l-6-6-6 6" />
     </svg>
-  )
+  );
 }
 
 function ChevronDownIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <path d="M6 9l6 6 6-6" />
     </svg>
-  )
+  );
 }
 
 function CloseIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <path d="M18 6L6 18M6 6l12 12" />
     </svg>
-  )
+  );
 }

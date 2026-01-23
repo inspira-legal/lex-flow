@@ -1,73 +1,96 @@
-import { useUiStore, useWorkflowStore } from '../../store'
-import type { FormattedValue, OpcodeParameter } from '../../api/types'
-import { checkTypeCompatibility, getCompatibilityColor } from '../../utils/typeCompatibility'
-import styles from './WorkflowNode.module.css'
+import { useUiStore, useWorkflowStore } from "../../store";
+import type { FormattedValue, OpcodeParameter } from "../../api/types";
+import {
+  checkTypeCompatibility,
+  getCompatibilityColor,
+} from "../../utils/typeCompatibility";
+import styles from "./WorkflowNode.module.css";
 
 interface InputSlotProps {
-  nodeId: string
-  inputKey: string
-  value: FormattedValue
-  paramInfo?: OpcodeParameter
-  x: number
-  y: number
-  width: number
+  nodeId: string;
+  inputKey: string;
+  value: FormattedValue;
+  paramInfo?: OpcodeParameter;
+  x: number;
+  y: number;
+  width: number;
 }
 
-export function InputSlot({ nodeId, inputKey, value, paramInfo, x, y, width }: InputSlotProps) {
-  const { draggingOrphan, setDraggingOrphan, draggingVariable, setDraggingVariable } = useUiStore()
-  const { convertOrphanToReporter, updateNodeInput } = useWorkflowStore()
+export function InputSlot({
+  nodeId,
+  inputKey,
+  value,
+  paramInfo,
+  x,
+  y,
+  width,
+}: InputSlotProps) {
+  const {
+    draggingOrphan,
+    setDraggingOrphan,
+    draggingVariable,
+    setDraggingVariable,
+  } = useUiStore();
+  const { convertOrphanToReporter, updateNodeInput } = useWorkflowStore();
 
   // Format the display value
-  const displayValue = formatValueShort(value)
+  const displayValue = formatValueShort(value);
 
   // Check if we're a valid drop target for either orphan or variable
-  const isOrphanDropTarget = draggingOrphan !== null
-  const isVariableDropTarget = draggingVariable !== null
-  const isDropTarget = isOrphanDropTarget || isVariableDropTarget
+  const isOrphanDropTarget = draggingOrphan !== null;
+  const isVariableDropTarget = draggingVariable !== null;
+  const isDropTarget = isOrphanDropTarget || isVariableDropTarget;
 
   // Calculate type compatibility if dragging orphan (variables are untyped, so neutral)
   const compatibility = isOrphanDropTarget
     ? checkTypeCompatibility(draggingOrphan.returnType, paramInfo?.type)
     : isVariableDropTarget
       ? null // Neutral for variables (no type checking)
-      : null
+      : null;
 
   const handleMouseUp = (e: React.MouseEvent) => {
-    e.stopPropagation()
+    e.stopPropagation();
     if (draggingOrphan) {
       // Convert the orphan to a reporter for this input
-      convertOrphanToReporter(draggingOrphan.nodeId, nodeId, inputKey, compatibility)
-      setDraggingOrphan(null)
+      convertOrphanToReporter(
+        draggingOrphan.nodeId,
+        nodeId,
+        inputKey,
+        compatibility,
+      );
+      setDraggingOrphan(null);
     } else if (draggingVariable) {
       // Update the input to use the variable reference
-      updateNodeInput(nodeId, inputKey, `$${draggingVariable.name}`)
-      setDraggingVariable(null)
+      updateNodeInput(nodeId, inputKey, `$${draggingVariable.name}`);
+      setDraggingVariable(null);
     }
-  }
+  };
 
   const handleMouseEnter = (e: React.MouseEvent) => {
-    e.stopPropagation()
-  }
+    e.stopPropagation();
+  };
 
   // Determine slot styling based on drop state
-  let slotClass = styles.inputSlot
-  let bgClass = styles.inputSlotBg
+  let slotClass = styles.inputSlot;
+  let bgClass = styles.inputSlotBg;
   if (isDropTarget) {
-    bgClass += ` ${styles.dropTarget}`
+    bgClass += ` ${styles.dropTarget}`;
     if (isVariableDropTarget) {
       // Variable drops always show as compatible (green highlight)
-      bgClass += ` ${styles.compatible}`
+      bgClass += ` ${styles.compatible}`;
     } else if (compatibility === true) {
-      bgClass += ` ${styles.compatible}`
+      bgClass += ` ${styles.compatible}`;
     } else if (compatibility === false) {
-      bgClass += ` ${styles.incompatible}`
+      bgClass += ` ${styles.incompatible}`;
     }
   }
 
   // Use green color for variable drops
-  const slotColor = isVariableDropTarget ? '#22C55E' : getCompatibilityColor(compatibility)
+  const slotColor = isVariableDropTarget
+    ? "#22C55E"
+    : getCompatibilityColor(compatibility);
 
-  const slotHeight = 16
+  const slotHeight = 16;
 
   return (
     <g
@@ -86,7 +109,7 @@ export function InputSlot({ nodeId, inputKey, value, paramInfo, x, y, width }: I
         rx={3}
         style={
           isDropTarget
-            ? ({ '--slot-color': slotColor } as React.CSSProperties)
+            ? ({ "--slot-color": slotColor } as React.CSSProperties)
             : undefined
         }
       />
@@ -108,22 +131,23 @@ export function InputSlot({ nodeId, inputKey, value, paramInfo, x, y, width }: I
         </text>
       )}
     </g>
-  )
+  );
 }
 
 function formatValueShort(value: FormattedValue): string {
   switch (value.type) {
-    case 'literal':
-      const v = value.value
-      if (typeof v === 'string') return `"${v.length > 10 ? v.slice(0, 10) + '...' : v}"`
-      return String(v)
-    case 'variable':
-      return `$${value.name}`
-    case 'reporter':
-      return `[reporter]`
-    case 'workflow_call':
-      return `-> ${value.name}`
+    case "literal":
+      const v = value.value;
+      if (typeof v === "string")
+        return `"${v.length > 10 ? v.slice(0, 10) + "..." : v}"`;
+      return String(v);
+    case "variable":
+      return `$${value.name}`;
+    case "reporter":
+      return `[reporter]`;
+    case "workflow_call":
+      return `-> ${value.name}`;
     default:
-      return ''
+      return "";
   }
 }
