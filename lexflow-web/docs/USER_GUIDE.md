@@ -50,9 +50,9 @@ When a node is selected, the right panel shows:
 
 Toggle the code editor to view and edit the raw YAML/JSON:
 
-- Changes sync bidirectionally with the canvas
-- Syntax highlighting for YAML
-- Error highlighting for invalid syntax
+- Changes sync automatically with the visual canvas
+- Color-coded syntax for easier reading
+- Errors are highlighted so you can fix them quickly
 
 ### Execution Panel
 
@@ -344,7 +344,7 @@ workflows:
 
 - Use descriptive IDs: `calculate_total` not `node1`
 - Keep IDs short but meaningful
-- Use snake_case for consistency
+- Use underscores between words: `my_node` instead of `myNode`
 
 ### Organizing Workflows
 
@@ -354,16 +354,16 @@ workflows:
 
 ### Debugging
 
-1. Add `io_print` nodes to trace values
-2. Use the code editor to inspect structure
-3. Check the execution panel for errors
-4. Use `--verbose` flag when running from CLI
+1. Add `io_print` nodes to see what values your workflow is using
+2. Switch to the code editor to see exactly how your workflow is structured
+3. Check the execution panel at the bottom for error messages
+4. When running from command line, add `--verbose` to see more details
 
 ### Performance
 
-- Avoid deep nesting in loops
-- Use reporters for computed values
-- Enable metrics to identify bottlenecks
+- Keep loops simple - avoid putting too many loops inside other loops
+- Use reporter nodes when you need to calculate a value and use it elsewhere
+- Turn on metrics (checkbox before running) to see which parts are slow
 
 ## Next Steps
 

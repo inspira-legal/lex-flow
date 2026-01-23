@@ -1,12 +1,14 @@
 # Customizing LexFlow Web
 
+> **Note**: This guide is for developers who want to modify how LexFlow Web works or connect it to different servers. If you just want to use LexFlow Web to create workflows, see the [User Guide](USER_GUIDE.md) instead.
+
 This guide explains how to customize LexFlow Web, including configuring backends, creating custom providers, and modifying the frontend.
 
-## Backend Configuration
+## Connecting to a Different Server
+
+If you want to connect LexFlow Web to a server running on a different address (like a remote server), you can configure this with environment variables:
 
 ### Environment Variables
-
-Configure the frontend to connect to different backends using environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -42,7 +44,9 @@ Then build:
 npm run build
 ```
 
-## Backend Provider System
+## Advanced: Custom Backend Providers
+
+> **Technical Section**: The following is for developers building custom integrations.
 
 The frontend uses a provider abstraction for all backend communication. This allows you to:
 
@@ -287,7 +291,9 @@ createRoot(document.getElementById('root')!).render(
 )
 ```
 
-## Implementing a Custom Backend
+## Advanced: Building Your Own Backend
+
+> **Technical Section**: This is for developers who want to create their own server that works with LexFlow Web.
 
 To create a backend that LexFlow Web can connect to, implement these endpoints:
 
@@ -408,7 +414,9 @@ Response:
 }
 ```
 
-## Customizing the Frontend
+## Advanced: Modifying the Frontend Code
+
+> **Technical Section**: This is for developers who want to change how the editor looks or works.
 
 ### Modifying Components
 
@@ -459,7 +467,9 @@ CSS variables are defined in `styles/variables.css`:
 
 Override these for custom themes.
 
-## Testing
+## Advanced: Testing
+
+> **Technical Section**: This is for developers writing tests.
 
 ### Testing Custom Providers
 

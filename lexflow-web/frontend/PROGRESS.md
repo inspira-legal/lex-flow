@@ -143,12 +143,12 @@ See `ISSUES.md` for full list.
 # Development (with hot reload)
 cd frontend
 npm run dev
-# Then run backend: python -m lexflow_web.app
+# Then run backend: lexflow-web --reload
 
 # Production build
 cd frontend
 npm run build
-# Start server: python -m lexflow_web.app
+# Start server: lexflow-web
 # Open http://localhost:8000
 ```
 

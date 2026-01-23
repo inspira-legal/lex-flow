@@ -23,10 +23,6 @@ A visual workflow editor and execution environment for LexFlow. Build workflows 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/lex-flow.git
-cd lex-flow
-
 # Install dependencies (from monorepo root)
 uv sync --all-extras
 
@@ -58,49 +54,53 @@ The frontend dev server runs on http://localhost:5173 and proxies API requests t
 - **[User Guide](docs/USER_GUIDE.md)** - How to use the visual editor
 - **[Customization](docs/CUSTOMIZATION.md)** - Custom backends and providers
 
-## Architecture
+## Project Structure
 
 ```
 lexflow-web/
-├── frontend/              # React + TypeScript frontend
+├── frontend/              # The visual editor (runs in your browser)
 │   ├── src/
-│   │   ├── components/    # UI components (Canvas, Editor, Palette, etc.)
-│   │   ├── hooks/         # React hooks (parsing, WebSocket, shortcuts)
-│   │   ├── providers/     # Backend abstraction layer
-│   │   ├── services/      # Client-side visualization & parsing
-│   │   └── store/         # Zustand state management
+│   │   ├── components/    # UI pieces (canvas, editor, palette, etc.)
+│   │   ├── hooks/         # Reusable behaviors
+│   │   ├── providers/     # Server connection
+│   │   ├── services/      # Workflow processing
+│   │   └── store/         # App state
 │   └── ...
-└── src/lexflow_web/       # Python FastAPI backend
-    ├── api.py             # REST API endpoints
-    ├── websocket.py       # WebSocket execution handler
-    └── app.py             # Application entry point
+└── src/lexflow_web/       # The server (runs workflows)
+    ├── api.py             # Handles requests from the editor
+    ├── websocket.py       # Sends live output during execution
+    └── app.py             # Starts the server
 ```
 
 ### Key Design Decisions
 
-1. **Client-side Parsing**: Workflow visualization (tree generation) happens in the browser via TypeScript, not the backend. This makes the frontend portable and reduces latency.
+1. **Fast Visualization**: Workflows are displayed instantly in the browser without waiting for the server.
 
-2. **Backend Provider Pattern**: The frontend uses a `BackendProvider` interface for all backend communication. You can swap backends by implementing this interface.
+2. **Flexible Backend**: You can connect to different servers or run certain features offline. See [Customization](docs/CUSTOMIZATION.md) for details.
 
 3. **Dual Editing Modes**: Edit workflows visually (drag-and-drop) or as code (YAML/JSON). Both stay in sync.
 
 ## API Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/opcodes` | GET | List available opcodes |
-| `/api/examples` | GET | List example workflows |
-| `/api/examples/{path}` | GET | Get example content |
-| `/api/execute` | POST | Execute workflow (REST) |
-| `/api/validate` | POST | Validate workflow syntax |
-| `/ws/execute` | WebSocket | Execute with streaming output |
+These are the server endpoints that power the editor:
 
-## Environment Variables
+| Endpoint | What it does |
+|----------|--------------|
+| `/api/opcodes` | Lists all available operations |
+| `/api/examples` | Lists example workflows |
+| `/api/examples/{path}` | Gets an example's content |
+| `/api/execute` | Runs a workflow |
+| `/api/validate` | Checks if a workflow is valid |
+| `/ws/execute` | Runs a workflow with live output |
+
+## Configuration
+
+For advanced setups (connecting to a remote server, etc.), you can set these environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `VITE_API_BASE_URL` | `/api` | Backend API base URL |
-| `VITE_WS_URL` | (auto) | WebSocket URL (derived from API URL if not set) |
+| `VITE_API_BASE_URL` | `/api` | Server address for the backend |
+| `VITE_WS_URL` | (auto) | Server address for live output (usually auto-detected) |
 
 ## Contributing
 

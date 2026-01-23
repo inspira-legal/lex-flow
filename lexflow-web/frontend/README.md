@@ -1,73 +1,58 @@
-# React + TypeScript + Vite
+# LexFlow Web Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The React-based visual editor for LexFlow workflows.
 
-Currently, two official plugins are available:
+## Quick Start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+# Install dependencies
+npm install
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Start development server (with hot reload)
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open http://localhost:5173 in your browser. Make sure the backend is running on port 8000.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Building for Production
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
 ```
+
+This outputs to `../src/lexflow_web/static/`, which the backend serves automatically.
+
+## Project Structure
+
+```
+src/
+├── components/          # UI components
+│   ├── editor/          # Code editor (YAML/JSON)
+│   ├── execution/       # Run panel and output
+│   ├── layout/          # Page layout
+│   ├── node-editor/     # Node property panel
+│   ├── palette/         # Opcode browser
+│   └── visualization/   # Canvas and nodes
+├── hooks/               # React hooks
+├── providers/           # Backend connection
+├── services/            # Parsing and visualization
+├── store/               # App state (Zustand)
+└── styles/              # CSS and theming
+```
+
+## Key Features
+
+- **Visual Canvas**: Drag-and-drop workflow editing
+- **Code Editor**: Edit YAML/JSON directly with syntax highlighting
+- **Live Sync**: Visual and code views stay in sync
+- **Real-time Output**: See workflow output as it runs
+- **Keyboard Shortcuts**: Ctrl+Z (undo), Ctrl+B (toggle editor), and more
+
+## Development Notes
+
+- Uses Vite for fast development builds
+- State management with Zustand
+- Monaco Editor for code editing
+- CSS Modules for styling
+
+See the main [User Guide](../docs/USER_GUIDE.md) for how to use the editor.

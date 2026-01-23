@@ -15,10 +15,6 @@ This guide walks you through setting up and running LexFlow Web locally.
 If you just want to run LexFlow Web without modifying the frontend:
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/lex-flow.git
-cd lex-flow
-
 # Install Python dependencies
 uv sync --all-extras
 
@@ -33,10 +29,6 @@ Open http://localhost:8000 in your browser. The pre-built frontend is served fro
 For frontend development with live reloading:
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/lex-flow.git
-cd lex-flow
-
 # Install Python dependencies
 uv sync --all-extras
 
@@ -56,7 +48,7 @@ cd lexflow-web/frontend
 npm run dev
 ```
 
-The frontend dev server runs on http://localhost:5173 and proxies API requests to the backend on port 8000.
+Open http://localhost:5173 in your browser. The frontend automatically connects to the backend on port 8000.
 
 ## Server Options
 
@@ -106,7 +98,7 @@ lexflow-web/
 ├── src/lexflow_web/             # Python backend
 │   ├── api.py                   # REST endpoints
 │   ├── websocket.py             # WebSocket handler
-│   ├── visualization.py         # Tree generation (legacy)
+│   ├── visualization.py         # Tree generation for API responses
 │   ├── app.py                   # FastAPI app
 │   └── static/                  # Built frontend files
 ├── docs/                        # Documentation
@@ -152,29 +144,28 @@ uv run lexflow-web --port 3000
 
 **npm install fails:**
 ```bash
-# Clear npm cache and retry
-npm cache clean --force
+# Delete the node_modules folder and try again
 rm -rf node_modules
 npm install
 ```
 
-**Proxy errors (cannot connect to backend):**
-- Ensure the backend is running on port 8000
-- Check that vite.config.ts has the correct proxy settings
+**Cannot connect to backend:**
+- Make sure the backend is running on port 8000
+- Try restarting both the frontend and backend servers
 
-### Parsing errors
+### Workflow won't load
 
-If workflows fail to parse:
-- Check the YAML syntax (indentation matters)
-- Ensure all node IDs are unique
-- Verify the `start` node exists and has a `next` reference
+If your workflow shows errors or won't display:
+- Check your spacing - YAML uses indentation (spaces, not tabs)
+- Make sure each node has a unique ID
+- Every workflow needs a `start` node that points to the first action
 
-### WebSocket connection fails
+### Live output not working
 
-If execution doesn't show streaming output:
-- Check browser console for WebSocket errors
-- Verify the backend is accessible
-- Try the REST fallback: The frontend automatically falls back to REST if WebSocket fails
+If you don't see output appearing in real-time while a workflow runs:
+- Make sure the backend server is running
+- Try refreshing the page
+- Don't worry - the editor will still show results when the workflow finishes
 
 ## Next Steps
 
