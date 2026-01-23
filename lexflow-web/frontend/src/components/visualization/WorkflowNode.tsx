@@ -10,6 +10,10 @@ import type {
 } from "../../api/types";
 import { InputSlot } from "./InputSlot";
 import { NODE_WIDTH } from "../../utils/wireUtils";
+import {
+  calculateReporterTotalHeight,
+  formatValueShort,
+} from "../../services/layout/LayoutService";
 import styles from "./WorkflowNode.module.css";
 
 // Branch slot colors matching Canvas.tsx getBranchColor
@@ -931,45 +935,6 @@ function renderNestedReporterWithLabels(
   );
 }
 
-// Calculate total height of a reporter pill (including its content and label)
-function calculateReporterTotalHeight(
-  value: FormattedValue,
-  includeLabel: boolean = true,
-): number {
-  if (value.type !== "reporter") return 0;
-
-  const labelHeight = includeLabel ? 14 : 0;
-  const headerHeight = 22;
-
-  // Count regular inputs and nested reporters
-  let regularInputsCount = 0;
-  let nestedReportersCount = 0;
-  let nestedReportersHeight = 0;
-
-  if (value.inputs) {
-    for (const nestedValue of Object.values(value.inputs)) {
-      if (nestedValue.type === "reporter" && nestedValue.opcode) {
-        nestedReportersCount++;
-        nestedReportersHeight +=
-          calculateReporterTotalHeight(nestedValue, true) + 4;
-      } else {
-        const formatted = formatValueShort(nestedValue);
-        if (formatted) regularInputsCount++;
-      }
-    }
-  }
-
-  const nestedLabelHeight = nestedReportersCount * 14;
-  return (
-    labelHeight +
-    headerHeight +
-    regularInputsCount * 14 +
-    nestedLabelHeight +
-    nestedReportersHeight +
-    4
-  );
-}
-
 function getReporterColor(opcode: string): string {
   if (opcode.startsWith("data_")) return REPORTER_COLORS.data;
   if (opcode.startsWith("operator_")) return REPORTER_COLORS.operator;
@@ -984,22 +949,4 @@ function formatOpcodeName(opcode: string): string {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
-}
-
-function formatValueShort(value: FormattedValue): string {
-  switch (value.type) {
-    case "literal":
-      const v = value.value;
-      if (typeof v === "string")
-        return `"${v.length > 10 ? v.slice(0, 10) + "..." : v}"`;
-      return String(v);
-    case "variable":
-      return `$${value.name}`;
-    case "reporter":
-      return `[${formatOpcodeName(value.opcode || "")}]`;
-    case "workflow_call":
-      return `→ ${value.name}`;
-    default:
-      return "";
-  }
 }

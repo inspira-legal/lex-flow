@@ -10,15 +10,11 @@ import { MiniMap } from "./MiniMap";
 import { NodeSearch } from "./NodeSearch";
 import { WorkflowGroup } from "./WorkflowGroup";
 import { findNearestPortFromRegistry } from "../../utils/wireUtils";
-import {
-  NODE_DIMENSIONS,
-  LAYOUT_GAPS,
-  CONTROL_FLOW_OPCODES,
-} from "../../constants";
+import { NODE_DIMENSIONS, LAYOUT_GAPS } from "../../constants";
+import { calculateNodeHeight } from "../../services/layout/LayoutService";
 import type {
   TreeNode,
   WorkflowNode as WorkflowNodeType,
-  FormattedValue,
   WorkflowInterface,
 } from "../../api/types";
 import styles from "./Canvas.module.css";
@@ -71,97 +67,6 @@ const NODE_HEIGHT = NODE_DIMENSIONS.HEIGHT;
 const H_GAP = LAYOUT_GAPS.HORIZONTAL;
 const V_GAP = LAYOUT_GAPS.VERTICAL;
 const WORKFLOW_GAP = LAYOUT_GAPS.WORKFLOW;
-
-// Calculate node height - must match WorkflowNode.tsx calculation exactly
-export function calculateNodeHeight(
-  inputs: Record<string, FormattedValue>,
-  opcode?: string,
-): number {
-  // Separate reporter inputs from regular inputs (same logic as WorkflowNode)
-  const reporterInputs: FormattedValue[] = [];
-  const regularInputs: FormattedValue[] = [];
-
-  for (const value of Object.values(inputs)) {
-    if (value.type === "reporter" && value.opcode) {
-      reporterInputs.push(value);
-    } else {
-      regularInputs.push(value);
-    }
-  }
-
-  // Base height: 60 + preview of first 2 regular inputs (same as WorkflowNode)
-  const inputPreviewCount = Math.min(regularInputs.length, 2);
-  const baseHeight = 60 + inputPreviewCount * 18;
-
-  // Reporter section height
-  const reporterSectionHeight = reporterInputs.reduce((acc, value) => {
-    return acc + calculateReporterTotalHeight(value) + 4;
-  }, 0);
-
-  // Branch slots height for control flow nodes
-  const hasBranchSlots =
-    opcode && (CONTROL_FLOW_OPCODES as readonly string[]).includes(opcode);
-  const branchSlotsHeight = hasBranchSlots ? 28 : 0;
-
-  return baseHeight + reporterSectionHeight + branchSlotsHeight;
-}
-
-// Calculate total height of a reporter pill (including its content and label)
-function calculateReporterTotalHeight(
-  value: FormattedValue,
-  includeLabel: boolean = true,
-): number {
-  if (value.type !== "reporter") return 0;
-
-  const labelHeight = includeLabel ? 14 : 0;
-  const headerHeight = 22;
-
-  // Count regular inputs and nested reporters
-  let regularInputsCount = 0;
-  let nestedReportersCount = 0;
-  let nestedReportersHeight = 0;
-
-  if (value.inputs) {
-    for (const nestedValue of Object.values(value.inputs)) {
-      if (nestedValue.type === "reporter" && nestedValue.opcode) {
-        nestedReportersCount++;
-        nestedReportersHeight +=
-          calculateReporterTotalHeight(nestedValue, true) + 4;
-      } else {
-        const formatted = formatValueShort(nestedValue);
-        if (formatted) regularInputsCount++;
-      }
-    }
-  }
-
-  const nestedLabelHeight = nestedReportersCount * 14;
-  return (
-    labelHeight +
-    headerHeight +
-    regularInputsCount * 14 +
-    nestedLabelHeight +
-    nestedReportersHeight +
-    4
-  );
-}
-
-function formatValueShort(value: FormattedValue): string {
-  switch (value.type) {
-    case "literal":
-      const v = value.value;
-      if (typeof v === "string")
-        return `"${v.length > 10 ? v.slice(0, 10) + "..." : v}"`;
-      return String(v);
-    case "variable":
-      return `$${value.name}`;
-    case "reporter":
-      return `[reporter]`;
-    case "workflow_call":
-      return `→ ${value.name}`;
-    default:
-      return "";
-  }
-}
 
 export function Canvas() {
   const {
