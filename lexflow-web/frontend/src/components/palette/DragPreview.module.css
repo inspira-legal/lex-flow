@@ -28,7 +28,7 @@
 .opcode {
   font-size: 0.7rem;
   color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
 }
 
 .hint {

@@ -127,7 +127,9 @@
   cursor: pointer;
   border-radius: 4px;
   font-size: 0.8rem;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .layoutControls button:hover {

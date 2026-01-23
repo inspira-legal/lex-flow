@@ -6,7 +6,10 @@
   fill: var(--bg-node);
   stroke: var(--border-color);
   stroke-width: 1;
-  transition: stroke 0.15s ease, stroke-width 0.15s ease, filter 0.15s ease;
+  transition:
+    stroke 0.15s ease,
+    stroke-width 0.15s ease,
+    filter 0.15s ease;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
@@ -23,7 +26,7 @@
 }
 
 .nodeGroup.searchMatch .card {
-  stroke: #FACC15;
+  stroke: #facc15;
   stroke-width: 2;
   filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.5));
 }
@@ -60,7 +63,7 @@
 
 .input {
   font-size: 10px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   fill: var(--text-secondary);
 }
 
@@ -112,7 +115,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     stroke-opacity: 1;
   }
   50% {
@@ -159,7 +163,9 @@
   stroke: var(--reporter-color);
   stroke-width: 1.5;
   stroke-dasharray: 4 2;
-  transition: filter 0.15s ease, stroke-width 0.15s ease;
+  transition:
+    filter 0.15s ease,
+    stroke-width 0.15s ease;
 }
 
 .reporterName {
@@ -176,7 +182,7 @@
 
 .reporterInputValue {
   font-size: 8px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   fill: var(--text-secondary);
 }
 
@@ -209,7 +215,9 @@
 
 .orphanBadge rect {
   fill: var(--color-yellow);
-  transition: filter 0.15s ease, transform 0.15s ease;
+  transition:
+    filter 0.15s ease,
+    transform 0.15s ease;
 }
 
 .orphanBadge:hover rect {
@@ -232,12 +240,14 @@
   fill: transparent;
   stroke: transparent;
   stroke-width: 1;
-  transition: fill 0.15s ease, stroke 0.15s ease;
+  transition:
+    fill 0.15s ease,
+    stroke 0.15s ease;
 }
 
 .inputSlotBg.dropTarget {
   fill: rgba(148, 163, 184, 0.1);
-  stroke: var(--slot-color, #94A3B8);
+  stroke: var(--slot-color, #94a3b8);
   stroke-dasharray: 4 2;
 }
 
@@ -303,7 +313,9 @@
 .reporterDeleteBtn circle {
   fill: var(--color-red);
   opacity: 0.8;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 .reporterDeleteBtn:hover circle {

@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useWorkflowStore, useUiStore } from "../../store";
-import { api } from "../../api";
+import { useBackendProvider, supportsExamples } from "../../providers";
 import styles from "./Header.module.css";
 
 const DEFAULT_WORKFLOW = `workflows:
@@ -140,13 +140,16 @@ export function Header() {
 
 function ExamplesDropdown() {
   const { examples, setSource } = useWorkflowStore();
+  const provider = useBackendProvider();
 
   const handleSelect = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const path = e.target.value;
     if (!path) return;
     try {
-      const example = await api.getExample(path);
-      setSource(example.content);
+      if (supportsExamples(provider)) {
+        const example = await provider.getExample(path);
+        setSource(example.content);
+      }
     } catch (err) {
       console.error("Failed to load example:", err);
     }

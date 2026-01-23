@@ -131,7 +131,7 @@
 }
 
 .outputText {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.85rem;
   color: var(--text-secondary);
   white-space: pre-wrap;
@@ -157,7 +157,7 @@
 }
 
 .result code {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.85rem;
   color: var(--color-green);
 }
@@ -168,8 +168,14 @@
 }
 
 @keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .placeholder {

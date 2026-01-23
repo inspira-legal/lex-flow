@@ -111,7 +111,7 @@
 .nodeIdBtn {
   font-size: 0.75rem;
   color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   background: none;
   border: none;
   cursor: pointer;
@@ -198,7 +198,7 @@
   border-radius: 4px;
   color: var(--text-primary);
   font-size: 0.85rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
 }
 
 .input:focus {
@@ -233,7 +233,7 @@
 
 .valueContent {
   color: var(--text-primary);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -300,7 +300,7 @@
 
 .configValue {
   color: var(--text-primary);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 0.85rem;
 }
 
@@ -386,7 +386,7 @@
   border-radius: 4px;
   color: var(--text-primary);
   font-size: 0.85rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
 }
 
 .editInput:focus {

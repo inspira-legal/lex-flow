@@ -551,6 +551,7 @@ export const useWorkflowStore = create<WorkflowState>()(
         // Find the inputs: section and the specific input
         let inputsLineIndex = -1;
         let targetInputLine = -1;
+        let targetInputIndent = -1;
 
         for (let i = nodeStartLine + 1; i < lines.length; i++) {
           const line = lines[i];
@@ -576,6 +577,7 @@ export const useWorkflowStore = create<WorkflowState>()(
             );
             if (inputMatch) {
               targetInputLine = i;
+              targetInputIndent = inputMatch[1].length;
               break;
             }
           }
@@ -584,6 +586,24 @@ export const useWorkflowStore = create<WorkflowState>()(
         if (targetInputLine === -1) {
           console.warn(`Input "${inputKey}" not found in node "${nodeId}"`);
           return false;
+        }
+
+        // Find where this input value ends (handles multi-line block format YAML)
+        // Value ends when we hit a line with indent <= targetInputIndent (sibling or parent)
+        let inputValueEndLine = targetInputLine + 1;
+        while (inputValueEndLine < lines.length) {
+          const line = lines[inputValueEndLine];
+          // Empty lines or comments within the value block
+          if (line.trim() === "" || line.trim().startsWith("#")) {
+            inputValueEndLine++;
+            continue;
+          }
+          const lineIndent = line.search(/\S/);
+          // If indent is <= the input key's indent, we've left the value block
+          if (lineIndent !== -1 && lineIndent <= targetInputIndent) {
+            break;
+          }
+          inputValueEndLine++;
         }
 
         // Parse the new value
@@ -601,12 +621,15 @@ export const useWorkflowStore = create<WorkflowState>()(
           }
         }
 
-        // Replace the input line
-        const indent =
-          lines[targetInputLine].match(/^(\s+)/)?.[1] || "          ";
-        lines[targetInputLine] = `${indent}${inputKey}: ${formattedValue}`;
+        // Replace the input key line and remove any multi-line value lines
+        const indent = " ".repeat(targetInputIndent);
+        const newLines = [
+          ...lines.slice(0, targetInputLine),
+          `${indent}${inputKey}: ${formattedValue}`,
+          ...lines.slice(inputValueEndLine),
+        ];
 
-        const newSource = lines.join("\n");
+        const newSource = newLines.join("\n");
         state.setSource(newSource);
 
         return true;

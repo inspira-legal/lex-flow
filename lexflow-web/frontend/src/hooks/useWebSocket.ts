@@ -1,5 +1,5 @@
 import { useRef, useCallback } from "react";
-import { useWorkflowStore } from "../store";
+import { useExecutionStore } from "../store";
 import { useBackendProvider } from "../providers";
 
 interface ExecuteMessage {
@@ -36,7 +36,7 @@ export function useWebSocketExecution() {
     setExecutionResult,
     setExecutionError,
     clearExecution,
-  } = useWorkflowStore();
+  } = useExecutionStore();
 
   const execute = useCallback(
     async (

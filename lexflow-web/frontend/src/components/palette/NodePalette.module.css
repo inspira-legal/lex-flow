@@ -164,7 +164,7 @@
 .opcodeRaw {
   font-size: 0.7rem;
   color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
 }
 
 .opcodeDetails {
@@ -203,7 +203,7 @@
   background: var(--border-color);
   border-radius: 3px;
   color: var(--text-primary);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
 }
 
 .paramType {
@@ -225,7 +225,7 @@
 }
 
 .variableItem:hover {
-  border-color: #22C55E;
+  border-color: #22c55e;
   transform: translateX(2px);
 }
 
@@ -236,14 +236,14 @@
 .variableName {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #4ADE80;
-  font-family: 'JetBrains Mono', monospace;
+  color: #4ade80;
+  font-family: "JetBrains Mono", monospace;
 }
 
 .variableValue {
   font-size: 0.8rem;
   color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
 }
 
 .variableWorkflow {

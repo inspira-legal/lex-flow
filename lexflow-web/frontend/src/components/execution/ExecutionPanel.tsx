@@ -1,18 +1,17 @@
 import { useRef, useEffect } from "react";
-import { useWorkflowStore, useUiStore } from "../../store";
+import { useWorkflowStore, useUiStore, useExecutionStore } from "../../store";
 import { useWebSocketExecution } from "../../hooks";
 import styles from "./ExecutionPanel.module.css";
 
 export function ExecutionPanel() {
+  const { source, tree } = useWorkflowStore();
   const {
-    source,
     isExecuting,
     executionOutput,
     executionResult,
     executionError,
     workflowInputs,
-    tree,
-  } = useWorkflowStore();
+  } = useExecutionStore();
   const { toggleExecutionPanel } = useUiStore();
   const { execute, cancel } = useWebSocketExecution();
   const outputRef = useRef<HTMLPreElement>(null);
@@ -97,7 +96,7 @@ export function ExecutionPanel() {
 }
 
 function InputField({ name }: { name: string }) {
-  const { workflowInputs, setWorkflowInput } = useWorkflowStore();
+  const { workflowInputs, setWorkflowInput } = useExecutionStore();
   const value = workflowInputs[name] ?? "";
 
   return (

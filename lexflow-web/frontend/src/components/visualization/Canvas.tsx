@@ -10,6 +10,11 @@ import { MiniMap } from "./MiniMap";
 import { NodeSearch } from "./NodeSearch";
 import { WorkflowGroup } from "./WorkflowGroup";
 import { findNearestPortFromRegistry } from "../../utils/wireUtils";
+import {
+  NODE_DIMENSIONS,
+  LAYOUT_GAPS,
+  CONTROL_FLOW_OPCODES,
+} from "../../constants";
 import type {
   TreeNode,
   WorkflowNode as WorkflowNodeType,
@@ -60,21 +65,12 @@ interface FullLayout {
   startNodes: LayoutStartNode[];
 }
 
-const NODE_WIDTH = 180;
-const NODE_HEIGHT = 80;
-const H_GAP = 60;
-const V_GAP = 40;
-const WORKFLOW_GAP = 80;
-
-// Control flow opcodes that have branch slots
-const CONTROL_FLOW_OPCODES = [
-  "control_if",
-  "control_if_else",
-  "control_for",
-  "control_while",
-  "control_foreach",
-  "control_try",
-];
+// Use constants from centralized module
+const NODE_WIDTH = NODE_DIMENSIONS.WIDTH;
+const NODE_HEIGHT = NODE_DIMENSIONS.HEIGHT;
+const H_GAP = LAYOUT_GAPS.HORIZONTAL;
+const V_GAP = LAYOUT_GAPS.VERTICAL;
+const WORKFLOW_GAP = LAYOUT_GAPS.WORKFLOW;
 
 // Calculate node height - must match WorkflowNode.tsx calculation exactly
 export function calculateNodeHeight(
@@ -103,7 +99,8 @@ export function calculateNodeHeight(
   }, 0);
 
   // Branch slots height for control flow nodes
-  const hasBranchSlots = opcode && CONTROL_FLOW_OPCODES.includes(opcode);
+  const hasBranchSlots =
+    opcode && (CONTROL_FLOW_OPCODES as readonly string[]).includes(opcode);
   const branchSlotsHeight = hasBranchSlots ? 28 : 0;
 
   return baseHeight + reporterSectionHeight + branchSlotsHeight;

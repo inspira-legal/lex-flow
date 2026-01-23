@@ -1,35 +1,35 @@
 /* LexFlow Web - Inspira Dark Theme Variables */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;700&display=swap");
 
 :root {
   /* Inspira Dark Palette (Slate & Blue) */
-  --color-cyan: #22D3EE;
-  --color-magenta: #F472B6;
-  --color-yellow: #FACC15;
-  --color-green: #34D399;
-  --color-blue: #3B82F6;
-  --color-red: #F87171;
-  --color-dim: #94A3B8;
+  --color-cyan: #22d3ee;
+  --color-magenta: #f472b6;
+  --color-yellow: #facc15;
+  --color-green: #34d399;
+  --color-blue: #3b82f6;
+  --color-red: #f87171;
+  --color-dim: #94a3b8;
 
   /* Node Category Colors (Scratch-inspired) */
-  --node-control: #FF9500;
-  --node-data: #4CAF50;
-  --node-io: #22D3EE;
-  --node-operator: #9C27B0;
-  --node-workflow: #E91E63;
-  --node-generic: #64748B;
+  --node-control: #ff9500;
+  --node-data: #4caf50;
+  --node-io: #22d3ee;
+  --node-operator: #9c27b0;
+  --node-workflow: #e91e63;
+  --node-generic: #64748b;
 
   /* Theme Structural Colors */
-  --bg-primary: #0F172A;
-  --bg-secondary: #1E293B;
-  --bg-panel: #1E293B;
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-panel: #1e293b;
   --bg-input: #020617;
-  --bg-node: #1E293B;
+  --bg-node: #1e293b;
   --bg-node-hover: #334155;
 
-  --text-primary: #F8FAFC;
-  --text-secondary: #CBD5E1;
-  --text-muted: #64748B;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
 
   --border-color: #334155;
   --border-highlight: #475569;
@@ -64,7 +64,12 @@
 }
 
 body {
-  font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    "Plus Jakarta Sans",
+    system-ui,
+    -apple-system,
+    sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
   height: 100vh;

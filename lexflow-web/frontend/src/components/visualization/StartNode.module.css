@@ -4,14 +4,17 @@
 
 .card {
   fill: var(--bg-node);
-  stroke: #22C55E;
+  stroke: #22c55e;
   stroke-width: 2;
-  transition: stroke 0.15s ease, stroke-width 0.15s ease, filter 0.15s ease;
+  transition:
+    stroke 0.15s ease,
+    stroke-width 0.15s ease,
+    filter 0.15s ease;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 .startNodeGroup:hover .card {
-  stroke: #4ADE80;
+  stroke: #4ade80;
   stroke-width: 2.5;
   filter: drop-shadow(0 4px 8px rgba(34, 197, 94, 0.3));
 }
@@ -23,7 +26,7 @@
 }
 
 .colorBar {
-  fill: #22C55E;
+  fill: #22c55e;
   pointer-events: none;
 }
 
@@ -40,13 +43,13 @@
 .interfaceLabel {
   font-size: 9px;
   fill: var(--text-secondary);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
 }
 
 .variable {
   font-size: 10px;
-  font-family: 'JetBrains Mono', monospace;
-  fill: #4ADE80;
+  font-family: "JetBrains Mono", monospace;
+  fill: #4ade80;
 }
 
 .moreVars {
@@ -58,19 +61,19 @@
 /* Output port */
 .outputPort {
   fill: var(--bg-secondary);
-  stroke: #22C55E;
+  stroke: #22c55e;
   stroke-width: 2;
   transition: all 0.15s ease;
 }
 
 .startNodeGroup:hover .outputPort {
-  stroke: #4ADE80;
+  stroke: #4ade80;
   fill: var(--bg-panel);
 }
 
 .outputPort:hover {
-  fill: #22C55E;
-  filter: drop-shadow(0 0 4px #22C55E);
+  fill: #22c55e;
+  filter: drop-shadow(0 0 4px #22c55e);
 }
 
 /* Drag handle for free layout mode */

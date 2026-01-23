@@ -127,12 +127,6 @@ export interface LoopConfig {
   condition?: FormattedValue;
 }
 
-// Node category colors (Scratch-inspired)
-export const NODE_COLORS: Record<NodeType | string, string> = {
-  control_flow: "#FF9500", // Orange - control
-  data: "#4CAF50", // Green - data
-  io: "#22D3EE", // Cyan - I/O
-  operator: "#9C27B0", // Purple - math/operators
-  workflow_op: "#E91E63", // Magenta - workflow calls
-  opcode: "#64748B", // Slate - generic
-};
+// Node colors are now exported from constants/index.ts
+// Re-export for backwards compatibility
+export { NODE_COLORS } from "../constants";

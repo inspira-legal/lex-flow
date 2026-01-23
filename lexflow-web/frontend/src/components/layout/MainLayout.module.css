@@ -29,8 +29,11 @@
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  background:
-    radial-gradient(circle, var(--canvas-dot-color) var(--canvas-dot-size), transparent var(--canvas-dot-size));
+  background: radial-gradient(
+    circle,
+    var(--canvas-dot-color) var(--canvas-dot-size),
+    transparent var(--canvas-dot-size)
+  );
   background-size: var(--canvas-dot-gap) var(--canvas-dot-gap);
   background-position: center center;
 }
