@@ -13,22 +13,11 @@ import { NODE_WIDTH } from "../../utils/wireUtils";
 import {
   calculateReporterTotalHeight,
   formatValueShort,
+  getBranchColor,
 } from "../../services/layout/LayoutService";
+import { useNodePorts } from "../../hooks";
 import styles from "./WorkflowNode.module.css";
 
-// Branch slot colors matching Canvas.tsx getBranchColor
-const BRANCH_COLORS: Record<string, string> = {
-  THEN: "#34D399", // Green
-  ELSE: "#F87171", // Red
-  BODY: "#22D3EE", // Cyan
-  TRY: "#3B82F6", // Blue
-  FINALLY: "#FACC15", // Yellow
-};
-
-function getBranchColor(name: string): string {
-  if (name.startsWith("CATCH")) return "#F87171"; // Red
-  return BRANCH_COLORS[name] || "#9C27B0"; // Purple default
-}
 
 // Get available branch slots for a control flow opcode
 function getBranchSlots(
@@ -121,8 +110,7 @@ export function WorkflowNode({
   zoom = 1,
   onDrag,
 }: WorkflowNodeProps) {
-  const { selectedNodeId, selectNode, connectNodes, opcodes } =
-    useWorkflowStore();
+  const { selectedNodeId, selectNode, opcodes } = useWorkflowStore();
   const {
     openNodeEditor,
     nodeStatus,
@@ -130,7 +118,6 @@ export function WorkflowNode({
     selectReporter,
     selectedReporter,
     draggingWire,
-    setDraggingWire,
     draggingOrphan,
     setDraggingOrphan,
     draggingVariable,
@@ -160,126 +147,29 @@ export function WorkflowNode({
   // Track if we just dragged to prevent opening editor after drag
   const justDraggedRef = useRef(false);
 
+  // Use node ports hook for wire connection handling
+  const {
+    handleOutputPortMouseDown,
+    handleInputPortMouseDown,
+    handleOutputPortMouseUp,
+    handleInputPortMouseUp,
+    handleBranchPortMouseDown,
+    isInputPortHighlighted,
+    isOutputPortHighlighted,
+    isValidDropTarget,
+    isValidOutputDropTarget,
+  } = useNodePorts({ nodeId: node.id, x, y });
+
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Don't open editor if we just finished dragging
     if (justDraggedRef.current) {
       justDraggedRef.current = false;
       return;
     }
     selectNode(node.id);
-    selectReporter(null); // Clear any selected reporter
+    selectReporter(null);
     openNodeEditor();
   };
-
-  // Handle dragging from output port
-  const handleOutputPortMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    // Start wire dragging from this node's output port
-    const outputX = x + NODE_WIDTH; // Output port is at right edge of node
-    const outputY = y + 30; // Port is at vertical center (approximately)
-    setDraggingWire({
-      sourceNodeId: node.id,
-      sourcePort: "output",
-      sourceX: outputX,
-      sourceY: outputY,
-      dragX: outputX,
-      dragY: outputY,
-      nearbyPort: null,
-    });
-  };
-
-  // Handle dragging from a branch output port (at bottom of node)
-  const handleBranchPortMouseDown = (
-    e: React.MouseEvent,
-    branchName: string,
-    portX: number,
-    portY: number,
-  ) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const outputX = x + portX;
-    const outputY = y + portY;
-    setDraggingWire({
-      sourceNodeId: node.id,
-      sourcePort: "output",
-      sourceX: outputX,
-      sourceY: outputY,
-      dragX: outputX,
-      dragY: outputY,
-      nearbyPort: null,
-      branchLabel: branchName,
-    });
-  };
-
-  // Handle dragging from input port (reverse direction)
-  const handleInputPortMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-
-    // Start wire drag from input port (reverse direction)
-    const inputX = x; // Input port is at left edge
-    const inputY = y + 30;
-    setDraggingWire({
-      sourceNodeId: node.id,
-      sourcePort: "input",
-      sourceX: inputX,
-      sourceY: inputY,
-      dragX: inputX,
-      dragY: inputY,
-      nearbyPort: null,
-    });
-  };
-
-  // Handle completing connection when dragging from input to output
-  const handleOutputPortMouseUp = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (
-      draggingWire &&
-      draggingWire.sourcePort === "input" &&
-      draggingWire.sourceNodeId !== node.id
-    ) {
-      // Connect this node's output to the source node's input
-      connectNodes(node.id, draggingWire.sourceNodeId);
-      setDraggingWire(null);
-    }
-  };
-
-  // Handle dropping on input port
-  const handleInputPortMouseUp = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    // Only complete connection when dragging from output port
-    if (
-      draggingWire &&
-      draggingWire.sourcePort === "output" &&
-      draggingWire.sourceNodeId !== node.id
-    ) {
-      connectNodes(draggingWire.sourceNodeId, node.id);
-      setDraggingWire(null);
-    }
-  };
-
-  // Check if this node's ports should be highlighted based on proximity
-  const isInputPortHighlighted =
-    draggingWire?.nearbyPort?.nodeId === node.id &&
-    draggingWire?.nearbyPort?.port === "input";
-  const isOutputPortHighlighted =
-    draggingWire?.nearbyPort?.nodeId === node.id &&
-    draggingWire?.nearbyPort?.port === "output";
-
-  // Is this node a valid drop target for output port (when dragging from output)?
-  const isValidDropTarget =
-    draggingWire &&
-    draggingWire.sourcePort === "output" &&
-    draggingWire.sourceNodeId !== node.id;
-  // Is this node a valid drop target for input port (when dragging from input)?
-  const isValidOutputDropTarget =
-    draggingWire &&
-    draggingWire.sourcePort === "input" &&
-    draggingWire.sourceNodeId !== node.id;
 
   // Handle orphan drag start (for orphan-to-reporter conversion)
   const handleOrphanDragStart = (e: React.MouseEvent) => {

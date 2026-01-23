@@ -6,3 +6,5 @@ export { useWorkflowState } from "./useWorkflowState";
 export { useSelection } from "./useSelection";
 export { useExecution } from "./useExecution";
 export { useCanvasView } from "./useCanvasView";
+export { useCanvasInteraction } from "./useCanvasInteraction";
+export { useNodePorts } from "./useNodePorts";
