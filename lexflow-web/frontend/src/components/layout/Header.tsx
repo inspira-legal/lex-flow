@@ -1,6 +1,11 @@
 import { useRef } from "react";
 import { useWorkflowStore, useUiStore } from "../../store";
 import { useBackendProvider, supportsExamples } from "../../providers";
+import {
+  extractMetadata,
+  injectMetadata,
+  createMetadataFromState,
+} from "../../services/metadata";
 import styles from "./Header.module.css";
 
 const DEFAULT_WORKFLOW = `workflows:
@@ -32,8 +37,44 @@ export function Header() {
     }
   };
 
-  const handleExport = () => {
-    const blob = new Blob([source], { type: "text/yaml" });
+  const handleExport = async () => {
+    const { nodePositions, workflowPositions, layoutMode, zoom, panX, panY } =
+      useUiStore.getState();
+
+    const metadata = createMetadataFromState(
+      layoutMode,
+      nodePositions,
+      workflowPositions,
+      zoom,
+      panX,
+      panY,
+    );
+
+    const sourceWithMetadata = injectMetadata(source, metadata);
+    const blob = new Blob([sourceWithMetadata], { type: "text/yaml" });
+
+    // Use File System Access API if available (Chromium browsers)
+    if ("showSaveFilePicker" in window) {
+      try {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: "workflow.yaml",
+          types: [
+            {
+              description: "YAML files",
+              accept: { "text/yaml": [".yaml", ".yml"] },
+            },
+          ],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+      }
+    }
+
+    // Fallback for Firefox and others
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -53,7 +94,33 @@ export function Header() {
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
+
+      // Extract metadata before setting source
+      const metadata = extractMetadata(content);
+
+      // Set source (triggers parsing + canvas render)
       setSource(content);
+
+      // Apply metadata if present
+      if (metadata) {
+        const ui = useUiStore.getState();
+
+        ui.resetNodePositions();
+        ui.resetWorkflowPositions();
+        ui.setLayoutMode(metadata.layout.mode);
+
+        for (const [id, pos] of Object.entries(metadata.layout.nodePositions)) {
+          ui.setNodePosition(id, pos.x, pos.y);
+        }
+        for (const [name, pos] of Object.entries(
+          metadata.layout.workflowPositions,
+        )) {
+          ui.setWorkflowPosition(name, pos.x, pos.y);
+        }
+
+        ui.setZoom(metadata.viewport.zoom);
+        ui.setPan(metadata.viewport.panX, metadata.viewport.panY);
+      }
     };
     reader.readAsText(file);
 

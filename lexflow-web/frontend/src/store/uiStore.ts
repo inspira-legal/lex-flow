@@ -174,7 +174,7 @@ export const useUiStore = create<UiState>((set) => ({
   setIsDraggingWorkflow: (dragging) => set({ isDraggingWorkflow: dragging }),
 
   // Panels
-  isEditorOpen: true,
+  isEditorOpen: false,
   isNodeEditorOpen: false,
   isPaletteOpen: false,
   isExecutionPanelOpen: true,
@@ -253,7 +253,7 @@ export const useUiStore = create<UiState>((set) => ({
     }),
 
   // Layout mode
-  layoutMode: "auto",
+  layoutMode: "free",
   setLayoutMode: (mode) => set({ layoutMode: mode }),
 
   // Node dragging
