@@ -1,0 +1,132 @@
+# HTML Render Demo
+# Demonstrates the web_render opcode for displaying raw HTML content
+# Run this with the web frontend: lexflow-web examples/web/html_render_demo.yaml
+
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      user_name: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: render_header
+        inputs: {}
+
+      # Basic HTML rendering with styled header
+      render_header:
+        opcode: web_render
+        next: render_intro
+        inputs:
+          html:
+            literal: "<div style=\"text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin-bottom: 20px;\"><h1 style=\"color: white; margin: 0; font-size: 2em;\">HTML Render Demo</h1><p style=\"color: rgba(255,255,255,0.9); margin-top: 10px;\">Showcasing the web_render opcode</p></div>"
+
+      # Render formatted introduction
+      render_intro:
+        opcode: web_render
+        next: save_name
+        inputs:
+          html:
+            literal: "<div style=\"padding: 15px; background: #f8f9fa; border-left: 4px solid #667eea; border-radius: 4px; margin-bottom: 20px;\"><p style=\"margin: 0;\"><strong>Welcome!</strong> This workflow demonstrates various ways to use the <code>web_render</code> opcode to display rich HTML content.</p></div>"
+
+      # Get user's name
+      ask_name:
+        opcode: web_input
+        isReporter: true
+        inputs:
+          prompt:
+            literal: "Enter your name for a personalized demo:"
+
+      save_name:
+        opcode: data_set_variable_to
+        next: render_greeting
+        inputs:
+          VARIABLE:
+            literal: "user_name"
+          VALUE:
+            node: ask_name
+
+      # Build personalized HTML greeting
+      build_greeting_html:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "<div style=\"padding: 20px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; margin-bottom: 20px;\"><h2 style=\"color: #155724; margin: 0 0 10px 0;\">Hello, "
+          right:
+            node: greeting_close
+
+      greeting_close:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: user_name
+          right:
+            literal: "!</h2><p style=\"color: #155724; margin: 0;\">Your personalized HTML greeting was dynamically generated.</p></div>"
+
+      render_greeting:
+        opcode: web_render
+        next: render_feature_cards
+        inputs:
+          html:
+            node: build_greeting_html
+
+      # Render feature cards using HTML grid
+      render_feature_cards:
+        opcode: web_render
+        next: render_code_example
+        inputs:
+          html:
+            literal: "<h3 style=\"margin-bottom: 15px;\">Feature Highlights</h3><div style=\"display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;\"><div style=\"padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);\"><h4 style=\"margin: 0 0 8px 0; color: #667eea;\">Fast</h4><p style=\"margin: 0; color: #666; font-size: 0.9em;\">Render HTML instantly in your workflows</p></div><div style=\"padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);\"><h4 style=\"margin: 0 0 8px 0; color: #667eea;\">Flexible</h4><p style=\"margin: 0; color: #666; font-size: 0.9em;\">Full CSS styling support</p></div><div style=\"padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);\"><h4 style=\"margin: 0 0 8px 0; color: #667eea;\">Dynamic</h4><p style=\"margin: 0; color: #666; font-size: 0.9em;\">Build HTML from workflow variables</p></div></div>"
+
+      # Show a code example in styled HTML
+      render_code_example:
+        opcode: web_render
+        next: render_table_section
+        inputs:
+          html:
+            literal: "<div style=\"margin-bottom: 20px;\"><h3 style=\"margin-bottom: 10px;\">Example Usage</h3><pre style=\"background: #2d3748; color: #e2e8f0; padding: 15px; border-radius: 8px; overflow-x: auto; font-family: monospace; font-size: 0.9em;\">render_html:\n  opcode: web_render\n  next: next_node\n  inputs:\n    html:\n      literal: \"&lt;h1&gt;Hello World&lt;/h1&gt;\"</pre></div>"
+
+      # Render a styled table
+      render_table_section:
+        opcode: web_render
+        next: ask_continue
+        inputs:
+          html:
+            literal: "<h3 style=\"margin-bottom: 10px;\">Sample Data Table</h3><table style=\"width: 100%; border-collapse: collapse; margin-bottom: 20px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);\"><thead><tr style=\"background: #667eea; color: white;\"><th style=\"padding: 12px; text-align: left;\">Feature</th><th style=\"padding: 12px; text-align: left;\">Status</th><th style=\"padding: 12px; text-align: center;\">Rating</th></tr></thead><tbody><tr style=\"border-bottom: 1px solid #e2e8f0;\"><td style=\"padding: 12px;\">HTML Rendering</td><td style=\"padding: 12px;\"><span style=\"background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;\">Active</span></td><td style=\"padding: 12px; text-align: center;\">*****</td></tr><tr style=\"border-bottom: 1px solid #e2e8f0;\"><td style=\"padding: 12px;\">CSS Styling</td><td style=\"padding: 12px;\"><span style=\"background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;\">Active</span></td><td style=\"padding: 12px; text-align: center;\">*****</td></tr><tr><td style=\"padding: 12px;\">Dynamic Content</td><td style=\"padding: 12px;\"><span style=\"background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;\">Active</span></td><td style=\"padding: 12px; text-align: center;\">*****</td></tr></tbody></table>"
+
+      # Ask if user wants to see animation
+      confirm_animation:
+        opcode: web_confirm
+        isReporter: true
+        inputs:
+          message:
+            literal: "Would you like to see an animated HTML demo?"
+
+      ask_continue:
+        opcode: control_if
+        next: render_footer
+        inputs:
+          CONDITION:
+            node: confirm_animation
+          THEN:
+            branch: render_animation
+
+      # Render animated content
+      render_animation:
+        opcode: web_render
+        next: null
+        inputs:
+          html:
+            literal: "<style>@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } } @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }</style><div style=\"text-align: center; padding: 30px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 15px; margin-bottom: 20px; animation: fadeIn 0.5s ease-out;\"><div style=\"font-size: 4em; animation: pulse 2s ease-in-out infinite;\">!</div><h2 style=\"color: white; margin: 15px 0 10px 0;\">Animation Demo!</h2><p style=\"color: rgba(255,255,255,0.9); margin: 0;\">CSS animations work with web_render too!</p></div>"
+
+      # Final footer
+      render_footer:
+        opcode: web_render
+        next: null
+        inputs:
+          html:
+            literal: "<div style=\"text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px; border-top: 3px solid #667eea;\"><p style=\"margin: 0; color: #666;\">Demo Complete!</p><p style=\"margin: 8px 0 0 0; color: #999; font-size: 0.9em;\">Powered by LexFlow web_render opcode</p></div>"

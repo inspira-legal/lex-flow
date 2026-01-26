@@ -4,10 +4,11 @@ import { create } from "zustand";
 
 // Types for web opcodes
 export interface PendingPrompt {
-  type: "input" | "select" | "confirm";
+  type: "input" | "select" | "confirm" | "button";
   prompt: string;
   options?: string[]; // for select
   message?: string; // for confirm
+  label?: string; // for button
 }
 
 export interface RenderedContent {

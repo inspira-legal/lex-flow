@@ -120,6 +120,18 @@ export function PromptOverlay({ prompt, onSubmit }: PromptOverlayProps) {
             </div>
           </div>
         )}
+
+        {prompt.type === "button" && (
+          <div className={styles.buttonPrompt}>
+            <button
+              className={styles.actionButton}
+              onClick={() => onSubmit(true)}
+              autoFocus
+            >
+              {prompt.label || "Click"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

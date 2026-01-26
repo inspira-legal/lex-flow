@@ -30,6 +30,8 @@ export function Canvas() {
     setLayoutMode,
     selectedConnection,
     selectConnection,
+    setLayoutGroups,
+    setCanvasCenter,
   } = useUiStore();
   const { tree, parseError, disconnectConnection } = useWorkflowStore();
 
@@ -98,6 +100,46 @@ export function Canvas() {
       centerY: (defaultBounds.maxY + defaultBounds.minY) / 2,
     };
   }, [tree]);
+
+  // Sync layout groups to UI store for drop target detection
+  // Use JSON.stringify to avoid infinite loop from new array reference on each render
+  const groupsJson = JSON.stringify(groups);
+  useEffect(() => {
+    setLayoutGroups(groups);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupsJson, setLayoutGroups]);
+
+  // Sync canvas center to UI store for coordinate transformation in DragPreview
+  useEffect(() => {
+    setCanvasCenter(centerX, centerY);
+  }, [centerX, centerY, setCanvasCenter]);
+
+  // Handle goto-workflow event (navigate canvas to a workflow's position)
+  useEffect(() => {
+    const handleGoToWorkflow = (e: Event) => {
+      const customEvent = e as CustomEvent<{ workflowName: string }>;
+      const targetName = customEvent.detail.workflowName;
+
+      // Find the workflow group
+      const group = groups.find((g) => g.name === targetName);
+      if (!group) return;
+
+      // Calculate pan to center the workflow in the viewport
+      const viewportCenterX = canvasSize.width / 2;
+      const viewportCenterY = canvasSize.height / 2;
+      const workflowCenterX = group.x + group.width / 2;
+      const workflowCenterY = group.y + group.height / 2;
+
+      // Calculate the offset from current center
+      const newPanX = viewportCenterX - workflowCenterX * zoom - (canvasSize.width / 2 - centerX * zoom);
+      const newPanY = viewportCenterY - workflowCenterY * zoom - (canvasSize.height / 2 - centerY * zoom);
+
+      setPan(newPanX, newPanY);
+    };
+
+    window.addEventListener("lexflow:goto-workflow", handleGoToWorkflow);
+    return () => window.removeEventListener("lexflow:goto-workflow", handleGoToWorkflow);
+  }, [groups, zoom, setPan, canvasSize, centerX, centerY]);
 
   // Use canvas interaction hook
   const {

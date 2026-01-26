@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import type { FormattedValue, OpcodeInterface } from "../api/types";
+import type { LayoutWorkflowGroup } from "../services/layout/LayoutService";
 
 // Slot position (absolute canvas coordinates)
 export interface SlotPosition {
@@ -60,6 +61,12 @@ export interface DraggingVariable {
   fromY: number;
   toX: number;
   toY: number;
+}
+
+// Workflow call dragging info (for dragging workflow calls from palette)
+export interface DraggingWorkflowCall {
+  workflowName: string;
+  params: string[];
 }
 
 // Selected connection info
@@ -156,10 +163,22 @@ interface UiState {
   setDraggingVariable: (v: DraggingVariable | null) => void;
   updateDraggingVariableEnd: (toX: number, toY: number) => void;
 
+  // Workflow call dragging from palette
+  draggingWorkflowCall: DraggingWorkflowCall | null;
+  setDraggingWorkflowCall: (wc: DraggingWorkflowCall | null) => void;
+
   // Slot positions registry (single source of truth for wire endpoints)
   slotPositions: Record<string, NodeSlotPositions>;
   registerSlotPositions: (nodeId: string, positions: NodeSlotPositions) => void;
   unregisterSlotPositions: (nodeId: string) => void;
+
+  // Layout groups (for drop target detection)
+  layoutGroups: LayoutWorkflowGroup[];
+  setLayoutGroups: (groups: LayoutWorkflowGroup[]) => void;
+
+  // Canvas center (for coordinate transformation)
+  canvasCenter: { x: number; y: number };
+  setCanvasCenter: (x: number, y: number) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -278,6 +297,10 @@ export const useUiStore = create<UiState>((set) => ({
         : null,
     })),
 
+  // Workflow call dragging
+  draggingWorkflowCall: null,
+  setDraggingWorkflowCall: (wc) => set({ draggingWorkflowCall: wc }),
+
   // Slot positions registry
   slotPositions: {},
   registerSlotPositions: (nodeId, positions) =>
@@ -289,4 +312,12 @@ export const useUiStore = create<UiState>((set) => ({
       const { [nodeId]: _, ...rest } = s.slotPositions;
       return { slotPositions: rest };
     }),
+
+  // Layout groups
+  layoutGroups: [],
+  setLayoutGroups: (groups) => set({ layoutGroups: groups }),
+
+  // Canvas center
+  canvasCenter: { x: 400, y: 300 },
+  setCanvasCenter: (x, y) => set({ canvasCenter: { x, y } }),
 }));

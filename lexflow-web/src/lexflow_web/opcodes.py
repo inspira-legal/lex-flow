@@ -74,6 +74,16 @@ async def web_confirm(message: str) -> bool:
     return bool(response.get("value", False))
 
 
+@opcode()
+async def web_button(label: str) -> None:
+    """Display a button and wait for it to be clicked."""
+    sender = _get_sender()
+    receiver = _get_receiver()
+
+    await sender({"type": "button_request", "label": label})
+    await receiver()  # Just wait for click, no return value needed
+
+
 # =============================================================================
 # Display Opcodes (Fire-and-Forget)
 # =============================================================================

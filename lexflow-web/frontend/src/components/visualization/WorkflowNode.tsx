@@ -10,6 +10,7 @@ import type {
 } from "../../api/types";
 import { InputSlot } from "./InputSlot";
 import { NODE_WIDTH } from "../../utils/wireUtils";
+import { getInputDisplayName } from "../../utils/workflowUtils";
 import {
   calculateReporterTotalHeight,
   formatValueShort,
@@ -110,7 +111,7 @@ export function WorkflowNode({
   zoom = 1,
   onDrag,
 }: WorkflowNodeProps) {
-  const { selectedNodeId, selectNode, opcodes } = useWorkflowStore();
+  const { selectedNodeId, selectNode, opcodes, tree } = useWorkflowStore();
   const {
     openNodeEditor,
     nodeStatus,
@@ -247,12 +248,13 @@ export function WorkflowNode({
     }
   }
 
-  // Get preview of regular inputs
+  // Get preview of regular inputs with friendly display names
   const inputPreview = regularInputs
     .slice(0, 2)
     .map(({ key, value }) => {
       const formatted = formatValueShort(value);
-      return formatted ? { key, formatted } : null;
+      const displayKey = getInputDisplayName(key, node.opcode, tree, node.inputs);
+      return formatted ? { key: displayKey, formatted } : null;
     })
     .filter(Boolean) as Array<{ key: string; formatted: string }>;
 
@@ -345,6 +347,8 @@ export function WorkflowNode({
                 inputKey={key}
                 value={regularInputs[i].value}
                 paramInfo={paramInfoMap[key]}
+                opcode={node.opcode}
+                allInputs={node.inputs}
                 x={8}
                 y={52 + i * 18}
                 width={164}

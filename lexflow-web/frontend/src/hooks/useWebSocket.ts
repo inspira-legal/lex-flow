@@ -42,6 +42,11 @@ interface ConfirmRequestMessage {
   message: string;
 }
 
+interface ButtonRequestMessage {
+  type: "button_request";
+  label: string;
+}
+
 interface RenderHtmlMessage {
   type: "render_html";
   html: string;

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useWorkflowStore, useUiStore } from "../../store";
 import type { SelectedReporter } from "../../store/uiStore";
 import type { TreeNode, FormattedValue, NodeType } from "../../api/types";
+import { getInputDisplayName } from "../../utils/workflowUtils";
 import { StartNodeEditorPanel } from "./StartNodeEditorPanel";
 import styles from "./NodeEditorPanel.module.css";
 
@@ -110,6 +111,23 @@ export function NodeEditorPanel() {
             new CustomEvent("lexflow:goto-line", { detail: { line: i + 1 } }),
           );
           break;
+        }
+      }
+    }
+  };
+
+  const handleGoToWorkflowDefinition = () => {
+    if (selectedNode?.opcode === "workflow_call") {
+      const workflowInput = selectedNode.inputs["WORKFLOW"];
+      if (workflowInput && workflowInput.type === "literal") {
+        const targetName = workflowInput.value as string;
+        if (targetName) {
+          window.dispatchEvent(
+            new CustomEvent("lexflow:goto-workflow", {
+              detail: { workflowName: targetName },
+            }),
+          );
+          closeNodeEditor();
         }
       }
     }
@@ -315,7 +333,8 @@ export function NodeEditorPanel() {
             Object.entries(selectedNode.inputs).map(([key, value]) => (
               <InputField
                 key={key}
-                name={key}
+                name={getInputDisplayName(key, selectedNode.opcode, tree, selectedNode.inputs)}
+                originalKey={key}
                 value={value}
                 paramInfo={opcodeInfo?.parameters.find(
                   (p) => p.name.toUpperCase() === key,
@@ -327,6 +346,19 @@ export function NodeEditorPanel() {
             ))
           )}
         </div>
+
+        {/* Go to Definition button for workflow_call nodes */}
+        {selectedNode.opcode === "workflow_call" && (
+          <div className={styles.section}>
+            <button
+              className={styles.goToDefinitionBtn}
+              onClick={handleGoToWorkflowDefinition}
+              title="Navigate canvas to the workflow definition"
+            >
+              Go to Definition
+            </button>
+          </div>
+        )}
 
         {/* Expected parameters (from opcode definition) */}
         {opcodeInfo && opcodeInfo.parameters.length > 0 && (
@@ -556,12 +588,15 @@ function ReporterPanel({
 
 interface InputFieldProps {
   name: string;
+  originalKey?: string;
   value: FormattedValue;
   paramInfo?: { name: string; type: string; required: boolean };
   onUpdate?: (inputKey: string, newValue: string) => void;
 }
 
-function InputField({ name, value, paramInfo, onUpdate }: InputFieldProps) {
+function InputField({ name, originalKey, value, paramInfo, onUpdate }: InputFieldProps) {
+  // Use originalKey for updates if provided, otherwise use name
+  const keyForUpdate = originalKey || name;
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
 
@@ -589,7 +624,7 @@ function InputField({ name, value, paramInfo, onUpdate }: InputFieldProps) {
 
   const handleSave = () => {
     if (onUpdate && editValue !== getEditableValue(value)) {
-      onUpdate(name, editValue);
+      onUpdate(keyForUpdate, editValue);
     }
     setIsEditing(false);
   };

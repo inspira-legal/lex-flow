@@ -605,6 +605,29 @@ export function layoutSingleWorkflow(
   };
 }
 
+// Find which workflow group contains a given point
+export function getWorkflowUnderPoint(
+  groups: LayoutWorkflowGroup[],
+  x: number,
+  y: number,
+): string | null {
+  // Sort by y position descending (bottom to top) so lower workflows take priority
+  // This handles the case where dropping near the top border of a workflow
+  const sortedGroups = [...groups].sort((a, b) => b.y - a.y);
+
+  for (const group of sortedGroups) {
+    if (
+      x >= group.x &&
+      x <= group.x + group.width &&
+      y >= group.y &&
+      y <= group.y + group.height
+    ) {
+      return group.name;
+    }
+  }
+  return null;
+}
+
 // Export as service object
 export const layoutService = {
   calculateReporterTotalHeight,
@@ -619,4 +642,5 @@ export const layoutService = {
   getBranchColor,
   layoutAllWorkflows,
   layoutSingleWorkflow,
+  getWorkflowUnderPoint,
 };

@@ -467,3 +467,20 @@
   border-color: var(--text-muted);
   color: var(--text-primary);
 }
+
+/* Go to Definition button for workflow_call */
+.goToDefinitionBtn {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  background: transparent;
+  border: 1px solid #E91E63;
+  border-radius: var(--radius);
+  color: #F48FB1;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.goToDefinitionBtn:hover {
+  background: rgba(233, 30, 99, 0.1);
+}

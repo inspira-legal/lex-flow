@@ -260,6 +260,95 @@
   text-align: center;
 }
 
+/* Workflow call items */
+.workflowItem {
+  margin: 0 8px;
+}
+
+.workflowHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: grab;
+  margin-bottom: 4px;
+  transition: all var(--transition-fast);
+}
+
+.workflowHeader:hover {
+  border-color: #E91E63;
+  transform: translateX(2px);
+}
+
+.workflowHeader:active {
+  cursor: grabbing;
+}
+
+.workflowName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #F48FB1;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.workflowParams {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.workflowDetails {
+  padding: 8px 12px;
+  margin: -4px 0 4px 0;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+}
+
+.workflowParamList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.workflowParam {
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  background: var(--border-color);
+  border-radius: 3px;
+  color: var(--text-primary);
+  font-family: "JetBrains Mono", monospace;
+}
+
+.workflowNoParams {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 8px;
+}
+
+.goToDefinitionBtn {
+  width: 100%;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  background: transparent;
+  border: 1px solid #E91E63;
+  border-radius: 4px;
+  color: #F48FB1;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.goToDefinitionBtn:hover {
+  background: rgba(233, 30, 99, 0.1);
+}
+
 /* Footer */
 .footer {
   padding: 12px 16px;

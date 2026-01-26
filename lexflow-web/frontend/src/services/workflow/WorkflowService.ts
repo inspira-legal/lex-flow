@@ -690,6 +690,7 @@ export function convertOrphanToReporter(
 
   let inputsLineIndex = -1;
   let targetInputLine = -1;
+  let targetInputIndent = -1;
 
   for (let i = range.startLine + 1; i < range.endLine; i++) {
     const line = lines[i];
@@ -703,6 +704,7 @@ export function convertOrphanToReporter(
       );
       if (inputMatch) {
         targetInputLine = i;
+        targetInputIndent = inputMatch[1].length;
         break;
       }
     }
@@ -712,10 +714,32 @@ export function convertOrphanToReporter(
     return { source, success: false };
   }
 
-  const indent = lines[targetInputLine].match(/^(\s+)/)?.[1] || "          ";
-  lines[targetInputLine] = `${indent}${inputKey}: { node: "${orphanNodeId}" }`;
+  // Find where this input value ends (handles multi-line block format YAML)
+  // Value ends when we hit a line with indent <= targetInputIndent (sibling or parent)
+  let inputValueEndLine = targetInputLine + 1;
+  while (inputValueEndLine < lines.length) {
+    const line = lines[inputValueEndLine];
+    // Empty lines or comments within the value block
+    if (line.trim() === "" || line.trim().startsWith("#")) {
+      inputValueEndLine++;
+      continue;
+    }
+    const lineIndent = line.search(/\S/);
+    // If indent is <= the input key's indent, we've left the value block
+    if (lineIndent !== -1 && lineIndent <= targetInputIndent) {
+      break;
+    }
+    inputValueEndLine++;
+  }
 
-  return { source: lines.join("\n"), success: true };
+  const indent = " ".repeat(targetInputIndent);
+  const newLines = [
+    ...lines.slice(0, targetInputLine),
+    `${indent}${inputKey}: { node: "${orphanNodeId}" }`,
+    ...lines.slice(inputValueEndLine),
+  ];
+
+  return { source: newLines.join("\n"), success: true };
 }
 
 // Delete a reporter (replace with literal placeholder)
@@ -1104,6 +1128,98 @@ export function deleteVariable(
   return { source: newLines.join("\n"), success: true };
 }
 
+// Add a workflow_call node with properly named ARG inputs
+export function addWorkflowCallNode(
+  source: string,
+  workflowName: string,
+  params: string[],
+  targetWorkflow = "main",
+): NodeResult {
+  const lines = source.split("\n");
+
+  let inTargetWorkflow = false;
+  let nodesLineIndex = -1;
+  let nodesIndent = -1;
+  let lastNodeEndIndex = -1;
+  let lastNodeIndent = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    const nameMatch = line.match(/^\s*-?\s*name:\s*(\w+)/);
+    if (nameMatch) {
+      inTargetWorkflow = nameMatch[1] === targetWorkflow;
+    }
+
+    if (inTargetWorkflow) {
+      const nodesMatch = line.match(/^(\s*)nodes:\s*$/);
+      if (nodesMatch) {
+        nodesLineIndex = i;
+        nodesIndent = nodesMatch[1].length;
+        continue;
+      }
+
+      if (nodesLineIndex !== -1) {
+        const nodeIdMatch = line.match(/^(\s+)([a-zA-Z_][a-zA-Z0-9_]*):\s*$/);
+        if (nodeIdMatch) {
+          const indent = nodeIdMatch[1].length;
+          if (indent === nodesIndent + 2) {
+            lastNodeIndent = indent;
+            let j = i + 1;
+            while (j < lines.length) {
+              const nextLine = lines[j];
+              if (nextLine.trim() === "" || nextLine.trim().startsWith("#")) {
+                j++;
+                continue;
+              }
+              const nextIndent = nextLine.search(/\S/);
+              if (nextIndent !== -1 && nextIndent <= indent) {
+                break;
+              }
+              j++;
+            }
+            lastNodeEndIndex = j;
+          }
+        }
+      }
+    }
+  }
+
+  if (nodesLineIndex === -1) {
+    return { source, nodeId: null };
+  }
+
+  const newId = generateUniqueNodeId(source, `call_${workflowName}`);
+
+  const indent = " ".repeat(
+    lastNodeIndent !== -1 ? lastNodeIndent : nodesIndent + 2,
+  );
+  const inputIndent = indent + "  ";
+  const valueIndent = inputIndent + "  ";
+
+  let nodeYaml = `${indent}${newId}:\n`;
+  nodeYaml += `${inputIndent}opcode: workflow_call\n`;
+  nodeYaml += `${inputIndent}next: null\n`;
+  nodeYaml += `${inputIndent}inputs:\n`;
+  nodeYaml += `${valueIndent}WORKFLOW: { literal: "${workflowName}" }\n`;
+
+  // Add ARG1, ARG2, etc. for each parameter
+  params.forEach((_, i) => {
+    nodeYaml += `${valueIndent}ARG${i + 1}: { literal: null }\n`;
+  });
+
+  const insertIndex =
+    lastNodeEndIndex !== -1 ? lastNodeEndIndex : nodesLineIndex + 1;
+
+  const newLines = [
+    ...lines.slice(0, insertIndex),
+    nodeYaml.trimEnd(),
+    ...lines.slice(insertIndex),
+  ];
+
+  return { source: newLines.join("\n"), nodeId: newId };
+}
+
 // Export all functions as a service object for convenience
 export const workflowService = {
   formatYamlValue,
@@ -1111,6 +1227,7 @@ export const workflowService = {
   generateUniqueNodeId,
   deleteNode,
   addNode,
+  addWorkflowCallNode,
   duplicateNode,
   updateNodeInput,
   connectNodes,

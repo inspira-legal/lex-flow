@@ -4,6 +4,7 @@ import {
   checkTypeCompatibility,
   getCompatibilityColor,
 } from "../../utils/typeCompatibility";
+import { getInputDisplayName } from "../../utils/workflowUtils";
 import styles from "./WorkflowNode.module.css";
 
 interface InputSlotProps {
@@ -11,6 +12,8 @@ interface InputSlotProps {
   inputKey: string;
   value: FormattedValue;
   paramInfo?: OpcodeParameter;
+  opcode: string;
+  allInputs: Record<string, FormattedValue>;
   x: number;
   y: number;
   width: number;
@@ -21,6 +24,8 @@ export function InputSlot({
   inputKey,
   value,
   paramInfo,
+  opcode,
+  allInputs,
   x,
   y,
   width,
@@ -31,10 +36,13 @@ export function InputSlot({
     draggingVariable,
     setDraggingVariable,
   } = useUiStore();
-  const { convertOrphanToReporter, updateNodeInput } = useWorkflowStore();
+  const { convertOrphanToReporter, updateNodeInput, tree } = useWorkflowStore();
 
   // Format the display value
   const displayValue = formatValueShort(value);
+
+  // Get friendly display name for workflow_call inputs
+  const displayKey = getInputDisplayName(inputKey, opcode, tree, allInputs);
 
   // Check if we're a valid drop target for either orphan or variable
   const isOrphanDropTarget = draggingOrphan !== null;
@@ -71,7 +79,7 @@ export function InputSlot({
   };
 
   // Determine slot styling based on drop state
-  let slotClass = styles.inputSlot;
+  const slotClass = styles.inputSlot;
   let bgClass = styles.inputSlotBg;
   if (isDropTarget) {
     bgClass += ` ${styles.dropTarget}`;
@@ -116,11 +124,11 @@ export function InputSlot({
 
       {/* Key label */}
       <text className={styles.inputKey} x={4} y={11}>
-        {inputKey}:
+        {displayKey}:
       </text>
 
       {/* Value */}
-      <text className={styles.input} x={4 + (inputKey.length + 1) * 6} y={11}>
+      <text className={styles.input} x={4 + (displayKey.length + 1) * 6} y={11}>
         {displayValue}
       </text>
 

@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import { useWorkflowStore, useUiStore } from "../../store";
 import type { OpcodeInterface } from "../../api/types";
+import { getCallableWorkflows } from "../../utils/workflowUtils";
 import styles from "./NodePalette.module.css";
 
 const CATEGORIES = [
@@ -41,10 +42,17 @@ const CATEGORIES = [
 
 export function NodePalette() {
   const { opcodes, tree } = useWorkflowStore();
-  const { togglePalette, setDraggingVariable } = useUiStore();
+  const { togglePalette, setDraggingVariable, setDraggingWorkflowCall } =
+    useUiStore();
   const [search, setSearch] = useState("");
   const [expandedCategory, setExpandedCategory] = useState<string | null>(
     "variables",
+  );
+
+  // Get callable workflows (non-main)
+  const callableWorkflows = useMemo(
+    () => getCallableWorkflows(tree),
+    [tree],
   );
 
   // Get variables from all workflows
@@ -174,6 +182,43 @@ export function NodePalette() {
                 </div>
               )}
             </div>
+
+            {/* Callable Workflows category */}
+            {callableWorkflows.length > 0 && (
+              <div className={styles.category}>
+                <button
+                  className={styles.categoryHeader}
+                  onClick={() =>
+                    setExpandedCategory(
+                      expandedCategory === "workflows" ? null : "workflows",
+                    )
+                  }
+                  style={{ "--cat-color": "#E91E63" } as React.CSSProperties}
+                >
+                  <span className={styles.categoryIcon}>fn</span>
+                  <span className={styles.categoryLabel}>Workflows</span>
+                  <span className={styles.categoryCount}>
+                    {callableWorkflows.length}
+                  </span>
+                  <span className={styles.expandIcon}>
+                    {expandedCategory === "workflows" ? "▼" : "▶"}
+                  </span>
+                </button>
+
+                {expandedCategory === "workflows" && (
+                  <div className={styles.categoryItems}>
+                    {callableWorkflows.map((wf) => (
+                      <WorkflowCallItem
+                        key={wf.name}
+                        name={wf.name}
+                        params={wf.params}
+                        onDragStart={setDraggingWorkflowCall}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {CATEGORIES.map((cat) => (
               <div key={cat.id} className={styles.category}>
@@ -425,4 +470,100 @@ function formatVariableValue(value: unknown): string {
     return str;
   }
   return String(value);
+}
+
+interface WorkflowCallItemProps {
+  name: string;
+  params: string[];
+  onDragStart: (wc: { workflowName: string; params: string[] }) => void;
+}
+
+function WorkflowCallItem({
+  name,
+  params,
+  onDragStart,
+}: WorkflowCallItemProps) {
+  const { togglePalette } = useUiStore();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const isDraggingRef = useRef(false);
+  const startPosRef = useRef({ x: 0, y: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    startPosRef.current = { x: e.clientX, y: e.clientY };
+    isDraggingRef.current = false;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      moveEvent.preventDefault();
+      const dx = Math.abs(moveEvent.clientX - startPosRef.current.x);
+      const dy = Math.abs(moveEvent.clientY - startPosRef.current.y);
+
+      if (!isDraggingRef.current && (dx > 5 || dy > 5)) {
+        isDraggingRef.current = true;
+        onDragStart({ workflowName: name, params });
+        togglePalette();
+      }
+    };
+
+    // DragPreview handles clearing the state on mouseUp
+    const handleMouseUp = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleGoToDefinition = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.dispatchEvent(
+      new CustomEvent("lexflow:goto-workflow", { detail: { workflowName: name } }),
+    );
+    togglePalette();
+  };
+
+  return (
+    <div className={styles.workflowItem}>
+      <button
+        className={styles.workflowHeader}
+        onMouseDown={handleMouseDown}
+        onClick={() => {
+          if (!isDraggingRef.current) {
+            setIsExpanded(!isExpanded);
+          }
+        }}
+      >
+        <span className={styles.workflowName}>{name}</span>
+        <span className={styles.workflowParams}>
+          {params.length === 0 ? "(no params)" : `(${params.length} params)`}
+        </span>
+      </button>
+
+      {isExpanded && (
+        <div className={styles.workflowDetails}>
+          {params.length > 0 ? (
+            <div className={styles.workflowParamList}>
+              <span className={styles.paramsLabel}>Parameters:</span>
+              {params.map((param, i) => (
+                <span key={param} className={styles.workflowParam}>
+                  ARG{i + 1}: {param}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className={styles.workflowNoParams}>
+              This workflow has no input parameters.
+            </p>
+          )}
+          <button
+            className={styles.goToDefinitionBtn}
+            onClick={handleGoToDefinition}
+          >
+            Go to Definition
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
