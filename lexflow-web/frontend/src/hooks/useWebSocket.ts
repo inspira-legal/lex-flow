@@ -92,6 +92,7 @@ type ServerMessage =
   | InputRequestMessage
   | SelectRequestMessage
   | ConfirmRequestMessage
+  | ButtonRequestMessage
   | RenderHtmlMessage
   | RenderMarkdownMessage
   | RenderTableMessage
@@ -228,6 +229,14 @@ export function useWebSocketExecution() {
                 type: "confirm",
                 prompt: data.message,
                 message: data.message,
+              });
+              break;
+
+            case "button_request":
+              setPendingPrompt({
+                type: "button",
+                prompt: data.label,
+                label: data.label,
               });
               break;
 
