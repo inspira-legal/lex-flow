@@ -435,6 +435,7 @@ export function connectBranch(
   const branchValueIndent = " ".repeat(inputsIndent + 4);
 
   let branchLabelLine = -1;
+  let inlineBranchLine = -1; // Track inline format like: BODY: { literal: null }
   let inputsEndLine = inputsLine + 1;
 
   while (inputsEndLine < lines.length) {
@@ -446,9 +447,17 @@ export function connectBranch(
     const lineIndent = line.match(/^(\s*)/)?.[1].length || 0;
     if (lineIndent <= inputsIndent && line.trim()) break;
 
+    // Check for block-style label: BODY:
     const labelMatch = line.match(/^\s+([A-Z]+\d*):\s*$/);
     if (labelMatch && labelMatch[1] === branchLabel) {
       branchLabelLine = inputsEndLine;
+      break;
+    }
+
+    // Check for inline-style label: BODY: { literal: null } or BODY: { branch: xyz }
+    const inlineMatch = line.match(/^\s+([A-Z]+\d*):\s*\{.*\}\s*$/);
+    if (inlineMatch && inlineMatch[1] === branchLabel) {
+      inlineBranchLine = inputsEndLine;
       break;
     }
     inputsEndLine++;
@@ -543,6 +552,34 @@ export function connectBranch(
       );
       return { source: lines.join("\n"), success: true };
     }
+  } else if (inlineBranchLine !== -1) {
+    // Handle inline format: BODY: { literal: null } -> convert to block format
+    const inlineIndent =
+      lines[inlineBranchLine].match(/^(\s*)/)?.[1].length || 0;
+    const valueIndent = " ".repeat(inlineIndent + 2);
+
+    if (isCatchBranch) {
+      // For CATCH branches, create the full CATCH structure
+      const catchBodyIndent = " ".repeat(inlineIndent + 2);
+      const catchBranchIndent = " ".repeat(inlineIndent + 4);
+      lines.splice(
+        inlineBranchLine,
+        1, // Remove the inline line
+        `${" ".repeat(inlineIndent)}${branchLabel}:`,
+        `${catchBodyIndent}exception_type: "Exception"`,
+        `${catchBodyIndent}body:`,
+        `${catchBranchIndent}branch: ${toNodeId}`,
+      );
+    } else {
+      // For non-CATCH branches (BODY, THEN, ELSE, FINALLY), convert to block format
+      lines.splice(
+        inlineBranchLine,
+        1, // Remove the inline line
+        `${" ".repeat(inlineIndent)}${branchLabel}:`,
+        `${valueIndent}branch: ${toNodeId}`,
+      );
+    }
+    return { source: lines.join("\n"), success: true };
   } else {
     if (isCatchBranch) {
       const catchBodyIndent = " ".repeat(inputsIndent + 4);
