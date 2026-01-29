@@ -1,0 +1,1529 @@
+# Interactive AI-Powered Code Reviewer
+#
+# An enhanced code reviewer with CLI-like interactive experience:
+# - Prompts for missing inputs interactively
+# - Shows loading/progress indicators
+# - Rich formatted output with box drawing
+# - Supports full GitHub PR URLs
+#
+# Run:
+#   lexflow examples/showcase/ai_code_reviewer/review.yaml \
+#     --input project=YOUR_GCP_PROJECT
+#
+# Or with all inputs:
+#   lexflow examples/showcase/ai_code_reviewer/review.yaml \
+#     --input owner=anthropics \
+#     --input repo=claude-code \
+#     --input pr=123 \
+#     --input project=YOUR_GCP_PROJECT
+#
+# Or with a PR URL:
+#   lexflow examples/showcase/ai_code_reviewer/review.yaml \
+#     --input url=https://github.com/anthropics/claude-code/pull/123 \
+#     --input project=YOUR_GCP_PROJECT
+#
+# Requirements:
+#   pip install lexflow[ai]
+#   gcloud auth application-default login
+#   gh auth login
+
+workflows:
+  - name: main
+    interface:
+      inputs: [owner, repo, pr, project, location, url]
+      outputs: []
+    variables:
+      # Input parameters
+      owner: ""
+      repo: ""
+      pr: 0
+      project: ""
+      location: "us-central1"
+      url: ""
+      # URL parsing
+      url_parts: []
+      url_path: ""
+      path_parts: []
+      # PR data
+      pr_info: null
+      pr_files: null
+      pr_diff: ""
+      # Statistics
+      total_additions: 0
+      total_deletions: 0
+      files_count: 0
+      diff_size: 0
+      # AI components
+      model: null
+      reviewer_agent: null
+      review_result: ""
+      # Loop variables
+      file_index: 0
+      current_file: null
+      # Spinner tracking
+      spinner_id: 0
+      # Display helpers
+      pr_title: ""
+      pr_author: ""
+      pr_head: ""
+      pr_base: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: check_url_provided
+        inputs: {}
+
+      # ========================================================================
+      # URL PARSING (if URL provided, extract owner/repo/pr from it)
+      # ========================================================================
+      check_url_provided:
+        opcode: control_if
+        next: check_owner_empty
+        inputs:
+          CONDITION:
+            node: url_is_not_empty
+          THEN:
+            branch: parse_url_start
+          ELSE:
+            branch: null
+
+      url_is_not_empty:
+        opcode: operator_not_equals
+        isReporter: true
+        inputs:
+          left:
+            variable: url
+          right:
+            literal: ""
+
+      # Parse URL: https://github.com/owner/repo/pull/123
+      parse_url_start:
+        opcode: data_set_variable_to
+        next: extract_path_from_url
+        inputs:
+          VARIABLE:
+            literal: "url_path"
+          VALUE:
+            node: remove_github_prefix
+
+      remove_github_prefix:
+        opcode: string_replace
+        isReporter: true
+        inputs:
+          text:
+            variable: url
+          old:
+            literal: "https://github.com/"
+          new:
+            literal: ""
+
+      extract_path_from_url:
+        opcode: data_set_variable_to
+        next: extract_owner_from_url
+        inputs:
+          VARIABLE:
+            literal: "path_parts"
+          VALUE:
+            node: split_url_path
+
+      split_url_path:
+        opcode: string_split
+        isReporter: true
+        inputs:
+          text:
+            variable: url_path
+          delimiter:
+            literal: "/"
+
+      # Extract owner (index 0)
+      extract_owner_from_url:
+        opcode: data_set_variable_to
+        next: extract_repo_from_url
+        inputs:
+          VARIABLE:
+            literal: "owner"
+          VALUE:
+            node: get_owner_from_parts
+
+      get_owner_from_parts:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items:
+            variable: path_parts
+          index:
+            literal: 0
+
+      # Extract repo (index 1)
+      extract_repo_from_url:
+        opcode: data_set_variable_to
+        next: extract_pr_from_url
+        inputs:
+          VARIABLE:
+            literal: "repo"
+          VALUE:
+            node: get_repo_from_parts
+
+      get_repo_from_parts:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items:
+            variable: path_parts
+          index:
+            literal: 1
+
+      # Extract PR number (index 3, after "pull")
+      extract_pr_from_url:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "pr"
+          VALUE:
+            node: get_pr_from_parts
+
+      get_pr_from_parts:
+        opcode: int
+        isReporter: true
+        inputs:
+          value:
+            node: get_pr_string_from_parts
+
+      get_pr_string_from_parts:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items:
+            variable: path_parts
+          index:
+            literal: 3
+
+      # ========================================================================
+      # INTERACTIVE INPUT PROMPTS
+      # ========================================================================
+      check_owner_empty:
+        opcode: control_if
+        next: check_repo_empty
+        inputs:
+          CONDITION:
+            node: owner_is_empty
+          THEN:
+            branch: prompt_owner
+          ELSE:
+            branch: null
+
+      owner_is_empty:
+        opcode: operator_equals
+        isReporter: true
+        inputs:
+          left:
+            variable: owner
+          right:
+            literal: ""
+
+      prompt_owner:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "owner"
+          VALUE:
+            node: read_owner_input
+
+      read_owner_input:
+        opcode: io_input
+        isReporter: true
+        inputs:
+          prompt:
+            literal: "GitHub owner/org: "
+
+      check_repo_empty:
+        opcode: control_if
+        next: check_pr_zero
+        inputs:
+          CONDITION:
+            node: repo_is_empty
+          THEN:
+            branch: prompt_repo
+          ELSE:
+            branch: null
+
+      repo_is_empty:
+        opcode: operator_equals
+        isReporter: true
+        inputs:
+          left:
+            variable: repo
+          right:
+            literal: ""
+
+      prompt_repo:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "repo"
+          VALUE:
+            node: read_repo_input
+
+      read_repo_input:
+        opcode: io_input
+        isReporter: true
+        inputs:
+          prompt:
+            literal: "Repository name: "
+
+      check_pr_zero:
+        opcode: control_if
+        next: print_banner_top
+        inputs:
+          CONDITION:
+            node: pr_is_zero
+          THEN:
+            branch: prompt_pr
+          ELSE:
+            branch: null
+
+      pr_is_zero:
+        opcode: operator_equals
+        isReporter: true
+        inputs:
+          left:
+            variable: pr
+          right:
+            literal: 0
+
+      prompt_pr:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "pr"
+          VALUE:
+            node: convert_pr_input
+
+      convert_pr_input:
+        opcode: int
+        isReporter: true
+        inputs:
+          value:
+            node: read_pr_input
+
+      read_pr_input:
+        opcode: io_input
+        isReporter: true
+        inputs:
+          prompt:
+            literal: "PR number: "
+
+      # ========================================================================
+      # BANNER
+      # ========================================================================
+      print_banner_top:
+        opcode: io_print
+        next: print_banner_title
+        inputs:
+          STRING:
+            literal: "\n"
+
+      print_banner_title:
+        opcode: io_print
+        next: store_pr_spinner_id
+        inputs:
+          STRING:
+            literal: "    _    ___    ____          _        ____            _               \n   / \\  |_ _|  / ___|___   __| | ___  |  _ \\ _____   _(_) _____      __\n  / _ \\  | |  | |   / _ \\ / _` |/ _ \\ | |_) / _ \\ \\ / / |/ _ \\ \\ /\\ / /\n / ___ \\ | |  | |__| (_) | (_| |  __/ |  _ <  __/\\ V /| |  __/\\ V  V / \n/_/   \\_\\___|  \\____\\___/ \\__,_|\\___| |_| \\_\\___| \\_/ |_|\\___| \\_/\\_/  \n\n"
+
+      # ========================================================================
+      # FETCH PR DATA WITH LOADING INDICATORS
+      # ========================================================================
+
+      # --- Spinner 1: Fetch PR info ---
+      start_pr_spinner:
+        opcode: spinner_start
+        isReporter: true
+        inputs:
+          message:
+            node: format_pr_spinner_msg
+
+      format_pr_spinner_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Fetching PR #"
+          right:
+            node: format_pr_spinner_msg_2
+
+      format_pr_spinner_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: pr_str
+          right:
+            node: format_pr_spinner_msg_3
+
+      pr_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: pr
+
+      format_pr_spinner_msg_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " from "
+          right:
+            node: format_pr_spinner_msg_4
+
+      format_pr_spinner_msg_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: owner
+          right:
+            node: format_pr_spinner_msg_5
+
+      format_pr_spinner_msg_5:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "/"
+          right:
+            variable: repo
+
+      store_pr_spinner_id:
+        opcode: data_set_variable_to
+        next: store_pr_info
+        inputs:
+          VARIABLE:
+            literal: "spinner_id"
+          VALUE:
+            node: start_pr_spinner
+
+      # Fetch PR info (pure reporter)
+      fetch_pr_info:
+        opcode: github_get_pr_info
+        isReporter: true
+        inputs:
+          owner:
+            variable: owner
+          repo:
+            variable: repo
+          pr_number:
+            variable: pr
+
+      store_pr_info:
+        opcode: data_set_variable_to
+        next: stop_pr_spinner
+        inputs:
+          VARIABLE:
+            literal: "pr_info"
+          VALUE:
+            node: fetch_pr_info
+
+      stop_pr_spinner:
+        opcode: spinner_stop
+        next: store_pr_title
+        inputs:
+          spinner_id:
+            variable: spinner_id
+          message:
+            node: format_pr_found_msg
+          success:
+            literal: true
+
+      format_pr_found_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "PR found: \""
+          right:
+            node: format_pr_found_msg_2
+
+      format_pr_found_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: get_pr_title
+          right:
+            literal: "\""
+
+      # Store extracted values for display
+      store_pr_title:
+        opcode: data_set_variable_to
+        next: store_pr_author
+        inputs:
+          VARIABLE:
+            literal: "pr_title"
+          VALUE:
+            node: get_pr_title
+
+      get_pr_title:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: pr_info
+          key:
+            literal: "title"
+
+      store_pr_author:
+        opcode: data_set_variable_to
+        next: store_pr_head
+        inputs:
+          VARIABLE:
+            literal: "pr_author"
+          VALUE:
+            node: get_pr_author
+
+      get_pr_author:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: pr_info
+          key:
+            literal: "author"
+
+      store_pr_head:
+        opcode: data_set_variable_to
+        next: store_pr_base
+        inputs:
+          VARIABLE:
+            literal: "pr_head"
+          VALUE:
+            node: get_pr_head
+
+      get_pr_head:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: pr_info
+          key:
+            literal: "head_branch"
+
+      store_pr_base:
+        opcode: data_set_variable_to
+        next: print_newline_after_pr
+        inputs:
+          VARIABLE:
+            literal: "pr_base"
+          VALUE:
+            node: get_pr_base
+
+      get_pr_base:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: pr_info
+          key:
+            literal: "base_branch"
+
+      print_newline_after_pr:
+        opcode: io_print
+        next: store_files_spinner_id
+        inputs:
+          STRING:
+            literal: "\n"
+
+      # --- Spinner 2: Load changed files ---
+      start_files_spinner:
+        opcode: spinner_start
+        isReporter: true
+        inputs:
+          message:
+            literal: "Loading changed files"
+
+      store_files_spinner_id:
+        opcode: data_set_variable_to
+        next: store_pr_files
+        inputs:
+          VARIABLE:
+            literal: "spinner_id"
+          VALUE:
+            node: start_files_spinner
+
+      fetch_pr_files:
+        opcode: github_get_pr_files
+        isReporter: true
+        inputs:
+          owner:
+            variable: owner
+          repo:
+            variable: repo
+          pr_number:
+            variable: pr
+
+      store_pr_files:
+        opcode: data_set_variable_to
+        next: store_files_count
+        inputs:
+          VARIABLE:
+            literal: "pr_files"
+          VALUE:
+            node: fetch_pr_files
+
+      get_files_count:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          items:
+            variable: pr_files
+
+      store_files_count:
+        opcode: data_set_variable_to
+        next: calculate_stats_loop
+        inputs:
+          VARIABLE:
+            literal: "files_count"
+          VALUE:
+            node: get_files_count
+
+      # Calculate total additions/deletions
+      calculate_stats_loop:
+        opcode: control_while
+        next: stop_files_spinner
+        inputs:
+          CONDITION:
+            node: check_stat_index
+          BODY:
+            branch: process_file_stat
+
+      check_stat_index:
+        opcode: operator_less_than
+        isReporter: true
+        inputs:
+          left:
+            variable: file_index
+          right:
+            variable: files_count
+
+      process_file_stat:
+        opcode: data_set_variable_to
+        next: update_stat_additions
+        inputs:
+          VARIABLE:
+            literal: "current_file"
+          VALUE:
+            node: get_stat_file
+
+      get_stat_file:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items:
+            variable: pr_files
+          index:
+            variable: file_index
+
+      update_stat_additions:
+        opcode: data_set_variable_to
+        next: update_stat_deletions
+        inputs:
+          VARIABLE:
+            literal: "total_additions"
+          VALUE:
+            node: calc_stat_additions
+
+      calc_stat_additions:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: total_additions
+          right:
+            node: get_file_additions
+
+      get_file_additions:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_file
+          key:
+            literal: "additions"
+
+      update_stat_deletions:
+        opcode: data_set_variable_to
+        next: increment_stat_index
+        inputs:
+          VARIABLE:
+            literal: "total_deletions"
+          VALUE:
+            node: calc_stat_deletions
+
+      calc_stat_deletions:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: total_deletions
+          right:
+            node: get_file_deletions
+
+      get_file_deletions:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_file
+          key:
+            literal: "deletions"
+
+      increment_stat_index:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "file_index"
+          VALUE:
+            node: next_stat_index
+
+      next_stat_index:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: file_index
+          right:
+            literal: 1
+
+      # Stop files spinner with success message
+      stop_files_spinner:
+        opcode: spinner_stop
+        next: store_diff_spinner_id
+        inputs:
+          spinner_id:
+            variable: spinner_id
+          message:
+            node: format_files_found_msg
+          success:
+            literal: true
+
+      format_files_found_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Found "
+          right:
+            node: format_files_found_msg_2
+
+      format_files_found_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: files_count_str
+          right:
+            node: format_files_found_msg_3
+
+      files_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: files_count
+
+      format_files_found_msg_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " files changed (+"
+          right:
+            node: format_files_found_msg_4
+
+      format_files_found_msg_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: total_additions_str
+          right:
+            node: format_files_found_msg_5
+
+      total_additions_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: total_additions
+
+      format_files_found_msg_5:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " -"
+          right:
+            node: format_files_found_msg_6
+
+      format_files_found_msg_6:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: total_deletions_str
+          right:
+            literal: " lines)"
+
+      total_deletions_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: total_deletions
+
+      # --- Spinner 3: Fetch diff ---
+      start_diff_spinner:
+        opcode: spinner_start
+        isReporter: true
+        inputs:
+          message:
+            literal: "Fetching diff"
+
+      store_diff_spinner_id:
+        opcode: data_set_variable_to
+        next: store_pr_diff
+        inputs:
+          VARIABLE:
+            literal: "spinner_id"
+          VALUE:
+            node: start_diff_spinner
+
+      fetch_pr_diff:
+        opcode: github_get_pr_diff
+        isReporter: true
+        inputs:
+          owner:
+            variable: owner
+          repo:
+            variable: repo
+          pr_number:
+            variable: pr
+
+      store_pr_diff:
+        opcode: data_set_variable_to
+        next: store_diff_size
+        inputs:
+          VARIABLE:
+            literal: "pr_diff"
+          VALUE:
+            node: fetch_pr_diff
+
+      store_diff_size:
+        opcode: data_set_variable_to
+        next: stop_diff_spinner
+        inputs:
+          VARIABLE:
+            literal: "diff_size"
+          VALUE:
+            node: get_diff_size
+
+      get_diff_size:
+        opcode: string_length
+        isReporter: true
+        inputs:
+          text:
+            variable: pr_diff
+
+      stop_diff_spinner:
+        opcode: spinner_stop
+        next: print_newline_after_diff
+        inputs:
+          spinner_id:
+            variable: spinner_id
+          message:
+            node: format_diff_loaded_msg
+          success:
+            literal: true
+
+      format_diff_loaded_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Diff loaded ("
+          right:
+            node: format_diff_loaded_msg_2
+
+      format_diff_loaded_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: diff_size_str
+          right:
+            literal: " bytes)"
+
+      diff_size_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: diff_size
+
+      print_newline_after_diff:
+        opcode: io_print
+        next: print_header_box_top
+        inputs:
+          STRING:
+            literal: "\n"
+
+      # ========================================================================
+      # RICH OUTPUT: PR INFO BOX
+      # ========================================================================
+      print_header_box_top:
+        opcode: io_print
+        next: print_header_box_title
+        inputs:
+          STRING:
+            literal: "+---------------------------------------------------------------------------+\n"
+
+      print_header_box_title:
+        opcode: io_print
+        next: print_header_box_mid
+        inputs:
+          STRING:
+            literal: "|                           AI CODE REVIEW                                  |\n"
+
+      print_header_box_mid:
+        opcode: io_print
+        next: print_header_box_pr
+        inputs:
+          STRING:
+            literal: "+---------------------------------------------------------------------------+\n"
+
+      print_header_box_pr:
+        opcode: io_print
+        next: print_header_box_author
+        inputs:
+          STRING:
+            node: format_box_pr
+
+      format_box_pr:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "|  PR #"
+          right:
+            node: format_box_pr_2
+
+      format_box_pr_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: pr_str
+          right:
+            node: format_box_pr_3
+
+      format_box_pr_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: ": "
+          right:
+            node: format_box_pr_4
+
+      format_box_pr_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: pr_title
+          right:
+            literal: "\n"
+
+      print_header_box_author:
+        opcode: io_print
+        next: print_header_box_branch
+        inputs:
+          STRING:
+            node: format_box_author
+
+      format_box_author:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "|  Author: @"
+          right:
+            node: format_box_author_2
+
+      format_box_author_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: pr_author
+          right:
+            literal: "\n"
+
+      print_header_box_branch:
+        opcode: io_print
+        next: print_header_box_bottom
+        inputs:
+          STRING:
+            node: format_box_branch
+
+      format_box_branch:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "|  Branch: "
+          right:
+            node: format_box_branch_2
+
+      format_box_branch_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: pr_head
+          right:
+            node: format_box_branch_3
+
+      format_box_branch_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " -> "
+          right:
+            node: format_box_branch_4
+
+      format_box_branch_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: pr_base
+          right:
+            literal: "\n"
+
+      print_header_box_bottom:
+        opcode: io_print
+        next: print_files_header
+        inputs:
+          STRING:
+            literal: "+---------------------------------------------------------------------------+\n\n"
+
+      # ========================================================================
+      # FILES CHANGED SECTION
+      # ========================================================================
+      print_files_header:
+        opcode: io_print
+        next: reset_file_index
+        inputs:
+          STRING:
+            node: format_files_header
+
+      format_files_header:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "FILES CHANGED ("
+          right:
+            node: format_files_header_2
+
+      format_files_header_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: files_count_str
+          right:
+            node: format_files_header_3
+
+      format_files_header_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " files, +"
+          right:
+            node: format_files_header_4
+
+      format_files_header_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: total_additions_str
+          right:
+            node: format_files_header_5
+
+      format_files_header_5:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " -"
+          right:
+            node: format_files_header_6
+
+      format_files_header_6:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: total_deletions_str
+          right:
+            literal: ")\n----------------------------------------------------------------------------\n"
+
+      reset_file_index:
+        opcode: data_set_variable_to
+        next: print_files_loop
+        inputs:
+          VARIABLE:
+            literal: "file_index"
+          VALUE:
+            literal: 0
+
+      print_files_loop:
+        opcode: control_while
+        next: print_files_footer
+        inputs:
+          CONDITION:
+            node: check_file_print_index
+          BODY:
+            branch: print_file_entry
+
+      check_file_print_index:
+        opcode: operator_less_than
+        isReporter: true
+        inputs:
+          left:
+            variable: file_index
+          right:
+            variable: files_count
+
+      print_file_entry:
+        opcode: data_set_variable_to
+        next: do_print_file_line
+        inputs:
+          VARIABLE:
+            literal: "current_file"
+          VALUE:
+            node: get_print_file
+
+      get_print_file:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items:
+            variable: pr_files
+          index:
+            variable: file_index
+
+      do_print_file_line:
+        opcode: io_print
+        next: increment_print_index
+        inputs:
+          STRING:
+            node: format_file_line
+
+      format_file_line:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  "
+          right:
+            node: format_file_line_2
+
+      format_file_line_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: get_file_status_char
+          right:
+            node: format_file_line_3
+
+      get_file_status:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_file
+          key:
+            literal: "status"
+
+      get_file_status_char:
+        opcode: string_upper
+        isReporter: true
+        inputs:
+          text:
+            node: get_first_char_of_status
+
+      get_first_char_of_status:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items:
+            node: get_file_status
+          index:
+            literal: 0
+
+      format_file_line_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " "
+          right:
+            node: format_file_line_4
+
+      format_file_line_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: get_file_path
+          right:
+            node: format_file_line_5
+
+      get_file_path:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_file
+          key:
+            literal: "path"
+
+      format_file_line_5:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  +"
+          right:
+            node: format_file_line_6
+
+      format_file_line_6:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: file_additions_str
+          right:
+            node: format_file_line_7
+
+      file_additions_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_file_additions
+
+      format_file_line_7:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " -"
+          right:
+            node: format_file_line_8
+
+      format_file_line_8:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: file_deletions_str
+          right:
+            literal: "\n"
+
+      file_deletions_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_file_deletions
+
+      increment_print_index:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "file_index"
+          VALUE:
+            node: next_print_index
+
+      next_print_index:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: file_index
+          right:
+            literal: 1
+
+      print_files_footer:
+        opcode: io_print
+        next: store_ai_spinner_id
+        inputs:
+          STRING:
+            literal: "\n"
+
+      # ========================================================================
+      # AI REVIEW
+      # ========================================================================
+
+      # --- Spinner 4: AI Analysis ---
+      start_ai_spinner:
+        opcode: spinner_start
+        isReporter: true
+        inputs:
+          message:
+            literal: "Analyzing code with AI"
+
+      store_ai_spinner_id:
+        opcode: data_set_variable_to
+        next: setup_ai_model
+        inputs:
+          VARIABLE:
+            literal: "spinner_id"
+          VALUE:
+            node: start_ai_spinner
+
+      # Create Vertex AI Model
+      create_model:
+        opcode: pydantic_ai_create_vertex_model
+        isReporter: true
+        inputs:
+          model_name:
+            literal: "gemini-2.5-flash"
+          project:
+            variable: project
+          location:
+            variable: location
+
+      setup_ai_model:
+        opcode: data_set_variable_to
+        next: setup_ai_agent
+        inputs:
+          VARIABLE:
+            literal: "model"
+          VALUE:
+            node: create_model
+
+      # Create Code Reviewer Agent
+      create_reviewer:
+        opcode: pydantic_ai_create_agent
+        isReporter: true
+        inputs:
+          model:
+            variable: model
+          instructions:
+            literal: |
+              You are an expert code reviewer with deep knowledge of software engineering best practices. Your role is to provide thorough, constructive code reviews that help developers write better code.
+
+              When reviewing code, analyze:
+
+              1. BUGS & ISSUES
+                 - Logic errors and edge cases
+                 - Null/undefined handling
+                 - Race conditions
+                 - Memory leaks
+                 - Error handling gaps
+
+              2. SECURITY CONCERNS
+                 - Input validation
+                 - Authentication/authorization issues
+                 - SQL injection, XSS, CSRF vulnerabilities
+                 - Sensitive data exposure
+                 - Insecure dependencies
+
+              3. CODE QUALITY
+                 - Readability and clarity
+                 - Naming conventions
+                 - Code organization
+                 - DRY violations
+                 - Complexity and maintainability
+
+              4. BEST PRACTICES
+                 - Design patterns usage
+                 - Testing considerations
+                 - Documentation
+                 - Performance implications
+                 - API design
+
+              Format your review as:
+              - Use clear section headers with === or ---
+              - Be specific about line numbers or code snippets when possible
+              - Provide actionable suggestions, not just criticism
+              - Acknowledge good patterns when you see them
+              - End with a VERDICT section containing one of: APPROVE, REQUEST CHANGES, or COMMENT
+              - Keep the review focused and concise
+
+      setup_ai_agent:
+        opcode: data_set_variable_to
+        next: execute_ai_review
+        inputs:
+          VARIABLE:
+            literal: "reviewer_agent"
+          VALUE:
+            node: create_reviewer
+
+      # Build review prompt
+      build_review_prompt:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Please review the following pull request:\n\n"
+          right:
+            node: build_review_prompt_2
+
+      build_review_prompt_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "## PR Title\n"
+          right:
+            node: build_review_prompt_3
+
+      build_review_prompt_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: pr_title
+          right:
+            node: build_review_prompt_4
+
+      build_review_prompt_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\n\n## PR Description\n"
+          right:
+            node: build_review_prompt_5
+
+      get_pr_body:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: pr_info
+          key:
+            literal: "body"
+
+      build_review_prompt_5:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: get_pr_body
+          right:
+            node: build_review_prompt_6
+
+      build_review_prompt_6:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\n\n## Diff\n```diff\n"
+          right:
+            node: build_review_prompt_7
+
+      build_review_prompt_7:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: pr_diff
+          right:
+            node: build_review_prompt_8
+
+      build_review_prompt_8:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\n```\n\n"
+          right:
+            literal: "Provide a comprehensive code review. End with your VERDICT."
+
+      # Execute review
+      run_ai_review:
+        opcode: pydantic_ai_run
+        isReporter: true
+        inputs:
+          agent:
+            variable: reviewer_agent
+          prompt:
+            node: build_review_prompt
+
+      execute_ai_review:
+        opcode: data_set_variable_to
+        next: stop_ai_spinner
+        inputs:
+          VARIABLE:
+            literal: "review_result"
+          VALUE:
+            node: run_ai_review
+
+      stop_ai_spinner:
+        opcode: spinner_stop
+        next: print_newline_after_ai
+        inputs:
+          spinner_id:
+            variable: spinner_id
+          message:
+            literal: "Analysis complete"
+          success:
+            literal: true
+
+      print_newline_after_ai:
+        opcode: io_print
+        next: print_review_header
+        inputs:
+          STRING:
+            literal: "\n"
+
+      # ========================================================================
+      # OUTPUT AI REVIEW
+      # ========================================================================
+      print_review_header:
+        opcode: io_print
+        next: print_review_content
+        inputs:
+          STRING:
+            literal: "AI REVIEW\n----------------------------------------------------------------------------\n\n"
+
+      print_review_content:
+        opcode: io_print
+        next: print_review_footer
+        inputs:
+          STRING:
+            variable: review_result
+
+      print_review_footer:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n\n----------------------------------------------------------------------------\n                        REVIEW COMPLETE\n----------------------------------------------------------------------------\n"

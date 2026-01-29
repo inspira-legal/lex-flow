@@ -1,0 +1,946 @@
+# AI-Powered Code Reviewer
+#
+# This workflow fetches a GitHub PR, analyzes the diff with AI, and provides
+# intelligent, structured code review feedback.
+#
+# Run:
+#   lexflow examples/showcase/ai_code_reviewer/review_pr.yaml \
+#     --input owner=anthropics \
+#     --input repo=claude-code \
+#     --input pr=123 \
+#     --input project=YOUR_GCP_PROJECT
+#
+# Optional:
+#   --input location=us-central1  GCP region (default: us-central1)
+#
+# Requirements:
+#   pip install lexflow[ai]
+#   gcloud auth application-default login
+#   gh auth login
+
+workflows:
+  - name: main
+    interface:
+      inputs: [owner, repo, pr, project, location]
+      outputs: []
+    variables:
+      # Input parameters
+      owner: ""
+      repo: ""
+      pr: 0
+      project: ""
+      location: "us-central1"
+      # PR data
+      pr_info: null
+      pr_files: null
+      pr_diff: ""
+      # Statistics
+      total_additions: 0
+      total_deletions: 0
+      files_count: 0
+      # AI components
+      model: null
+      reviewer_agent: null
+      review_result: ""
+      # Loop variables
+      file_index: 0
+      current_file: null
+      files_summary: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      # ========================================================================
+      # HEADER
+      # ========================================================================
+      print_header:
+        opcode: io_print
+        next: print_header_2
+        inputs:
+          STRING:
+            literal: "\n================================================================================\n"
+
+      print_header_2:
+        opcode: io_print
+        next: print_header_3
+        inputs:
+          STRING:
+            literal: "                    AI-POWERED CODE REVIEWER\n"
+
+      print_header_3:
+        opcode: io_print
+        next: print_fetching
+        inputs:
+          STRING:
+            literal: "================================================================================\n\n"
+
+      # ========================================================================
+      # FETCH PR DATA
+      # ========================================================================
+      print_fetching:
+        opcode: io_print
+        next: store_pr_info
+        inputs:
+          STRING:
+            node: format_fetching_msg
+
+      format_fetching_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Fetching PR #"
+          right:
+            node: format_fetching_msg_2
+
+      format_fetching_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: pr_str
+          right:
+            node: format_fetching_msg_3
+
+      pr_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: pr
+
+      format_fetching_msg_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " from "
+          right:
+            node: format_fetching_msg_4
+
+      format_fetching_msg_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: owner
+          right:
+            node: format_fetching_msg_5
+
+      format_fetching_msg_5:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "/"
+          right:
+            node: format_fetching_msg_6
+
+      format_fetching_msg_6:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: repo
+          right:
+            literal: "...\n\n"
+
+      # Fetch PR info
+      fetch_pr_info:
+        opcode: github_get_pr_info
+        isReporter: true
+        inputs:
+          owner:
+            variable: owner
+          repo:
+            variable: repo
+          pr_number:
+            variable: pr
+
+      store_pr_info:
+        opcode: data_set_variable_to
+        next: store_pr_files
+        inputs:
+          VARIABLE:
+            literal: "pr_info"
+          VALUE:
+            node: fetch_pr_info
+
+      # Fetch PR files
+      fetch_pr_files:
+        opcode: github_get_pr_files
+        isReporter: true
+        inputs:
+          owner:
+            variable: owner
+          repo:
+            variable: repo
+          pr_number:
+            variable: pr
+
+      store_pr_files:
+        opcode: data_set_variable_to
+        next: store_files_count
+        inputs:
+          VARIABLE:
+            literal: "pr_files"
+          VALUE:
+            node: fetch_pr_files
+
+      # Store files count
+      get_files_count:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          items:
+            variable: pr_files
+
+      store_files_count:
+        opcode: data_set_variable_to
+        next: store_pr_diff
+        inputs:
+          VARIABLE:
+            literal: "files_count"
+          VALUE:
+            node: get_files_count
+
+      # Fetch PR diff
+      fetch_pr_diff:
+        opcode: github_get_pr_diff
+        isReporter: true
+        inputs:
+          owner:
+            variable: owner
+          repo:
+            variable: repo
+          pr_number:
+            variable: pr
+
+      store_pr_diff:
+        opcode: data_set_variable_to
+        next: print_pr_title_label
+        inputs:
+          VARIABLE:
+            literal: "pr_diff"
+          VALUE:
+            node: fetch_pr_diff
+
+      # ========================================================================
+      # PR INFO DISPLAY
+      # ========================================================================
+      print_pr_title_label:
+        opcode: io_print
+        next: print_pr_author
+        inputs:
+          STRING:
+            node: format_pr_title
+
+      get_pr_title:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: pr_info
+          key:
+            literal: "title"
+
+      format_pr_title:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "PULL REQUEST: "
+          right:
+            node: format_pr_title_2
+
+      format_pr_title_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: get_pr_title
+          right:
+            literal: "\n"
+
+      print_pr_author:
+        opcode: io_print
+        next: print_pr_url
+        inputs:
+          STRING:
+            node: format_pr_author
+
+      get_pr_author:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: pr_info
+          key:
+            literal: "author"
+
+      format_pr_author:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Author: @"
+          right:
+            node: format_pr_author_2
+
+      format_pr_author_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: get_pr_author
+          right:
+            literal: "\n"
+
+      print_pr_url:
+        opcode: io_print
+        next: print_pr_branches
+        inputs:
+          STRING:
+            node: format_pr_url
+
+      get_pr_url:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: pr_info
+          key:
+            literal: "url"
+
+      format_pr_url:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "URL: "
+          right:
+            node: format_pr_url_2
+
+      format_pr_url_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: get_pr_url
+          right:
+            literal: "\n"
+
+      print_pr_branches:
+        opcode: io_print
+        next: print_files_separator
+        inputs:
+          STRING:
+            node: format_pr_branches
+
+      get_pr_head:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: pr_info
+          key:
+            literal: "head_branch"
+
+      get_pr_base:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: pr_info
+          key:
+            literal: "base_branch"
+
+      format_pr_branches:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Branch: "
+          right:
+            node: format_pr_branches_2
+
+      format_pr_branches_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: get_pr_head
+          right:
+            node: format_pr_branches_3
+
+      format_pr_branches_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " -> "
+          right:
+            node: format_pr_branches_4
+
+      format_pr_branches_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: get_pr_base
+          right:
+            literal: "\n\n"
+
+      # ========================================================================
+      # FILES SUMMARY
+      # ========================================================================
+      print_files_separator:
+        opcode: io_print
+        next: calculate_stats_loop
+        inputs:
+          STRING:
+            literal: "--------------------------------------------------------------------------------\n                         CHANGED FILES\n--------------------------------------------------------------------------------\n\n"
+
+      # Loop through files to calculate stats and build summary
+      calculate_stats_loop:
+        opcode: control_while
+        next: print_stats_total
+        inputs:
+          CONDITION:
+            node: check_file_index
+          BODY:
+            branch: process_file_stats
+
+      check_file_index:
+        opcode: operator_less_than
+        isReporter: true
+        inputs:
+          left:
+            variable: file_index
+          right:
+            variable: files_count
+
+      # Process each file for stats
+      process_file_stats:
+        opcode: data_set_variable_to
+        next: get_file_path
+        inputs:
+          VARIABLE:
+            literal: "current_file"
+          VALUE:
+            node: get_current_file
+
+      get_current_file:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items:
+            variable: pr_files
+          index:
+            variable: file_index
+
+      get_file_path:
+        opcode: data_set_variable_to
+        next: update_additions
+        inputs:
+          VARIABLE:
+            literal: "current_path"
+          VALUE:
+            node: extract_file_path
+
+      extract_file_path:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_file
+          key:
+            literal: "path"
+
+      # Update total additions
+      extract_additions:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_file
+          key:
+            literal: "additions"
+
+      calc_new_additions:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: total_additions
+          right:
+            node: extract_additions
+
+      update_additions:
+        opcode: data_set_variable_to
+        next: update_deletions
+        inputs:
+          VARIABLE:
+            literal: "total_additions"
+          VALUE:
+            node: calc_new_additions
+
+      # Update total deletions
+      extract_deletions:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_file
+          key:
+            literal: "deletions"
+
+      calc_new_deletions:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: total_deletions
+          right:
+            node: extract_deletions
+
+      update_deletions:
+        opcode: data_set_variable_to
+        next: print_file_entry
+        inputs:
+          VARIABLE:
+            literal: "total_deletions"
+          VALUE:
+            node: calc_new_deletions
+
+      # Print file entry
+      print_file_entry:
+        opcode: io_print
+        next: increment_file_index
+        inputs:
+          STRING:
+            node: format_file_entry
+
+      extract_status:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_file
+          key:
+            literal: "status"
+
+      format_file_entry:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  "
+          right:
+            node: format_file_entry_2
+
+      format_file_entry_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: extract_file_path
+          right:
+            node: format_file_entry_3
+
+      format_file_entry_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " ("
+          right:
+            node: format_file_entry_4
+
+      format_file_entry_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: extract_status
+          right:
+            node: format_file_entry_5
+
+      format_file_entry_5:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: ": +"
+          right:
+            node: format_file_entry_6
+
+      additions_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: extract_additions
+
+      deletions_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: extract_deletions
+
+      format_file_entry_6:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: additions_str
+          right:
+            node: format_file_entry_7
+
+      format_file_entry_7:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "/-"
+          right:
+            node: format_file_entry_8
+
+      format_file_entry_8:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: deletions_str
+          right:
+            literal: ")\n"
+
+      increment_file_index:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "file_index"
+          VALUE:
+            node: next_file_index
+
+      next_file_index:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: file_index
+          right:
+            literal: 1
+
+      # Print totals
+      print_stats_total:
+        opcode: io_print
+        next: setup_ai
+        inputs:
+          STRING:
+            node: format_stats_total
+
+      total_additions_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: total_additions
+
+      total_deletions_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: total_deletions
+
+      files_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: files_count
+
+      format_stats_total:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\nTotal: "
+          right:
+            node: format_stats_total_2
+
+      format_stats_total_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: files_count_str
+          right:
+            node: format_stats_total_3
+
+      format_stats_total_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " files changed, +"
+          right:
+            node: format_stats_total_4
+
+      format_stats_total_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: total_additions_str
+          right:
+            node: format_stats_total_5
+
+      format_stats_total_5:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " additions, -"
+          right:
+            node: format_stats_total_6
+
+      format_stats_total_6:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: total_deletions_str
+          right:
+            literal: " deletions\n\n"
+
+      # ========================================================================
+      # AI SETUP
+      # ========================================================================
+      setup_ai:
+        opcode: io_print
+        next: store_model
+        inputs:
+          STRING:
+            literal: "--------------------------------------------------------------------------------\n                         AI CODE REVIEW\n--------------------------------------------------------------------------------\n\nInitializing AI reviewer...\n"
+
+      # Create Vertex AI Model
+      create_model:
+        opcode: pydantic_ai_create_vertex_model
+        isReporter: true
+        inputs:
+          model_name:
+            literal: "gemini-2.5-flash"
+          project:
+            variable: project
+          location:
+            variable: location
+
+      store_model:
+        opcode: data_set_variable_to
+        next: store_reviewer
+        inputs:
+          VARIABLE:
+            literal: "model"
+          VALUE:
+            node: create_model
+
+      # Create Code Reviewer Agent
+      create_reviewer:
+        opcode: pydantic_ai_create_agent
+        isReporter: true
+        inputs:
+          model:
+            variable: model
+          instructions:
+            literal: |
+              You are an expert code reviewer with deep knowledge of software engineering best practices. Your role is to provide thorough, constructive code reviews that help developers write better code.
+
+              When reviewing code, analyze:
+
+              1. BUGS & ISSUES
+                 - Logic errors and edge cases
+                 - Null/undefined handling
+                 - Race conditions
+                 - Memory leaks
+                 - Error handling gaps
+
+              2. SECURITY CONCERNS
+                 - Input validation
+                 - Authentication/authorization issues
+                 - SQL injection, XSS, CSRF vulnerabilities
+                 - Sensitive data exposure
+                 - Insecure dependencies
+
+              3. CODE QUALITY
+                 - Readability and clarity
+                 - Naming conventions
+                 - Code organization
+                 - DRY violations
+                 - Complexity and maintainability
+
+              4. BEST PRACTICES
+                 - Design patterns usage
+                 - Testing considerations
+                 - Documentation
+                 - Performance implications
+                 - API design
+
+              Format your review as:
+              - Use clear section headers
+              - Be specific about line numbers or code snippets when possible
+              - Provide actionable suggestions, not just criticism
+              - Acknowledge good patterns when you see them
+              - End with an overall assessment and recommendation (APPROVE, REQUEST_CHANGES, or COMMENT)
+
+      store_reviewer:
+        opcode: data_set_variable_to
+        next: print_analyzing
+        inputs:
+          VARIABLE:
+            literal: "reviewer_agent"
+          VALUE:
+            node: create_reviewer
+
+      print_analyzing:
+        opcode: io_print
+        next: run_review
+        inputs:
+          STRING:
+            literal: "Analyzing code changes...\n\n"
+
+      # ========================================================================
+      # RUN AI REVIEW
+      # ========================================================================
+      build_review_prompt:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Please review the following pull request:\n\n"
+          right:
+            node: build_review_prompt_2
+
+      build_review_prompt_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "## PR Title\n"
+          right:
+            node: build_review_prompt_3
+
+      build_review_prompt_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: get_pr_title
+          right:
+            node: build_review_prompt_4
+
+      build_review_prompt_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\n\n## PR Description\n"
+          right:
+            node: build_review_prompt_5
+
+      get_pr_body:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: pr_info
+          key:
+            literal: "body"
+
+      build_review_prompt_5:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: get_pr_body
+          right:
+            node: build_review_prompt_6
+
+      build_review_prompt_6:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\n\n## Diff\n```diff\n"
+          right:
+            node: build_review_prompt_7
+
+      build_review_prompt_7:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: pr_diff
+          right:
+            node: build_review_prompt_8
+
+      build_review_prompt_8:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\n```\n\n"
+          right:
+            literal: "Provide a comprehensive code review focusing on bugs, security, code quality, and best practices. End with your overall recommendation."
+
+      execute_review:
+        opcode: pydantic_ai_run
+        isReporter: true
+        inputs:
+          agent:
+            variable: reviewer_agent
+          prompt:
+            node: build_review_prompt
+
+      run_review:
+        opcode: data_set_variable_to
+        next: print_review_result
+        inputs:
+          VARIABLE:
+            literal: "review_result"
+          VALUE:
+            node: execute_review
+
+      # ========================================================================
+      # OUTPUT REVIEW
+      # ========================================================================
+      print_review_result:
+        opcode: io_print
+        next: print_footer
+        inputs:
+          STRING:
+            node: format_review_output
+
+      format_review_output:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: review_result
+          right:
+            literal: "\n"
+
+      # ========================================================================
+      # FOOTER
+      # ========================================================================
+      print_footer:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n================================================================================\n                         REVIEW COMPLETE\n================================================================================\n\n"

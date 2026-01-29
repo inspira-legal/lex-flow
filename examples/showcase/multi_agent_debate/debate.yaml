@@ -1,0 +1,717 @@
+# Multi-Agent Debate: AI Agents with Opposing Viewpoints
+#
+# This showcase demonstrates LexFlow's AI capabilities with multiple agents
+# interacting with each other. Two AI agents debate a topic from opposing
+# perspectives, maintaining awareness of the full debate history.
+#
+# Run:
+#   lexflow examples/showcase/multi_agent_debate/debate.yaml \
+#     --input topic="AI will replace programmers" \
+#     --input project=YOUR_GCP_PROJECT
+#
+# Optional:
+#   --input rounds=3         Number of debate rounds (default: 3)
+#   --input location=us-central1  GCP region (default: us-central1)
+#
+# Requirements:
+#   pip install lexflow[ai]
+#   gcloud auth application-default login
+
+workflows:
+  - name: main
+    interface:
+      inputs: [topic, project, rounds, location]
+      outputs: []
+    variables:
+      # Input parameters
+      topic: "AI will benefit humanity"
+      project: ""
+      rounds: 3
+      location: "us-central1"
+      # AI components
+      model: null
+      advocate_agent: null
+      critic_agent: null
+      judge_agent: null
+      # Debate state
+      debate_history: null
+      current_round: 1
+      advocate_argument: ""
+      critic_argument: ""
+      judge_verdict: ""
+      # Loop control
+      continue_debate: true
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      # ========================================================================
+      # HEADER
+      # ========================================================================
+      print_header:
+        opcode: io_print
+        next: print_separator_1
+        inputs:
+          STRING:
+            literal: "\n================================================================================\n"
+
+      print_separator_1:
+        opcode: io_print
+        next: print_title
+        inputs:
+          STRING:
+            literal: "                         MULTI-AGENT AI DEBATE\n"
+
+      print_title:
+        opcode: io_print
+        next: print_topic_label
+        inputs:
+          STRING:
+            literal: "================================================================================\n\n"
+
+      print_topic_label:
+        opcode: io_print
+        next: print_topic_value
+        inputs:
+          STRING:
+            literal: "TOPIC: "
+
+      format_topic:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: topic
+          right:
+            literal: "\n\n"
+
+      print_topic_value:
+        opcode: io_print
+        next: print_rounds_info
+        inputs:
+          STRING:
+            node: format_topic
+
+      format_rounds:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Rounds: "
+          right:
+            node: rounds_str
+
+      rounds_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: rounds
+
+      format_rounds_full:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: format_rounds
+          right:
+            literal: "\n\n"
+
+      print_rounds_info:
+        opcode: io_print
+        next: print_setup_header
+        inputs:
+          STRING:
+            node: format_rounds_full
+
+      # ========================================================================
+      # SETUP: Create AI Model and Agents
+      # ========================================================================
+      print_setup_header:
+        opcode: io_print
+        next: store_model
+        inputs:
+          STRING:
+            literal: "Setting up debate participants...\n\n"
+
+      # Create Vertex AI Model
+      create_model:
+        opcode: pydantic_ai_create_vertex_model
+        isReporter: true
+        inputs:
+          model_name:
+            literal: "gemini-2.5-flash"
+          project:
+            variable: project
+          location:
+            variable: location
+
+      store_model:
+        opcode: data_set_variable_to
+        next: store_advocate
+        inputs:
+          VARIABLE:
+            literal: "model"
+          VALUE:
+            node: create_model
+
+      # Create ADVOCATE Agent (argues IN FAVOR)
+      create_advocate:
+        opcode: pydantic_ai_create_agent
+        isReporter: true
+        inputs:
+          model:
+            variable: "model"
+          instructions:
+            literal: |
+              You are the ADVOCATE in a formal debate. Your role is to argue STRONGLY IN FAVOR of the given topic.
+
+              DEBATE RULES:
+              - Make compelling, logical arguments supporting the topic
+              - Use evidence, examples, and reasoning
+              - Directly counter your opponent's arguments when responding
+              - Be persuasive but maintain intellectual honesty
+              - Keep responses concise (2-3 paragraphs max)
+              - Do NOT acknowledge being an AI - stay in character as a debater
+
+              If this is your opening statement (no previous conversation), make a strong opening argument.
+              If you see previous exchanges, respond to and counter the Critic's latest points.
+
+              You MUST argue in FAVOR of the topic, even if you personally disagree.
+
+      store_advocate:
+        opcode: data_set_variable_to
+        next: print_advocate_ready
+        inputs:
+          VARIABLE:
+            literal: "advocate_agent"
+          VALUE:
+            node: create_advocate
+
+      print_advocate_ready:
+        opcode: io_print
+        next: store_critic
+        inputs:
+          STRING:
+            literal: "  [+] ADVOCATE ready (argues IN FAVOR)\n"
+
+      # Create CRITIC Agent (argues AGAINST)
+      create_critic:
+        opcode: pydantic_ai_create_agent
+        isReporter: true
+        inputs:
+          model:
+            variable: "model"
+          instructions:
+            literal: |
+              You are the CRITIC in a formal debate. Your role is to argue STRONGLY AGAINST the given topic.
+
+              DEBATE RULES:
+              - Make compelling, logical arguments OPPOSING the topic
+              - Use evidence, examples, and reasoning
+              - Directly counter your opponent's arguments when responding
+              - Be persuasive but maintain intellectual honesty
+              - Keep responses concise (2-3 paragraphs max)
+              - Do NOT acknowledge being an AI - stay in character as a debater
+
+              Respond to the Advocate's latest argument by countering their points.
+
+              You MUST argue AGAINST the topic, even if you personally agree with it.
+
+      store_critic:
+        opcode: data_set_variable_to
+        next: print_critic_ready
+        inputs:
+          VARIABLE:
+            literal: "critic_agent"
+          VALUE:
+            node: create_critic
+
+      print_critic_ready:
+        opcode: io_print
+        next: store_judge
+        inputs:
+          STRING:
+            literal: "  [-] CRITIC ready (argues AGAINST)\n"
+
+      # Create JUDGE Agent (evaluates the debate)
+      create_judge:
+        opcode: pydantic_ai_create_agent
+        isReporter: true
+        inputs:
+          model:
+            variable: "model"
+          instructions:
+            literal: |
+              You are an impartial JUDGE evaluating a formal debate.
+
+              YOUR TASK:
+              - Review the full debate transcript provided
+              - Evaluate the quality of arguments from both sides
+              - Consider: logic, evidence, persuasiveness, and rebuttals
+              - Declare a winner (ADVOCATE or CRITIC)
+              - Provide clear reasoning for your decision
+              - Be fair and objective
+
+              Format your response as:
+              WINNER: [ADVOCATE or CRITIC]
+              REASONING: [Your detailed analysis]
+
+      store_judge:
+        opcode: data_set_variable_to
+        next: print_judge_ready
+        inputs:
+          VARIABLE:
+            literal: "judge_agent"
+          VALUE:
+            node: create_judge
+
+      print_judge_ready:
+        opcode: io_print
+        next: store_history
+        inputs:
+          STRING:
+            literal: "  [=] JUDGE ready (will evaluate)\n\n"
+
+      # Create empty debate history
+      create_history:
+        opcode: chat_create
+        isReporter: true
+        inputs: {}
+
+      store_history:
+        opcode: data_set_variable_to
+        next: print_debate_start
+        inputs:
+          VARIABLE:
+            literal: "debate_history"
+          VALUE:
+            node: create_history
+
+      # ========================================================================
+      # DEBATE BEGINS
+      # ========================================================================
+      print_debate_start:
+        opcode: io_print
+        next: debate_loop
+        inputs:
+          STRING:
+            literal: "================================================================================\n                              LET THE DEBATE BEGIN!\n================================================================================\n"
+
+      # Main debate loop
+      debate_loop:
+        opcode: control_while
+        next: print_judge_section
+        inputs:
+          CONDITION:
+            node: check_continue
+          BODY:
+            branch: print_round_header
+
+      check_continue:
+        opcode: operator_and
+        isReporter: true
+        inputs:
+          left:
+            variable: continue_debate
+          right:
+            node: round_not_exceeded
+
+      round_not_exceeded:
+        opcode: operator_less_than_or_equals
+        isReporter: true
+        inputs:
+          left:
+            variable: current_round
+          right:
+            variable: rounds
+
+      # ========================================================================
+      # ROUND HEADER
+      # ========================================================================
+      print_round_header:
+        opcode: io_print
+        next: print_round_separator
+        inputs:
+          STRING:
+            node: round_header_text
+
+      round_header_text:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\n--------------------------------------------------------------------------------\n                                   ROUND "
+          right:
+            node: round_header_end
+
+      round_header_end:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: current_round_str
+          right:
+            literal: "\n--------------------------------------------------------------------------------\n"
+
+      current_round_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: current_round
+
+      print_round_separator:
+        opcode: io_print
+        next: get_advocate_argument
+        inputs:
+          STRING:
+            literal: "\n"
+
+      # ========================================================================
+      # ADVOCATE'S TURN
+      # ========================================================================
+      build_advocate_prompt:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "DEBATE TOPIC: "
+          right:
+            node: advocate_prompt_with_topic
+
+      advocate_prompt_with_topic:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: topic
+          right:
+            node: advocate_prompt_history
+
+      advocate_prompt_history:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\n\n"
+          right:
+            node: advocate_prompt_context
+
+      advocate_prompt_context:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: history_as_prompt
+          right:
+            literal: "\n\nMake your argument IN FAVOR of the topic."
+
+      history_as_prompt:
+        opcode: chat_to_prompt
+        isReporter: true
+        inputs:
+          history:
+            variable: debate_history
+
+      run_advocate:
+        opcode: pydantic_ai_run
+        isReporter: true
+        inputs:
+          agent:
+            variable: advocate_agent
+          prompt:
+            node: build_advocate_prompt
+
+      get_advocate_argument:
+        opcode: data_set_variable_to
+        next: print_advocate_label
+        inputs:
+          VARIABLE:
+            literal: "advocate_argument"
+          VALUE:
+            node: run_advocate
+
+      print_advocate_label:
+        opcode: io_print
+        next: print_advocate_argument
+        inputs:
+          STRING:
+            literal: "ADVOCATE [IN FAVOR]:\n\n"
+
+      format_advocate_output:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: advocate_argument
+          right:
+            literal: "\n"
+
+      print_advocate_argument:
+        opcode: io_print
+        next: add_advocate_to_history
+        inputs:
+          STRING:
+            node: format_advocate_output
+
+      # Add advocate's argument to history (as "user" from critic's perspective)
+      add_advocate_to_history:
+        opcode: chat_add_message
+        next: get_critic_argument
+        inputs:
+          history:
+            variable: debate_history
+          role:
+            literal: "user"
+          content:
+            node: format_advocate_history
+
+      format_advocate_history:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "[ADVOCATE]: "
+          right:
+            variable: advocate_argument
+
+      # ========================================================================
+      # CRITIC'S TURN
+      # ========================================================================
+      build_critic_prompt:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "DEBATE TOPIC: "
+          right:
+            node: critic_prompt_with_topic
+
+      critic_prompt_with_topic:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: topic
+          right:
+            node: critic_prompt_history
+
+      critic_prompt_history:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\n\n"
+          right:
+            node: critic_prompt_context
+
+      critic_prompt_context:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: history_as_prompt_critic
+          right:
+            literal: "\n\nCounter the Advocate's argument. Present strong arguments AGAINST the topic."
+
+      history_as_prompt_critic:
+        opcode: chat_to_prompt
+        isReporter: true
+        inputs:
+          history:
+            variable: debate_history
+
+      run_critic:
+        opcode: pydantic_ai_run
+        isReporter: true
+        inputs:
+          agent:
+            variable: critic_agent
+          prompt:
+            node: build_critic_prompt
+
+      get_critic_argument:
+        opcode: data_set_variable_to
+        next: print_critic_label
+        inputs:
+          VARIABLE:
+            literal: "critic_argument"
+          VALUE:
+            node: run_critic
+
+      print_critic_label:
+        opcode: io_print
+        next: print_critic_argument
+        inputs:
+          STRING:
+            literal: "\nCRITIC [AGAINST]:\n\n"
+
+      format_critic_output:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: critic_argument
+          right:
+            literal: "\n"
+
+      print_critic_argument:
+        opcode: io_print
+        next: add_critic_to_history
+        inputs:
+          STRING:
+            node: format_critic_output
+
+      # Add critic's argument to history
+      add_critic_to_history:
+        opcode: chat_add_message
+        next: increment_round
+        inputs:
+          history:
+            variable: debate_history
+          role:
+            literal: "assistant"
+          content:
+            node: format_critic_history
+
+      format_critic_history:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "[CRITIC]: "
+          right:
+            variable: critic_argument
+
+      # Increment round counter
+      increment_round:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "current_round"
+          VALUE:
+            node: next_round
+
+      next_round:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: current_round
+          right:
+            literal: 1
+
+      # ========================================================================
+      # JUDGE'S VERDICT
+      # ========================================================================
+      print_judge_section:
+        opcode: io_print
+        next: print_judge_header
+        inputs:
+          STRING:
+            literal: "\n\n================================================================================\n                              JUDGE'S VERDICT\n================================================================================\n\n"
+
+      print_judge_header:
+        opcode: io_print
+        next: get_judge_verdict
+        inputs:
+          STRING:
+            literal: "The judge is reviewing the debate...\n\n"
+
+      build_judge_prompt:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "DEBATE TOPIC: "
+          right:
+            node: judge_prompt_with_topic
+
+      judge_prompt_with_topic:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: topic
+          right:
+            node: judge_prompt_transcript
+
+      judge_prompt_transcript:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\n\nFULL DEBATE TRANSCRIPT:\n\n"
+          right:
+            node: judge_prompt_history
+
+      judge_prompt_history:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: format_history_for_judge
+          right:
+            literal: "\n\nBased on the above debate, evaluate the arguments and declare a winner. Consider the quality of reasoning, use of evidence, and effectiveness of rebuttals."
+
+      format_history_for_judge:
+        opcode: chat_format_for_display
+        isReporter: true
+        inputs:
+          history:
+            variable: debate_history
+
+      run_judge:
+        opcode: pydantic_ai_run
+        isReporter: true
+        inputs:
+          agent:
+            variable: judge_agent
+          prompt:
+            node: build_judge_prompt
+
+      get_judge_verdict:
+        opcode: data_set_variable_to
+        next: print_verdict_label
+        inputs:
+          VARIABLE:
+            literal: "judge_verdict"
+          VALUE:
+            node: run_judge
+
+      print_verdict_label:
+        opcode: io_print
+        next: print_verdict
+        inputs:
+          STRING:
+            literal: "--------------------------------------------------------------------------------\n                              FINAL VERDICT\n--------------------------------------------------------------------------------\n\n"
+
+      format_verdict:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: judge_verdict
+          right:
+            literal: "\n"
+
+      print_verdict:
+        opcode: io_print
+        next: print_footer
+        inputs:
+          STRING:
+            node: format_verdict
+
+      # ========================================================================
+      # FOOTER
+      # ========================================================================
+      print_footer:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n================================================================================\n                           DEBATE CONCLUDED\n================================================================================\n\n"

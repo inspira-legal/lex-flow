@@ -1,0 +1,416 @@
+# Semantic search workflow for RAG pipeline
+# Searches the Qdrant vector database for documents similar to the query
+workflows:
+  - name: main
+    interface:
+      inputs: ["query", "project", "collection", "limit", "location"]
+      outputs: []
+    variables:
+      query: ""
+      project: ""
+      collection: "documents"
+      limit: 5
+      location: "us-central1"
+      client: null
+      query_embedding: null
+      results: []
+      result_count: 0
+      result_index: 0
+      current_result: null
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_search_header
+        inputs: {}
+
+      # Print search header with query
+      print_search_header:
+        opcode: io_print
+        next: connect_qdrant
+        inputs:
+          STRING:
+            node: search_header_text
+
+      search_header_text:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            literal: "\n"
+          b:
+            node: search_header_with_query
+
+      search_header_with_query:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            literal: "Searching for: \""
+          b:
+            node: query_with_suffix
+
+      query_with_suffix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            variable: query
+          b:
+            literal: "\"\n"
+
+      # Connect to Qdrant
+      connect_qdrant:
+        opcode: data_set_variable_to
+        next: create_query_embedding
+        inputs:
+          VARIABLE:
+            literal: client
+          VALUE:
+            node: qdrant_client
+
+      qdrant_client:
+        opcode: qdrant_connect
+        isReporter: true
+        inputs: {}
+
+      # Create embedding for the query
+      create_query_embedding:
+        opcode: data_set_variable_to
+        next: search_qdrant
+        inputs:
+          VARIABLE:
+            literal: query_embedding
+          VALUE:
+            node: embed_query
+
+      embed_query:
+        opcode: embedding_create
+        isReporter: true
+        inputs:
+          text:
+            variable: query
+          project:
+            variable: project
+          location:
+            variable: location
+
+      # Search Qdrant
+      search_qdrant:
+        opcode: data_set_variable_to
+        next: get_result_count
+        inputs:
+          VARIABLE:
+            literal: results
+          VALUE:
+            node: qdrant_search_results
+
+      qdrant_search_results:
+        opcode: qdrant_search
+        isReporter: true
+        inputs:
+          client:
+            variable: client
+          collection:
+            variable: collection
+          query_vector:
+            variable: query_embedding
+          limit:
+            variable: limit
+
+      # Get number of results
+      get_result_count:
+        opcode: data_set_variable_to
+        next: print_results_header
+        inputs:
+          VARIABLE:
+            literal: result_count
+          VALUE:
+            node: count_results
+
+      count_results:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          list:
+            variable: results
+
+      # Print results header
+      print_results_header:
+        opcode: io_print
+        next: print_separator_header
+        inputs:
+          STRING:
+            node: results_header_text
+
+      results_header_text:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            literal: "\nFound "
+          b:
+            node: count_with_suffix
+
+      count_with_suffix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            node: count_as_str
+          b:
+            literal: " results:\n"
+
+      count_as_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: result_count
+
+      print_separator_header:
+        opcode: io_print
+        next: init_result_index
+        inputs:
+          STRING:
+            literal: "\n"
+
+      # Initialize result index for loop
+      init_result_index:
+        opcode: data_set_variable_to
+        next: loop_results
+        inputs:
+          VARIABLE:
+            literal: result_index
+          VALUE:
+            literal: 0
+
+      # Loop through results
+      loop_results:
+        opcode: control_foreach
+        next: print_footer
+        inputs:
+          VAR:
+            literal: "current_result"
+          ITERABLE:
+            variable: results
+          BODY:
+            branch: increment_index
+
+      # Increment result index first
+      increment_index:
+        opcode: data_set_variable_to
+        next: print_result_separator
+        inputs:
+          VARIABLE:
+            literal: result_index
+          VALUE:
+            node: index_plus_one
+
+      index_plus_one:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: result_index
+          OPERAND2:
+            literal: 1
+
+      # Print result separator line
+      print_result_separator:
+        opcode: io_print
+        next: print_result_header
+        inputs:
+          STRING:
+            literal: "------------------------------------------------------------\n"
+
+      # Print result header: #N | Score: X.XX | Source: filename
+      print_result_header:
+        opcode: io_print
+        next: print_text_label
+        inputs:
+          STRING:
+            node: result_header_line
+
+      result_header_line:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            node: result_number_part
+          b:
+            node: score_and_source_part
+
+      result_number_part:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            literal: "#"
+          b:
+            node: index_as_str
+
+      index_as_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: result_index
+
+      score_and_source_part:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            node: score_part
+          b:
+            node: source_part_with_newline
+
+      score_part:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            literal: " | Score: "
+          b:
+            node: score_formatted
+
+      score_formatted:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_score
+
+      get_score:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_result
+          key:
+            literal: "score"
+          default:
+            literal: 0.0
+
+      source_part_with_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            node: source_part
+          b:
+            literal: "\n"
+
+      source_part:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            literal: " | Source: "
+          b:
+            node: get_source
+
+      get_source:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            node: get_payload
+          key:
+            literal: "source"
+          default:
+            literal: "unknown"
+
+      get_payload:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_result
+          key:
+            literal: "payload"
+          default:
+            literal: {}
+
+      # Print text label
+      print_text_label:
+        opcode: io_print
+        next: print_text_content
+        inputs:
+          STRING:
+            literal: "------------------------------------------------------------\n"
+
+      # Print text content (truncated)
+      print_text_content:
+        opcode: io_print
+        next: print_result_end
+        inputs:
+          STRING:
+            node: text_content_formatted
+
+      text_content_formatted:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            literal: "Text: "
+          b:
+            node: text_with_newlines
+
+      text_with_newlines:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            node: truncated_text
+          b:
+            literal: "\n"
+
+      truncated_text:
+        opcode: string_substring
+        isReporter: true
+        inputs:
+          s:
+            node: get_text
+          start:
+            literal: 0
+          end:
+            literal: 200
+
+      get_text:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            node: get_payload_for_text
+          key:
+            literal: "text"
+          default:
+            literal: "(no text)"
+
+      get_payload_for_text:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_result
+          key:
+            literal: "payload"
+          default:
+            literal: {}
+
+      # Print end of result
+      print_result_end:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n"
+
+      # Print footer
+      print_footer:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "------------------------------------------------------------\n"

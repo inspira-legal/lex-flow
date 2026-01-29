@@ -1,0 +1,354 @@
+# ============================================================================
+# Web Scraper Example
+# ============================================================================
+# This workflow demonstrates how to fetch and parse HTML content from a webpage.
+#
+# Key opcodes used:
+#   - http_get: Perform HTTP GET requests
+#   - html_parse: Parse HTML string into a parseable object
+#   - html_select: Select multiple elements with CSS selector
+#   - html_select_one: Select single element with CSS selector
+#   - html_get_text: Extract text content from element
+#   - html_get_attr: Extract attribute value from element
+#   - control_foreach: Iterate over selected elements
+#
+# Run with:
+#   lexflow examples/integrations/http_scraping/web_scraper.yaml
+#
+# Requirements:
+#   pip install lexflow[http]
+# ============================================================================
+
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      response: null
+      html_doc: null
+      paragraphs: null
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      # --- Introduction ---
+      print_header:
+        opcode: io_print
+        next: print_fetching
+        inputs:
+          STRING:
+            literal: "=== LexFlow Web Scraper Example ===\n\n"
+
+      print_fetching:
+        opcode: io_print
+        next: store_response
+        inputs:
+          STRING:
+            literal: "Fetching HTML page from httpbin.org...\n\n"
+
+      # --- Step 1: Fetch the HTML page ---
+      fetch_html:
+        opcode: http_get
+        isReporter: true
+        inputs:
+          url:
+            literal: "https://httpbin.org/html"
+
+      store_response:
+        opcode: data_set_variable_to
+        next: print_status
+        inputs:
+          VARIABLE:
+            literal: "response"
+          VALUE:
+            node: fetch_html
+
+      # --- Step 2: Check HTTP status ---
+      get_status:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: response
+          key:
+            literal: "status"
+
+      status_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_status
+
+      format_status:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "HTTP Status: "
+          right:
+            node: status_str
+
+      print_status:
+        opcode: io_print
+        next: parse_html
+        inputs:
+          STRING:
+            node: format_status
+
+      # --- Step 3: Parse HTML content ---
+      # Extract the raw HTML text from the response
+      get_html_text:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: response
+          key:
+            literal: "text"
+
+      # Parse HTML into a BeautifulSoup object
+      parse_html_doc:
+        opcode: html_parse
+        isReporter: true
+        inputs:
+          html_text:
+            node: get_html_text
+
+      parse_html:
+        opcode: data_set_variable_to
+        next: print_parsing
+        inputs:
+          VARIABLE:
+            literal: "html_doc"
+          VALUE:
+            node: parse_html_doc
+
+      print_parsing:
+        opcode: io_print
+        next: print_heading_header
+        inputs:
+          STRING:
+            literal: "\nHTML parsed successfully!\n"
+
+      # --- Step 4: Extract the page heading using CSS selector ---
+      print_heading_header:
+        opcode: io_print
+        next: print_heading_value
+        inputs:
+          STRING:
+            literal: "\n--- Extracting Page Heading (h1) ---\n"
+
+      # Use html_select_one to get the first h1 element
+      select_heading:
+        opcode: html_select_one
+        isReporter: true
+        inputs:
+          soup:
+            variable: html_doc
+          selector:
+            literal: "h1"
+
+      # Extract text content from the h1 element
+      get_heading_text:
+        opcode: html_get_text
+        isReporter: true
+        inputs:
+          element:
+            node: select_heading
+
+      format_heading:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Heading: "
+          right:
+            node: get_heading_text
+
+      print_heading_value:
+        opcode: io_print
+        next: print_para_header
+        inputs:
+          STRING:
+            node: format_heading
+
+      # --- Step 5: Extract all paragraphs ---
+      print_para_header:
+        opcode: io_print
+        next: store_paragraphs
+        inputs:
+          STRING:
+            literal: "\n\n--- Extracting Paragraphs (p tags) ---\n"
+
+      # Use html_select to get all p elements
+      select_paragraphs:
+        opcode: html_select
+        isReporter: true
+        inputs:
+          soup:
+            variable: html_doc
+          selector:
+            literal: "p"
+
+      store_paragraphs:
+        opcode: data_set_variable_to
+        next: print_para_count
+        inputs:
+          VARIABLE:
+            literal: "paragraphs"
+          VALUE:
+            node: select_paragraphs
+
+      # Count paragraphs found
+      para_count:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          list:
+            variable: paragraphs
+
+      para_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: para_count
+
+      format_para_count:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Found "
+          right:
+            node: para_count_with_label
+
+      para_count_with_label:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: para_count_str
+          right:
+            literal: " paragraph(s)\n"
+
+      print_para_count:
+        opcode: io_print
+        next: loop_paragraphs
+        inputs:
+          STRING:
+            node: format_para_count
+
+      # --- Step 6: Loop through paragraphs and display text ---
+      loop_paragraphs:
+        opcode: control_foreach
+        next: print_div_section
+        inputs:
+          VAR:
+            literal: "para"
+          ITERABLE:
+            variable: paragraphs
+          BODY:
+            branch: print_para_text
+
+      # Loop body: extract and print text from each paragraph
+      get_para_text:
+        opcode: html_get_text
+        isReporter: true
+        inputs:
+          element:
+            variable: para
+
+      format_para:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\nParagraph content:\n> "
+          right:
+            node: get_para_text
+
+      print_para_text:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: format_para
+
+      # --- Step 7: Extract div content ---
+      print_div_section:
+        opcode: io_print
+        next: print_div_text
+        inputs:
+          STRING:
+            literal: "\n\n--- Extracting Main Content (div) ---\n"
+
+      # Select the main div element
+      select_div:
+        opcode: html_select_one
+        isReporter: true
+        inputs:
+          soup:
+            variable: html_doc
+          selector:
+            literal: "div"
+
+      # Get div text content (includes all nested text)
+      get_div_text:
+        opcode: html_get_text
+        isReporter: true
+        inputs:
+          element:
+            node: select_div
+
+      # Get text length to show element text size
+      get_div_length:
+        opcode: string_length
+        isReporter: true
+        inputs:
+          text:
+            node: get_div_text
+
+      div_length_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_div_length
+
+      format_div_length:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Main div content length: "
+          right:
+            node: div_length_with_label
+
+      div_length_with_label:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: div_length_str
+          right:
+            literal: " characters\n"
+
+      print_div_text:
+        opcode: io_print
+        next: print_footer
+        inputs:
+          STRING:
+            node: format_div_length
+
+      # --- Conclusion ---
+      print_footer:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n=== Web scraping completed successfully! ===\n"

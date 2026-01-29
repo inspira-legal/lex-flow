@@ -11,6 +11,8 @@ dependencies = [
     "pydantic",
     "aiofiles",
     "pyyaml",
+    "aiohttp>=3.13.3",
+    "beautifulsoup4>=4.14.3",
 ]
 
 [project.optional-dependencies]

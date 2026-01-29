@@ -301,6 +301,34 @@ class OpcodeRegistry:
             """Replace all occurrences of old with new."""
             return str(text).replace(old, new)
 
+        @self.register()
+        async def string_substring(text: str, start: int, end: int = None) -> str:
+            """Extract substring from start to end index.
+
+            Args:
+                text: Source string
+                start: Start index (0-based)
+                end: End index (exclusive), or None for rest of string
+            """
+            if end is None:
+                return str(text)[int(start) :]
+            return str(text)[int(start) : int(end)]
+
+        @self.register()
+        async def string_index_of(text: str, substring: str) -> int:
+            """Find index of substring, returns -1 if not found."""
+            return str(text).find(substring)
+
+        @self.register()
+        async def string_starts_with(text: str, prefix: str) -> bool:
+            """Check if string starts with prefix."""
+            return str(text).startswith(prefix)
+
+        @self.register()
+        async def string_ends_with(text: str, suffix: str) -> bool:
+            """Check if string ends with suffix."""
+            return str(text).endswith(suffix)
+
         # ============ List Operations ============
         @self.register()
         async def list_length(items: list) -> int:

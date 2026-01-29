@@ -1,0 +1,254 @@
+# ============================================================================
+# Fetch API Data Example
+# ============================================================================
+# This workflow demonstrates how to fetch and parse JSON data from a REST API.
+#
+# Key opcodes used:
+#   - http_get: Perform HTTP GET requests
+#   - dict_get: Extract fields from JSON response
+#   - io_print: Display results
+#
+# Run with:
+#   lexflow examples/integrations/http_scraping/fetch_api_data.yaml
+#
+# Requirements:
+#   pip install lexflow[http]
+# ============================================================================
+
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      response: null
+      post_data: null
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      # --- Introduction ---
+      print_header:
+        opcode: io_print
+        next: print_fetching
+        inputs:
+          STRING:
+            literal: "=== LexFlow HTTP API Example ===\n\n"
+
+      print_fetching:
+        opcode: io_print
+        next: store_response
+        inputs:
+          STRING:
+            literal: "Fetching post #1 from JSONPlaceholder API...\n\n"
+
+      # --- Step 1: Fetch data from API ---
+      # The http_get opcode returns a dict with:
+      #   - status: HTTP status code
+      #   - headers: Response headers
+      #   - text: Raw response body
+      #   - json: Parsed JSON (if content-type is application/json)
+      fetch_post:
+        opcode: http_get
+        isReporter: true
+        inputs:
+          url:
+            literal: "https://jsonplaceholder.typicode.com/posts/1"
+
+      # Store the response in a variable for later use
+      store_response:
+        opcode: data_set_variable_to
+        next: print_status
+        inputs:
+          VARIABLE:
+            literal: "response"
+          VALUE:
+            node: fetch_post
+
+      # --- Step 2: Display status code ---
+      get_status:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: response
+          key:
+            literal: "status"
+
+      status_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_status
+
+      format_status:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "HTTP Status: "
+          right:
+            node: status_str
+
+      print_status:
+        opcode: io_print
+        next: store_json_data
+        inputs:
+          STRING:
+            node: format_status
+
+      # --- Step 3: Extract JSON data ---
+      # The 'json' field contains the parsed response body
+      get_json:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: response
+          key:
+            literal: "json"
+
+      store_json_data:
+        opcode: data_set_variable_to
+        next: print_title_header
+        inputs:
+          VARIABLE:
+            literal: "post_data"
+          VALUE:
+            node: get_json
+
+      # --- Step 4: Extract and display the title field ---
+      print_title_header:
+        opcode: io_print
+        next: print_title_value
+        inputs:
+          STRING:
+            literal: "\n--- Post Details ---\n"
+
+      get_title:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: post_data
+          key:
+            literal: "title"
+
+      format_title:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Title: "
+          right:
+            node: get_title
+
+      print_title_value:
+        opcode: io_print
+        next: print_body_value
+        inputs:
+          STRING:
+            node: format_title
+
+      # --- Step 5: Extract and display the body field ---
+      get_body:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: post_data
+          key:
+            literal: "body"
+
+      format_body:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\nBody: "
+          right:
+            node: get_body
+
+      print_body_value:
+        opcode: io_print
+        next: print_user_id
+        inputs:
+          STRING:
+            node: format_body
+
+      # --- Step 6: Extract numeric field (userId) ---
+      get_user_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: post_data
+          key:
+            literal: "userId"
+
+      user_id_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_user_id
+
+      format_user_id:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\nUser ID: "
+          right:
+            node: user_id_str
+
+      print_user_id:
+        opcode: io_print
+        next: print_post_id
+        inputs:
+          STRING:
+            node: format_user_id
+
+      # --- Step 7: Extract post ID ---
+      get_post_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: post_data
+          key:
+            literal: "id"
+
+      post_id_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_post_id
+
+      format_post_id:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\nPost ID: "
+          right:
+            node: post_id_str
+
+      print_post_id:
+        opcode: io_print
+        next: print_footer
+        inputs:
+          STRING:
+            node: format_post_id
+
+      # --- Conclusion ---
+      print_footer:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n\n=== API fetch completed successfully! ===\n"

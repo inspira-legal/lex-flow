@@ -1,0 +1,241 @@
+# Simple AI Chat with History
+#
+# This example demonstrates a multi-turn AI conversation using:
+# - Chat history management opcodes (chat_create, chat_with_agent)
+# - Pydantic AI integration with Vertex AI
+#
+# Run: lexflow examples/integrations/ai_chat/simple_chat.yaml --input project=YOUR_GCP_PROJECT
+#
+# Requirements:
+#   pip install lexflow[ai]
+#   gcloud auth application-default login
+
+workflows:
+  - name: main
+    interface:
+      inputs: [project]
+      outputs: []
+    variables:
+      project: ""
+      model: null
+      agent: null
+      history: null
+      user_input: ""
+      response: ""
+      running: true
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_intro
+        inputs: {}
+
+      # Introduction
+      print_intro:
+        opcode: io_print
+        next: store_model
+        inputs:
+          STRING:
+            literal: "=== AI Chat with History ===\n\nType your message and press Enter.\nType 'quit' to exit.\n\n"
+
+      # Step 1: Create Vertex AI Model
+      create_model:
+        opcode: pydantic_ai_create_vertex_model
+        isReporter: true
+        inputs:
+          model_name:
+            literal: "gemini-2.5-flash"
+          project:
+            variable: project
+          location:
+            literal: "us-central1"
+
+      store_model:
+        opcode: data_set_variable_to
+        next: store_agent
+        inputs:
+          VARIABLE:
+            literal: "model"
+          VALUE:
+            node: create_model
+
+      # Step 2: Create AI Agent
+      create_agent:
+        opcode: pydantic_ai_create_agent
+        isReporter: true
+        inputs:
+          model:
+            variable: "model"
+          instructions:
+            literal: "You are a helpful AI assistant having a conversation. Be concise but friendly. Remember context from previous messages in the conversation."
+
+      store_agent:
+        opcode: data_set_variable_to
+        next: store_history
+        inputs:
+          VARIABLE:
+            literal: "agent"
+          VALUE:
+            node: create_agent
+
+      # Step 3: Create empty chat history
+      create_history:
+        opcode: chat_create
+        isReporter: true
+        inputs: {}
+
+      store_history:
+        opcode: data_set_variable_to
+        next: print_ready
+        inputs:
+          VARIABLE:
+            literal: "history"
+          VALUE:
+            node: create_history
+
+      print_ready:
+        opcode: io_print
+        next: chat_loop
+        inputs:
+          STRING:
+            literal: "Chat initialized. Start chatting!\n\n"
+
+      # Main chat loop
+      chat_loop:
+        opcode: control_while
+        next: print_goodbye
+        inputs:
+          CONDITION:
+            variable: running
+          BODY:
+            branch: store_input
+
+      # Get user input (reporter only - evaluated when referenced)
+      get_input:
+        opcode: io_input
+        isReporter: true
+        inputs:
+          prompt:
+            literal: "You: "
+
+      # Store input and continue flow
+      store_input:
+        opcode: data_set_variable_to
+        next: check_quit
+        inputs:
+          VARIABLE:
+            literal: "user_input"
+          VALUE:
+            node: get_input
+
+      # Check if user wants to quit
+      check_quit:
+        opcode: control_if_else
+        next: null
+        inputs:
+          CONDITION:
+            node: is_quit
+          THEN:
+            branch: set_quit
+          ELSE:
+            branch: process_message
+
+      is_quit:
+        opcode: operator_equals
+        isReporter: true
+        inputs:
+          left:
+            variable: user_input
+          right:
+            literal: "quit"
+
+      # Set running to false to exit loop
+      set_quit:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "running"
+          VALUE:
+            literal: false
+
+      # Process user message with AI
+      process_message:
+        opcode: chat_with_agent
+        next: store_response
+        isReporter: true
+        inputs:
+          agent:
+            variable: agent
+          history:
+            variable: history
+          user_message:
+            variable: user_input
+
+      store_response:
+        opcode: data_set_variable_to
+        next: print_response
+        inputs:
+          VARIABLE:
+            literal: "response"
+          VALUE:
+            node: process_message
+
+      print_response:
+        opcode: io_print
+        next: print_newline
+        inputs:
+          STRING:
+            node: format_response
+
+      format_response:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "AI: "
+          right:
+            variable: response
+
+      print_newline:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n\n"
+
+      # Goodbye message
+      print_goodbye:
+        opcode: io_print
+        next: show_history
+        inputs:
+          STRING:
+            literal: "\n--- Chat ended ---\n\n"
+
+      # Show final chat history
+      show_history:
+        opcode: io_print
+        next: print_formatted_history
+        inputs:
+          STRING:
+            literal: "Full conversation:\n\n"
+
+      format_history:
+        opcode: chat_format_for_display
+        isReporter: true
+        inputs:
+          history:
+            variable: history
+
+      print_formatted_history:
+        opcode: io_print
+        next: final_message
+        inputs:
+          STRING:
+            node: format_history
+
+      final_message:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n\n=== Chat session complete ===\n"
