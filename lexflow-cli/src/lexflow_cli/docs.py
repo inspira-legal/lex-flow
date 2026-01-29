@@ -4,27 +4,14 @@ import inspect
 from typing import Any, get_type_hints
 
 from lexflow.opcodes import default_registry
+from lexflow.grammar import get_grammar
 
-# Control flow opcodes (handled by parser, not callable via registry)
-CONTROL_FLOW_OPCODES = {
-    "workflow_start": "Entry point for workflow execution",
-    "workflow_call": "Call another workflow by name with arguments",
-    "control_if": "Conditional branching (if only)",
-    "control_if_else": "Conditional branching (if/else)",
-    "control_while": "While loop",
-    "control_for": "For loop with counter",
-    "control_foreach": "Iterate over collection",
-    "control_fork": "Execute branches concurrently",
-    "control_try": "Exception handling (try/catch/finally)",
-    "control_throw": "Raise an exception",
-    "control_return": "Return from workflow",
-    "control_break": "Break from loop",
-    "control_continue": "Continue to next iteration",
-    "control_spawn": "Spawn background task",
-    "control_async_foreach": "Async iteration over stream",
-    "async_timeout": "Timeout wrapper with fallback",
-    "control_with": "Async context manager",
-}
+
+def _get_control_flow_opcodes() -> dict[str, str]:
+    """Get control flow opcodes from grammar schema."""
+    grammar = get_grammar()
+    return {c["opcode"]: c["description"] for c in grammar["constructs"]}
+
 
 # Category order and display names
 CATEGORY_ORDER = [
@@ -60,22 +47,18 @@ def _get_category(name: str) -> str:
     if name in ("str", "int", "float", "bool", "len", "range"):
         return "type"
 
-    # Check for known prefixes
-    prefixes = [
-        "io_",
-        "operator_",
-        "math_",
-        "string_",
-        "list_",
-        "dict_",
+    # Try grammar categories first
+    grammar = get_grammar()
+    for category in grammar["categories"]:
+        if name.startswith(category["prefix"]):
+            return category["id"]
+
+    # Fallback prefixes not in grammar
+    fallback_prefixes = [
         "object_",
         "throw_",
         "throw",
         "assert_",
-        "workflow_",
-        "data_",
-        "control_",
-        "async_",
         "http_",
         "pydantic_ai_",
         "chat_",
@@ -86,7 +69,7 @@ def _get_category(name: str) -> str:
         "task_",
     ]
 
-    for prefix in prefixes:
+    for prefix in fallback_prefixes:
         if name.startswith(prefix):
             return prefix.rstrip("_")
 
@@ -225,3 +208,189 @@ def generate_opcode_reference() -> str:
     lines.append("")
 
     return "\n".join(lines)
+
+
+def generate_grammar_reference() -> str:
+    """Generate GRAMMAR_REFERENCE.md content from grammar.json schema."""
+    grammar = get_grammar()
+    lines = []
+
+    lines.append("# LexFlow Grammar Reference")
+    lines.append("")
+    lines.append(
+        "Reference for all LexFlow language constructs (control flow, data operations, etc.)."
+    )
+    lines.append("")
+    lines.append(
+        "> **Note:** This file is auto-generated from `grammar.json`. "
+        "Run `lexflow docs generate --grammar` to update."
+    )
+    lines.append("")
+
+    # Version
+    lines.append(f"**Grammar Version:** {grammar['version']}")
+    lines.append("")
+
+    # Table of contents
+    lines.append("## Table of Contents")
+    lines.append("")
+    lines.append("- [Categories](#categories)")
+    lines.append("- [Control Flow Constructs](#control-flow-constructs)")
+    lines.append("- [Data Operations](#data-operations)")
+    lines.append("- [Workflow Operations](#workflow-operations)")
+    lines.append("- [Colors Reference](#colors-reference)")
+    lines.append("")
+
+    # Categories section
+    lines.append("## Categories")
+    lines.append("")
+    lines.append("| ID | Label | Prefix | Color | Icon |")
+    lines.append("|:---|:------|:-------|:------|:-----|")
+    for cat in grammar["categories"]:
+        lines.append(
+            f"| `{cat['id']}` | {cat['label']} | `{cat['prefix']}` | "
+            f"`{cat['color']}` | {cat['icon']} |"
+        )
+    lines.append("")
+
+    # Group constructs by category
+    control_flow = []
+    data_ops = []
+    workflow_ops = []
+    other_ops = []
+
+    for construct in grammar["constructs"]:
+        cat = construct.get("category", "other")
+        if cat == "control" or cat == "async":
+            control_flow.append(construct)
+        elif cat == "data":
+            data_ops.append(construct)
+        elif cat == "workflow":
+            workflow_ops.append(construct)
+        else:
+            other_ops.append(construct)
+
+    # Control Flow Constructs
+    lines.append("## Control Flow Constructs")
+    lines.append("")
+    for construct in control_flow:
+        lines.extend(_format_construct(construct))
+
+    # Data Operations
+    if data_ops:
+        lines.append("## Data Operations")
+        lines.append("")
+        for construct in data_ops:
+            lines.extend(_format_construct(construct))
+
+    # Workflow Operations
+    if workflow_ops:
+        lines.append("## Workflow Operations")
+        lines.append("")
+        for construct in workflow_ops:
+            lines.extend(_format_construct(construct))
+
+    # Colors Reference
+    lines.append("## Colors Reference")
+    lines.append("")
+
+    lines.append("### Branch Colors")
+    lines.append("")
+    lines.append("| Branch | Color |")
+    lines.append("|:-------|:------|")
+    for name, color in grammar.get("branch_colors", {}).items():
+        lines.append(f"| `{name}` | `{color}` |")
+    lines.append("")
+
+    lines.append("### Node Colors")
+    lines.append("")
+    lines.append("| Node Type | Color |")
+    lines.append("|:----------|:------|")
+    for name, color in grammar.get("node_colors", {}).items():
+        lines.append(f"| `{name}` | `{color}` |")
+    lines.append("")
+
+    lines.append("### Reporter Colors")
+    lines.append("")
+    lines.append("| Category | Color |")
+    lines.append("|:---------|:------|")
+    for name, color in grammar.get("reporter_colors", {}).items():
+        lines.append(f"| `{name}` | `{color}` |")
+    lines.append("")
+
+    # Summary
+    lines.append("## Summary")
+    lines.append("")
+    lines.append(f"- **Categories:** {len(grammar['categories'])}")
+    lines.append(f"- **Constructs:** {len(grammar['constructs'])}")
+    lines.append(f"- **Control Flow:** {len(control_flow)}")
+    lines.append(f"- **Data Operations:** {len(data_ops)}")
+    lines.append(f"- **Workflow Operations:** {len(workflow_ops)}")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def _format_construct(construct: dict) -> list[str]:
+    """Format a single construct for documentation."""
+    lines = []
+
+    # Header
+    lines.append(f"### `{construct['opcode']}`")
+    lines.append("")
+
+    # Display name and description
+    lines.append(f"**{construct['display_name']}** - {construct['description']}")
+    lines.append("")
+
+    # Metadata
+    lines.append(f"- **AST Class:** `{construct['ast_class']}`")
+    lines.append(f"- **Category:** `{construct['category']}`")
+    lines.append("")
+
+    # Inputs
+    if construct.get("inputs"):
+        lines.append("**Inputs:**")
+        lines.append("")
+        lines.append("| Name | Type | Label | Required | Default |")
+        lines.append("|:-----|:-----|:------|:---------|:--------|")
+        for inp in construct["inputs"]:
+            required = "Yes" if inp.get("required", True) else "No"
+            default = inp.get("default", "-")
+            if default != "-":
+                default = f"`{default}`"
+            value_type = inp.get("value_type", "-")
+            lines.append(
+                f"| `{inp['name']}` | `{inp['type']}` ({value_type}) | "
+                f"{inp['label']} | {required} | {default} |"
+            )
+        lines.append("")
+
+    # Branches
+    if construct.get("branches"):
+        lines.append("**Branches:**")
+        lines.append("")
+        lines.append("| Name | Label | Color | Required |")
+        lines.append("|:-----|:------|:------|:---------|")
+        for branch in construct["branches"]:
+            required = "Yes" if branch.get("required", True) else "No"
+            lines.append(
+                f"| `{branch['name']}` | {branch['label']} | "
+                f"`{branch['color']}` | {required} |"
+            )
+        lines.append("")
+
+        if construct.get("dynamic_branches"):
+            lines.append("*This construct supports dynamic branches.*")
+            lines.append("")
+
+    if construct.get("dynamic_inputs"):
+        lines.append(
+            "*This construct supports dynamic inputs (e.g., ARG1, ARG2, ...).*"
+        )
+        lines.append("")
+
+    lines.append("---")
+    lines.append("")
+
+    return lines

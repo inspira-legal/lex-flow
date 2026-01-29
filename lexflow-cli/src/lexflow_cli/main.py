@@ -11,14 +11,25 @@ from lexflow.visualizer import WorkflowVisualizer
 
 def handle_docs_command(args) -> int:
     """Handle the 'docs' subcommand."""
-    from lexflow_cli.docs import generate_opcode_reference
+    from lexflow_cli.docs import generate_opcode_reference, generate_grammar_reference
 
-    content = generate_opcode_reference()
+    # Determine what to generate
+    if args.grammar:
+        content = generate_grammar_reference()
+        default_output = "docs/GRAMMAR_REFERENCE.md"
+    else:
+        content = generate_opcode_reference()
+        default_output = "docs/OPCODE_REFERENCE.md"
+
+    # Use custom output path or default
+    output_path = (
+        args.output if args.output != "docs/OPCODE_REFERENCE.md" else default_output
+    )
 
     if args.stdout:
         print(content)
     else:
-        output_path = Path(args.output)
+        output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(content)
         print(f"Generated documentation: {output_path}")
@@ -68,8 +79,10 @@ Examples:
         epilog="""
 Examples:
   lexflow docs generate                           # Generate to docs/OPCODE_REFERENCE.md
+  lexflow docs generate --grammar                 # Generate to docs/GRAMMAR_REFERENCE.md
   lexflow docs generate -o custom/path.md         # Custom output path
   lexflow docs generate --stdout                  # Print to stdout
+  lexflow docs generate --grammar --stdout        # Print grammar docs to stdout
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -78,12 +91,17 @@ Examples:
         "--output",
         default="docs/OPCODE_REFERENCE.md",
         metavar="FILE",
-        help="Output file path (default: docs/OPCODE_REFERENCE.md)",
+        help="Output file path (default: docs/OPCODE_REFERENCE.md or docs/GRAMMAR_REFERENCE.md)",
     )
     docs_generate_parser.add_argument(
         "--stdout",
         action="store_true",
         help="Print to stdout instead of writing to file",
+    )
+    docs_generate_parser.add_argument(
+        "--grammar",
+        action="store_true",
+        help="Generate grammar reference (control flow constructs) instead of opcode reference",
     )
 
     return parser
