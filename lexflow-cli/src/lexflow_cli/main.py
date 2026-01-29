@@ -24,6 +24,8 @@ Examples:
   lexflow workflow.json --visualize                 # Show workflow visualization
   lexflow workflow.json --visualize --validate-only # Visualize without executing
   lexflow workflow.json --output-file output.txt    # Redirect output to file
+  lexflow workflow.json --jit                       # Use JIT compiler (faster)
+  lexflow workflow.json --jit-output compiled.py   # Export compiled Python code
   lexflow workflow.json --metrics                   # Show performance metrics
   lexflow workflow.json --metrics --metrics-json    # Export metrics as JSON
         """,
@@ -79,6 +81,18 @@ Examples:
         help="Input parameters for main workflow (can be used multiple times). Values are parsed as JSON when possible (e.g., --input age=30 --input enabled=true)",
     )
 
+    # JIT compilation
+    parser.add_argument(
+        "--jit",
+        action="store_true",
+        help="Use JIT compiler for faster execution (experimental). Note: detailed metrics are not available with JIT.",
+    )
+    parser.add_argument(
+        "--jit-output",
+        metavar="FILE",
+        help="Export compiled Python code to file (implies --jit for execution unless --validate-only)",
+    )
+
     # Metrics options
     parser.add_argument(
         "--metrics",
@@ -131,6 +145,84 @@ def _load_workflow_data(file_path: str) -> dict:
                 return json.loads(content)
             except json.JSONDecodeError:
                 return yaml.safe_load(content)
+
+
+def _get_compiler():
+    """Import and return the WorkflowCompiler class."""
+    import importlib.util
+
+    try:
+        from research.performance.compiler import WorkflowCompiler
+
+        return WorkflowCompiler
+    except ImportError:
+        # Try to find it relative to the repo root
+        repo_root = Path(__file__).resolve().parent.parent.parent.parent
+        compiler_path = repo_root / "research" / "performance" / "compiler.py"
+
+        if not compiler_path.exists():
+            print_error(
+                "JIT compiler not available. Ensure you're running from the repository."
+            )
+            sys.exit(1)
+
+        spec = importlib.util.spec_from_file_location("compiler", compiler_path)
+        compiler_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(compiler_module)
+        return compiler_module.WorkflowCompiler
+
+
+def _export_jit(program, output_file: str, verbose: bool) -> str:
+    """Export compiled Python code to file."""
+    WorkflowCompiler = _get_compiler()
+    compiler = WorkflowCompiler()
+    source = compiler.compile_to_source(program.main)
+
+    with open(output_file, "w") as f:
+        f.write(source)
+
+    return source
+
+
+async def _run_jit(engine: Engine, inputs: dict, verbose: bool):
+    """Run workflow using JIT compiler."""
+    WorkflowCompiler = _get_compiler()
+
+    # Apply inputs to scope
+    if inputs:
+        invalid_keys = set(inputs.keys()) - set(engine.program.main.params)
+        if invalid_keys:
+            raise ValueError(
+                f"Invalid input parameters: {invalid_keys}. "
+                f"Main workflow accepts: {engine.program.main.params}"
+            )
+        for param_name, value in inputs.items():
+            engine.runtime.scope[param_name] = value
+
+    # Compile main workflow
+    compiler = WorkflowCompiler(debug=verbose)
+    compiled_fn = compiler.compile(engine.program.main)
+
+    if verbose:
+        print_info("Using JIT compiled execution")
+
+    # Execute with output redirection if needed
+    engine.metrics.start_execution()
+    try:
+        if engine.output:
+            from contextlib import redirect_stdout
+
+            with redirect_stdout(engine.output):
+                result = await compiled_fn(
+                    engine.runtime.scope, engine.opcodes, engine.workflows
+                )
+        else:
+            result = await compiled_fn(
+                engine.runtime.scope, engine.opcodes, engine.workflows
+            )
+        return result
+    finally:
+        engine.metrics.end_execution()
 
 
 def print_success(message: str):
@@ -209,6 +301,12 @@ async def main():
             visualization = visualizer.visualize_program(workflow_data)
             print("\n" + visualization + "\n")
 
+        # Handle JIT output (export compiled code)
+        if args.jit_output:
+            source = _export_jit(program, args.jit_output, args.verbose)
+            if args.verbose:
+                print_success(f"Compiled code written to: {args.jit_output}")
+
         if args.validate_only:
             print_success("Workflow is valid!")
             return
@@ -251,7 +349,12 @@ async def main():
             # Create engine with optional metrics (enabled if --metrics or --metrics-json)
             enable_metrics = args.metrics or args.metrics_json
             engine = Engine(program, output=output_file, metrics=enable_metrics)
-            result = await engine.run(inputs=inputs_dict if inputs_dict else None)
+
+            if args.jit or args.jit_output:
+                # Use JIT compiler for execution
+                result = await _run_jit(engine, inputs_dict, args.verbose)
+            else:
+                result = await engine.run(inputs=inputs_dict if inputs_dict else None)
 
             if args.verbose:
                 print_success("Execution completed")

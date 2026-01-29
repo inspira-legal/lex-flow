@@ -1,13 +1,8 @@
 """
-Complete JIT compiler for LexFlow workflows.
+JIT compiler for LexFlow workflows.
 
 Compiles workflow AST to Python source code, then exec()s it to create
 a callable function. This bypasses the interpreter loop entirely.
-
-Supported constructs:
-- All expressions: Literal, Variable, Opcode, Call
-- All statements: Assign, Block, If, While, For, ForEach, Fork,
-                  Return, ExprStmt, OpStmt, Try/Catch/Finally, Throw
 
 Usage:
     compiler = WorkflowCompiler()
@@ -15,8 +10,8 @@ Usage:
     result = await compiled_fn(scope, opcodes, workflows)
 """
 
-from typing import Any, Callable, Optional, Set
-from textwrap import indent, dedent
+from typing import Callable
+from textwrap import indent
 
 from lexflow.ast import (
     Statement,
@@ -33,7 +28,6 @@ from lexflow.ast import (
     OpStmt,
     Try,
     Throw,
-    Catch,
     Literal,
     Variable,
     Opcode,
@@ -41,34 +35,6 @@ from lexflow.ast import (
     Workflow,
 )
 
-
-# Opcodes that can be inlined as Python operators
-INLINE_BINARY_OPS = {
-    "operator_add": "+",
-    "operator_sub": "-",
-    "operator_subtract": "-",
-    "operator_mul": "*",
-    "operator_multiply": "*",
-    "operator_div": "/",
-    "operator_divide": "/",
-    "operator_mod": "%",
-    "operator_modulo": "%",
-    "operator_less_than": "<",
-    "operator_greater_than": ">",
-    "operator_equals": "==",
-    "operator_not_equals": "!=",
-    "operator_less_than_or_equal": "<=",
-    "operator_greater_than_or_equal": ">=",
-}
-
-INLINE_LOGICAL_OPS = {
-    "operator_and": "and",
-    "operator_or": "or",
-}
-
-INLINE_UNARY_OPS = {
-    "operator_not": "not",
-}
 
 # Python exception type mapping
 EXCEPTION_TYPES = {
@@ -85,16 +51,42 @@ EXCEPTION_TYPES = {
 
 class CompilationError(Exception):
     """Raised when a workflow cannot be compiled."""
+
     pass
 
 
 class WorkflowCompiler:
-    """
-    Compiles LexFlow workflows to Python functions.
+    """Compiles LexFlow workflows to Python functions."""
 
-    The compiled function has signature:
-        async def compiled(scope: dict, opcodes: OpcodeRegistry, workflows: WorkflowManager) -> Any
-    """
+    # Opcodes that can be inlined as Python operators
+    INLINE_BINARY_OPS = {
+        "operator_add": "+",
+        "operator_sub": "-",
+        "operator_subtract": "-",
+        "operator_mul": "*",
+        "operator_multiply": "*",
+        "operator_div": "/",
+        "operator_divide": "/",
+        "operator_mod": "%",
+        "operator_modulo": "%",
+        "operator_less_than": "<",
+        "operator_greater_than": ">",
+        "operator_equals": "==",
+        "operator_not_equals": "!=",
+        "operator_less_than_or_equal": "<=",
+        "operator_greater_than_or_equal": ">=",
+        "operator_less_than_or_equals": "<=",
+        "operator_greater_than_or_equals": ">=",
+    }
+
+    INLINE_LOGICAL_OPS = {
+        "operator_and": "and",
+        "operator_or": "or",
+    }
+
+    INLINE_UNARY_OPS = {
+        "operator_not": "not",
+    }
 
     def __init__(self, debug: bool = False):
         self.debug = debug
@@ -102,23 +94,27 @@ class WorkflowCompiler:
 
     def _reset(self):
         """Reset compiler state for new compilation."""
-        self._async_needed = False
         self._needs_asyncio = False
         self._temp_counter = 0
-        self._indent_level = 0
+        self._workflow_name = ""
 
     def _temp_var(self) -> str:
         """Generate a unique temporary variable name."""
         self._temp_counter += 1
         return f"_tmp_{self._temp_counter}"
 
-    def compile(self, workflow: Workflow) -> Callable:
-        """
-        Compile a workflow to a Python function.
+    def _await_if_async(self, code: str, is_async: bool) -> str:
+        """Wrap code with await if needed."""
+        return f"await {code}" if is_async else code
 
-        Returns an async function with signature:
-            async def compiled(scope, opcodes, workflows) -> Any
-        """
+    def _compilation_error(self, message: str) -> CompilationError:
+        """Create error with workflow context."""
+        if self._workflow_name:
+            return CompilationError(f"[{self._workflow_name}] {message}")
+        return CompilationError(message)
+
+    def compile(self, workflow: Workflow) -> Callable:
+        """Compile a workflow to a Python function."""
         source = self.compile_to_source(workflow)
 
         if self.debug:
@@ -127,175 +123,161 @@ class WorkflowCompiler:
             print(source)
             print("-" * 40)
 
-        # Compile and extract function
         namespace = {"asyncio": __import__("asyncio")}
         try:
             exec(source, namespace)
         except SyntaxError as e:
-            raise CompilationError(f"Generated invalid code: {e}\n\nCode:\n{source}")
+            raise self._compilation_error(
+                f"Generated invalid code: {e}\n\nCode:\n{source}"
+            )
 
         return namespace["compiled"]
 
     def compile_to_source(self, workflow: Workflow) -> str:
         """Compile workflow and return the generated source code."""
         self._reset()
+        self._workflow_name = workflow.name
 
-        # Generate function body
-        body_code = self._compile_stmt(workflow.body)
+        try:
+            body_code = self._compile_stmt(workflow.body)
+        except CompilationError:
+            raise
+        except Exception as e:
+            raise self._compilation_error(f"Unexpected error: {e}")
 
-        # Build imports if needed
-        imports = ""
-        if self._needs_asyncio:
-            imports = "import asyncio\n\n"
-
-        # Always async for consistent interface
+        imports = "import asyncio\n\n" if self._needs_asyncio else ""
         func_def = "async def compiled(scope, opcodes, workflows):"
-
-        # Add docstring with workflow name
         docstring = f'    """Compiled workflow: {workflow.name}"""'
 
         return f"{imports}{func_def}\n{docstring}\n{indent(body_code, '    ')}"
 
     def _compile_stmt(self, stmt: Statement) -> str:
-        """Compile a statement to Python code."""
-        stmt_type = type(stmt)
+        """Compile a statement to Python code using pattern matching."""
+        match stmt:
+            case Block(stmts=stmts):
+                return self._compile_block_stmts(stmts)
+            case Assign(name=n, value=v):
+                return self._compile_assign(n, v)
+            case For(var_name=var, start=s, end=e, step=step, body=b):
+                return self._compile_for(var, s, e, step, b)
+            case ForEach(var_name=var, iterable=it, body=b):
+                return self._compile_foreach(var, it, b)
+            case While(cond=c, body=b):
+                return self._compile_while(c, b)
+            case If(cond=c, then=t, else_=e):
+                return self._compile_if(c, t, e)
+            case Return(values=vals):
+                return self._compile_return(vals)
+            case ExprStmt(expr=e):
+                return self._compile_expr_stmt(e)
+            case OpStmt(name=n, args=args):
+                return self._compile_op_stmt(n, args)
+            case Try(body=body, handlers=handlers, finally_=finally_):
+                return self._compile_try(body, handlers, finally_)
+            case Throw(value=v):
+                return self._compile_throw(v)
+            case Fork(branches=branches):
+                return self._compile_fork(branches)
+            case _:
+                raise self._compilation_error(
+                    f"Unsupported statement type: {type(stmt).__name__}"
+                )
 
-        handlers = {
-            Block: self._compile_block,
-            Assign: self._compile_assign,
-            For: self._compile_for,
-            ForEach: self._compile_foreach,
-            While: self._compile_while,
-            If: self._compile_if,
-            Return: self._compile_return,
-            ExprStmt: self._compile_expr_stmt,
-            OpStmt: self._compile_op_stmt,
-            Try: self._compile_try,
-            Throw: self._compile_throw,
-            Fork: self._compile_fork,
-        }
-
-        handler = handlers.get(stmt_type)
-        if handler:
-            return handler(stmt)
-        else:
-            raise CompilationError(f"Unsupported statement type: {stmt_type.__name__}")
-
-    def _compile_block(self, stmt: Block) -> str:
+    def _compile_block_stmts(self, stmts: list) -> str:
         """Compile a block of statements."""
-        if not stmt.stmts:
+        if not stmts:
             return "pass"
-        return "\n".join(self._compile_stmt(s) for s in stmt.stmts)
+        return "\n".join(self._compile_stmt(s) for s in stmts)
 
-    def _compile_assign(self, stmt: Assign) -> str:
+    def _compile_assign(self, name: str, value: Expression) -> str:
         """Compile assignment: scope["name"] = value"""
-        value_code, is_async = self._compile_expr_with_async(stmt.value)
-        if is_async:
-            return f'scope["{stmt.name}"] = await {value_code}'
-        return f'scope["{stmt.name}"] = {value_code}'
+        value_code, is_async = self._compile_expr_with_async(value)
+        return f'scope["{name}"] = {self._await_if_async(value_code, is_async)}'
 
-    def _compile_for(self, stmt: For) -> str:
-        """Compile for loop to Python for."""
-        start_code = self._compile_expr(stmt.start)
-        end_code = self._compile_expr(stmt.end)
+    def _compile_for(
+        self, var: str, start: Expression, end: Expression, step, body: Statement
+    ) -> str:
+        """Compile for loop."""
+        start_code = self._compile_expr(start)
+        end_code = self._compile_expr(end)
 
-        if stmt.step:
-            step_code = self._compile_expr(stmt.step)
+        if step:
+            step_code = self._compile_expr(step)
             range_code = f"range(int({start_code}), int({end_code}), int({step_code}))"
         else:
             range_code = f"range(int({start_code}), int({end_code}))"
 
-        body_code = self._compile_stmt(stmt.body)
-        var = stmt.var_name
-
+        body_code = self._compile_stmt(body)
         return f'for {var} in {range_code}:\n    scope["{var}"] = {var}\n{indent(body_code, "    ")}'
 
-    def _compile_foreach(self, stmt: ForEach) -> str:
+    def _compile_foreach(self, var: str, iterable: Expression, body: Statement) -> str:
         """Compile foreach loop."""
-        iterable_code, is_async = self._compile_expr_with_async(stmt.iterable)
-        body_code = self._compile_stmt(stmt.body)
-        var = stmt.var_name
+        iterable_code, is_async = self._compile_expr_with_async(iterable)
+        body_code = self._compile_stmt(body)
 
         if is_async:
-            # Need to await the iterable first
             temp = self._temp_var()
             return f'{temp} = await {iterable_code}\nfor {var} in {temp}:\n    scope["{var}"] = {var}\n{indent(body_code, "    ")}'
 
         return f'for {var} in {iterable_code}:\n    scope["{var}"] = {var}\n{indent(body_code, "    ")}'
 
-    def _compile_while(self, stmt: While) -> str:
+    def _compile_while(self, cond: Expression, body: Statement) -> str:
         """Compile while loop."""
-        cond_code, is_async = self._compile_expr_with_async(stmt.cond)
-        body_code = self._compile_stmt(stmt.body)
+        cond_code, is_async = self._compile_expr_with_async(cond)
+        body_code = self._compile_stmt(body)
 
         if is_async:
-            # Async condition needs special handling
             return f"while True:\n    if not (await {cond_code}):\n        break\n{indent(body_code, '    ')}"
 
         return f"while {cond_code}:\n{indent(body_code, '    ')}"
 
-    def _compile_if(self, stmt: If) -> str:
+    def _compile_if(self, cond: Expression, then: Statement, else_) -> str:
         """Compile if statement."""
-        cond_code, is_async = self._compile_expr_with_async(stmt.cond)
-        then_code = self._compile_stmt(stmt.then)
+        cond_code, is_async = self._compile_expr_with_async(cond)
+        then_code = self._compile_stmt(then)
 
-        if is_async:
-            cond_code = f"await {cond_code}"
+        cond_str = self._await_if_async(cond_code, is_async)
+        result = f"if {cond_str}:\n{indent(then_code, '    ')}"
 
-        result = f"if {cond_code}:\n{indent(then_code, '    ')}"
-
-        if stmt.else_:
-            else_code = self._compile_stmt(stmt.else_)
+        if else_:
+            else_code = self._compile_stmt(else_)
             result += f"\nelse:\n{indent(else_code, '    ')}"
 
         return result
 
-    def _compile_return(self, stmt: Return) -> str:
+    def _compile_return(self, values: list) -> str:
         """Compile return statement."""
-        if not stmt.values:
+        if not values:
             return "return None"
-        elif len(stmt.values) == 1:
-            value_code, is_async = self._compile_expr_with_async(stmt.values[0])
-            if is_async:
-                return f"return await {value_code}"
-            return f"return {value_code}"
-        else:
-            # Multiple return values - need to handle async for each
-            parts = []
-            any_async = False
-            for v in stmt.values:
-                code, is_async = self._compile_expr_with_async(v)
-                if is_async:
-                    any_async = True
-                    parts.append(f"await {code}")
-                else:
-                    parts.append(code)
 
-            return f"return ({', '.join(parts)})"
+        if len(values) == 1:
+            value_code, is_async = self._compile_expr_with_async(values[0])
+            return f"return {self._await_if_async(value_code, is_async)}"
 
-    def _compile_expr_stmt(self, stmt: ExprStmt) -> str:
+        # Multiple return values
+        parts = []
+        for v in values:
+            code, is_async = self._compile_expr_with_async(v)
+            parts.append(self._await_if_async(code, is_async))
+        return f"return ({', '.join(parts)})"
+
+    def _compile_expr_stmt(self, expr: Expression) -> str:
         """Compile expression statement."""
-        expr_code, is_async = self._compile_expr_with_async(stmt.expr)
-        if is_async:
-            return f"await {expr_code}"
-        return expr_code
+        expr_code, is_async = self._compile_expr_with_async(expr)
+        return self._await_if_async(expr_code, is_async)
 
-    def _compile_op_stmt(self, stmt: OpStmt) -> str:
+    def _compile_op_stmt(self, name: str, args: list) -> str:
         """Compile opcode statement (side-effect only)."""
-        code = self._compile_opcode_call(stmt.name, stmt.args)
-        self._async_needed = True
+        code = self._compile_opcode_call(name, args)
         return f"await {code}"
 
-    def _compile_try(self, stmt: Try) -> str:
+    def _compile_try(self, body: Statement, handlers: list, finally_) -> str:
         """Compile try-catch-finally statement."""
-        body_code = self._compile_stmt(stmt.body)
-
+        body_code = self._compile_stmt(body)
         result = f"try:\n{indent(body_code, '    ')}"
 
-        # Compile catch handlers
-        for handler in stmt.handlers:
+        for handler in handlers:
             exc_type = handler.exception_type or "Exception"
-            # Map to Python exception type if known
             py_exc_type = EXCEPTION_TYPES.get(exc_type, "Exception")
 
             if handler.var_name:
@@ -306,47 +288,38 @@ class WorkflowCompiler:
                 result += f"\nexcept {py_exc_type}:\n"
                 handler_body = self._compile_stmt(handler.body)
 
-            result += indent(handler_body, '    ')
+            result += indent(handler_body, "    ")
 
-        # Compile finally block
-        if stmt.finally_:
-            finally_code = self._compile_stmt(stmt.finally_)
+        if finally_:
+            finally_code = self._compile_stmt(finally_)
             result += f"\nfinally:\n{indent(finally_code, '    ')}"
 
         return result
 
-    def _compile_throw(self, stmt: Throw) -> str:
+    def _compile_throw(self, value: Expression) -> str:
         """Compile throw statement."""
-        value_code, is_async = self._compile_expr_with_async(stmt.value)
-        if is_async:
-            return f"raise RuntimeError(str(await {value_code}))"
-        return f"raise RuntimeError(str({value_code}))"
+        value_code, is_async = self._compile_expr_with_async(value)
+        return f"raise RuntimeError(str({self._await_if_async(value_code, is_async)}))"
 
-    def _compile_fork(self, stmt: Fork) -> str:
+    def _compile_fork(self, branches: list) -> str:
         """Compile fork statement using asyncio.gather."""
-        if not stmt.branches:
+        if not branches:
             return "pass"
 
-        self._async_needed = True
         self._needs_asyncio = True
 
-        # Create async functions for each branch
         branch_funcs = []
-        for i, branch in enumerate(stmt.branches):
+        for i, branch in enumerate(branches):
             func_name = f"_fork_branch_{self._temp_counter}_{i}"
             self._temp_counter += 1
             branch_code = self._compile_stmt(branch)
             branch_funcs.append((func_name, branch_code))
 
-        # Build the fork code
         lines = []
-
-        # Define branch functions
         for func_name, branch_code in branch_funcs:
             lines.append(f"async def {func_name}():")
             lines.append(indent(branch_code, "    "))
 
-        # Call asyncio.gather
         func_calls = ", ".join(f"{name}()" for name, _ in branch_funcs)
         lines.append(f"await asyncio.gather({func_calls})")
 
@@ -358,67 +331,72 @@ class WorkflowCompiler:
         return code
 
     def _compile_expr_with_async(self, expr: Expression) -> tuple[str, bool]:
-        """
-        Compile an expression to Python code.
-        Returns (code, is_async) where is_async indicates if the code needs await.
-        """
-        expr_type = type(expr)
+        """Compile an expression. Returns (code, is_async)."""
+        match expr:
+            case Literal(value=v):
+                return repr(v), False
 
-        if expr_type is Literal:
-            return repr(expr.value), False
+            case Variable(name=n):
+                return f'scope["{n}"]', False
 
-        elif expr_type is Variable:
-            return f'scope["{expr.name}"]', False
+            case Opcode(name=name, args=args):
+                return self._compile_opcode_expr(name, args)
 
-        elif expr_type is Opcode:
-            return self._compile_opcode_expr(expr)
+            case Call(name=name, args=args):
+                return self._compile_workflow_call(name, args)
 
-        elif expr_type is Call:
-            return self._compile_workflow_call(expr)
+            case _:
+                raise self._compilation_error(
+                    f"Unsupported expression type: {type(expr).__name__}"
+                )
 
-        else:
-            raise CompilationError(f"Unsupported expression type: {expr_type.__name__}")
-
-    def _compile_opcode_expr(self, expr: Opcode) -> tuple[str, bool]:
+    def _compile_opcode_expr(self, name: str, args: list) -> tuple[str, bool]:
         """Compile opcode expression. Returns (code, is_async)."""
-        name = expr.name
-        args = expr.args
+        # Try to inline binary operators (only if operands are sync)
+        if name in self.INLINE_BINARY_OPS and len(args) == 2:
+            left_code, left_async = self._compile_expr_with_async(args[0])
+            right_code, right_async = self._compile_expr_with_async(args[1])
+            if not left_async and not right_async:
+                op = self.INLINE_BINARY_OPS[name]
+                return f"({left_code} {op} {right_code})", False
 
-        # Try to inline binary operators
-        if name in INLINE_BINARY_OPS and len(args) == 2:
-            op = INLINE_BINARY_OPS[name]
-            left = self._compile_expr(args[0])
-            right = self._compile_expr(args[1])
-            return f"({left} {op} {right})", False
+        # Try to inline logical operators (only if operands are sync)
+        if name in self.INLINE_LOGICAL_OPS and len(args) == 2:
+            left_code, left_async = self._compile_expr_with_async(args[0])
+            right_code, right_async = self._compile_expr_with_async(args[1])
+            if not left_async and not right_async:
+                op = self.INLINE_LOGICAL_OPS[name]
+                return f"({left_code} {op} {right_code})", False
 
-        # Try to inline logical operators (short-circuit)
-        if name in INLINE_LOGICAL_OPS and len(args) == 2:
-            op = INLINE_LOGICAL_OPS[name]
-            left = self._compile_expr(args[0])
-            right = self._compile_expr(args[1])
-            return f"({left} {op} {right})", False
-
-        # Try to inline unary operators
-        if name in INLINE_UNARY_OPS and len(args) == 1:
-            op = INLINE_UNARY_OPS[name]
-            operand = self._compile_expr(args[0])
-            return f"({op} {operand})", False
+        # Try to inline unary operators (only if operand is sync)
+        if name in self.INLINE_UNARY_OPS and len(args) == 1:
+            operand_code, operand_async = self._compile_expr_with_async(args[0])
+            if not operand_async:
+                op = self.INLINE_UNARY_OPS[name]
+                return f"({op} {operand_code})", False
 
         # Fall back to opcode call (async)
-        code = self._compile_opcode_call(name, args)
-        self._async_needed = True
-        return code, True
+        return self._compile_opcode_call(name, args), True
 
     def _compile_opcode_call(self, name: str, args: list) -> str:
         """Compile a call to the opcode registry."""
-        args_code = ", ".join(self._compile_expr(a) for a in args)
+        # Args must be awaited if async before passing to opcode
+        args_parts = []
+        for a in args:
+            code, is_async = self._compile_expr_with_async(a)
+            args_parts.append(f"(await {code})" if is_async else code)
+        args_code = ", ".join(args_parts)
         return f'opcodes.call("{name}", [{args_code}])'
 
-    def _compile_workflow_call(self, expr: Call) -> tuple[str, bool]:
+    def _compile_workflow_call(self, name: str, args: list) -> tuple[str, bool]:
         """Compile workflow call. Returns (code, is_async)."""
-        self._async_needed = True
-        args_code = ", ".join(self._compile_expr(a) for a in expr.args)
-        return f'workflows.call("{expr.name}", [{args_code}])', True
+        # Args must be awaited if async before passing to workflow
+        args_parts = []
+        for a in args:
+            code, is_async = self._compile_expr_with_async(a)
+            args_parts.append(f"(await {code})" if is_async else code)
+        args_code = ", ".join(args_parts)
+        return f'workflows.call("{name}", [{args_code}])', True
 
 
 class CompiledEngine:

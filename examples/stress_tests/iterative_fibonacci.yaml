@@ -1,0 +1,125 @@
+# Iterative Fibonacci - avoids the ELSE branch bug
+# Tests: loops, workflow calls, arithmetic
+workflows:
+  - name: main
+    interface:
+      inputs: ["n"]
+      outputs: []
+    variables:
+      n: 25
+      result: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: calc_fib
+        inputs:
+          STRING:
+            literal: "=== Iterative Fibonacci Stress Test ===\n"
+
+      calc_fib:
+        opcode: data_set_variable_to
+        next: print_result
+        inputs:
+          VARIABLE:
+            literal: result
+          VALUE:
+            node: fib_call
+
+      fib_call:
+        opcode: workflow_call
+        isReporter: true
+        inputs:
+          WORKFLOW:
+            literal: fibonacci
+          ARG1:
+            variable: n
+
+      print_result:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: result_str
+
+      result_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          VALUE:
+            variable: result
+
+  - name: fibonacci
+    interface:
+      inputs: ["n"]
+      outputs: []
+    variables:
+      n: 0
+      a: 0
+      b: 1
+      temp: 0
+      i: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: loop
+        inputs: {}
+
+      loop:
+        opcode: control_for
+        next: return_result
+        inputs:
+          VAR:
+            literal: i
+          START:
+            literal: 0
+          END:
+            variable: n
+          BODY:
+            branch: loop_body
+
+      loop_body:
+        opcode: data_set_variable_to
+        next: update_a
+        inputs:
+          VARIABLE:
+            literal: temp
+          VALUE:
+            variable: b
+
+      update_a:
+        opcode: data_set_variable_to
+        next: update_b
+        inputs:
+          VARIABLE:
+            literal: b
+          VALUE:
+            node: a_plus_b
+
+      a_plus_b:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: a
+          OPERAND2:
+            variable: b
+
+      update_b:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: a
+          VALUE:
+            variable: temp
+
+      return_result:
+        opcode: workflow_return
+        inputs:
+          VALUE:
+            variable: a

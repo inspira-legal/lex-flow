@@ -1,0 +1,157 @@
+# Recursive Fibonacci using external workflow calls
+# Tests: recursion, workflow calls, conditionals, arithmetic
+workflows:
+  - name: main
+    interface:
+      inputs: ["n"]
+      outputs: []
+    variables:
+      n: 15
+      result: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: calc_fib
+        inputs:
+          STRING:
+            literal: "=== Recursive Fibonacci Stress Test ===\n\n"
+
+      calc_fib:
+        opcode: data_set_variable_to
+        next: print_n
+        inputs:
+          VARIABLE:
+            literal: result
+          VALUE:
+            node: fib_call
+
+      fib_call:
+        opcode: workflow_call
+        isReporter: true
+        inputs:
+          WORKFLOW:
+            literal: fibonacci
+          ARG1:
+            variable: n
+
+      print_n:
+        opcode: io_print
+        next: print_result
+        inputs:
+          STRING:
+            literal: "Computing fibonacci...\n"
+
+      print_result:
+        opcode: io_print
+        next: print_done
+        inputs:
+          STRING:
+            node: result_str
+
+      result_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          VALUE:
+            variable: result
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n\nDone!\n"
+
+  - name: fibonacci
+    interface:
+      inputs: ["n"]
+      outputs: []
+    variables:
+      n: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: check_base
+        inputs: {}
+
+      check_base:
+        opcode: control_if
+        next: null
+        inputs:
+          CONDITION:
+            node: is_base_case
+          THEN:
+            branch: return_n
+          ELSE:
+            branch: recurse
+
+      is_base_case:
+        opcode: operator_less_than_or_equals
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: n
+          OPERAND2:
+            literal: 1
+
+      return_n:
+        opcode: workflow_return
+        inputs:
+          VALUE:
+            variable: n
+
+      recurse:
+        opcode: workflow_return
+        inputs:
+          VALUE:
+            node: add_results
+
+      add_results:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: fib_n_minus_1
+          OPERAND2:
+            node: fib_n_minus_2
+
+      fib_n_minus_1:
+        opcode: workflow_call
+        isReporter: true
+        inputs:
+          WORKFLOW:
+            literal: fibonacci
+          ARG1:
+            node: n_minus_1
+
+      fib_n_minus_2:
+        opcode: workflow_call
+        isReporter: true
+        inputs:
+          WORKFLOW:
+            literal: fibonacci
+          ARG1:
+            node: n_minus_2
+
+      n_minus_1:
+        opcode: operator_subtract
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: n
+          OPERAND2:
+            literal: 1
+
+      n_minus_2:
+        opcode: operator_subtract
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: n
+          OPERAND2:
+            literal: 2

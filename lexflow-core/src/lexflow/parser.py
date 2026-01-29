@@ -194,7 +194,11 @@ class ControlFlowHandler(NodeHandler):
     def _handle_if(self, node_id: str, inputs: dict, context: ParseContext) -> If:
         cond = context.parser._parse_input(inputs.get("CONDITION", []), context)
         then_branch = context.parser._parse_branch(inputs.get("THEN", []), context)
-        return If(cond=cond, then=then_branch, else_=None, node_id=node_id)
+        # Also check for ELSE input (control_if can have optional ELSE)
+        else_branch = None
+        if "ELSE" in inputs:
+            else_branch = context.parser._parse_branch(inputs.get("ELSE", []), context)
+        return If(cond=cond, then=then_branch, else_=else_branch, node_id=node_id)
 
     def _handle_if_else(self, node_id: str, inputs: dict, context: ParseContext) -> If:
         cond = context.parser._parse_input(inputs.get("CONDITION", []), context)

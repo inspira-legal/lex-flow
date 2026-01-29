@@ -1,0 +1,723 @@
+# Matrix operations with nested loops and external workflow calls
+# Tests: nested loops, list operations, workflow calls, complex arithmetic
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      size: 5
+      matrix_a: []
+      matrix_b: []
+      result: []
+      dot_product: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: create_matrix_a
+        inputs:
+          STRING:
+            literal: "=== Matrix Operations Stress Test ===\n\n"
+
+      # Create first matrix
+      create_matrix_a:
+        opcode: io_print
+        next: init_a
+        inputs:
+          STRING:
+            literal: "Creating Matrix A...\n"
+
+      init_a:
+        opcode: data_set_variable_to
+        next: fill_a
+        inputs:
+          VARIABLE:
+            literal: matrix_a
+          VALUE:
+            literal: []
+
+      fill_a:
+        opcode: control_for
+        next: print_a
+        inputs:
+          VAR:
+            literal: i
+          START:
+            literal: 0
+          END:
+            variable: size
+          BODY:
+            branch: fill_row_a
+
+      fill_row_a:
+        opcode: data_set_variable_to
+        next: inner_loop_a
+        inputs:
+          VARIABLE:
+            literal: current_row
+          VALUE:
+            literal: []
+
+      inner_loop_a:
+        opcode: control_for
+        next: append_row_a
+        inputs:
+          VAR:
+            literal: j
+          START:
+            literal: 0
+          END:
+            variable: size
+          BODY:
+            branch: add_element_a
+
+      add_element_a:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: current_row
+          VALUE:
+            node: append_val_a
+
+      append_val_a:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          ITERABLE:
+            variable: current_row
+          VALUE:
+            node: calc_val_a
+
+      calc_val_a:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: i_times_size
+          OPERAND2:
+            variable: j
+
+      i_times_size:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: i
+          OPERAND2:
+            variable: size
+
+      append_row_a:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: matrix_a
+          VALUE:
+            node: append_row_a_list
+
+      append_row_a_list:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          ITERABLE:
+            variable: matrix_a
+          VALUE:
+            variable: current_row
+
+      print_a:
+        opcode: io_print
+        next: call_print_matrix_a
+        inputs:
+          STRING:
+            literal: "Matrix A:\n"
+
+      call_print_matrix_a:
+        opcode: workflow_call
+        next: create_matrix_b
+        inputs:
+          WORKFLOW:
+            literal: print_matrix
+          ARG1:
+            variable: matrix_a
+
+      # Create second matrix (identity-like)
+      create_matrix_b:
+        opcode: io_print
+        next: init_b
+        inputs:
+          STRING:
+            literal: "\nCreating Matrix B (diagonal)...\n"
+
+      init_b:
+        opcode: data_set_variable_to
+        next: fill_b
+        inputs:
+          VARIABLE:
+            literal: matrix_b
+          VALUE:
+            literal: []
+
+      fill_b:
+        opcode: control_for
+        next: print_b
+        inputs:
+          VAR:
+            literal: i
+          START:
+            literal: 0
+          END:
+            variable: size
+          BODY:
+            branch: fill_row_b
+
+      fill_row_b:
+        opcode: data_set_variable_to
+        next: inner_loop_b
+        inputs:
+          VARIABLE:
+            literal: current_row
+          VALUE:
+            literal: []
+
+      inner_loop_b:
+        opcode: control_for
+        next: append_row_b
+        inputs:
+          VAR:
+            literal: j
+          START:
+            literal: 0
+          END:
+            variable: size
+          BODY:
+            branch: add_element_b
+
+      add_element_b:
+        opcode: control_if
+        next: null
+        inputs:
+          CONDITION:
+            node: is_diagonal
+          THEN:
+            branch: add_one
+          ELSE:
+            branch: add_zero
+
+      is_diagonal:
+        opcode: operator_equals
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: i
+          OPERAND2:
+            variable: j
+
+      add_one:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: current_row
+          VALUE:
+            node: append_one
+
+      append_one:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          ITERABLE:
+            variable: current_row
+          VALUE:
+            literal: 1
+
+      add_zero:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: current_row
+          VALUE:
+            node: append_zero
+
+      append_zero:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          ITERABLE:
+            variable: current_row
+          VALUE:
+            literal: 0
+
+      append_row_b:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: matrix_b
+          VALUE:
+            node: append_row_b_list
+
+      append_row_b_list:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          ITERABLE:
+            variable: matrix_b
+          VALUE:
+            variable: current_row
+
+      print_b:
+        opcode: io_print
+        next: call_print_matrix_b
+        inputs:
+          STRING:
+            literal: "Matrix B:\n"
+
+      call_print_matrix_b:
+        opcode: workflow_call
+        next: multiply_header
+        inputs:
+          WORKFLOW:
+            literal: print_matrix
+          ARG1:
+            variable: matrix_b
+
+      # Multiply matrices
+      multiply_header:
+        opcode: io_print
+        next: call_multiply
+        inputs:
+          STRING:
+            literal: "\nMultiplying A x B...\n"
+
+      call_multiply:
+        opcode: data_set_variable_to
+        next: print_result_header
+        inputs:
+          VARIABLE:
+            literal: result
+          VALUE:
+            node: multiply_call
+
+      multiply_call:
+        opcode: workflow_call
+        isReporter: true
+        inputs:
+          WORKFLOW:
+            literal: matrix_multiply
+          ARG1:
+            variable: matrix_a
+          ARG2:
+            variable: matrix_b
+
+      print_result_header:
+        opcode: io_print
+        next: call_print_result
+        inputs:
+          STRING:
+            literal: "Result (A x B):\n"
+
+      call_print_result:
+        opcode: workflow_call
+        next: calc_trace
+        inputs:
+          WORKFLOW:
+            literal: print_matrix
+          ARG1:
+            variable: result
+
+      # Calculate trace
+      calc_trace:
+        opcode: io_print
+        next: trace_call
+        inputs:
+          STRING:
+            literal: "\nCalculating trace...\n"
+
+      trace_call:
+        opcode: data_set_variable_to
+        next: print_trace
+        inputs:
+          VARIABLE:
+            literal: dot_product
+          VALUE:
+            node: trace_calc
+
+      trace_calc:
+        opcode: workflow_call
+        isReporter: true
+        inputs:
+          WORKFLOW:
+            literal: matrix_trace
+          ARG1:
+            variable: result
+
+      print_trace:
+        opcode: io_print
+        next: print_trace_val
+        inputs:
+          STRING:
+            literal: "Trace: "
+
+      print_trace_val:
+        opcode: io_print
+        next: done
+        inputs:
+          STRING:
+            variable: dot_product
+
+      done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n\nDone!\n"
+
+  # Helper workflow: print matrix
+  - name: print_matrix
+    interface:
+      inputs: ["matrix"]
+      outputs: []
+    variables:
+      matrix: []
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_rows
+        inputs: {}
+
+      print_rows:
+        opcode: control_foreach
+        next: null
+        inputs:
+          VAR:
+            literal: row
+          ITERABLE:
+            variable: matrix
+          BODY:
+            branch: print_row
+
+      print_row:
+        opcode: io_print
+        next: print_newline
+        inputs:
+          STRING:
+            node: row_str
+
+      row_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          VALUE:
+            variable: row
+
+      print_newline:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n"
+
+  # Helper workflow: matrix multiply
+  - name: matrix_multiply
+    interface:
+      inputs: ["a", "b"]
+      outputs: []
+    variables:
+      a: []
+      b: []
+      result: []
+      size: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: get_size
+        inputs: {}
+
+      get_size:
+        opcode: data_set_variable_to
+        next: init_result
+        inputs:
+          VARIABLE:
+            literal: size
+          VALUE:
+            node: len_a
+
+      len_a:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          ITERABLE:
+            variable: a
+
+      init_result:
+        opcode: data_set_variable_to
+        next: outer_loop
+        inputs:
+          VARIABLE:
+            literal: result
+          VALUE:
+            literal: []
+
+      outer_loop:
+        opcode: control_for
+        next: return_result
+        inputs:
+          VAR:
+            literal: i
+          START:
+            literal: 0
+          END:
+            variable: size
+          BODY:
+            branch: create_row
+
+      create_row:
+        opcode: data_set_variable_to
+        next: middle_loop
+        inputs:
+          VARIABLE:
+            literal: row
+          VALUE:
+            literal: []
+
+      middle_loop:
+        opcode: control_for
+        next: append_row
+        inputs:
+          VAR:
+            literal: j
+          START:
+            literal: 0
+          END:
+            variable: size
+          BODY:
+            branch: calc_element
+
+      calc_element:
+        opcode: data_set_variable_to
+        next: inner_loop
+        inputs:
+          VARIABLE:
+            literal: sum
+          VALUE:
+            literal: 0
+
+      inner_loop:
+        opcode: control_for
+        next: append_sum
+        inputs:
+          VAR:
+            literal: k
+          START:
+            literal: 0
+          END:
+            variable: size
+          BODY:
+            branch: add_product
+
+      add_product:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: sum
+          VALUE:
+            node: new_sum
+
+      new_sum:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: sum
+          OPERAND2:
+            node: product
+
+      product:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: a_ik
+          OPERAND2:
+            node: b_kj
+
+      a_ik:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          ITERABLE:
+            node: a_row_i
+          INDEX:
+            variable: k
+
+      a_row_i:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          ITERABLE:
+            variable: a
+          INDEX:
+            variable: i
+
+      b_kj:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          ITERABLE:
+            node: b_row_k
+          INDEX:
+            variable: j
+
+      b_row_k:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          ITERABLE:
+            variable: b
+          INDEX:
+            variable: k
+
+      append_sum:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: row
+          VALUE:
+            node: row_with_sum
+
+      row_with_sum:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          ITERABLE:
+            variable: row
+          VALUE:
+            variable: sum
+
+      append_row:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: result
+          VALUE:
+            node: result_with_row
+
+      result_with_row:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          ITERABLE:
+            variable: result
+          VALUE:
+            variable: row
+
+      return_result:
+        opcode: workflow_return
+        inputs:
+          VALUE:
+            variable: result
+
+  # Helper workflow: matrix trace
+  - name: matrix_trace
+    interface:
+      inputs: ["matrix"]
+      outputs: []
+    variables:
+      matrix: []
+      trace: 0
+      size: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: get_size
+        inputs: {}
+
+      get_size:
+        opcode: data_set_variable_to
+        next: init_trace
+        inputs:
+          VARIABLE:
+            literal: size
+          VALUE:
+            node: len_matrix
+
+      len_matrix:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          ITERABLE:
+            variable: matrix
+
+      init_trace:
+        opcode: data_set_variable_to
+        next: sum_diagonal
+        inputs:
+          VARIABLE:
+            literal: trace
+          VALUE:
+            literal: 0
+
+      sum_diagonal:
+        opcode: control_for
+        next: return_trace
+        inputs:
+          VAR:
+            literal: i
+          START:
+            literal: 0
+          END:
+            variable: size
+          BODY:
+            branch: add_diagonal
+
+      add_diagonal:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: trace
+          VALUE:
+            node: new_trace
+
+      new_trace:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: trace
+          OPERAND2:
+            node: diagonal_element
+
+      diagonal_element:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          ITERABLE:
+            node: row_i
+          INDEX:
+            variable: i
+
+      row_i:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          ITERABLE:
+            variable: matrix
+          INDEX:
+            variable: i
+
+      return_trace:
+        opcode: workflow_return
+        inputs:
+          VALUE:
+            variable: trace
