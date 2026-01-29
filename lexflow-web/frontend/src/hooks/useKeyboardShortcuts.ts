@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useUiStore, useWorkflowStore } from "../store";
+import { useUiStore, useWorkflowStore, useSelectionStore } from "../store";
 
 export function useKeyboardShortcuts() {
   const {
@@ -11,8 +11,6 @@ export function useKeyboardShortcuts() {
     toggleExecutionPanel,
   } = useUiStore();
   const {
-    selectNode,
-    selectedNodeId,
     undo,
     redo,
     canUndo,
@@ -20,6 +18,7 @@ export function useKeyboardShortcuts() {
     deleteNode,
     duplicateNode,
   } = useWorkflowStore();
+  const { selectNode, selectedNodeId, clearSelection } = useSelectionStore();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -101,11 +100,11 @@ export function useKeyboardShortcuts() {
       if (e.key === "Escape") {
         if (isNodeEditorOpen) {
           closeNodeEditor();
-          selectNode(null);
+          clearSelection();
         } else if (isPaletteOpen) {
           togglePalette();
         } else if (selectedNodeId) {
-          selectNode(null);
+          clearSelection();
         }
         return;
       }
@@ -119,6 +118,7 @@ export function useKeyboardShortcuts() {
             )
           ) {
             deleteNode(selectedNodeId);
+            clearSelection();
             closeNodeEditor();
           }
         }
@@ -136,6 +136,7 @@ export function useKeyboardShortcuts() {
     toggleExecutionPanel,
     selectNode,
     selectedNodeId,
+    clearSelection,
     undo,
     redo,
     canUndo,

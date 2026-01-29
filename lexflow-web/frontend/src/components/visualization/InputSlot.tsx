@@ -59,13 +59,19 @@ export function InputSlot({
   const handleMouseUp = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (draggingOrphan) {
+      // Type compatibility check (confirm dialog if incompatible)
+      if (compatibility === false) {
+        if (
+          !confirm(
+            `Type mismatch detected. The orphan node's return type may not be compatible with the input "${inputKey}". Continue anyway?`
+          )
+        ) {
+          setDraggingOrphan(null);
+          return;
+        }
+      }
       // Convert the orphan to a reporter for this input
-      convertOrphanToReporter(
-        draggingOrphan.nodeId,
-        nodeId,
-        inputKey,
-        compatibility,
-      );
+      convertOrphanToReporter(draggingOrphan.nodeId, nodeId, inputKey);
       setDraggingOrphan(null);
     } else if (draggingVariable) {
       // Update the input to use the variable reference

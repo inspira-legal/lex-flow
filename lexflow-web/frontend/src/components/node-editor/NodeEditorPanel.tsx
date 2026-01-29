@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useWorkflowStore, useUiStore } from "../../store";
-import type { SelectedReporter } from "../../store/uiStore";
+import { useWorkflowStore, useUiStore, useSelectionStore } from "../../store";
+import type { SelectedReporter } from "../../store/selectionStore";
 import type { TreeNode, FormattedValue } from "../../api/types";
 import { getInputDisplayName } from "../../utils/workflowUtils";
 import { StartNodeEditorPanel } from "./StartNodeEditorPanel";
@@ -15,8 +15,6 @@ import styles from "./NodeEditorPanel.module.css";
 export function NodeEditorPanel() {
   const {
     tree,
-    selectedNodeId,
-    selectNode,
     source,
     opcodes,
     deleteNode,
@@ -29,13 +27,15 @@ export function NodeEditorPanel() {
     addDynamicInput,
     removeDynamicInput,
   } = useWorkflowStore();
+  const { closeNodeEditor } = useUiStore();
   const {
-    closeNodeEditor,
+    selectedNodeId,
     selectedReporter,
     selectReporter,
     selectedStartNode,
     selectStartNode,
-  } = useUiStore();
+    clearSelection,
+  } = useSelectionStore();
   const [copied, setCopied] = useState(false);
 
   // Show start node editor if a start node is selected
@@ -63,8 +63,7 @@ export function NodeEditorPanel() {
 
   const handleClose = () => {
     closeNodeEditor();
-    selectNode(null);
-    selectReporter(null);
+    clearSelection();
   };
 
   const handleCopyId = () => {

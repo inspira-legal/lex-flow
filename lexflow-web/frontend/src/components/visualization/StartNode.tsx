@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { useUiStore, useWorkflowStore } from "../../store";
+import { useUiStore, useSelectionStore } from "../../store";
 import type { WorkflowInterface } from "../../api/types";
 import type { NodeSlotPositions } from "../../store/uiStore";
 import styles from "./StartNode.module.css";
@@ -28,16 +28,14 @@ export function StartNode({
   zoom = 1,
   onDrag,
 }: StartNodeProps) {
-  const { selectNode } = useWorkflowStore();
   const {
-    selectedStartNode,
-    selectStartNode,
     openNodeEditor,
     layoutMode,
     setIsDraggingNode,
     registerSlotPositions,
     unregisterSlotPositions,
   } = useUiStore();
+  const { selectedStartNode, selectStartNode, selectNode } = useSelectionStore();
 
   // Start node ID for the slot registry
   const startNodeId = `start-${workflowName}`;

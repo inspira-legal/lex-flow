@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useWorkflowStore, useUiStore } from "../../store";
+import { useWorkflowStore, useUiStore, useSelectionStore } from "../../store";
 import styles from "./NodeSearch.module.css";
 
 export function NodeSearch() {
-  const { tree, selectNode } = useWorkflowStore();
+  const { tree } = useWorkflowStore();
   const { searchQuery, setSearchQuery, searchResults, setSearchResults } =
     useUiStore();
+  const { selectNode } = useSelectionStore();
   const [isOpen, setIsOpen] = useState(false);
   const [currentResultIndex, setCurrentResultIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);

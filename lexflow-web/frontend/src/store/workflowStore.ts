@@ -28,11 +28,7 @@ interface WorkflowState {
   setParseError: (error: string | null) => void;
   setIsParsing: (isParsing: boolean) => void;
 
-  // Selection
-  selectedNodeId: string | null;
-  selectNode: (id: string | null) => void;
-
-  // Node operations
+  // Node operations (pure - no selection side effects)
   deleteNode: (nodeId: string) => boolean;
   addNode: (opcode: OpcodeInterface, workflowName?: string) => string | null;
   addWorkflowCallNode: (
@@ -62,7 +58,6 @@ interface WorkflowState {
     orphanNodeId: string,
     targetNodeId: string,
     inputKey: string,
-    isCompatible: boolean | null,
   ) => boolean;
   updateReporterInput: (
     reporterNodeId: string,
@@ -204,17 +199,12 @@ export const useWorkflowStore = create<WorkflowState>()(
       setParseError: (error) => set({ parseError: error, tree: null }),
       setIsParsing: (isParsing) => set({ isParsing }),
 
-      // Selection
-      selectedNodeId: null,
-      selectNode: (id) => set({ selectedNodeId: id }),
-
-      // Node operations
+      // Node operations (pure - no selection side effects)
       deleteNode: (nodeId) => {
         const state = get();
         const result = WorkflowService.deleteNode(state.source, nodeId);
         if (result.success) {
           state.setSource(result.source);
-          set({ selectedNodeId: null });
         }
         return result.success;
       },
@@ -225,7 +215,6 @@ export const useWorkflowStore = create<WorkflowState>()(
         const result = WorkflowService.addNode(state.source, opcode, workflowName);
         if (result.nodeId) {
           state.setSource(result.source);
-          set({ selectedNodeId: result.nodeId });
         }
         return result.nodeId;
       },
@@ -241,7 +230,6 @@ export const useWorkflowStore = create<WorkflowState>()(
         );
         if (result.nodeId) {
           state.setSource(result.source);
-          set({ selectedNodeId: result.nodeId });
         }
         return result.nodeId;
       },
@@ -252,7 +240,6 @@ export const useWorkflowStore = create<WorkflowState>()(
         const result = WorkflowService.duplicateNode(state.source, nodeId);
         if (result.nodeId) {
           state.setSource(result.source);
-          set({ selectedNodeId: result.nodeId });
         }
         return result.nodeId;
       },
@@ -298,23 +285,8 @@ export const useWorkflowStore = create<WorkflowState>()(
       },
 
       // Convert an orphan node to a reporter by linking it to a target node's input
-      convertOrphanToReporter: (
-        orphanNodeId,
-        targetNodeId,
-        inputKey,
-        isCompatible,
-      ) => {
-        // Show confirmation if types are incompatible
-        if (isCompatible === false) {
-          if (
-            !confirm(
-              `Type mismatch detected. The orphan node's return type may not be compatible with the input "${inputKey}". Continue anyway?`,
-            )
-          ) {
-            return false;
-          }
-        }
-
+      // Note: Type compatibility check moved to caller (UI layer)
+      convertOrphanToReporter: (orphanNodeId, targetNodeId, inputKey) => {
         const state = get();
         const result = WorkflowService.convertOrphanToReporter(
           state.source,

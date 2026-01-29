@@ -1,7 +1,8 @@
 // useSelection - Abstraction hook for selection state
+// Uses selectionStore as single source of truth for all selection state
 
-import { useMemo, useCallback } from "react";
-import { useWorkflowStore, useUiStore } from "../store";
+import { useMemo } from "react";
+import { useWorkflowStore, useSelectionStore } from "../store";
 import type { TreeNode, WorkflowTree } from "../api/types";
 
 // Helper to find a node by ID in the tree
@@ -102,36 +103,25 @@ function findReporterById(
 }
 
 export function useSelection() {
-  // Node selection
-  const selectedNodeId = useWorkflowStore((state) => state.selectedNodeId);
-  const selectNode = useWorkflowStore((state) => state.selectNode);
+  // Tree for finding selected node
   const tree = useWorkflowStore((state) => state.tree);
 
-  // Reporter selection
-  const selectedReporter = useUiStore((state) => state.selectedReporter);
-  const selectReporter = useUiStore((state) => state.selectReporter);
-
-  // Connection selection
-  const selectedConnection = useUiStore((state) => state.selectedConnection);
-  const selectConnection = useUiStore((state) => state.selectConnection);
-
-  // Start node selection
-  const selectedStartNode = useUiStore((state) => state.selectedStartNode);
-  const selectStartNode = useUiStore((state) => state.selectStartNode);
+  // All selection state from selectionStore
+  const selectedNodeId = useSelectionStore((state) => state.selectedNodeId);
+  const selectNode = useSelectionStore((state) => state.selectNode);
+  const selectedReporter = useSelectionStore((state) => state.selectedReporter);
+  const selectReporter = useSelectionStore((state) => state.selectReporter);
+  const selectedConnection = useSelectionStore((state) => state.selectedConnection);
+  const selectConnection = useSelectionStore((state) => state.selectConnection);
+  const selectedStartNode = useSelectionStore((state) => state.selectedStartNode);
+  const selectStartNode = useSelectionStore((state) => state.selectStartNode);
+  const clearSelection = useSelectionStore((state) => state.clearSelection);
 
   // Computed: selected node object
   const selectedNode = useMemo(() => {
     if (!selectedNodeId) return null;
     return findNodeInTree(tree, selectedNodeId);
   }, [selectedNodeId, tree]);
-
-  // Clear all selections
-  const clearSelection = useCallback(() => {
-    selectNode(null);
-    selectReporter(null);
-    selectConnection(null);
-    selectStartNode(null);
-  }, [selectNode, selectReporter, selectConnection, selectStartNode]);
 
   return {
     // Node selection

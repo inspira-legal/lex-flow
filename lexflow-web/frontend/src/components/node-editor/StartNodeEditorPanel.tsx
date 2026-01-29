@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useWorkflowStore, useUiStore } from "../../store";
+import { useWorkflowStore, useSelectionStore } from "../../store";
 import type { WorkflowNode } from "../../api/types";
 import styles from "./NodeEditorPanel.module.css";
 
@@ -19,7 +19,7 @@ export function StartNodeEditorPanel({
     deleteVariable,
     updateWorkflowInterface,
   } = useWorkflowStore();
-  const { selectStartNode } = useUiStore();
+  const { selectStartNode } = useSelectionStore();
 
   // Find the workflow
   const workflow = tree?.workflows.find((w) => w.name === workflowName) as

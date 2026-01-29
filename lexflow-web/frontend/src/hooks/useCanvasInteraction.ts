@@ -1,7 +1,7 @@
 // Canvas interaction hook - handles pan, zoom, wire/orphan/variable dragging
 
 import { useState, useCallback } from "react";
-import { useUiStore, useWorkflowStore } from "../store";
+import { useUiStore, useWorkflowStore, useSelectionStore } from "../store";
 import { findNearestPortFromRegistry } from "../utils/wireUtils";
 
 interface UseCanvasInteractionProps {
@@ -40,12 +40,11 @@ export function useCanvasInteraction({
     draggingVariable,
     setDraggingVariable,
     updateDraggingVariableEnd,
-    selectStartNode,
-    selectConnection,
     slotPositions,
   } = useUiStore();
 
-  const { selectNode, connectNodes, connectBranch } = useWorkflowStore();
+  const { connectNodes, connectBranch } = useWorkflowStore();
+  const { selectNode, selectStartNode, selectConnection } = useSelectionStore();
 
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });

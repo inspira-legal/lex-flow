@@ -1,7 +1,9 @@
 // UI state management with Zustand
+// Manages visual/interaction state (canvas, panels, dragging)
+// Selection state moved to selectionStore.ts
 
 import { create } from "zustand";
-import type { FormattedValue, OpcodeInterface } from "../api/types";
+import type { OpcodeInterface } from "../api/types";
 import type { LayoutWorkflowGroup } from "../services/layout/LayoutService";
 
 // Slot position (absolute canvas coordinates)
@@ -14,15 +16,6 @@ export interface NodeSlotPositions {
   input: SlotPosition;
   output: SlotPosition;
   branches: Record<string, SlotPosition>; // "THEN", "ELSE", "TRY", etc.
-}
-
-// Reporter selection info
-export interface SelectedReporter {
-  parentNodeId: string;
-  inputPath: string[]; // Path to reach this reporter (e.g., ['condition'] or ['condition', 'left'])
-  reporterNodeId: string | undefined; // The actual reporter node's ID (for editing/finding)
-  opcode: string;
-  inputs: Record<string, FormattedValue>;
 }
 
 // Wire dragging info
@@ -69,13 +62,6 @@ export interface DraggingWorkflowCall {
   params: string[];
 }
 
-// Selected connection info
-export interface SelectedConnection {
-  fromNodeId: string;
-  toNodeId: string;
-  label?: string; // "THEN", "ELSE", "BODY", "TRY", "CATCH", "FINALLY", etc.
-}
-
 interface UiState {
   // Canvas
   zoom: number;
@@ -118,10 +104,6 @@ interface UiState {
   setWorkflowPosition: (name: string, x: number, y: number) => void;
   resetWorkflowPositions: () => void;
 
-  // Selected reporter
-  selectedReporter: SelectedReporter | null;
-  selectReporter: (reporter: SelectedReporter | null) => void;
-
   // Drag-drop from palette
   draggingOpcode: OpcodeInterface | null;
   setDraggingOpcode: (opcode: OpcodeInterface | null) => void;
@@ -130,10 +112,6 @@ interface UiState {
   draggingWire: DraggingWire | null;
   setDraggingWire: (wire: DraggingWire | null) => void;
   updateDraggingWire: (updates: Partial<DraggingWire>) => void;
-
-  // Selected connection (for delete)
-  selectedConnection: SelectedConnection | null;
-  selectConnection: (conn: SelectedConnection | null) => void;
 
   // Orphan dragging for orphan-to-reporter conversion
   draggingOrphan: DraggingOrphan | null;
@@ -153,10 +131,6 @@ interface UiState {
   // Node dragging (prevent canvas pan during node drag)
   isDraggingNode: boolean;
   setIsDraggingNode: (dragging: boolean) => void;
-
-  // Selected start node (for editing workflow variables/interface)
-  selectedStartNode: string | null;
-  selectStartNode: (workflowName: string | null) => void;
 
   // Variable dragging for palette to input slot
   draggingVariable: DraggingVariable | null;
@@ -226,14 +200,6 @@ export const useUiStore = create<UiState>((set) => ({
     })),
   resetWorkflowPositions: () => set({ workflowPositions: {} }),
 
-  // Selected reporter
-  selectedReporter: null,
-  selectReporter: (reporter) =>
-    set({
-      selectedReporter: reporter,
-      ...(reporter ? { isNodeEditorOpen: true } : {}),
-    }),
-
   // Drag-drop from palette
   draggingOpcode: null,
   setDraggingOpcode: (opcode) => set({ draggingOpcode: opcode }),
@@ -245,10 +211,6 @@ export const useUiStore = create<UiState>((set) => ({
     set((s) => ({
       draggingWire: s.draggingWire ? { ...s.draggingWire, ...updates } : null,
     })),
-
-  // Selected connection (for delete)
-  selectedConnection: null,
-  selectConnection: (conn) => set({ selectedConnection: conn }),
 
   // Orphan dragging for orphan-to-reporter conversion
   draggingOrphan: null,
@@ -278,14 +240,6 @@ export const useUiStore = create<UiState>((set) => ({
   // Node dragging
   isDraggingNode: false,
   setIsDraggingNode: (dragging) => set({ isDraggingNode: dragging }),
-
-  // Selected start node
-  selectedStartNode: null,
-  selectStartNode: (workflowName) =>
-    set({
-      selectedStartNode: workflowName,
-      ...(workflowName ? { isNodeEditorOpen: true } : {}),
-    }),
 
   // Variable dragging
   draggingVariable: null,

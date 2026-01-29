@@ -1,8 +1,9 @@
 // useNodeOperations - Abstraction hook for node operations
 // Uses WorkflowService for business logic
+// Coordinates editing (workflowStore) and selection (selectionStore)
 
 import { useCallback } from "react";
-import { useWorkflowStore } from "../store";
+import { useWorkflowStore, useSelectionStore } from "../store";
 import {
   addNode as addNodeService,
   deleteNode as deleteNodeService,
@@ -20,7 +21,10 @@ import type { OpcodeInterface } from "../api/types";
 export function useNodeOperations() {
   const source = useWorkflowStore((state) => state.source);
   const setSource = useWorkflowStore((state) => state.setSource);
-  const selectNode = useWorkflowStore((state) => state.selectNode);
+
+  // Selection state from selectionStore
+  const selectNode = useSelectionStore((state) => state.selectNode);
+  const clearSelection = useSelectionStore((state) => state.clearSelection);
 
   const addNode = useCallback(
     (opcode: OpcodeInterface, workflowName = "main") => {
@@ -39,11 +43,11 @@ export function useNodeOperations() {
       const result = deleteNodeService(source, nodeId);
       if (result.success) {
         setSource(result.source);
-        selectNode(null);
+        clearSelection();
       }
       return result.success;
     },
-    [source, setSource, selectNode],
+    [source, setSource, clearSelection],
   );
 
   const duplicateNode = useCallback(
@@ -123,22 +127,9 @@ export function useNodeOperations() {
     [source, setSource],
   );
 
+  // Type compatibility check should be handled by caller before calling this
   const convertOrphanToReporter = useCallback(
-    (
-      orphanNodeId: string,
-      targetNodeId: string,
-      inputKey: string,
-      isCompatible: boolean | null,
-    ) => {
-      if (isCompatible === false) {
-        if (
-          !confirm(
-            `Type mismatch detected. The orphan node's return type may not be compatible with the input "${inputKey}". Continue anyway?`,
-          )
-        ) {
-          return false;
-        }
-      }
+    (orphanNodeId: string, targetNodeId: string, inputKey: string) => {
       const result = convertOrphanToReporterService(
         source,
         orphanNodeId,

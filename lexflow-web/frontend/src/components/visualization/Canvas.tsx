@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from "react";
-import { useUiStore, useWorkflowStore } from "../../store";
+import { useUiStore, useWorkflowStore, useSelectionStore } from "../../store";
 import { WorkflowNode } from "./WorkflowNode";
 import { StartNode } from "./StartNode";
 import { Connection } from "./Connection";
@@ -28,12 +28,11 @@ export function Canvas() {
     resetNodePositions,
     layoutMode,
     setLayoutMode,
-    selectedConnection,
-    selectConnection,
     setLayoutGroups,
     setCanvasCenter,
   } = useUiStore();
   const { tree, parseError, disconnectConnection } = useWorkflowStore();
+  const { selectedConnection, selectConnection } = useSelectionStore();
 
   const svgRef = useRef<SVGSVGElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });

@@ -1,6 +1,7 @@
 import { useRef, useEffect, type ReactElement } from "react";
-import { useWorkflowStore, useUiStore } from "../../store";
-import type { SelectedReporter, NodeSlotPositions } from "../../store/uiStore";
+import { useWorkflowStore, useUiStore, useSelectionStore } from "../../store";
+import type { SelectedReporter } from "../../store/selectionStore";
+import type { NodeSlotPositions } from "../../store/uiStore";
 import type {
   TreeNode,
   FormattedValue,
@@ -85,13 +86,11 @@ export function WorkflowNode({
   zoom = 1,
   onDrag,
 }: WorkflowNodeProps) {
-  const { selectedNodeId, selectNode, opcodes, tree } = useWorkflowStore();
+  const { opcodes, tree } = useWorkflowStore();
   const {
     openNodeEditor,
     nodeStatus,
     searchResults,
-    selectReporter,
-    selectedReporter,
     draggingWire,
     draggingOrphan,
     setDraggingOrphan,
@@ -101,6 +100,12 @@ export function WorkflowNode({
     registerSlotPositions,
     unregisterSlotPositions,
   } = useUiStore();
+  const {
+    selectedNodeId,
+    selectNode,
+    selectedReporter,
+    selectReporter,
+  } = useSelectionStore();
 
   // Get opcode info for this node
   const opcodeInfo = opcodes.find((op) => op.name === node.opcode);
