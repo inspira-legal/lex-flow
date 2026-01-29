@@ -1,44 +1,9 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useWorkflowStore, useUiStore } from "../../store";
 import type { OpcodeInterface } from "../../api/types";
 import { getCallableWorkflows } from "../../utils/workflowUtils";
+import { getCategories, loadGrammar } from "../../services/grammar";
 import styles from "./NodePalette.module.css";
-
-const CATEGORIES = [
-  {
-    id: "control",
-    prefix: "control_",
-    label: "Control",
-    color: "#FF9500",
-    icon: "⟳",
-  },
-  { id: "data", prefix: "data_", label: "Data", color: "#4CAF50", icon: "📦" },
-  { id: "io", prefix: "io_", label: "I/O", color: "#22D3EE", icon: "📤" },
-  {
-    id: "operator",
-    prefix: "operator_",
-    label: "Operators",
-    color: "#9C27B0",
-    icon: "⚡",
-  },
-  { id: "list", prefix: "list_", label: "Lists", color: "#3B82F6", icon: "📋" },
-  { id: "dict", prefix: "dict_", label: "Dicts", color: "#F59E0B", icon: "📖" },
-  {
-    id: "string",
-    prefix: "string_",
-    label: "Strings",
-    color: "#F472B6",
-    icon: "📝",
-  },
-  { id: "math", prefix: "math_", label: "Math", color: "#8B5CF6", icon: "🔢" },
-  {
-    id: "workflow",
-    prefix: "workflow_",
-    label: "Workflow",
-    color: "#E91E63",
-    icon: "🔗",
-  },
-];
 
 export function NodePalette() {
   const { opcodes, tree } = useWorkflowStore();
@@ -48,6 +13,14 @@ export function NodePalette() {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(
     "variables",
   );
+
+  // Load grammar on mount (ensures categories are available)
+  useEffect(() => {
+    loadGrammar();
+  }, []);
+
+  // Get categories from grammar
+  const CATEGORIES = getCategories();
 
   // Get callable workflows (non-main)
   const callableWorkflows = useMemo(
@@ -91,7 +64,7 @@ export function NodePalette() {
     }
 
     return groups;
-  }, [opcodes]);
+  }, [opcodes, CATEGORIES]);
 
   // Filter by search
   const filteredOpcodes = useMemo(() => {

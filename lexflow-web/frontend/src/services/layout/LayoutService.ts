@@ -6,7 +6,8 @@ import type {
   WorkflowNode,
   WorkflowInterface,
 } from "../../api/types";
-import { CONTROL_FLOW_OPCODES, NODE_DIMENSIONS, LAYOUT_GAPS } from "../../constants";
+import { NODE_DIMENSIONS, LAYOUT_GAPS } from "../../constants";
+import { getControlFlowOpcodeSet, getBranchColor as grammarGetBranchColor } from "../../services/grammar";
 import { START_NODE_WIDTH, START_NODE_HEIGHT } from "../../components/visualization/StartNode";
 
 // Layout constants
@@ -141,8 +142,8 @@ export function calculateNodeHeight(
     return acc + calculateReporterTotalHeight(value) + 4;
   }, 0);
 
-  const hasBranchSlots =
-    opcode && (CONTROL_FLOW_OPCODES as readonly string[]).includes(opcode);
+  const controlFlowOpcodes = getControlFlowOpcodeSet();
+  const hasBranchSlots = opcode && controlFlowOpcodes.has(opcode);
   const branchSlotsHeight = hasBranchSlots ? 28 : 0;
 
   return baseHeight + reporterSectionHeight + branchSlotsHeight;
@@ -246,23 +247,7 @@ export function calculateCenter(box: BoundingBox): Position {
 
 // Get branch color by name
 export function getBranchColor(name: string): string {
-  if (name.startsWith("CATCH")) {
-    return "#F87171"; // Red
-  }
-  switch (name) {
-    case "THEN":
-      return "#34D399"; // Green
-    case "ELSE":
-      return "#F87171"; // Red
-    case "BODY":
-      return "#22D3EE"; // Cyan
-    case "TRY":
-      return "#3B82F6"; // Blue
-    case "FINALLY":
-      return "#FACC15"; // Yellow
-    default:
-      return "#9C27B0"; // Purple
-  }
+  return grammarGetBranchColor(name);
 }
 
 // Layout all workflows with custom position offsets

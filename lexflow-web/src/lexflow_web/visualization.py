@@ -1,6 +1,7 @@
 """Visualization service for converting workflows to tree structures."""
 
 from typing import Any
+from lexflow.grammar import get_grammar, get_construct
 
 
 def workflow_to_tree(workflow_data: dict) -> dict:
@@ -141,36 +142,41 @@ def _node_to_tree(node_id: str, node: dict, all_nodes: dict, all_visited: set) -
         "children": [],
     }
 
-    # Handle control flow branches
-    if opcode in ("control_for", "control_foreach", "control_while"):
-        tree_node["config"] = _extract_loop_config(opcode, inputs, all_nodes)
-        body_input = inputs.get("BODY", inputs.get("body", {}))
-        body_branch = body_input.get("branch") if isinstance(body_input, dict) else None
-        if body_branch:
-            tree_node["children"].append(
-                _build_branch("BODY", body_branch, all_nodes, all_visited)
+    # Handle control flow branches using grammar
+    construct = get_construct(opcode)
+    if construct and construct.get("branches"):
+        # Extract loop config for loop constructs
+        if opcode in ("control_for", "control_foreach", "control_while"):
+            tree_node["config"] = _extract_loop_config(opcode, inputs, all_nodes)
+
+        # Handle try-catch special case
+        if opcode == "control_try":
+            tree_node["children"] = _extract_try_branches(
+                inputs, all_nodes, all_visited
             )
-
-    elif opcode in ("control_if", "control_if_else"):
-        then_input = inputs.get("THEN", inputs.get("then", {}))
-        then_branch = then_input.get("branch") if isinstance(then_input, dict) else None
-        if then_branch:
-            tree_node["children"].append(
-                _build_branch("THEN", then_branch, all_nodes, all_visited)
+        # Handle fork special case
+        elif opcode == "control_fork":
+            tree_node["children"] = _extract_fork_branches(
+                inputs, all_nodes, all_visited
             )
-
-        else_input = inputs.get("ELSE", inputs.get("else", {}))
-        else_branch = else_input.get("branch") if isinstance(else_input, dict) else None
-        if else_branch:
-            tree_node["children"].append(
-                _build_branch("ELSE", else_branch, all_nodes, all_visited)
-            )
-
-    elif opcode == "control_fork":
-        tree_node["children"] = _extract_fork_branches(inputs, all_nodes, all_visited)
-
-    elif opcode == "control_try":
-        tree_node["children"] = _extract_try_branches(inputs, all_nodes, all_visited)
+        else:
+            # Generic branch extraction based on grammar
+            for branch_def in construct["branches"]:
+                branch_name = branch_def["name"]
+                branch_input = inputs.get(
+                    branch_name, inputs.get(branch_name.lower(), {})
+                )
+                branch_target = (
+                    branch_input.get("branch")
+                    if isinstance(branch_input, dict)
+                    else None
+                )
+                if branch_target:
+                    tree_node["children"].append(
+                        _build_branch(
+                            branch_name, branch_target, all_nodes, all_visited
+                        )
+                    )
 
     return tree_node
 
@@ -193,17 +199,17 @@ def _collect_reporter_ids(inputs: dict, all_nodes: dict, all_visited: set) -> No
 
 
 def _get_node_type(opcode: str) -> str:
-    """Determine node type from opcode."""
-    if opcode.startswith("control_"):
-        return "control_flow"
-    elif opcode.startswith("data_"):
-        return "data"
-    elif opcode.startswith("io_"):
-        return "io"
-    elif opcode.startswith("operator_"):
-        return "operator"
-    elif opcode.startswith("workflow_"):
-        return "workflow_op"
+    """Determine node type from opcode using grammar categories."""
+    # Check grammar categories for the node type
+    grammar = get_grammar()
+    for category in grammar["categories"]:
+        if opcode.startswith(category["prefix"]):
+            # Map category id to node type
+            if category["id"] == "control":
+                return "control_flow"
+            elif category["id"] == "workflow":
+                return "workflow_op"
+            return category["id"]
     return "opcode"
 
 

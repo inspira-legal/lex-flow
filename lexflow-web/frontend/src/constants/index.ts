@@ -1,6 +1,26 @@
 // Consolidated constants for LexFlow Web Frontend
 
 import type { NodeType } from "../api/types";
+import {
+  getGrammar,
+  getBranchColor,
+  getNodeColor,
+  getReporterColor,
+  getControlFlowOpcodeSet,
+  getBranchSlots,
+  getCategories,
+} from "../services/grammar";
+
+// Re-export grammar service functions for convenience
+export {
+  getBranchColor,
+  getNodeColor,
+  getReporterColor,
+  getControlFlowOpcodeSet,
+  getBranchSlots,
+  getCategories,
+  getGrammar,
+};
 
 // Node layout dimensions
 export const NODE_DIMENSIONS = {
@@ -35,6 +55,8 @@ export const CANVAS_DEFAULTS = {
 } as const;
 
 // Control flow opcodes that have branch slots
+// NOTE: Now sourced from grammar. Use getControlFlowOpcodeSet() for runtime access.
+// This array is kept for backward compatibility with static imports.
 export const CONTROL_FLOW_OPCODES = [
   "control_if",
   "control_if_else",
@@ -42,6 +64,11 @@ export const CONTROL_FLOW_OPCODES = [
   "control_while",
   "control_foreach",
   "control_try",
+  "control_fork",
+  "control_spawn",
+  "control_async_foreach",
+  "async_timeout",
+  "control_with",
 ] as const;
 
 // Node type display labels
@@ -55,6 +82,7 @@ export const NODE_TYPE_LABELS: Record<NodeType | string, string> = {
 };
 
 // Node type colors (Scratch-inspired)
+// NOTE: Now sourced from grammar. Use getNodeColor() for runtime access.
 export const NODE_COLORS: Record<NodeType | string, string> = {
   control_flow: "#FF9500", // Orange - control
   data: "#4CAF50", // Green - data
@@ -65,6 +93,7 @@ export const NODE_COLORS: Record<NodeType | string, string> = {
 };
 
 // Reporter pill colors by category
+// NOTE: Now sourced from grammar. Use getReporterColor() for runtime access.
 export const REPORTER_COLORS: Record<string, string> = {
   data: "#4CAF50",
   operator: "#9C27B0",

@@ -14,8 +14,8 @@ import { getInputDisplayName } from "../../utils/workflowUtils";
 import {
   calculateReporterTotalHeight,
   formatValueShort,
-  getBranchColor,
 } from "../../services/layout/LayoutService";
+import { getBranchColor, getBranchSlots as getGrammarBranchSlots } from "../../services/grammar";
 import { useNodePorts } from "../../hooks";
 import styles from "./WorkflowNode.module.css";
 
@@ -25,47 +25,8 @@ function getBranchSlots(
   opcode: string,
   children: BranchNode[],
 ): Array<{ name: string; connected: boolean }> {
-  const connectedNames = new Set(children.map((c) => c.name));
-
-  switch (opcode) {
-    case "control_if":
-      return [{ name: "THEN", connected: connectedNames.has("THEN") }];
-    case "control_if_else":
-      return [
-        { name: "THEN", connected: connectedNames.has("THEN") },
-        { name: "ELSE", connected: connectedNames.has("ELSE") },
-      ];
-    case "control_for":
-    case "control_while":
-    case "control_foreach":
-      return [{ name: "BODY", connected: connectedNames.has("BODY") }];
-    case "control_try": {
-      const slots: Array<{ name: string; connected: boolean }> = [
-        { name: "TRY", connected: connectedNames.has("TRY") },
-      ];
-      // Find all CATCH branches
-      const catchBranches = children
-        .filter((c) => c.name.startsWith("CATCH"))
-        .map((c) => c.name);
-      // Always show at least CATCH1 slot, plus any existing catches
-      const maxCatch =
-        catchBranches.length > 0
-          ? Math.max(
-              ...catchBranches.map(
-                (n) => parseInt(n.replace("CATCH", "")) || 1,
-              ),
-            )
-          : 0;
-      for (let i = 1; i <= Math.max(1, maxCatch); i++) {
-        const name = `CATCH${i}`;
-        slots.push({ name, connected: connectedNames.has(name) });
-      }
-      slots.push({ name: "FINALLY", connected: connectedNames.has("FINALLY") });
-      return slots;
-    }
-    default:
-      return [];
-  }
+  const connectedNames = children.map((c) => c.name);
+  return getGrammarBranchSlots(opcode, connectedNames);
 }
 
 interface WorkflowNodeProps {
@@ -77,14 +38,7 @@ interface WorkflowNodeProps {
   onDrag?: (dx: number, dy: number) => void;
 }
 
-const NODE_COLORS: Record<NodeType | string, string> = {
-  control_flow: "#FF9500",
-  data: "#4CAF50",
-  io: "#22D3EE",
-  operator: "#9C27B0",
-  workflow_op: "#E91E63",
-  opcode: "#64748B",
-};
+import { getNodeColor, getReporterColor as getGrammarReporterColor } from "../../services/grammar";
 
 const NODE_ICONS: Record<string, string> = {
   control_flow: "⟳",
@@ -93,14 +47,6 @@ const NODE_ICONS: Record<string, string> = {
   operator: "⚡",
   workflow_op: "🔗",
   opcode: "⚙",
-};
-
-const REPORTER_COLORS: Record<string, string> = {
-  data: "#4CAF50",
-  operator: "#9C27B0",
-  io: "#22D3EE",
-  workflow: "#E91E63",
-  default: "#64748B",
 };
 
 export function WorkflowNode({
@@ -139,7 +85,7 @@ export function WorkflowNode({
     }
   }
 
-  const color = NODE_COLORS[node.type] || NODE_COLORS.opcode;
+  const color = getNodeColor(node.type);
   const icon = NODE_ICONS[node.type] || NODE_ICONS.opcode;
   const isSelected = selectedNodeId === node.id && !selectedReporter;
   const isSearchMatch = searchResults.includes(node.id);
@@ -830,11 +776,7 @@ function renderNestedReporterWithLabels(
 }
 
 function getReporterColor(opcode: string): string {
-  if (opcode.startsWith("data_")) return REPORTER_COLORS.data;
-  if (opcode.startsWith("operator_")) return REPORTER_COLORS.operator;
-  if (opcode.startsWith("io_")) return REPORTER_COLORS.io;
-  if (opcode.startsWith("workflow_")) return REPORTER_COLORS.workflow;
-  return REPORTER_COLORS.default;
+  return getGrammarReporterColor(opcode);
 }
 
 function formatOpcodeName(opcode: string): string {

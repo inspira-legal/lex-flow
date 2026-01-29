@@ -224,3 +224,16 @@ async def list_opcodes():
         interface = default_registry.get_interface(name)
         opcodes.append(interface)
     return opcodes
+
+
+@router.get("/grammar")
+async def get_language_grammar():
+    """Return the complete language grammar schema.
+
+    This endpoint provides the single source of truth for all LexFlow
+    language constructs including control flow opcodes, their inputs,
+    branches, and UI rendering information (colors, icons, etc.).
+    """
+    from lexflow import get_grammar
+
+    return get_grammar()
