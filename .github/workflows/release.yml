@@ -75,6 +75,9 @@ jobs:
       - name: Install dependencies
         run: pip install python-semantic-release
 
+      - name: Pull latest changes
+        run: git pull origin main
+
       - name: Release lexflow-cli
         working-directory: lexflow-cli
         env:
@@ -86,7 +89,7 @@ jobs:
           semantic-release publish
 
   release-web:
-    needs: [detect-changes, release-core]
+    needs: [detect-changes, release-core, release-cli]
     if: always() && needs.detect-changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -101,6 +104,9 @@ jobs:
 
       - name: Install dependencies
         run: pip install python-semantic-release
+
+      - name: Pull latest changes
+        run: git pull origin main
 
       - name: Release lexflow-web
         working-directory: lexflow-web
