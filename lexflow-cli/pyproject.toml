@@ -19,3 +19,14 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/lexflow_cli"]
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+tag_format = "cli-v{version}"
+branch = "main"
+commit_message = "chore(cli): release {version}"
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = ["feat", "fix", "perf", "refactor", "docs", "chore", "test"]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]

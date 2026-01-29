@@ -9,27 +9,88 @@ from lexflow import Parser, Engine
 from lexflow.visualizer import WorkflowVisualizer
 
 
+def handle_docs_command(args) -> int:
+    """Handle the 'docs' subcommand."""
+    from lexflow_cli.docs import generate_opcode_reference
+
+    content = generate_opcode_reference()
+
+    if args.stdout:
+        print(content)
+    else:
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(content)
+        print(f"Generated documentation: {output_path}")
+
+    return 0
+
+
 def create_parser() -> argparse.ArgumentParser:
-    """Create argument parser"""
+    """Create argument parser with subcommands."""
     parser = argparse.ArgumentParser(
-        description="Lex Flow - Visual Programming Workflow Interpreter",
-        epilog="""
-Examples:
-  lexflow workflow.json                             # Run workflow
-  lexflow workflow.yaml                             # Run YAML workflow
-  lexflow main.yaml --include helpers.yaml          # Include external workflows
-  lexflow main.json --include util.json lib.yaml    # Include multiple files (JSON/YAML)
-  lexflow workflow.json --verbose                   # Verbose output
-  lexflow workflow.json --validate-only             # Validate without executing
-  lexflow workflow.json --visualize                 # Show workflow visualization
-  lexflow workflow.json --visualize --validate-only # Visualize without executing
-  lexflow workflow.json --output-file output.txt    # Redirect output to file
-  lexflow workflow.json --metrics                   # Show performance metrics
-  lexflow workflow.json --metrics --metrics-json    # Export metrics as JSON
-        """,
+        description="LexFlow - Visual Programming Workflow Interpreter",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # 'run' subcommand (also the default when a file is passed directly)
+    run_parser = subparsers.add_parser(
+        "run",
+        help="Run a workflow file",
+        epilog="""
+Examples:
+  lexflow run workflow.json                         # Run workflow
+  lexflow run workflow.yaml                         # Run YAML workflow
+  lexflow run main.yaml --include helpers.yaml      # Include external workflows
+  lexflow run workflow.json --verbose               # Verbose output
+  lexflow run workflow.json --validate-only         # Validate without executing
+  lexflow run workflow.json --metrics               # Show performance metrics
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    _add_run_arguments(run_parser)
+
+    # 'docs' subcommand
+    docs_parser = subparsers.add_parser(
+        "docs",
+        help="Documentation generation commands",
+    )
+    docs_subparsers = docs_parser.add_subparsers(
+        dest="docs_command", help="Docs commands"
+    )
+
+    # 'docs generate' subcommand
+    docs_generate_parser = docs_subparsers.add_parser(
+        "generate",
+        help="Generate documentation from code",
+        epilog="""
+Examples:
+  lexflow docs generate                           # Generate to docs/OPCODE_REFERENCE.md
+  lexflow docs generate -o custom/path.md         # Custom output path
+  lexflow docs generate --stdout                  # Print to stdout
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    docs_generate_parser.add_argument(
+        "-o",
+        "--output",
+        default="docs/OPCODE_REFERENCE.md",
+        metavar="FILE",
+        help="Output file path (default: docs/OPCODE_REFERENCE.md)",
+    )
+    docs_generate_parser.add_argument(
+        "--stdout",
+        action="store_true",
+        help="Print to stdout instead of writing to file",
+    )
+
+    return parser
+
+
+def _add_run_arguments(parser: argparse.ArgumentParser):
+    """Add arguments for the run command."""
     # Main workflow file (required)
     parser.add_argument(
         "workflow_file",
@@ -104,8 +165,6 @@ Examples:
         help="Number of top operations to show in metrics report (default: 10)",
     )
 
-    return parser
-
 
 def _load_workflow_data(file_path: str) -> dict:
     """Load raw workflow data from YAML/JSON file.
@@ -148,10 +207,8 @@ def print_error(message: str):
     print(f"✗ {message}", file=sys.stderr)
 
 
-async def main():
-    arg_parser = create_parser()
-    args = arg_parser.parse_args()
-
+async def run_workflow(args):
+    """Execute a workflow file."""
     try:
         workflow_file = Path(args.workflow_file)
 
@@ -307,11 +364,36 @@ async def main():
 
     except Exception as e:
         print_error(f"Error: {e}")
-        if args.verbose:
+        if hasattr(args, "verbose") and args.verbose:
             import traceback
 
             traceback.print_exc()
         sys.exit(1)
+
+
+async def main():
+    """Main entry point with subcommand routing."""
+    arg_parser = create_parser()
+
+    # Handle legacy syntax: lexflow file.yaml (without 'run' subcommand)
+    # Check if first argument looks like a file (not a subcommand)
+    if len(sys.argv) > 1 and sys.argv[1] not in ("run", "docs", "-h", "--help"):
+        # Insert 'run' as the subcommand for backward compatibility
+        sys.argv.insert(1, "run")
+
+    args = arg_parser.parse_args()
+
+    if args.command == "run":
+        await run_workflow(args)
+    elif args.command == "docs":
+        if args.docs_command == "generate":
+            sys.exit(handle_docs_command(args))
+        else:
+            # Show docs help if no subcommand
+            arg_parser.parse_args(["docs", "-h"])
+    else:
+        arg_parser.print_help()
+        sys.exit(0)
 
 
 def cli_main():
