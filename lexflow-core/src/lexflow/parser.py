@@ -30,6 +30,7 @@ from .ast import (
     Expression,
     Statement,
 )
+from .grammar import get_grammar, get_construct
 
 
 # ============= Error Handling =============
@@ -163,21 +164,19 @@ class ExpressionParser:
 class ControlFlowHandler(NodeHandler):
     """Handles control flow nodes (if, while, for, etc.)"""
 
-    OPCODES = {
-        "control_if",
-        "control_if_else",
-        "control_while",
-        "control_for",
-        "control_foreach",
-        "control_fork",
-        "control_spawn",
-        "control_async_foreach",
-        "async_timeout",
-        "control_with",
-    }
+    def __init__(self):
+        # Build opcode set from grammar schema
+        grammar = get_grammar()
+        self._opcodes = {
+            c["opcode"]
+            for c in grammar["constructs"]
+            if c.get("branches")
+            and len(c["branches"]) > 0
+            and c["opcode"] != "control_try"
+        }
 
     def can_handle(self, opcode: str) -> bool:
-        return opcode in self.OPCODES
+        return opcode in self._opcodes
 
     def handle(
         self, node_id: str, node: dict, context: ParseContext
@@ -304,10 +303,18 @@ class ControlFlowHandler(NodeHandler):
 class DataHandler(NodeHandler):
     """Handles data operations (assign, return)"""
 
-    OPCODES = {"data_set_variable_to", "assign", "workflow_return", "return"}
+    def __init__(self):
+        # Build from grammar: assign and return opcodes
+        grammar = get_grammar()
+        self._opcodes = set()
+        for c in grammar["constructs"]:
+            if c["ast_class"] in ("Assign", "Return"):
+                self._opcodes.add(c["opcode"])
+        # Add aliases for backward compatibility
+        self._opcodes.update({"assign", "return"})
 
     def can_handle(self, opcode: str) -> bool:
-        return opcode in self.OPCODES
+        return opcode in self._opcodes
 
     def handle(
         self, node_id: str, node: dict, context: ParseContext
@@ -357,10 +364,18 @@ class DataHandler(NodeHandler):
 class WorkflowHandler(NodeHandler):
     """Handles workflow operations (call)"""
 
-    OPCODES = {"workflow_call", "call"}
+    def __init__(self):
+        # Build from grammar: workflow call opcode
+        grammar = get_grammar()
+        self._opcodes = set()
+        for c in grammar["constructs"]:
+            if c["opcode"] == "workflow_call":
+                self._opcodes.add(c["opcode"])
+        # Add alias for backward compatibility
+        self._opcodes.add("call")
 
     def can_handle(self, opcode: str) -> bool:
-        return opcode in self.OPCODES
+        return opcode in self._opcodes
 
     def handle(
         self, node_id: str, node: dict, context: ParseContext
@@ -392,10 +407,18 @@ class WorkflowHandler(NodeHandler):
 class ExceptionHandler(NodeHandler):
     """Handles exception-related nodes (try, throw)"""
 
-    OPCODES = {"control_try", "try_catch", "control_throw"}
+    def __init__(self):
+        # Build from grammar: try and throw opcodes
+        grammar = get_grammar()
+        self._opcodes = set()
+        for c in grammar["constructs"]:
+            if c["ast_class"] in ("Try", "Throw"):
+                self._opcodes.add(c["opcode"])
+        # Add alias for backward compatibility
+        self._opcodes.add("try_catch")
 
     def can_handle(self, opcode: str) -> bool:
-        return opcode in self.OPCODES
+        return opcode in self._opcodes
 
     def handle(
         self, node_id: str, node: dict, context: ParseContext
@@ -465,6 +488,7 @@ class Parser:
     def __init__(self):
         self.current_workflow = None
         # Initialize handlers in priority order (DefaultHandler must be last)
+        # Note: handlers with __init__ will load grammar on first instantiation
         self.handlers: List[NodeHandler] = [
             ControlFlowHandler(),
             DataHandler(),
