@@ -5,7 +5,7 @@ logs/
 .env
 __pycache__/
 CLAUDE.md
-.claude/
+.claude/settings*.json
 programs/
 prompts/
 todo/
