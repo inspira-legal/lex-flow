@@ -3,6 +3,12 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      force_all:
+        description: 'Force release all packages'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
