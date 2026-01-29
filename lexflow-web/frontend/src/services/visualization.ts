@@ -1,5 +1,5 @@
 // Visualization service for converting workflows to tree structures
-// Ported from Python backend visualization.py to enable client-side parsing
+// Uses grammar-driven extraction for dynamic node rendering
 
 import type {
   WorkflowTree,
@@ -11,6 +11,8 @@ import type {
   NodeType,
   WorkflowInterface,
 } from "../api/types";
+import { getConstruct, getGrammar } from "./grammar";
+import type { Construct } from "../types/grammar";
 
 interface WorkflowData {
   workflows?: WorkflowDefinition[];
@@ -201,46 +203,223 @@ function nodeToTree(
     type: getNodeType(opcode),
     opcode,
     isReporter,
-    inputs: formatInputs(inputs, allNodes),
+    inputs: formatInputs(inputs, allNodes, opcode),
     children: [],
   };
 
-  // Handle control flow branches
-  if (["control_for", "control_foreach", "control_while"].includes(opcode)) {
-    treeNode.config = extractLoopConfig(opcode, inputs, allNodes);
-    const bodyInput = (inputs["BODY"] || inputs["body"] || {}) as InputValue;
-    const bodyBranch =
-      typeof bodyInput === "object" ? bodyInput.branch : undefined;
-    if (bodyBranch) {
-      treeNode.children.push(
-        buildBranch("BODY", bodyBranch, allNodes, allVisited),
-      );
-    }
-  } else if (["control_if", "control_if_else"].includes(opcode)) {
-    const thenInput = (inputs["THEN"] || inputs["then"] || {}) as InputValue;
-    const thenBranch =
-      typeof thenInput === "object" ? thenInput.branch : undefined;
-    if (thenBranch) {
-      treeNode.children.push(
-        buildBranch("THEN", thenBranch, allNodes, allVisited),
-      );
-    }
+  // Get construct from grammar for grammar-driven extraction
+  const construct = getConstruct(opcode);
 
-    const elseInput = (inputs["ELSE"] || inputs["else"] || {}) as InputValue;
-    const elseBranch =
-      typeof elseInput === "object" ? elseInput.branch : undefined;
-    if (elseBranch) {
-      treeNode.children.push(
-        buildBranch("ELSE", elseBranch, allNodes, allVisited),
-      );
-    }
-  } else if (opcode === "control_fork") {
-    treeNode.children = extractForkBranches(inputs, allNodes, allVisited);
-  } else if (opcode === "control_try") {
-    treeNode.children = extractTryBranches(inputs, allNodes, allVisited);
+  if (construct && construct.branches.length > 0) {
+    // Extract config for loops and other constructs with special inputs
+    treeNode.config = extractConfig(opcode, inputs, allNodes, construct);
+
+    // Grammar-driven branch extraction
+    treeNode.children = extractBranches(inputs, allNodes, allVisited, construct);
   }
 
   return treeNode;
+}
+
+/**
+ * Extract config values from construct inputs (for loops, etc.)
+ */
+function extractConfig(
+  opcode: string,
+  inputs: Record<string, unknown>,
+  allNodes: Record<string, NodeDefinition>,
+  construct: Construct,
+): LoopConfig {
+  const config: LoopConfig = {};
+
+  // Extract values for non-branch inputs
+  for (const inputDef of construct.inputs) {
+    const value = getInputValue(inputs, inputDef.name);
+    if (value !== undefined) {
+      const key = inputDef.name.toLowerCase();
+
+      if (inputDef.type === "variable_name") {
+        // Variable name inputs are stored as raw string
+        config[key] = getRawValue(value) as string;
+      } else if (inputDef.type === "expression") {
+        // Expression inputs need formatting
+        if (key === "condition" || key === "iterable" || key === "resource") {
+          config[key] = formatValue(value, allNodes);
+        } else {
+          // Numeric values (start, end, step, timeout)
+          config[key] = getRawValue(value) as number;
+        }
+      }
+    }
+  }
+
+  // Legacy support: ensure var is set for loops
+  if (["control_for", "control_foreach", "control_spawn", "control_async_foreach", "control_with"].includes(opcode)) {
+    if (!config.var) {
+      config.var = getRawValue(inputs["VAR"] ?? inputs["var"] ?? "i") as string;
+    }
+  }
+
+  return config;
+}
+
+/**
+ * Grammar-driven branch extraction.
+ * Handles both static and dynamic branches based on construct definition.
+ * Includes empty branches (with branch: null) so slots render in UI.
+ */
+function extractBranches(
+  inputs: Record<string, unknown>,
+  allNodes: Record<string, NodeDefinition>,
+  allVisited: Set<string>,
+  construct: Construct,
+): BranchNode[] {
+  const branches: BranchNode[] = [];
+
+  if (construct.dynamic_branches) {
+    // Handle dynamic branches (try/fork patterns)
+    return extractDynamicBranches(inputs, allNodes, allVisited, construct);
+  }
+
+  // Standard branch extraction from grammar
+  for (const branchDef of construct.branches) {
+    const branchInput = getInputValue(inputs, branchDef.name) as InputValue | undefined;
+    const branchId = typeof branchInput === "object" && branchInput !== null
+      ? branchInput.branch
+      : undefined;
+
+    if (branchId) {
+      branches.push(buildBranch(branchDef.name, branchId, allNodes, allVisited));
+    } else if (branchInput !== undefined) {
+      // Empty branch slot (branch: null) - include as empty branch
+      branches.push({ type: "branch", name: branchDef.name, children: [] });
+    }
+  }
+
+  return branches;
+}
+
+/**
+ * Extract dynamic branches for constructs like try/fork.
+ * Uses grammar to identify patterns and extract all matching branches.
+ * Includes empty branches (with branch: null) so slots render in UI.
+ */
+function extractDynamicBranches(
+  inputs: Record<string, unknown>,
+  allNodes: Record<string, NodeDefinition>,
+  allVisited: Set<string>,
+  construct: Construct,
+): BranchNode[] {
+  const branches: BranchNode[] = [];
+
+  // Identify static vs dynamic branch patterns from grammar
+  const staticBranchNames: string[] = [];
+  const dynamicPrefixes: string[] = [];
+
+  for (const branchDef of construct.branches) {
+    const match = branchDef.name.match(/^([A-Z]+)(\d+)$/);
+    if (match) {
+      const prefix = match[1];
+      if (!dynamicPrefixes.includes(prefix)) {
+        dynamicPrefixes.push(prefix);
+      }
+    } else {
+      staticBranchNames.push(branchDef.name);
+    }
+  }
+
+  // Extract static branches first (e.g., TRY, FINALLY)
+  for (const branchName of staticBranchNames) {
+    const branchInput = getInputValue(inputs, branchName) as InputValue | undefined;
+    const branchId = typeof branchInput === "object" && branchInput !== null
+      ? branchInput.branch
+      : undefined;
+
+    if (branchId) {
+      branches.push(buildBranch(branchName, branchId, allNodes, allVisited));
+    } else if (branchInput !== undefined) {
+      // Empty branch slot (branch: null) - include as empty branch
+      branches.push({ type: "branch", name: branchName, children: [] });
+    }
+  }
+
+  // Extract dynamic branches by pattern
+  for (const prefix of dynamicPrefixes) {
+    // Check for list format (HANDLERS, BRANCHES)
+    const listKey = prefix === "CATCH" ? "HANDLERS" : prefix === "BRANCH" ? "BRANCHES" : null;
+    const listInput = listKey ? (inputs[listKey] ?? inputs[listKey.toLowerCase()]) : null;
+
+    if (Array.isArray(listInput) && listInput.length > 0) {
+      // List format
+      listInput.forEach((item, i) => {
+        if (typeof item === "object" && item !== null) {
+          const handler = item as CatchHandler;
+          const branchId = handler.branch ?? (handler.body as InputValue | undefined)?.branch;
+          const branchName = `${prefix}${i + 1}`;
+
+          if (branchId) {
+            const branch = buildBranch(branchName, branchId, allNodes, allVisited);
+            if (prefix === "CATCH") {
+              branch.exception_type = handler.exception_type || "Exception";
+              branch.var_name = handler.var_name ?? handler.var;
+            }
+            branches.push(branch);
+          } else {
+            // Empty branch slot - include so UI can show the slot
+            const emptyBranch: BranchNode = { type: "branch", name: branchName, children: [] };
+            if (prefix === "CATCH") {
+              emptyBranch.exception_type = handler.exception_type || "Exception";
+              emptyBranch.var_name = handler.var_name ?? handler.var;
+            }
+            branches.push(emptyBranch);
+          }
+        }
+      });
+    } else {
+      // Individual keys format (CATCH1, CATCH2, BRANCH1, BRANCH2, etc.)
+      let i = 1;
+      while (true) {
+        const key = `${prefix}${i}`;
+        const branchInput = inputs[key];
+        if (branchInput === undefined) break;
+
+        if (typeof branchInput === "object" && branchInput !== null) {
+          const handler = branchInput as CatchHandler;
+          // Try different branch reference formats
+          const branchId = handler.branch
+            ?? (handler.body as InputValue | undefined)?.branch
+            ?? (branchInput as InputValue).branch;
+
+          if (branchId) {
+            const branch = buildBranch(key, branchId, allNodes, allVisited);
+            if (prefix === "CATCH") {
+              branch.exception_type = handler.exception_type || "Exception";
+              branch.var_name = handler.var_name ?? handler.var;
+            }
+            branches.push(branch);
+          } else {
+            // Empty branch slot - include so UI can show the slot
+            const emptyBranch: BranchNode = { type: "branch", name: key, children: [] };
+            if (prefix === "CATCH") {
+              emptyBranch.exception_type = handler.exception_type || "Exception";
+              emptyBranch.var_name = handler.var_name ?? handler.var;
+            }
+            branches.push(emptyBranch);
+          }
+        }
+        i++;
+      }
+    }
+  }
+
+  return branches;
+}
+
+/**
+ * Get input value with case-insensitive key lookup.
+ */
+function getInputValue(inputs: Record<string, unknown>, key: string): unknown {
+  return inputs[key] ?? inputs[key.toLowerCase()];
 }
 
 function collectReporterIds(
@@ -266,40 +445,67 @@ function collectReporterIds(
 }
 
 function getNodeType(opcode: string): NodeType {
-  if (opcode.startsWith("control_")) return "control_flow";
-  if (opcode.startsWith("data_")) return "data";
-  if (opcode.startsWith("io_")) return "io";
-  if (opcode.startsWith("operator_")) return "operator";
-  if (opcode.startsWith("workflow_")) return "workflow_op";
+  const grammar = getGrammar();
+  for (const category of grammar.categories) {
+    if (opcode.startsWith(category.prefix)) {
+      // Map category id to NodeType
+      switch (category.id) {
+        case "control":
+        case "async":
+          return "control_flow";
+        case "data":
+          return "data";
+        case "io":
+          return "io";
+        case "operator":
+        case "math":
+        case "string":
+        case "list":
+        case "dict":
+          return "operator";
+        case "workflow":
+          return "workflow_op";
+        default:
+          return "opcode";
+      }
+    }
+  }
   return "opcode";
 }
 
+/**
+ * Format inputs for display, filtering out branch inputs based on grammar.
+ */
 function formatInputs(
   inputs: Record<string, unknown>,
   allNodes: Record<string, NodeDefinition>,
+  opcode: string,
 ): Record<string, FormattedValue> {
   const formatted: Record<string, FormattedValue> = {};
+  const construct = getConstruct(opcode);
+
+  // Build set of branch input names to filter out
+  const branchInputNames = new Set<string>();
+  if (construct) {
+    for (const branch of construct.branches) {
+      branchInputNames.add(branch.name);
+      branchInputNames.add(branch.name.toLowerCase());
+    }
+  }
+
+  // Always filter these special keys
+  const specialKeys = new Set([
+    "BODY", "body", "THEN", "then", "ELSE", "else",
+    "TRY", "FINALLY", "HANDLERS", "handlers", "BRANCHES", "branches"
+  ]);
 
   for (const [key, value] of Object.entries(inputs)) {
-    // Skip branch inputs for control flow (handled separately)
-    if (
-      [
-        "BODY",
-        "body",
-        "THEN",
-        "then",
-        "ELSE",
-        "else",
-        "TRY",
-        "FINALLY",
-      ].includes(key)
-    ) {
+    // Skip branch inputs
+    if (branchInputNames.has(key) || specialKeys.has(key)) {
       continue;
     }
-    if (key.startsWith("CATCH") || key.startsWith("BRANCH")) {
-      continue;
-    }
-    if (["HANDLERS", "handlers", "BRANCHES", "branches"].includes(key)) {
+    // Skip dynamic branch patterns
+    if (/^(CATCH|BRANCH)\d+$/.test(key)) {
       continue;
     }
 
@@ -357,41 +563,6 @@ function formatValue(
   return { type: "literal", value };
 }
 
-function extractLoopConfig(
-  opcode: string,
-  inputs: Record<string, unknown>,
-  allNodes: Record<string, NodeDefinition>,
-): LoopConfig {
-  const config: LoopConfig = {};
-
-  if (opcode === "control_for") {
-    config.var = getRawValue(inputs["VAR"] ?? inputs["var"] ?? "i") as string;
-    config.start = getRawValue(
-      inputs["START"] ?? inputs["start"] ?? 0,
-    ) as number;
-    config.end = getRawValue(inputs["END"] ?? inputs["end"] ?? 0) as number;
-    const step = inputs["STEP"] ?? inputs["step"];
-    if (step !== undefined) {
-      config.step = getRawValue(step) as number;
-    }
-  } else if (opcode === "control_foreach") {
-    config.var = getRawValue(
-      inputs["VAR"] ?? inputs["var"] ?? "item",
-    ) as string;
-    config.iterable = formatValue(
-      inputs["ITERABLE"] ?? inputs["iterable"] ?? [],
-      allNodes,
-    );
-  } else if (opcode === "control_while") {
-    config.condition = formatValue(
-      inputs["CONDITION"] ?? inputs["condition"] ?? true,
-      allNodes,
-    );
-  }
-
-  return config;
-}
-
 function getRawValue(value: unknown): unknown {
   if (
     typeof value === "object" &&
@@ -425,126 +596,4 @@ function buildBranch(
   }
 
   return branch;
-}
-
-function extractForkBranches(
-  inputs: Record<string, unknown>,
-  allNodes: Record<string, NodeDefinition>,
-  allVisited: Set<string>,
-): BranchNode[] {
-  const branches: BranchNode[] = [];
-
-  // Try list format first
-  const branchList = (inputs["BRANCHES"] ??
-    inputs["branches"] ??
-    []) as InputValue[];
-  if (Array.isArray(branchList) && branchList.length > 0) {
-    branchList.forEach((branchRef, i) => {
-      const branchId =
-        typeof branchRef === "object" && branchRef !== null
-          ? (branchRef as InputValue).branch
-          : undefined;
-      if (branchId) {
-        branches.push(
-          buildBranch(`BRANCH${i + 1}`, branchId, allNodes, allVisited),
-        );
-      }
-    });
-  } else {
-    // Try individual keys
-    let i = 1;
-    while (`BRANCH${i}` in inputs) {
-      const branchRef = inputs[`BRANCH${i}`] as InputValue;
-      const branchId =
-        typeof branchRef === "object" && branchRef !== null
-          ? branchRef.branch
-          : undefined;
-      if (branchId) {
-        branches.push(
-          buildBranch(`BRANCH${i}`, branchId, allNodes, allVisited),
-        );
-      }
-      i++;
-    }
-  }
-
-  return branches;
-}
-
-function extractTryBranches(
-  inputs: Record<string, unknown>,
-  allNodes: Record<string, NodeDefinition>,
-  allVisited: Set<string>,
-): BranchNode[] {
-  const branches: BranchNode[] = [];
-
-  // TRY body
-  const tryInput = (inputs["TRY"] ??
-    inputs["BODY"] ??
-    inputs["body"] ??
-    {}) as InputValue;
-  const tryBranch = typeof tryInput === "object" ? tryInput.branch : undefined;
-  if (tryBranch) {
-    branches.push(buildBranch("TRY", tryBranch, allNodes, allVisited));
-  }
-
-  // CATCH handlers
-  const handlers = (inputs["HANDLERS"] ??
-    inputs["handlers"] ??
-    []) as CatchHandler[];
-  if (Array.isArray(handlers) && handlers.length > 0) {
-    handlers.forEach((handler, i) => {
-      if (typeof handler === "object" && handler !== null) {
-        const handlerBranch = handler.branch;
-        if (handlerBranch) {
-          const branch = buildBranch(
-            `CATCH${i + 1}`,
-            handlerBranch,
-            allNodes,
-            allVisited,
-          );
-          branch.exception_type = handler.exception_type || "Exception";
-          branch.var_name = handler.var_name;
-          branches.push(branch);
-        }
-      }
-    });
-  } else {
-    // Try individual CATCH keys
-    let i = 1;
-    while (`CATCH${i}` in inputs) {
-      const catchInput = inputs[`CATCH${i}`] as CatchHandler;
-      if (typeof catchInput === "object" && catchInput !== null) {
-        const bodyInfo = catchInput.body;
-        const handlerBranch =
-          typeof bodyInfo === "object" && bodyInfo !== null
-            ? (bodyInfo as InputValue).branch
-            : undefined;
-        if (handlerBranch) {
-          const branch = buildBranch(
-            `CATCH${i}`,
-            handlerBranch,
-            allNodes,
-            allVisited,
-          );
-          branch.exception_type = catchInput.exception_type || "Exception";
-          branch.var_name = catchInput.var ?? catchInput.var_name;
-          branches.push(branch);
-        }
-      }
-      i++;
-    }
-  }
-
-  // FINALLY
-  const finallyInput = (inputs["FINALLY"] ??
-    inputs["finally"] ??
-    {}) as InputValue;
-  const finallyBranch =
-    typeof finallyInput === "object" ? finallyInput.branch : undefined;
-  if (finallyBranch) {
-    branches.push(buildBranch("FINALLY", finallyBranch, allNodes, allVisited));
-  }
-
-  return branches;
 }

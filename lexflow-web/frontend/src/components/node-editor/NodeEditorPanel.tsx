@@ -1,36 +1,16 @@
 import { useState } from "react";
 import { useWorkflowStore, useUiStore } from "../../store";
 import type { SelectedReporter } from "../../store/uiStore";
-import type { TreeNode, FormattedValue, NodeType } from "../../api/types";
+import type { TreeNode, FormattedValue } from "../../api/types";
 import { getInputDisplayName } from "../../utils/workflowUtils";
 import { StartNodeEditorPanel } from "./StartNodeEditorPanel";
+import {
+  getNodeColor,
+  getReporterColor as grammarGetReporterColor,
+  NODE_TYPE_LABELS,
+} from "../../constants";
+import { getCategoryByOpcode, getConstruct } from "../../services/grammar";
 import styles from "./NodeEditorPanel.module.css";
-
-const NODE_TYPE_LABELS: Record<NodeType | string, string> = {
-  control_flow: "Control Flow",
-  data: "Data",
-  io: "I/O",
-  operator: "Operator",
-  workflow_op: "Workflow",
-  opcode: "Opcode",
-};
-
-const NODE_COLORS: Record<NodeType | string, string> = {
-  control_flow: "#FF9500",
-  data: "#4CAF50",
-  io: "#22D3EE",
-  operator: "#9C27B0",
-  workflow_op: "#E91E63",
-  opcode: "#64748B",
-};
-
-const REPORTER_COLORS: Record<string, string> = {
-  data: "#4CAF50",
-  operator: "#9C27B0",
-  io: "#22D3EE",
-  workflow: "#E91E63",
-  default: "#64748B",
-};
 
 export function NodeEditorPanel() {
   const {
@@ -44,6 +24,10 @@ export function NodeEditorPanel() {
     updateNodeInput,
     updateReporterInput,
     deleteReporter,
+    addDynamicBranch,
+    removeDynamicBranch,
+    addDynamicInput,
+    removeDynamicInput,
   } = useWorkflowStore();
   const {
     closeNodeEditor,
@@ -243,6 +227,31 @@ export function NodeEditorPanel() {
     }
   };
 
+  // Dynamic branch/input handlers
+  const handleAddDynamicBranch = (branchPrefix: string) => {
+    if (selectedNodeId) {
+      addDynamicBranch(selectedNodeId, branchPrefix);
+    }
+  };
+
+  const handleRemoveDynamicBranch = (branchName: string) => {
+    if (selectedNodeId) {
+      removeDynamicBranch(selectedNodeId, branchName);
+    }
+  };
+
+  const handleAddDynamicInput = (inputPrefix: string) => {
+    if (selectedNodeId) {
+      addDynamicInput(selectedNodeId, inputPrefix);
+    }
+  };
+
+  const handleRemoveDynamicInput = (inputName: string) => {
+    if (selectedNodeId) {
+      removeDynamicInput(selectedNodeId, inputName);
+    }
+  };
+
   // Show reporter panel if a reporter is selected
   if (selectedReporter) {
     return (
@@ -277,7 +286,7 @@ export function NodeEditorPanel() {
     );
   }
 
-  const color = NODE_COLORS[selectedNode.type] || NODE_COLORS.opcode;
+  const color = getNodeColor(selectedNode.type);
   const typeLabel = NODE_TYPE_LABELS[selectedNode.type] || "Node";
 
   return (
@@ -381,19 +390,114 @@ export function NodeEditorPanel() {
         )}
 
         {/* Branches */}
-        {selectedNode.children.length > 0 && (
-          <div className={styles.section}>
-            <h4>Branches</h4>
-            {selectedNode.children.map((branch, i) => (
-              <div key={i} className={styles.branch}>
-                <span className={styles.branchName}>{branch.name}</span>
-                <span className={styles.branchCount}>
-                  {branch.children.length} node(s)
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        {(() => {
+          const construct = getConstruct(selectedNode.opcode);
+          const hasDynamicBranches = construct?.dynamic_branches;
+          const hasDynamicInputs = construct?.dynamic_inputs;
+          const hasBranches = construct?.branches && construct.branches.length > 0;
+
+          // Get dynamic branch prefix (CATCH for try, BRANCH for fork)
+          let dynamicBranchPrefix: string | null = null;
+          if (hasDynamicBranches && construct?.branches) {
+            for (const branch of construct.branches) {
+              const match = branch.name.match(/^([A-Z]+)\d+$/);
+              if (match) {
+                dynamicBranchPrefix = match[1];
+                break;
+              }
+            }
+          }
+
+          // Get existing dynamic branches of this type (from connected children)
+          const existingDynamicBranches = selectedNode.children
+            .filter((b) => dynamicBranchPrefix && b.name.startsWith(dynamicBranchPrefix))
+            .map((b) => b.name);
+
+          // Get existing dynamic inputs (ARG1, ARG2, etc.)
+          const existingDynamicInputs = Object.keys(selectedNode.inputs)
+            .filter((k) => /^ARG\d+$/.test(k))
+            .sort((a, b) => {
+              const numA = parseInt(a.replace("ARG", ""));
+              const numB = parseInt(b.replace("ARG", ""));
+              return numA - numB;
+            });
+
+          // Show branches section if node has branches OR has dynamic_branches capability
+          const showBranchesSection = selectedNode.children.length > 0 || hasDynamicBranches;
+
+          return (
+            <>
+              {/* Branches section */}
+              {showBranchesSection && hasBranches && (
+                <div className={styles.section}>
+                  <h4>Branches</h4>
+                  {selectedNode.children.length === 0 && hasDynamicBranches ? (
+                    <p className={styles.noInputs}>No branches connected</p>
+                  ) : (
+                    selectedNode.children.map((branch, i) => {
+                      const isDynamic = dynamicBranchPrefix && branch.name.startsWith(dynamicBranchPrefix);
+                      const canRemove = isDynamic && existingDynamicBranches.length > 1;
+                      return (
+                        <div key={i} className={styles.branch}>
+                          <span className={styles.branchName}>{branch.name}</span>
+                          <span className={styles.branchCount}>
+                            {branch.children.length} node(s)
+                          </span>
+                          {canRemove && (
+                            <button
+                              className={styles.removeBranchBtn}
+                              onClick={() => handleRemoveDynamicBranch(branch.name)}
+                              title={`Remove ${branch.name}`}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                  {hasDynamicBranches && dynamicBranchPrefix && (
+                    <button
+                      className={styles.addBranchBtn}
+                      onClick={() => handleAddDynamicBranch(dynamicBranchPrefix!)}
+                    >
+                      + Add {dynamicBranchPrefix === "CATCH" ? "Catch Handler" : "Branch"}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Dynamic inputs section for workflow_call */}
+              {hasDynamicInputs && selectedNode.opcode === "workflow_call" && (
+                <div className={styles.section}>
+                  <h4>Arguments</h4>
+                  {existingDynamicInputs.length === 0 ? (
+                    <p className={styles.noInputs}>No arguments</p>
+                  ) : (
+                    existingDynamicInputs.map((inputName) => (
+                      <div key={inputName} className={styles.dynamicInput}>
+                        <span className={styles.dynamicInputName}>{inputName}</span>
+                        <button
+                          className={styles.removeBranchBtn}
+                          onClick={() => handleRemoveDynamicInput(inputName)}
+                          title={`Remove ${inputName}`}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))
+                  )}
+                  <button
+                    className={styles.addBranchBtn}
+                    onClick={() => handleAddDynamicInput("ARG")}
+                  >
+                    + Add Argument
+                  </button>
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Actions */}
@@ -706,18 +810,14 @@ function formatOpcodeName(opcode: string): string {
 }
 
 function getReporterColor(opcode: string): string {
-  if (opcode.startsWith("data_")) return REPORTER_COLORS.data;
-  if (opcode.startsWith("operator_")) return REPORTER_COLORS.operator;
-  if (opcode.startsWith("io_")) return REPORTER_COLORS.io;
-  if (opcode.startsWith("workflow_")) return REPORTER_COLORS.workflow;
-  return REPORTER_COLORS.default;
+  return grammarGetReporterColor(opcode);
 }
 
 function getReporterTypeLabel(opcode: string): string {
-  if (opcode.startsWith("data_")) return "Data Reporter";
-  if (opcode.startsWith("operator_")) return "Operator Reporter";
-  if (opcode.startsWith("io_")) return "I/O Reporter";
-  if (opcode.startsWith("workflow_")) return "Workflow Reporter";
+  const category = getCategoryByOpcode(opcode);
+  if (category) {
+    return `${category.label} Reporter`;
+  }
   return "Reporter";
 }
 

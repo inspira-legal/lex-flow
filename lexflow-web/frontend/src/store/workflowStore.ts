@@ -90,6 +90,12 @@ interface WorkflowState {
   ) => boolean;
   deleteVariable: (workflowName: string, name: string) => boolean;
 
+  // Dynamic branch/input operations
+  addDynamicBranch: (nodeId: string, branchPrefix: string) => boolean;
+  removeDynamicBranch: (nodeId: string, branchName: string) => boolean;
+  addDynamicInput: (nodeId: string, inputPrefix: string) => boolean;
+  removeDynamicInput: (nodeId: string, inputName: string) => boolean;
+
   // Examples
   examples: ExampleInfo[];
   setExamples: (examples: ExampleInfo[]) => void;
@@ -396,6 +402,46 @@ export const useWorkflowStore = create<WorkflowState>()(
       deleteVariable: (workflowName, name) => {
         const state = get();
         const result = WorkflowService.deleteVariable(state.source, workflowName, name);
+        if (result.success) {
+          state.setSource(result.source);
+        }
+        return result.success;
+      },
+
+      // Add a dynamic branch to a node (e.g., CATCH2 for try, BRANCH3 for fork)
+      addDynamicBranch: (nodeId, branchPrefix) => {
+        const state = get();
+        const result = WorkflowService.addDynamicBranch(state.source, nodeId, branchPrefix);
+        if (result.success) {
+          state.setSource(result.source);
+        }
+        return result.success;
+      },
+
+      // Remove a dynamic branch from a node
+      removeDynamicBranch: (nodeId, branchName) => {
+        const state = get();
+        const result = WorkflowService.removeDynamicBranch(state.source, nodeId, branchName);
+        if (result.success) {
+          state.setSource(result.source);
+        }
+        return result.success;
+      },
+
+      // Add a dynamic input to a node (e.g., ARG2 for workflow_call)
+      addDynamicInput: (nodeId, inputPrefix) => {
+        const state = get();
+        const result = WorkflowService.addDynamicInput(state.source, nodeId, inputPrefix);
+        if (result.success) {
+          state.setSource(result.source);
+        }
+        return result.success;
+      },
+
+      // Remove a dynamic input from a node
+      removeDynamicInput: (nodeId, inputName) => {
+        const state = get();
+        const result = WorkflowService.removeDynamicInput(state.source, nodeId, inputName);
         if (result.success) {
           state.setSource(result.source);
         }

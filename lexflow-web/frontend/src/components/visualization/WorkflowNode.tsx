@@ -4,7 +4,6 @@ import type { SelectedReporter, NodeSlotPositions } from "../../store/uiStore";
 import type {
   TreeNode,
   FormattedValue,
-  NodeType,
   OpcodeParameter,
   BranchNode,
 } from "../../api/types";
@@ -15,7 +14,11 @@ import {
   calculateReporterTotalHeight,
   formatValueShort,
 } from "../../services/layout/LayoutService";
-import { getBranchColor, getBranchSlots as getGrammarBranchSlots } from "../../services/grammar";
+import {
+  getBranchColor,
+  getBranchSlots as getGrammarBranchSlots,
+  getCategoryIcon,
+} from "../../services/grammar";
 import { useNodePorts } from "../../hooks";
 import styles from "./WorkflowNode.module.css";
 
@@ -25,8 +28,23 @@ function getBranchSlots(
   opcode: string,
   children: BranchNode[],
 ): Array<{ name: string; connected: boolean }> {
-  const connectedNames = children.map((c) => c.name);
-  return getGrammarBranchSlots(opcode, connectedNames);
+  // Only consider branches with actual children as "connected"
+  const connectedNames = children
+    .filter((c) => c.children.length > 0)
+    .map((c) => c.name);
+  // Include all branch names (even empty ones) so slots render
+  const allBranchNames = children.map((c) => c.name);
+
+  const slots = getGrammarBranchSlots(opcode, connectedNames);
+
+  // Add any branches that exist in children but weren't in grammar slots
+  for (const branchName of allBranchNames) {
+    if (!slots.find((s) => s.name === branchName)) {
+      slots.push({ name: branchName, connected: connectedNames.includes(branchName) });
+    }
+  }
+
+  return slots;
 }
 
 interface WorkflowNodeProps {
@@ -40,7 +58,8 @@ interface WorkflowNodeProps {
 
 import { getNodeColor, getReporterColor as getGrammarReporterColor } from "../../services/grammar";
 
-const NODE_ICONS: Record<string, string> = {
+// Node type to default icon fallback mapping
+const NODE_TYPE_ICONS: Record<string, string> = {
   control_flow: "⟳",
   data: "📦",
   io: "📤",
@@ -48,6 +67,15 @@ const NODE_ICONS: Record<string, string> = {
   workflow_op: "🔗",
   opcode: "⚙",
 };
+
+// Get icon for node - uses grammar category icon or falls back to type-based icon
+function getNodeIcon(opcode: string, nodeType: string): string {
+  const grammarIcon = getCategoryIcon(opcode);
+  if (grammarIcon && grammarIcon !== "⚙") {
+    return grammarIcon;
+  }
+  return NODE_TYPE_ICONS[nodeType] || NODE_TYPE_ICONS.opcode;
+}
 
 export function WorkflowNode({
   node,
@@ -86,7 +114,7 @@ export function WorkflowNode({
   }
 
   const color = getNodeColor(node.type);
-  const icon = NODE_ICONS[node.type] || NODE_ICONS.opcode;
+  const icon = getNodeIcon(node.opcode, node.type);
   const isSelected = selectedNodeId === node.id && !selectedReporter;
   const isSearchMatch = searchResults.includes(node.id);
   const status = nodeStatus[node.id] || "idle";

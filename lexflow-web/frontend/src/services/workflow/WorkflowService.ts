@@ -1257,6 +1257,270 @@ export function addWorkflowCallNode(
   return { source: newLines.join("\n"), nodeId: newId };
 }
 
+// Add a dynamic branch to a control flow node (e.g., CATCH2 for try, BRANCH3 for fork)
+export function addDynamicBranch(
+  source: string,
+  nodeId: string,
+  branchPrefix: string,
+): OperationResult {
+  const lines = source.split("\n");
+  const range = findNodeLineRange(source, nodeId);
+  if (!range) {
+    return { source, success: false };
+  }
+
+  // Find the inputs section and existing branches
+  let inputsLine = -1;
+  let inputsIndent = -1;
+  const existingBranches: string[] = [];
+
+  for (let i = range.startLine + 1; i < range.endLine; i++) {
+    const line = lines[i];
+    const inputsMatch = line.match(/^(\s+)inputs:\s*$/);
+    if (inputsMatch) {
+      inputsLine = i;
+      inputsIndent = inputsMatch[1].length;
+      continue;
+    }
+
+    if (inputsLine !== -1) {
+      // Look for existing branches matching the prefix
+      const branchMatch = line.match(new RegExp(`^\\s+(${branchPrefix}\\d+):\\s*`));
+      if (branchMatch) {
+        existingBranches.push(branchMatch[1]);
+      }
+    }
+  }
+
+  if (inputsLine === -1) {
+    return { source, success: false };
+  }
+
+  // Find the next branch number
+  let maxNum = 0;
+  for (const branch of existingBranches) {
+    const num = parseInt(branch.replace(branchPrefix, ""));
+    if (num > maxNum) maxNum = num;
+  }
+  const newBranchName = `${branchPrefix}${maxNum + 1}`;
+
+  // Find where to insert (after the last branch of this type, or at end of inputs)
+  let insertLine = inputsLine + 1;
+  while (insertLine < lines.length) {
+    const line = lines[insertLine];
+    if (line.trim() === "" || line.trim().startsWith("#")) {
+      insertLine++;
+      continue;
+    }
+    const lineIndent = line.match(/^(\s*)/)?.[1].length || 0;
+    if (lineIndent <= inputsIndent && line.trim()) break;
+    insertLine++;
+  }
+
+  const branchIndent = " ".repeat(inputsIndent + 2);
+  const valueIndent = " ".repeat(inputsIndent + 4);
+
+  // For CATCH branches, add with exception_type and body structure
+  let newBranchYaml: string[];
+  if (branchPrefix === "CATCH") {
+    const bodyIndent = " ".repeat(inputsIndent + 6);
+    newBranchYaml = [
+      `${branchIndent}${newBranchName}:`,
+      `${valueIndent}exception_type: "Exception"`,
+      `${valueIndent}body:`,
+      `${bodyIndent}branch: null`,
+    ];
+  } else {
+    // For BRANCH (fork) and others
+    newBranchYaml = [
+      `${branchIndent}${newBranchName}:`,
+      `${valueIndent}branch: null`,
+    ];
+  }
+
+  const newLines = [
+    ...lines.slice(0, insertLine),
+    ...newBranchYaml,
+    ...lines.slice(insertLine),
+  ];
+
+  return { source: newLines.join("\n"), success: true };
+}
+
+// Remove a dynamic branch from a control flow node
+export function removeDynamicBranch(
+  source: string,
+  nodeId: string,
+  branchName: string,
+): OperationResult {
+  const lines = source.split("\n");
+  const range = findNodeLineRange(source, nodeId);
+  if (!range) {
+    return { source, success: false };
+  }
+
+  // Find the branch label line
+  let branchLabelLine = -1;
+  let branchIndent = -1;
+
+  for (let i = range.startLine + 1; i < range.endLine; i++) {
+    const line = lines[i];
+    const labelMatch = line.match(new RegExp(`^(\\s+)${branchName}:\\s*`));
+    if (labelMatch) {
+      branchLabelLine = i;
+      branchIndent = labelMatch[1].length;
+      break;
+    }
+  }
+
+  if (branchLabelLine === -1) {
+    return { source, success: false };
+  }
+
+  // Find where this branch block ends
+  let branchEndLine = branchLabelLine + 1;
+  while (branchEndLine < lines.length) {
+    const line = lines[branchEndLine];
+    if (line.trim() === "" || line.trim().startsWith("#")) {
+      branchEndLine++;
+      continue;
+    }
+    const lineIndent = line.match(/^(\s*)/)?.[1].length || 0;
+    if (lineIndent <= branchIndent && line.trim()) break;
+    branchEndLine++;
+  }
+
+  const newLines = [
+    ...lines.slice(0, branchLabelLine),
+    ...lines.slice(branchEndLine),
+  ];
+
+  return { source: newLines.join("\n"), success: true };
+}
+
+// Add a dynamic input to a node (e.g., ARG3 for workflow_call)
+export function addDynamicInput(
+  source: string,
+  nodeId: string,
+  inputPrefix: string,
+): OperationResult {
+  const lines = source.split("\n");
+  const range = findNodeLineRange(source, nodeId);
+  if (!range) {
+    return { source, success: false };
+  }
+
+  // Find the inputs section and existing inputs
+  let inputsLine = -1;
+  let inputsIndent = -1;
+  const existingInputs: string[] = [];
+
+  for (let i = range.startLine + 1; i < range.endLine; i++) {
+    const line = lines[i];
+    const inputsMatch = line.match(/^(\s+)inputs:\s*$/);
+    if (inputsMatch) {
+      inputsLine = i;
+      inputsIndent = inputsMatch[1].length;
+      continue;
+    }
+
+    if (inputsLine !== -1) {
+      // Look for existing inputs matching the prefix
+      const inputMatch = line.match(new RegExp(`^\\s+(${inputPrefix}\\d+):\\s*`));
+      if (inputMatch) {
+        existingInputs.push(inputMatch[1]);
+      }
+    }
+  }
+
+  if (inputsLine === -1) {
+    return { source, success: false };
+  }
+
+  // Find the next input number
+  let maxNum = 0;
+  for (const input of existingInputs) {
+    const num = parseInt(input.replace(inputPrefix, ""));
+    if (num > maxNum) maxNum = num;
+  }
+  const newInputName = `${inputPrefix}${maxNum + 1}`;
+
+  // Find where to insert (at end of inputs section)
+  let insertLine = inputsLine + 1;
+  while (insertLine < lines.length) {
+    const line = lines[insertLine];
+    if (line.trim() === "" || line.trim().startsWith("#")) {
+      insertLine++;
+      continue;
+    }
+    const lineIndent = line.match(/^(\s*)/)?.[1].length || 0;
+    if (lineIndent <= inputsIndent && line.trim()) break;
+    insertLine++;
+  }
+
+  const inputIndent = " ".repeat(inputsIndent + 2);
+  const newInputLine = `${inputIndent}${newInputName}: { literal: null }`;
+
+  const newLines = [
+    ...lines.slice(0, insertLine),
+    newInputLine,
+    ...lines.slice(insertLine),
+  ];
+
+  return { source: newLines.join("\n"), success: true };
+}
+
+// Remove a dynamic input from a node
+export function removeDynamicInput(
+  source: string,
+  nodeId: string,
+  inputName: string,
+): OperationResult {
+  const lines = source.split("\n");
+  const range = findNodeLineRange(source, nodeId);
+  if (!range) {
+    return { source, success: false };
+  }
+
+  // Find the input line
+  let inputLine = -1;
+  let inputIndent = -1;
+
+  for (let i = range.startLine + 1; i < range.endLine; i++) {
+    const line = lines[i];
+    const inputMatch = line.match(new RegExp(`^(\\s+)${inputName}:\\s*`));
+    if (inputMatch) {
+      inputLine = i;
+      inputIndent = inputMatch[1].length;
+      break;
+    }
+  }
+
+  if (inputLine === -1) {
+    return { source, success: false };
+  }
+
+  // Find where this input value ends (in case of multi-line)
+  let inputEndLine = inputLine + 1;
+  while (inputEndLine < lines.length) {
+    const line = lines[inputEndLine];
+    if (line.trim() === "" || line.trim().startsWith("#")) {
+      inputEndLine++;
+      continue;
+    }
+    const lineIndent = line.match(/^(\s*)/)?.[1].length || 0;
+    if (lineIndent <= inputIndent && line.trim()) break;
+    inputEndLine++;
+  }
+
+  const newLines = [
+    ...lines.slice(0, inputLine),
+    ...lines.slice(inputEndLine),
+  ];
+
+  return { source: newLines.join("\n"), success: true };
+}
+
 // Export all functions as a service object for convenience
 export const workflowService = {
   formatYamlValue,
@@ -1277,4 +1541,8 @@ export const workflowService = {
   addVariable,
   updateVariable,
   deleteVariable,
+  addDynamicBranch,
+  removeDynamicBranch,
+  addDynamicInput,
+  removeDynamicInput,
 };

@@ -1,8 +1,8 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useWorkflowStore, useUiStore } from "../../store";
 import type { OpcodeInterface } from "../../api/types";
 import { getCallableWorkflows } from "../../utils/workflowUtils";
-import { getCategories, loadGrammar } from "../../services/grammar";
+import { getCategories } from "../../services/grammar";
 import styles from "./NodePalette.module.css";
 
 export function NodePalette() {
@@ -13,11 +13,6 @@ export function NodePalette() {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(
     "variables",
   );
-
-  // Load grammar on mount (ensures categories are available)
-  useEffect(() => {
-    loadGrammar();
-  }, []);
 
   // Get categories from grammar
   const CATEGORIES = getCategories();

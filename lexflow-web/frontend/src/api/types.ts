@@ -123,10 +123,14 @@ export interface LoopConfig {
   start?: number;
   end?: number;
   step?: number;
+  timeout?: number;
   iterable?: FormattedValue;
   condition?: FormattedValue;
+  resource?: FormattedValue;
+  // Index signature for grammar-driven dynamic properties
+  [key: string]: string | number | FormattedValue | undefined;
 }
 
-// Node colors are now exported from constants/index.ts
+// Node colors are now sourced from grammar via getNodeColor()
 // Re-export for backwards compatibility
-export { NODE_COLORS } from "../constants";
+export { getNodeColor } from "../constants";

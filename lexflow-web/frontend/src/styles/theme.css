@@ -1,0 +1,69 @@
+/**
+ * LexFlow Web - Theme Variables
+ *
+ * Centralized CSS variables for node rendering and visualization.
+ * These can be customized for different themes without code changes.
+ */
+
+:root {
+  /* Node Dimensions */
+  --node-width: 180px;
+  --node-height: 60px;
+  --node-min-height: 60px;
+  --node-border-radius: 8px;
+  --node-slot-height: 24px;
+  --node-header-height: 32px;
+  --node-padding: 8px;
+
+  /* Category Colors (from grammar) */
+  --color-category-control: #ff9500;
+  --color-category-data: #4caf50;
+  --color-category-io: #22d3ee;
+  --color-category-operator: #9c27b0;
+  --color-category-list: #3b82f6;
+  --color-category-dict: #f59e0b;
+  --color-category-string: #f472b6;
+  --color-category-math: #8b5cf6;
+  --color-category-workflow: #e91e63;
+  --color-category-async: #06b6d4;
+
+  /* Node Type Colors (mapped from categories) */
+  --color-node-control-flow: var(--color-category-control);
+  --color-node-data: var(--color-category-data);
+  --color-node-io: var(--color-category-io);
+  --color-node-operator: var(--color-category-operator);
+  --color-node-workflow-op: var(--color-category-workflow);
+  --color-node-opcode: #64748b;
+
+  /* Branch Colors */
+  --color-branch-then: #34d399;
+  --color-branch-else: #f87171;
+  --color-branch-body: #22d3ee;
+  --color-branch-try: #3b82f6;
+  --color-branch-catch: #f87171;
+  --color-branch-finally: #facc15;
+  --color-branch-on-timeout: #facc15;
+  --color-branch-default: #9c27b0;
+
+  /* Reporter Colors (by category) */
+  --color-reporter-data: var(--color-category-data);
+  --color-reporter-operator: var(--color-category-operator);
+  --color-reporter-io: var(--color-category-io);
+  --color-reporter-workflow: var(--color-category-workflow);
+  --color-reporter-default: #64748b;
+
+  /* Node Typography */
+  --node-font-size: 12px;
+  --node-font-size-small: 10px;
+  --node-font-size-tiny: 9px;
+  --node-label-height: 18px;
+
+  /* Layout Gaps */
+  --layout-gap-horizontal: 60px;
+  --layout-gap-vertical: 40px;
+  --layout-gap-workflow: 80px;
+
+  /* Start Node */
+  --start-node-width: 140px;
+  --start-node-height: 60px;
+}

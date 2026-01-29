@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "copy-grammar": "cp ../../lexflow-core/src/lexflow/grammar.json src/",
+    "predev": "npm run copy-grammar",
     "dev": "vite",
+    "prebuild": "npm run copy-grammar",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
