@@ -5,43 +5,25 @@ These opcodes provide rich CLI experiences with animated feedback.
 
 import asyncio
 import sys
-from typing import Any, Dict, Optional
 
 from .opcodes import opcode
 
-# Global registry of active spinners
-_spinners: Dict[int, asyncio.Task] = {}
-_spinner_counter = 0
-_spinner_messages: Dict[int, str] = {}
 
+class Spinner:
+    """A spinner instance with local state (no global variables)."""
 
-@opcode()
-async def spinner_start(message: str = "Loading") -> int:
-    """Start an animated spinner. Returns spinner ID to stop it later.
+    def __init__(self, message: str):
+        self.message = message
+        self.running = True
+        self._task: asyncio.Task = None
 
-    Args:
-        message: Message to display next to spinner
-
-    Returns:
-        Spinner ID (use with spinner_stop)
-
-    Example:
-        spinner_id = spinner_start("Fetching data")
-        # ... do work ...
-        spinner_stop(spinner_id, "Data loaded!")
-    """
-    global _spinner_counter
-    _spinner_counter += 1
-    spinner_id = _spinner_counter
-    _spinner_messages[spinner_id] = message
-
-    async def animate():
+    async def _animate(self):
+        """Animation loop."""
         frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         i = 0
-        while spinner_id in _spinners:
+        while self.running:
             frame = frames[i % len(frames)]
-            # Clear line and write spinner
-            sys.stdout.write(f"\r\033[K{frame} {_spinner_messages.get(spinner_id, message)}...")
+            sys.stdout.write(f"\r\033[K{frame} {self.message}...")
             sys.stdout.flush()
             try:
                 await asyncio.sleep(0.08)
@@ -49,71 +31,94 @@ async def spinner_start(message: str = "Loading") -> int:
                 break
             i += 1
 
-    task = asyncio.create_task(animate())
-    _spinners[spinner_id] = task
+    def start(self):
+        """Start the animation task."""
+        self._task = asyncio.create_task(self._animate())
 
-    # Small delay to let spinner start
-    await asyncio.sleep(0.01)
-    return spinner_id
-
-
-@opcode()
-async def spinner_update(spinner_id: int, message: str) -> None:
-    """Update the message of a running spinner.
-
-    Args:
-        spinner_id: ID from spinner_start
-        message: New message to display
-    """
-    if spinner_id in _spinner_messages:
-        _spinner_messages[spinner_id] = message
-
-
-@opcode()
-async def spinner_stop(spinner_id: int, message: str = "", success: bool = True) -> None:
-    """Stop a spinner and show completion message.
-
-    Args:
-        spinner_id: ID from spinner_start
-        message: Final message to display (empty = use original message + "done")
-        success: True for checkmark, False for X mark
-
-    Example:
-        spinner_stop(spinner_id, "Loaded 42 items", success=True)
-    """
-    if spinner_id in _spinners:
-        task = _spinners.pop(spinner_id)
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
-
-        original_msg = _spinner_messages.pop(spinner_id, "")
+    async def stop(self, message: str = "", success: bool = True):
+        """Stop the spinner and show final message."""
+        self.running = False
+        if self._task:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
 
         # Clear the line
         sys.stdout.write("\r\033[K")
 
         # Show final message
         icon = "✓" if success else "✗"
-        final_message = message if message else f"{original_msg} done"
+        final_message = message if message else f"{self.message} done"
         sys.stdout.write(f"{icon} {final_message}\n")
         sys.stdout.flush()
 
 
 @opcode()
-async def spinner_fail(spinner_id: int, message: str = "Failed") -> None:
-    """Stop a spinner with failure indicator.
+async def spinner_start(message: str = "Loading") -> Spinner:
+    """Start an animated spinner. Returns spinner object to control it later.
 
     Args:
-        spinner_id: ID from spinner_start
-        message: Error message to display
+        message: Message to display next to spinner
+
+    Returns:
+        Spinner object (use with spinner_stop, spinner_update)
+
+    Example:
+        spinner = spinner_start("Fetching data")
+        # ... do work ...
+        spinner_stop(spinner, "Data loaded!")
     """
-    await spinner_stop(spinner_id, message, success=False)
+    spinner = Spinner(message)
+    spinner.start()
+    await asyncio.sleep(0.01)  # Let it start
+    return spinner
 
 
 @opcode()
-async def progress_bar(current: int, total: int, message: str = "", width: int = 30) -> None:
+async def spinner_update(spinner: Spinner, message: str) -> None:
+    """Update the message of a running spinner.
+
+    Args:
+        spinner: Spinner object from spinner_start
+        message: New message to display
+    """
+    spinner.message = message
+
+
+@opcode()
+async def spinner_stop(
+    spinner: Spinner, message: str = "", success: bool = True
+) -> None:
+    """Stop a spinner and show completion message.
+
+    Args:
+        spinner: Spinner object from spinner_start
+        message: Final message to display (empty = use original message + "done")
+        success: True for checkmark, False for X mark
+
+    Example:
+        spinner_stop(spinner, "Loaded 42 items", success=True)
+    """
+    await spinner.stop(message, success)
+
+
+@opcode()
+async def spinner_fail(spinner: Spinner, message: str = "Failed") -> None:
+    """Stop a spinner with failure indicator.
+
+    Args:
+        spinner: Spinner object from spinner_start
+        message: Error message to display
+    """
+    await spinner.stop(message, success=False)
+
+
+@opcode()
+async def progress_bar(
+    current: int, total: int, message: str = "", width: int = 30
+) -> None:
     """Display/update a progress bar.
 
     Args:

@@ -1,0 +1,239 @@
+# Semaphore Rate Limiting Example
+# Demonstrates using semaphores to limit concurrent operations
+#
+# Run with: lexflow examples/async/semaphore_rate_limit.yaml
+
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      semaphore: null
+      results: []
+
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_intro
+        inputs: {}
+
+      print_intro:
+        opcode: io_print
+        next: create_semaphore
+        inputs:
+          STRING: { literal: "Semaphore rate limiting example\nOnly 2 concurrent operations allowed\n\n" }
+
+      create_semaphore:
+        opcode: data_set_variable_to
+        next: fork_workers
+        inputs:
+          VARIABLE: { literal: "semaphore" }
+          VALUE: { node: make_sem }
+
+      make_sem:
+        opcode: sync_semaphore_create
+        inputs:
+          PERMITS: { literal: 2 }
+
+      # Fork 5 workers, but only 2 can run at a time
+      fork_workers:
+        opcode: control_fork
+        next: print_done
+        inputs:
+          BRANCH1: { branch: worker_a }
+          BRANCH2: { branch: worker_b }
+          BRANCH3: { branch: worker_c }
+          BRANCH4: { branch: worker_d }
+          BRANCH5: { branch: worker_e }
+
+      # Worker A
+      worker_a:
+        opcode: io_print
+        next: acquire_a
+        inputs:
+          STRING: { literal: "[A] Waiting for semaphore...\n" }
+
+      acquire_a:
+        opcode: sync_semaphore_acquire
+        next: work_a
+        inputs:
+          SEMAPHORE: { variable: semaphore }
+
+      work_a:
+        opcode: io_print
+        next: sleep_a
+        inputs:
+          STRING: { literal: "[A] Working...\n" }
+
+      sleep_a:
+        opcode: task_sleep
+        next: done_a
+        inputs:
+          SECONDS: { literal: 0.2 }
+
+      done_a:
+        opcode: io_print
+        next: release_a
+        inputs:
+          STRING: { literal: "[A] Done!\n" }
+
+      release_a:
+        opcode: sync_semaphore_release
+        next: null
+        inputs:
+          SEMAPHORE: { variable: semaphore }
+
+      # Worker B
+      worker_b:
+        opcode: io_print
+        next: acquire_b
+        inputs:
+          STRING: { literal: "[B] Waiting for semaphore...\n" }
+
+      acquire_b:
+        opcode: sync_semaphore_acquire
+        next: work_b
+        inputs:
+          SEMAPHORE: { variable: semaphore }
+
+      work_b:
+        opcode: io_print
+        next: sleep_b
+        inputs:
+          STRING: { literal: "[B] Working...\n" }
+
+      sleep_b:
+        opcode: task_sleep
+        next: done_b
+        inputs:
+          SECONDS: { literal: 0.2 }
+
+      done_b:
+        opcode: io_print
+        next: release_b
+        inputs:
+          STRING: { literal: "[B] Done!\n" }
+
+      release_b:
+        opcode: sync_semaphore_release
+        next: null
+        inputs:
+          SEMAPHORE: { variable: semaphore }
+
+      # Worker C
+      worker_c:
+        opcode: io_print
+        next: acquire_c
+        inputs:
+          STRING: { literal: "[C] Waiting for semaphore...\n" }
+
+      acquire_c:
+        opcode: sync_semaphore_acquire
+        next: work_c
+        inputs:
+          SEMAPHORE: { variable: semaphore }
+
+      work_c:
+        opcode: io_print
+        next: sleep_c
+        inputs:
+          STRING: { literal: "[C] Working...\n" }
+
+      sleep_c:
+        opcode: task_sleep
+        next: done_c
+        inputs:
+          SECONDS: { literal: 0.2 }
+
+      done_c:
+        opcode: io_print
+        next: release_c
+        inputs:
+          STRING: { literal: "[C] Done!\n" }
+
+      release_c:
+        opcode: sync_semaphore_release
+        next: null
+        inputs:
+          SEMAPHORE: { variable: semaphore }
+
+      # Worker D
+      worker_d:
+        opcode: io_print
+        next: acquire_d
+        inputs:
+          STRING: { literal: "[D] Waiting for semaphore...\n" }
+
+      acquire_d:
+        opcode: sync_semaphore_acquire
+        next: work_d
+        inputs:
+          SEMAPHORE: { variable: semaphore }
+
+      work_d:
+        opcode: io_print
+        next: sleep_d
+        inputs:
+          STRING: { literal: "[D] Working...\n" }
+
+      sleep_d:
+        opcode: task_sleep
+        next: done_d
+        inputs:
+          SECONDS: { literal: 0.2 }
+
+      done_d:
+        opcode: io_print
+        next: release_d
+        inputs:
+          STRING: { literal: "[D] Done!\n" }
+
+      release_d:
+        opcode: sync_semaphore_release
+        next: null
+        inputs:
+          SEMAPHORE: { variable: semaphore }
+
+      # Worker E
+      worker_e:
+        opcode: io_print
+        next: acquire_e
+        inputs:
+          STRING: { literal: "[E] Waiting for semaphore...\n" }
+
+      acquire_e:
+        opcode: sync_semaphore_acquire
+        next: work_e
+        inputs:
+          SEMAPHORE: { variable: semaphore }
+
+      work_e:
+        opcode: io_print
+        next: sleep_e
+        inputs:
+          STRING: { literal: "[E] Working...\n" }
+
+      sleep_e:
+        opcode: task_sleep
+        next: done_e
+        inputs:
+          SECONDS: { literal: 0.2 }
+
+      done_e:
+        opcode: io_print
+        next: release_e
+        inputs:
+          STRING: { literal: "[E] Done!\n" }
+
+      release_e:
+        opcode: sync_semaphore_release
+        next: null
+        inputs:
+          SEMAPHORE: { variable: semaphore }
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING: { literal: "\nAll workers completed!\n" }

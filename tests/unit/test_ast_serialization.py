@@ -3,9 +3,17 @@
 import pytest
 from lexflow import Parser, Program
 from lexflow.ast import (
-    Literal, Variable, Call, Opcode,
-    Assign, Block, If, While, Return,
-    ExprStmt, OpStmt
+    Literal,
+    Variable,
+    Call,
+    Opcode,
+    Assign,
+    Block,
+    If,
+    While,
+    Return,
+    ExprStmt,
+    OpStmt,
 )
 
 
@@ -158,14 +166,16 @@ def test_op_stmt_discriminator():
 def test_program_json_serialization_simple():
     """Test Program can be serialized and deserialized via JSON."""
     workflow_data = {
-        "workflows": [{
-            "name": "main",
-            "interface": {"inputs": [], "outputs": []},
-            "variables": {"x": 10},
-            "nodes": {
-                "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+        "workflows": [
+            {
+                "name": "main",
+                "interface": {"inputs": [], "outputs": []},
+                "variables": {"x": 10},
+                "nodes": {
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
-        }]
+        ]
     }
 
     parser = Parser()
@@ -186,30 +196,38 @@ def test_program_json_serialization_simple():
 def test_program_json_serialization_with_externals():
     """Test Program with external workflows serializes correctly."""
     main_workflow = {
-        "workflows": [{
-            "name": "main",
-            "interface": {"inputs": [], "outputs": []},
-            "variables": {},
-            "nodes": {
-                "start": {"opcode": "workflow_start", "next": "call_helper", "inputs": {}},
-                "call_helper": {
-                    "opcode": "workflow_call",
-                    "next": None,
-                    "inputs": {"WORKFLOW": {"literal": "helper"}}
-                }
+        "workflows": [
+            {
+                "name": "main",
+                "interface": {"inputs": [], "outputs": []},
+                "variables": {},
+                "nodes": {
+                    "start": {
+                        "opcode": "workflow_start",
+                        "next": "call_helper",
+                        "inputs": {},
+                    },
+                    "call_helper": {
+                        "opcode": "workflow_call",
+                        "next": None,
+                        "inputs": {"WORKFLOW": {"literal": "helper"}},
+                    },
+                },
             }
-        }]
+        ]
     }
 
     helper_workflow = {
-        "workflows": [{
-            "name": "helper",
-            "interface": {"inputs": [], "outputs": []},
-            "variables": {},
-            "nodes": {
-                "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+        "workflows": [
+            {
+                "name": "helper",
+                "interface": {"inputs": [], "outputs": []},
+                "variables": {},
+                "nodes": {
+                    "start": {"opcode": "workflow_start", "next": None, "inputs": {}}
+                },
             }
-        }]
+        ]
     }
 
     parser = Parser()
@@ -255,74 +273,68 @@ def test_nested_expressions_serialization():
 def test_complex_workflow_serialization():
     """Test complex workflow with multiple statement types."""
     workflow_data = {
-        "workflows": [{
-            "name": "main",
-            "interface": {"inputs": ["n"], "outputs": []},
-            "variables": {"n": 5, "sum": 0},
-            "nodes": {
-                "start": {"opcode": "workflow_start", "next": "init", "inputs": {}},
-                "init": {
-                    "opcode": "data_set_variable_to",
-                    "next": "loop",
-                    "inputs": {
-                        "VARIABLE": {"literal": "sum"},
-                        "VALUE": {"literal": 0}
-                    }
+        "workflows": [
+            {
+                "name": "main",
+                "interface": {"inputs": ["n"], "outputs": []},
+                "variables": {"n": 5, "sum": 0},
+                "nodes": {
+                    "start": {"opcode": "workflow_start", "next": "init", "inputs": {}},
+                    "init": {
+                        "opcode": "data_set_variable_to",
+                        "next": "loop",
+                        "inputs": {
+                            "VARIABLE": {"literal": "sum"},
+                            "VALUE": {"literal": 0},
+                        },
+                    },
+                    "loop": {
+                        "opcode": "control_while",
+                        "next": "print",
+                        "inputs": {
+                            "CONDITION": {"node": "check"},
+                            "BODY": {"branch": "add"},
+                        },
+                    },
+                    "check": {
+                        "opcode": "operator_gt",
+                        "inputs": {"LEFT": {"variable": "n"}, "RIGHT": {"literal": 0}},
+                    },
+                    "add": {
+                        "opcode": "data_set_variable_to",
+                        "next": "decrement",
+                        "inputs": {
+                            "VARIABLE": {"literal": "sum"},
+                            "VALUE": {"node": "add_op"},
+                        },
+                    },
+                    "add_op": {
+                        "opcode": "operator_add",
+                        "inputs": {
+                            "LEFT": {"variable": "sum"},
+                            "RIGHT": {"variable": "n"},
+                        },
+                    },
+                    "decrement": {
+                        "opcode": "data_set_variable_to",
+                        "next": None,
+                        "inputs": {
+                            "VARIABLE": {"literal": "n"},
+                            "VALUE": {"node": "sub_op"},
+                        },
+                    },
+                    "sub_op": {
+                        "opcode": "operator_sub",
+                        "inputs": {"LEFT": {"variable": "n"}, "RIGHT": {"literal": 1}},
+                    },
+                    "print": {
+                        "opcode": "workflow_return",
+                        "next": None,
+                        "inputs": {"VALUE": {"variable": "sum"}},
+                    },
                 },
-                "loop": {
-                    "opcode": "control_while",
-                    "next": "print",
-                    "inputs": {
-                        "CONDITION": {"node": "check"},
-                        "BODY": {"branch": "add"}
-                    }
-                },
-                "check": {
-                    "opcode": "operator_gt",
-                    "inputs": {
-                        "LEFT": {"variable": "n"},
-                        "RIGHT": {"literal": 0}
-                    }
-                },
-                "add": {
-                    "opcode": "data_set_variable_to",
-                    "next": "decrement",
-                    "inputs": {
-                        "VARIABLE": {"literal": "sum"},
-                        "VALUE": {"node": "add_op"}
-                    }
-                },
-                "add_op": {
-                    "opcode": "operator_add",
-                    "inputs": {
-                        "LEFT": {"variable": "sum"},
-                        "RIGHT": {"variable": "n"}
-                    }
-                },
-                "decrement": {
-                    "opcode": "data_set_variable_to",
-                    "next": None,
-                    "inputs": {
-                        "VARIABLE": {"literal": "n"},
-                        "VALUE": {"node": "sub_op"}
-                    }
-                },
-                "sub_op": {
-                    "opcode": "operator_sub",
-                    "inputs": {
-                        "LEFT": {"variable": "n"},
-                        "RIGHT": {"literal": 1}
-                    }
-                },
-                "print": {
-                    "opcode": "workflow_return",
-                    "next": None,
-                    "inputs": {
-                        "VALUE": {"variable": "sum"}
-                    }
-                }
             }
-        }]
+        ]
     }
 
     parser = Parser()
@@ -342,7 +354,7 @@ def test_complex_workflow_serialization():
     # Verify statements have correct types
     main_stmts = program2.main.body.stmts
     assert main_stmts[0].type == "Assign"  # init
-    assert main_stmts[1].type == "While"   # loop
+    assert main_stmts[1].type == "While"  # loop
     assert main_stmts[2].type == "Return"  # print
 
     # Verify while loop body

@@ -34,10 +34,7 @@ class Opcode(BaseModel):
 
 
 # Union type for all expressions
-Expression = Annotated[
-    Literal | Variable | Call | Opcode,
-    Field(discriminator='type')
-]
+Expression = Annotated[Literal | Variable | Call | Opcode, Field(discriminator="type")]
 
 
 # ============ Statements ============
@@ -158,11 +155,64 @@ class Throw(BaseModel):
     node_id: Optional[str] = None
 
 
+class Spawn(BaseModel):
+    """Spawn a background task."""
+
+    type: LiteralType["Spawn"] = "Spawn"
+    body: "Statement"
+    var_name: Optional[str] = None  # Variable to store task handle
+    node_id: Optional[str] = None
+
+
+class AsyncForEach(BaseModel):
+    """Async ForEach loop: async for var in async_iterable"""
+
+    type: LiteralType["AsyncForEach"] = "AsyncForEach"
+    var_name: str
+    iterable: Expression
+    body: "Statement"
+    node_id: Optional[str] = None
+
+
+class Timeout(BaseModel):
+    """Timeout wrapper for a statement."""
+
+    type: LiteralType["Timeout"] = "Timeout"
+    timeout: Expression  # Timeout in seconds
+    body: "Statement"
+    on_timeout: Optional["Statement"] = None  # Fallback if timeout, else raises
+    node_id: Optional[str] = None
+
+
+class With(BaseModel):
+    """Async context manager (with statement)."""
+
+    type: LiteralType["With"] = "With"
+    resource: Expression
+    var_name: str
+    body: "Statement"
+    node_id: Optional[str] = None
+
+
 # Union type for all statements
 Statement = Annotated[
-    Assign | Block | If | While | For | ForEach | Fork |
-    Return | ExprStmt | OpStmt | Try | Throw,
-    Field(discriminator='type')
+    Assign
+    | Block
+    | If
+    | While
+    | For
+    | ForEach
+    | Fork
+    | Return
+    | ExprStmt
+    | OpStmt
+    | Try
+    | Throw
+    | Spawn
+    | AsyncForEach
+    | Timeout
+    | With,
+    Field(discriminator="type"),
 ]
 
 
@@ -193,3 +243,7 @@ ForEach.model_rebuild()
 Fork.model_rebuild()
 Try.model_rebuild()
 Catch.model_rebuild()
+Spawn.model_rebuild()
+AsyncForEach.model_rebuild()
+Timeout.model_rebuild()
+With.model_rebuild()

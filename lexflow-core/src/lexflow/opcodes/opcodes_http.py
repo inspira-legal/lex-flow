@@ -10,7 +10,7 @@ Installation:
 """
 
 import json as json_module
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 try:
     import aiohttp
@@ -221,6 +221,217 @@ def register_http_opcodes():
                         "text": text,
                         "json": json_data,
                     }
+
+        # ============================================================================
+        # HTTP Streaming Operations
+        # ============================================================================
+
+        @default_registry.register()
+        async def http_stream_lines(
+            url: str,
+            headers: Optional[Dict[str, str]] = None,
+            timeout: float = 30.0,
+        ) -> AsyncGenerator[str, None]:
+            """Stream lines from an HTTP response.
+
+            Yields each line as it becomes available. Useful for streaming APIs
+            like Server-Sent Events or newline-delimited JSON.
+
+            Args:
+                url: The URL to request
+                headers: Optional dictionary of HTTP headers
+                timeout: Request timeout in seconds (default: 30.0)
+
+            Yields:
+                Each line from the response (stripped of newlines)
+
+            Example usage with control_async_foreach:
+                async_loop:
+                  opcode: control_async_foreach
+                  inputs:
+                    VAR: { literal: "line" }
+                    ITERABLE: { node: stream_lines }
+                    BODY: { branch: process_line }
+            """
+            _check_aiohttp()
+
+            client_timeout = aiohttp.ClientTimeout(total=timeout)
+            async with aiohttp.ClientSession(timeout=client_timeout) as session:
+                async with session.get(url, headers=headers) as response:
+                    async for line in response.content:
+                        decoded = line.decode("utf-8").strip()
+                        if decoded:
+                            yield decoded
+
+        @default_registry.register()
+        async def http_stream_chunks(
+            url: str,
+            chunk_size: int = 8192,
+            headers: Optional[Dict[str, str]] = None,
+            timeout: float = 30.0,
+        ) -> AsyncGenerator[bytes, None]:
+            """Stream chunks from an HTTP response.
+
+            Yields raw byte chunks as they become available.
+
+            Args:
+                url: The URL to request
+                chunk_size: Size of each chunk in bytes (default: 8192)
+                headers: Optional dictionary of HTTP headers
+                timeout: Request timeout in seconds (default: 30.0)
+
+            Yields:
+                Byte chunks from the response
+            """
+            _check_aiohttp()
+
+            client_timeout = aiohttp.ClientTimeout(total=timeout)
+            async with aiohttp.ClientSession(timeout=client_timeout) as session:
+                async with session.get(url, headers=headers) as response:
+                    async for chunk in response.content.iter_chunked(chunk_size):
+                        yield chunk
+
+        # ============================================================================
+        # HTTP Session Operations (context manager support)
+        # ============================================================================
+
+        class HTTPSession:
+            """Reusable HTTP session for multiple requests.
+
+            Acts as an async context manager for use with control_with.
+            """
+
+            def __init__(
+                self,
+                timeout: float = 30.0,
+                headers: Optional[Dict[str, str]] = None,
+            ):
+                self.timeout = timeout
+                self.headers = headers or {}
+                self._session: Optional[aiohttp.ClientSession] = None
+
+            async def __aenter__(self):
+                client_timeout = aiohttp.ClientTimeout(total=self.timeout)
+                self._session = aiohttp.ClientSession(
+                    timeout=client_timeout, headers=self.headers
+                )
+                return self
+
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                if self._session:
+                    await self._session.close()
+                    self._session = None
+
+            async def get(
+                self, url: str, headers: Optional[Dict[str, str]] = None
+            ) -> Dict:
+                """Perform GET request using this session."""
+                async with self._session.get(url, headers=headers) as response:
+                    text = await response.text()
+                    json_data = None
+                    content_type = response.headers.get("Content-Type", "")
+                    if "application/json" in content_type:
+                        try:
+                            json_data = json_module.loads(text)
+                        except json_module.JSONDecodeError:
+                            pass
+                    return {
+                        "status": response.status,
+                        "headers": dict(response.headers),
+                        "text": text,
+                        "json": json_data,
+                    }
+
+            async def post(
+                self,
+                url: str,
+                data: Optional[Dict] = None,
+                json: Optional[Dict] = None,
+                headers: Optional[Dict[str, str]] = None,
+            ) -> Dict:
+                """Perform POST request using this session."""
+                async with self._session.post(
+                    url, data=data, json=json, headers=headers
+                ) as response:
+                    text = await response.text()
+                    json_data = None
+                    content_type = response.headers.get("Content-Type", "")
+                    if "application/json" in content_type:
+                        try:
+                            json_data = json_module.loads(text)
+                        except json_module.JSONDecodeError:
+                            pass
+                    return {
+                        "status": response.status,
+                        "headers": dict(response.headers),
+                        "text": text,
+                        "json": json_data,
+                    }
+
+        @default_registry.register()
+        async def http_session_create(
+            timeout: float = 30.0,
+            headers: Optional[Dict[str, str]] = None,
+        ) -> HTTPSession:
+            """Create an HTTP session for reuse with control_with.
+
+            Args:
+                timeout: Default request timeout in seconds
+                headers: Default headers for all requests
+
+            Returns:
+                HTTPSession object (use with control_with)
+
+            Example:
+                with_session:
+                  opcode: control_with
+                  inputs:
+                    RESOURCE: { node: create_session }
+                    VAR: { literal: "session" }
+                    BODY: { branch: use_session }
+            """
+            _check_aiohttp()
+            return HTTPSession(timeout=timeout, headers=headers)
+
+        @default_registry.register()
+        async def http_session_get(
+            session: HTTPSession,
+            url: str,
+            headers: Optional[Dict[str, str]] = None,
+        ) -> Dict[str, Any]:
+            """Perform GET request using a session.
+
+            Args:
+                session: HTTPSession from http_session_create
+                url: The URL to request
+                headers: Optional additional headers
+
+            Returns:
+                Response dict (same as http_get)
+            """
+            return await session.get(url, headers=headers)
+
+        @default_registry.register()
+        async def http_session_post(
+            session: HTTPSession,
+            url: str,
+            data: Optional[Dict[str, Any]] = None,
+            json: Optional[Dict[str, Any]] = None,
+            headers: Optional[Dict[str, str]] = None,
+        ) -> Dict[str, Any]:
+            """Perform POST request using a session.
+
+            Args:
+                session: HTTPSession from http_session_create
+                url: The URL to request
+                data: Form data to send
+                json: JSON data to send
+                headers: Optional additional headers
+
+            Returns:
+                Response dict (same as http_post)
+            """
+            return await session.post(url, data=data, json=json, headers=headers)
 
     # ============================================================================
     # HTML Parsing Operations (require beautifulsoup4)

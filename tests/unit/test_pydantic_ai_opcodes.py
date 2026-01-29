@@ -18,8 +18,12 @@ class TestPydanticAIOpcodes:
     async def test_create_vertex_model_basic(self):
         """Test creating a Vertex AI model with basic parameters."""
         with (
-            patch("lexflow.opcodes.opcodes_pydantic_ai.GoogleProvider") as mock_provider_class,
-            patch("lexflow.opcodes.opcodes_pydantic_ai.GoogleModel") as mock_model_class,
+            patch(
+                "lexflow.opcodes.opcodes_pydantic_ai.GoogleProvider"
+            ) as mock_provider_class,
+            patch(
+                "lexflow.opcodes.opcodes_pydantic_ai.GoogleModel"
+            ) as mock_model_class,
         ):
             mock_provider = Mock()
             mock_provider_class.return_value = mock_provider
@@ -39,8 +43,12 @@ class TestPydanticAIOpcodes:
     async def test_create_vertex_model_with_project_and_location(self):
         """Test creating a Vertex AI model with project and location."""
         with (
-            patch("lexflow.opcodes.opcodes_pydantic_ai.GoogleProvider") as mock_provider_class,
-            patch("lexflow.opcodes.opcodes_pydantic_ai.GoogleModel") as mock_model_class,
+            patch(
+                "lexflow.opcodes.opcodes_pydantic_ai.GoogleProvider"
+            ) as mock_provider_class,
+            patch(
+                "lexflow.opcodes.opcodes_pydantic_ai.GoogleModel"
+            ) as mock_model_class,
         ):
             mock_provider = Mock()
             mock_provider_class.return_value = mock_provider

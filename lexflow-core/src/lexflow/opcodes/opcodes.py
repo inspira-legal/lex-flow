@@ -1,6 +1,7 @@
-from typing import Any, Callable, Union, get_type_hints
+from typing import Any, AsyncGenerator, Callable, List, Union, get_type_hints
 from functools import wraps
 from types import SimpleNamespace
+import asyncio
 import inspect
 import random
 
@@ -689,6 +690,88 @@ class OpcodeRegistry:
         async def workflow_call(workflow: str, *args: Any) -> Any:
             """Call another workflow by name with arguments."""
             raise NotImplementedError("workflow_call should be handled by parser")
+
+        # ============ Async Control Flow (handled by parser/executor) ============
+        @self.register()
+        async def control_spawn(body: Any, var: str = None) -> None:
+            """Spawn body as a background task, optionally storing handle in var."""
+            raise NotImplementedError("control_spawn should be handled by parser")
+
+        @self.register()
+        async def control_async_foreach(var: str, iterable: Any, body: Any) -> None:
+            """Async iterate over items in async iterable, binding each to var."""
+            raise NotImplementedError(
+                "control_async_foreach should be handled by parser"
+            )
+
+        @self.register()
+        async def async_timeout(
+            timeout: float, body: Any, on_timeout: Any = None
+        ) -> None:
+            """Execute body with timeout, optionally running on_timeout if exceeded."""
+            raise NotImplementedError("async_timeout should be handled by parser")
+
+        @self.register()
+        async def control_with(resource: Any, var: str, body: Any) -> None:
+            """Execute body with resource as async context manager, binding to var."""
+            raise NotImplementedError("control_with should be handled by parser")
+
+        # ============ Async Utility Operations ============
+        @self.register()
+        async def async_range(
+            start: int, stop: int = None, step: int = 1, delay: float = 0
+        ) -> AsyncGenerator[int, None]:
+            """Create an async range generator.
+
+            Like range() but async, with optional delay between items.
+            Useful for rate-limited iteration with control_async_foreach.
+
+            Args:
+                start: Start value (or stop if stop is None)
+                stop: Stop value (exclusive)
+                step: Step between values (default 1)
+                delay: Delay in seconds between yielding values
+
+            Yields:
+                Integers in the range
+            """
+            if stop is None:
+                stop = start
+                start = 0
+
+            async def gen():
+                i = start
+                while (step > 0 and i < stop) or (step < 0 and i > stop):
+                    yield i
+                    i += step
+                    if delay > 0:
+                        await asyncio.sleep(delay)
+
+            return gen()
+
+        @self.register()
+        async def async_from_list(
+            items: List[Any], delay: float = 0
+        ) -> AsyncGenerator[Any, None]:
+            """Convert a list to an async generator.
+
+            Useful for simulating streaming or rate-limited iteration.
+
+            Args:
+                items: List of items to yield
+                delay: Delay in seconds between yielding items
+
+            Yields:
+                Each item from the list
+            """
+
+            async def gen():
+                for item in items:
+                    yield item
+                    if delay > 0:
+                        await asyncio.sleep(delay)
+
+            return gen()
 
 
 # Default global registry instance

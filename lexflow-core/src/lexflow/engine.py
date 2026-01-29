@@ -1,10 +1,11 @@
-from .ast import Program, Workflow
+from .ast import Program
 from .runtime import Runtime
 from .evaluator import Evaluator
 from .executor import Executor
 from .opcodes import OpcodeRegistry, default_registry
 from .workflows import WorkflowManager
 from .metrics import ExecutionMetrics, NullMetrics
+from .tasks import TaskManager
 from contextlib import redirect_stdout
 from typing import Any, Optional, TextIO, Union
 
@@ -36,6 +37,7 @@ class Engine:
         self.executor: Optional[Executor] = None
         self.opcodes = self._opcodes_registry
         self.workflows: Optional[WorkflowManager] = None
+        self.tasks: TaskManager = TaskManager()
 
         # Load program if provided
         if program is not None:
@@ -65,6 +67,7 @@ class Engine:
         self.evaluator.opcodes = self.opcodes
         self.evaluator.workflows = self.workflows
         self.executor.opcodes = self.opcodes
+        self.executor.tasks = self.tasks
 
     async def run(self, inputs: Optional[dict[str, Any]] = None) -> Any:
         """Run program to completion with optional output redirection and inputs.
@@ -114,6 +117,8 @@ class Engine:
             # Return final stack value
             return self.runtime.pop() if self.runtime.stack else None
         finally:
+            # Cleanup background tasks
+            await self.tasks.cleanup()
             # End metrics collection
             self.metrics.end_execution()
 

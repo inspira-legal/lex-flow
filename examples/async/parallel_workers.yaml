@@ -1,0 +1,239 @@
+# Parallel Workers Example
+# Demonstrates spawning multiple workers that communicate via channels
+#
+# Run with: lexflow examples/async/parallel_workers.yaml
+
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      results: []
+      work_channel: null
+      results_channel: null
+
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_start
+        inputs: {}
+
+      print_start:
+        opcode: io_print
+        next: create_channels
+        inputs:
+          STRING: { literal: "Starting parallel workers...\n" }
+
+      create_channels:
+        opcode: data_set_variable_to
+        next: create_results_channel
+        inputs:
+          VARIABLE: { literal: "work_channel" }
+          VALUE: { node: make_work_ch }
+
+      make_work_ch:
+        opcode: channel_create
+        inputs:
+          SIZE: { literal: 20 }
+
+      create_results_channel:
+        opcode: data_set_variable_to
+        next: fork_all
+        inputs:
+          VARIABLE: { literal: "results_channel" }
+          VALUE: { node: make_results_ch }
+
+      make_results_ch:
+        opcode: channel_create
+        inputs:
+          SIZE: { literal: 20 }
+
+      # Fork: producer, 3 workers, collector
+      fork_all:
+        opcode: control_fork
+        next: print_results
+        inputs:
+          BRANCH1: { branch: producer }
+          BRANCH2: { branch: worker1 }
+          BRANCH3: { branch: worker2 }
+          BRANCH4: { branch: collector }
+
+      # Producer: send work items 1-5
+      producer:
+        opcode: control_for
+        next: close_work
+        inputs:
+          VAR: { literal: "work_item" }
+          START: { literal: 1 }
+          END: { literal: 6 }
+          BODY: { branch: send_work }
+
+      send_work:
+        opcode: channel_send
+        next: print_sent
+        inputs:
+          CHANNEL: { variable: work_channel }
+          VALUE: { variable: work_item }
+
+      print_sent:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING: { node: sent_msg }
+
+      sent_msg:
+        opcode: operator_add
+        inputs:
+          A: { node: sent_prefix }
+          B: { literal: "\n" }
+
+      sent_prefix:
+        opcode: operator_add
+        inputs:
+          A: { literal: "Producer sent: " }
+          B: { node: sent_str }
+
+      sent_str:
+        opcode: str
+        inputs:
+          VALUE: { variable: work_item }
+
+      close_work:
+        opcode: channel_close
+        next: null
+        inputs:
+          CHANNEL: { variable: work_channel }
+
+      # Worker 1: process 2 items
+      worker1:
+        opcode: control_for
+        next: null
+        inputs:
+          VAR: { literal: "_w1" }
+          START: { literal: 0 }
+          END: { literal: 2 }
+          BODY: { branch: worker1_process }
+
+      worker1_process:
+        opcode: data_set_variable_to
+        next: worker1_compute
+        inputs:
+          VARIABLE: { literal: "item" }
+          VALUE: { node: worker1_recv }
+
+      worker1_recv:
+        opcode: channel_receive
+        inputs:
+          CHANNEL: { variable: work_channel }
+
+      worker1_compute:
+        opcode: channel_send
+        next: null
+        inputs:
+          CHANNEL: { variable: results_channel }
+          VALUE: { node: worker1_result }
+
+      worker1_result:
+        opcode: operator_multiply
+        inputs:
+          A: { variable: item }
+          B: { literal: 2 }
+
+      # Worker 2: process 3 items
+      worker2:
+        opcode: control_for
+        next: close_results
+        inputs:
+          VAR: { literal: "_w2" }
+          START: { literal: 0 }
+          END: { literal: 3 }
+          BODY: { branch: worker2_process }
+
+      worker2_process:
+        opcode: data_set_variable_to
+        next: worker2_compute
+        inputs:
+          VARIABLE: { literal: "item2" }
+          VALUE: { node: worker2_recv }
+
+      worker2_recv:
+        opcode: channel_receive
+        inputs:
+          CHANNEL: { variable: work_channel }
+
+      worker2_compute:
+        opcode: channel_send
+        next: null
+        inputs:
+          CHANNEL: { variable: results_channel }
+          VALUE: { node: worker2_result }
+
+      worker2_result:
+        opcode: operator_multiply
+        inputs:
+          A: { variable: item2 }
+          B: { literal: 2 }
+
+      close_results:
+        opcode: channel_close
+        next: null
+        inputs:
+          CHANNEL: { variable: results_channel }
+
+      # Collector: gather all 5 results
+      collector:
+        opcode: control_for
+        next: null
+        inputs:
+          VAR: { literal: "_c" }
+          START: { literal: 0 }
+          END: { literal: 5 }
+          BODY: { branch: collect_result }
+
+      collect_result:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE: { literal: "results" }
+          VALUE: { node: append_result }
+
+      append_result:
+        opcode: list_append
+        inputs:
+          LIST: { variable: results }
+          VALUE: { node: collect_recv }
+
+      collect_recv:
+        opcode: channel_receive
+        inputs:
+          CHANNEL: { variable: results_channel }
+
+      print_results:
+        opcode: io_print
+        next: return_results
+        inputs:
+          STRING: { node: results_msg }
+
+      results_msg:
+        opcode: operator_add
+        inputs:
+          A: { node: results_prefix }
+          B: { literal: "\n" }
+
+      results_prefix:
+        opcode: operator_add
+        inputs:
+          A: { literal: "Results: " }
+          B: { node: results_json }
+
+      results_json:
+        opcode: json_stringify
+        inputs:
+          OBJ: { variable: results }
+
+      return_results:
+        opcode: workflow_return
+        next: null
+        inputs:
+          VALUE: { variable: results }

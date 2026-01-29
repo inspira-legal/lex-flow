@@ -61,7 +61,7 @@ workflows:
       file_index: 0
       current_file: null
       # Spinner tracking
-      spinner_id: 0
+      spinner: null
       # Display helpers
       pr_title: ""
       pr_author: ""
@@ -329,7 +329,7 @@ workflows:
 
       print_banner_title:
         opcode: io_print
-        next: store_pr_spinner_id
+        next: store_pr_spinner
         inputs:
           STRING:
             literal: "    _    ___    ____          _        ____            _               \n   / \\  |_ _|  / ___|___   __| | ___  |  _ \\ _____   _(_) _____      __\n  / _ \\  | |  | |   / _ \\ / _` |/ _ \\ | |_) / _ \\ \\ / / |/ _ \\ \\ /\\ / /\n / ___ \\ | |  | |__| (_) | (_| |  __/ |  _ <  __/\\ V /| |  __/\\ V  V / \n/_/   \\_\\___|  \\____\\___/ \\__,_|\\___| |_| \\_\\___| \\_/ |_|\\___| \\_/\\_/  \n\n"
@@ -398,12 +398,12 @@ workflows:
           right:
             variable: repo
 
-      store_pr_spinner_id:
+      store_pr_spinner:
         opcode: data_set_variable_to
         next: store_pr_info
         inputs:
           VARIABLE:
-            literal: "spinner_id"
+            literal: "spinner"
           VALUE:
             node: start_pr_spinner
 
@@ -432,8 +432,8 @@ workflows:
         opcode: spinner_stop
         next: store_pr_title
         inputs:
-          spinner_id:
-            variable: spinner_id
+          spinner:
+            variable: spinner
           message:
             node: format_pr_found_msg
           success:
@@ -532,7 +532,7 @@ workflows:
 
       print_newline_after_pr:
         opcode: io_print
-        next: store_files_spinner_id
+        next: store_files_spinner
         inputs:
           STRING:
             literal: "\n"
@@ -545,12 +545,12 @@ workflows:
           message:
             literal: "Loading changed files"
 
-      store_files_spinner_id:
+      store_files_spinner:
         opcode: data_set_variable_to
         next: store_pr_files
         inputs:
           VARIABLE:
-            literal: "spinner_id"
+            literal: "spinner"
           VALUE:
             node: start_files_spinner
 
@@ -702,10 +702,10 @@ workflows:
       # Stop files spinner with success message
       stop_files_spinner:
         opcode: spinner_stop
-        next: store_diff_spinner_id
+        next: store_diff_spinner
         inputs:
-          spinner_id:
-            variable: spinner_id
+          spinner:
+            variable: spinner
           message:
             node: format_files_found_msg
           success:
@@ -794,12 +794,12 @@ workflows:
           message:
             literal: "Fetching diff"
 
-      store_diff_spinner_id:
+      store_diff_spinner:
         opcode: data_set_variable_to
         next: store_pr_diff
         inputs:
           VARIABLE:
-            literal: "spinner_id"
+            literal: "spinner"
           VALUE:
             node: start_diff_spinner
 
@@ -843,8 +843,8 @@ workflows:
         opcode: spinner_stop
         next: print_newline_after_diff
         inputs:
-          spinner_id:
-            variable: spinner_id
+          spinner:
+            variable: spinner
           message:
             node: format_diff_loaded_msg
           success:
@@ -1280,7 +1280,7 @@ workflows:
 
       print_files_footer:
         opcode: io_print
-        next: store_ai_spinner_id
+        next: store_ai_spinner
         inputs:
           STRING:
             literal: "\n"
@@ -1297,12 +1297,12 @@ workflows:
           message:
             literal: "Analyzing code with AI"
 
-      store_ai_spinner_id:
+      store_ai_spinner:
         opcode: data_set_variable_to
         next: setup_ai_model
         inputs:
           VARIABLE:
-            literal: "spinner_id"
+            literal: "spinner"
           VALUE:
             node: start_ai_spinner
 
@@ -1490,8 +1490,8 @@ workflows:
         opcode: spinner_stop
         next: print_newline_after_ai
         inputs:
-          spinner_id:
-            variable: spinner_id
+          spinner:
+            variable: spinner
           message:
             literal: "Analysis complete"
           success:

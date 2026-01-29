@@ -1,5 +1,5 @@
 from enum import auto, Enum
-from typing import Optional, Union
+from typing import Optional, Union, TYPE_CHECKING
 import asyncio
 import time
 from .runtime import Runtime
@@ -18,10 +18,17 @@ from .ast import (
     Try,
     Throw,
     Catch,
+    Spawn,
+    AsyncForEach,
+    Timeout,
+    With,
     Statement,
 )
 from .opcodes import OpcodeRegistry
 from .metrics import ExecutionMetrics, NullMetrics
+
+if TYPE_CHECKING:
+    from .tasks import TaskManager
 
 
 class Flow(Enum):
@@ -46,6 +53,7 @@ class Executor:
         self.ev = evaluator
         self.metrics = metrics if metrics is not None else NullMetrics()
         self.opcodes: OpcodeRegistry  # Set by the Engine to avoid circular dependency
+        self.tasks: Optional["TaskManager"] = None  # Set by Engine for background tasks
 
     async def exec(self, stmt: Statement) -> Flow:
         """Execute statement using pattern matching."""
@@ -103,6 +111,22 @@ class Executor:
 
                 case Throw(value=value):
                     result = await self._exec_throw(value)
+                    return result
+
+                case Spawn(body=body, var_name=var_name):
+                    result = await self._exec_spawn(body, var_name)
+                    return result
+
+                case AsyncForEach(var_name=var, iterable=it, body=b):
+                    result = await self._exec_async_foreach(var, it, b)
+                    return result
+
+                case Timeout(timeout=t, body=b, on_timeout=fallback):
+                    result = await self._exec_timeout(t, b, fallback)
+                    return result
+
+                case With(resource=res, var_name=var, body=b):
+                    result = await self._exec_with(res, var, b)
                     return result
         finally:
             duration = time.perf_counter() - start_time
@@ -268,3 +292,96 @@ class Executor:
                 pass
 
         return Flow.NEXT
+
+    async def _exec_spawn(self, body: Statement, var_name: Optional[str]) -> Flow:
+        """Spawn a background task.
+
+        The task shares the current scope, enabling variable communication
+        between the main workflow and background task.
+        """
+        if self.tasks is None:
+            raise RuntimeError(
+                "TaskManager not available. Cannot spawn background tasks."
+            )
+
+        # Create coroutine for the background work
+        async def background_work():
+            # Execute body in shared scope (same scope reference)
+            await self.exec(body)
+
+        # Spawn the task
+        task_name = var_name or "background"
+        lex_task = self.tasks.spawn(background_work(), name=task_name)
+
+        # Store task handle in variable if requested
+        if var_name:
+            self.rt.scope[var_name] = lex_task
+
+        return Flow.NEXT
+
+    async def _exec_async_foreach(self, var_name: str, iterable, body) -> Flow:
+        """Execute async foreach loop over an async iterable."""
+        iterable_val = await self.ev.eval(iterable)
+
+        # Check if it's an async iterable
+        if hasattr(iterable_val, "__aiter__"):
+            async for item in iterable_val:
+                self.rt.scope[var_name] = item
+                flow = await self.exec(body)
+                if flow == Flow.BREAK:
+                    break
+                elif flow == Flow.CONTINUE:
+                    continue
+                elif flow == Flow.RETURN:
+                    return flow
+        else:
+            # Fallback to sync iteration for regular iterables
+            if isinstance(iterable_val, dict):
+                iterable_val = iterable_val.keys()
+
+            for item in iterable_val:
+                self.rt.scope[var_name] = item
+                flow = await self.exec(body)
+                if flow == Flow.BREAK:
+                    break
+                elif flow == Flow.CONTINUE:
+                    continue
+                elif flow == Flow.RETURN:
+                    return flow
+
+        return Flow.NEXT
+
+    async def _exec_timeout(self, timeout_expr, body, on_timeout) -> Flow:
+        """Execute body with a timeout."""
+        timeout_secs = float(await self.ev.eval(timeout_expr))
+
+        try:
+            return await asyncio.wait_for(self.exec(body), timeout=timeout_secs)
+        except asyncio.TimeoutError:
+            if on_timeout:
+                return await self.exec(on_timeout)
+            raise
+
+    async def _exec_with(self, resource_expr, var_name: str, body) -> Flow:
+        """Execute body with an async context manager."""
+        resource = await self.ev.eval(resource_expr)
+
+        # Enter the context manager
+        if hasattr(resource, "__aenter__"):
+            value = await resource.__aenter__()
+        elif hasattr(resource, "__enter__"):
+            value = resource.__enter__()
+        else:
+            raise TypeError(
+                f"Resource {type(resource).__name__} is not a context manager"
+            )
+
+        try:
+            self.rt.scope[var_name] = value
+            return await self.exec(body)
+        finally:
+            # Exit the context manager
+            if hasattr(resource, "__aexit__"):
+                await resource.__aexit__(None, None, None)
+            elif hasattr(resource, "__exit__"):
+                resource.__exit__(None, None, None)

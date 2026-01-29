@@ -100,7 +100,9 @@ def _build_workflow_tree(workflow: dict) -> dict:
             # Skip reporter nodes (they're embedded in other nodes)
             if node.get("isReporter"):
                 processed_orphans.add(current_id)
-                current_id = node.get("next") if node.get("next") in orphan_ids else None
+                current_id = (
+                    node.get("next") if node.get("next") in orphan_ids else None
+                )
                 continue
 
             processed_orphans.add(current_id)

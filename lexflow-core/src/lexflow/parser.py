@@ -21,6 +21,10 @@ from .ast import (
     Try,
     Catch,
     Throw,
+    Spawn,
+    AsyncForEach,
+    Timeout,
+    With,
     Workflow,
     Program,
     Expression,
@@ -166,6 +170,10 @@ class ControlFlowHandler(NodeHandler):
         "control_for",
         "control_foreach",
         "control_fork",
+        "control_spawn",
+        "control_async_foreach",
+        "async_timeout",
+        "control_with",
     }
 
     def can_handle(self, opcode: str) -> bool:
@@ -184,6 +192,12 @@ class ControlFlowHandler(NodeHandler):
             "control_for": lambda i, c: self._handle_for(node_id, i, c),
             "control_foreach": lambda i, c: self._handle_foreach(node_id, i, c),
             "control_fork": lambda i, c: self._handle_fork(node_id, i, c),
+            "control_spawn": lambda i, c: self._handle_spawn(node_id, i, c),
+            "control_async_foreach": lambda i, c: self._handle_async_foreach(
+                node_id, i, c
+            ),
+            "async_timeout": lambda i, c: self._handle_timeout(node_id, i, c),
+            "control_with": lambda i, c: self._handle_with(node_id, i, c),
         }
 
         handler = handlers.get(opcode)
@@ -243,6 +257,43 @@ class ControlFlowHandler(NodeHandler):
                 branches.append(branch)
             i += 1
         return Fork(branches=branches, node_id=node_id)
+
+    def _handle_spawn(self, node_id: str, inputs: dict, context: ParseContext) -> Spawn:
+        body = context.parser._parse_branch(inputs.get("BODY", {}), context)
+        var_name = None
+        if "VAR" in inputs:
+            var_name = self._extract_variable_name(inputs["VAR"], "control_spawn")
+        return Spawn(body=body, var_name=var_name, node_id=node_id)
+
+    def _handle_async_foreach(
+        self, node_id: str, inputs: dict, context: ParseContext
+    ) -> AsyncForEach:
+        var_name = self._extract_variable_name(
+            inputs.get("VAR", {}), "control_async_foreach"
+        )
+        iterable = context.parser._parse_input(inputs.get("ITERABLE", {}), context)
+        body = context.parser._parse_branch(inputs.get("BODY", {}), context)
+        return AsyncForEach(
+            var_name=var_name, iterable=iterable, body=body, node_id=node_id
+        )
+
+    def _handle_timeout(
+        self, node_id: str, inputs: dict, context: ParseContext
+    ) -> Timeout:
+        timeout_expr = context.parser._parse_input(inputs.get("TIMEOUT", {}), context)
+        body = context.parser._parse_branch(inputs.get("BODY", {}), context)
+        on_timeout = None
+        if "ON_TIMEOUT" in inputs:
+            on_timeout = context.parser._parse_branch(inputs["ON_TIMEOUT"], context)
+        return Timeout(
+            timeout=timeout_expr, body=body, on_timeout=on_timeout, node_id=node_id
+        )
+
+    def _handle_with(self, node_id: str, inputs: dict, context: ParseContext) -> With:
+        resource = context.parser._parse_input(inputs.get("RESOURCE", {}), context)
+        var_name = self._extract_variable_name(inputs.get("VAR", {}), "control_with")
+        body = context.parser._parse_branch(inputs.get("BODY", {}), context)
+        return With(resource=resource, var_name=var_name, body=body, node_id=node_id)
 
     def _extract_variable_name(self, var_input: dict, opcode: str) -> str:
         if isinstance(var_input, dict) and "literal" in var_input:
