@@ -8,17 +8,4 @@ Before you keep reading keep in mind that LexFlow is still in early development 
 
 ### LexFlow Web (Visual Editor)
 
-**[LexFlow Web](../lexflow-web/README.md)** - Visual workflow editor and execution environment
-
 - [Getting Started](../lexflow-web/docs/GETTING_STARTED.md) - Installation and setup
-
-### Getting Started
-
-**[GETTING_STARTED.md](GETTING_STARTED.md)** - Installation and first steps
-
-- Installing UV and dependencies
-- Setting up your environment
-- Running your first workflow
-- Common CLI commands
-- Development workflow
-- Troubleshooting guide
