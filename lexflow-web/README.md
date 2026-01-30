@@ -2,7 +2,6 @@
 
 A visual workflow editor and execution environment for LexFlow. Build workflows by dragging and connecting nodes, or write YAML/JSON directly in the integrated code editor.
 
-![LexFlow Web Editor](example.png)
 
 ## Features
 
