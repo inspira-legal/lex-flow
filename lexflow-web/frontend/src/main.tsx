@@ -1,23 +1,26 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import "./styles/variables.css";
-import { App } from "./App";
-import { BackendProviderWrapper, createLexFlowProvider } from "./providers";
-import { getConfig } from "./config";
+import { StrictMode } from "react"
+import { createRoot } from "react-dom/client"
+import "./styles/variables.css"
+import "./styles/index.css"
+import { App } from "./App"
+import { ThemeProvider } from "./lib/theme"
+import { BackendProviderWrapper, createLexFlowProvider } from "./providers"
+import { getConfig } from "./config"
 
-// Create the default LexFlow provider with environment configuration
-const config = getConfig();
+const config = getConfig()
 const provider = createLexFlowProvider({
   apiBaseUrl: config.apiBaseUrl,
   wsUrl: config.wsUrl,
   supportsExamples: true,
   supportsWebSocket: true,
-});
+})
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BackendProviderWrapper provider={provider}>
-      <App />
-    </BackendProviderWrapper>
-  </StrictMode>,
-);
+    <ThemeProvider>
+      <BackendProviderWrapper provider={provider}>
+        <App />
+      </BackendProviderWrapper>
+    </ThemeProvider>
+  </StrictMode>
+)

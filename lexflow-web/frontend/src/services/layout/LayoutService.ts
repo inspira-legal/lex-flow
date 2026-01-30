@@ -8,7 +8,7 @@ import type {
 } from "../../api/types";
 import { NODE_DIMENSIONS, LAYOUT_GAPS } from "../../constants";
 import { getControlFlowOpcodeSet, getBranchColor as grammarGetBranchColor } from "../../services/grammar";
-import { START_NODE_WIDTH, START_NODE_HEIGHT } from "../../components/visualization/StartNode";
+import { START_NODE_WIDTH, START_NODE_HEIGHT } from "../../components/canvas/StartNode";
 
 // Layout constants
 const NODE_WIDTH = NODE_DIMENSIONS.WIDTH;
@@ -119,34 +119,134 @@ export function formatValueShort(value: FormattedValue): string {
   }
 }
 
-// Calculate node height based on inputs and branches
-export function calculateNodeHeight(
-  inputs: Record<string, FormattedValue>,
-  opcode?: string,
-): number {
-  const reporterInputs: FormattedValue[] = [];
-  const regularInputs: FormattedValue[] = [];
+// Reporter nesting constants (must match WorkflowNode.tsx)
+const REPORTER_PADDING = 12;
+const REPORTER_GAP = 8;
+const REPORTER_LABEL_HEIGHT = 16;
+const INPUT_SLOT_HEIGHT = 28;
 
-  for (const value of Object.values(inputs)) {
-    if (value.type === "reporter" && value.opcode) {
-      reporterInputs.push(value);
-    } else {
-      regularInputs.push(value);
+// Calculate reporter dimensions recursively (mirrors WorkflowNode logic)
+function calculateReporterDimensions(
+  value: FormattedValue,
+  expandedReporters: Record<string, boolean>,
+): { width: number; height: number } {
+  if (value.type !== "reporter" || !value.opcode) {
+    return { width: 0, height: 0 };
+  }
+
+  const reporterId = value.id || "";
+  const isExpanded = expandedReporters[reporterId] ?? false;
+
+  // If collapsed, just return minimum node size
+  if (!isExpanded) {
+    return { width: NODE_WIDTH, height: NODE_HEIGHT };
+  }
+
+  // Separate nested reporters from regular inputs
+  const nestedReporters: FormattedValue[] = [];
+  let regularInputCount = 0;
+
+  if (value.inputs) {
+    for (const nestedValue of Object.values(value.inputs)) {
+      if (nestedValue.type === "reporter" && nestedValue.opcode) {
+        nestedReporters.push(nestedValue);
+      } else {
+        regularInputCount++;
+      }
     }
   }
 
-  const inputPreviewCount = Math.min(regularInputs.length, 2);
-  const baseHeight = 60 + inputPreviewCount * 18;
+  let contentWidth: number = NODE_WIDTH;
+  let contentHeight: number = NODE_HEIGHT;
 
-  const reporterSectionHeight = reporterInputs.reduce((acc, value) => {
-    return acc + calculateReporterTotalHeight(value) + 4;
-  }, 0);
+  // Add height for nested reporters
+  if (nestedReporters.length > 0) {
+    let childrenHeight = 0;
+    let maxChildWidth = 0;
+
+    for (const nested of nestedReporters) {
+      const childDims = calculateReporterDimensions(nested, expandedReporters);
+      childrenHeight += REPORTER_LABEL_HEIGHT + childDims.height + REPORTER_GAP;
+      maxChildWidth = Math.max(maxChildWidth, childDims.width);
+    }
+
+    contentWidth = Math.max(contentWidth, maxChildWidth + REPORTER_PADDING * 2);
+    contentHeight = NODE_HEIGHT + childrenHeight;
+  }
+
+  // Add height for input slots when expanded
+  if (regularInputCount > 0) {
+    contentHeight += regularInputCount * INPUT_SLOT_HEIGHT + REPORTER_GAP;
+  }
+
+  // Add bottom padding if there's content
+  if (nestedReporters.length > 0 || regularInputCount > 0) {
+    contentHeight += REPORTER_PADDING;
+  }
+
+  return { width: contentWidth, height: contentHeight };
+}
+
+// Calculate total dimensions for all reporter inputs on a node
+function calculateAllReportersDimensions(
+  inputs: Record<string, FormattedValue>,
+  expandedReporters: Record<string, boolean>,
+): { width: number; height: number } {
+  let totalHeight = 0;
+  let maxWidth: number = NODE_WIDTH;
+
+  for (const value of Object.values(inputs)) {
+    if (value.type === "reporter" && value.opcode) {
+      const dims = calculateReporterDimensions(value, expandedReporters);
+      totalHeight += REPORTER_LABEL_HEIGHT + dims.height + REPORTER_GAP;
+      maxWidth = Math.max(maxWidth, dims.width);
+    }
+  }
+
+  return { width: maxWidth, height: totalHeight };
+}
+
+// Calculate node dimensions based on inputs, branches, and expansion state
+export function calculateNodeDimensions(
+  nodeId: string,
+  inputs: Record<string, FormattedValue>,
+  opcode: string | undefined,
+  expandedReporters: Record<string, boolean>,
+): { width: number; height: number } {
+  // Check if this node is expanded
+  const isExpanded = expandedReporters[nodeId] ?? false;
 
   const controlFlowOpcodes = getControlFlowOpcodeSet();
   const hasBranchSlots = opcode && controlFlowOpcodes.has(opcode);
-  const branchSlotsHeight = hasBranchSlots ? 28 : 0;
+  const branchSlotsHeight = hasBranchSlots ? 20 : 0;
 
-  return baseHeight + reporterSectionHeight + branchSlotsHeight;
+  // If not expanded, return minimum size
+  if (!isExpanded) {
+    return { width: NODE_WIDTH, height: NODE_HEIGHT + branchSlotsHeight };
+  }
+
+  // Calculate expanded dimensions
+  const reporterDims = calculateAllReportersDimensions(inputs, expandedReporters);
+  const reporterWidth = reporterDims.width + REPORTER_PADDING * 2;
+  const reporterHeight = reporterDims.height;
+
+  return {
+    width: Math.max(NODE_WIDTH, reporterWidth),
+    height: NODE_HEIGHT + reporterHeight + branchSlotsHeight,
+  };
+}
+
+// Calculate node height based on inputs and branches (legacy, uses minimum height)
+export function calculateNodeHeight(
+  _inputs: Record<string, FormattedValue>,
+  opcode?: string,
+): number {
+  // Compact node design - minimal height, reporters hidden by default
+  const controlFlowOpcodes = getControlFlowOpcodeSet();
+  const hasBranchSlots = opcode && controlFlowOpcodes.has(opcode);
+  const branchSlotsHeight = hasBranchSlots ? 20 : 0;
+
+  return NODE_HEIGHT + branchSlotsHeight;
 }
 
 // Position interface
@@ -255,6 +355,7 @@ export function layoutAllWorkflows(
   workflows: WorkflowNode[],
   positionOffsets: Record<string, { x: number; y: number }>,
   nodePositionOffsets: Record<string, { x: number; y: number }> = {},
+  expandedReporters: Record<string, boolean> = {},
 ): FullLayout {
   const allNodes: LayoutNode[] = [];
   const allConnections: LayoutConnection[] = [];
@@ -285,6 +386,7 @@ export function layoutAllWorkflows(
       pos.x,
       pos.y,
       nodePositionOffsets,
+      expandedReporters,
     );
 
     allNodes.push(...nodes);
@@ -312,6 +414,7 @@ export function layoutSingleWorkflow(
   offsetX: number,
   offsetY: number,
   nodePositionOffsets: Record<string, { x: number; y: number }> = {},
+  expandedReporters: Record<string, boolean> = {},
 ): {
   nodes: LayoutNode[];
   connections: LayoutConnection[];
@@ -322,7 +425,7 @@ export function layoutSingleWorkflow(
   const connections: LayoutConnection[] = [];
   const nodePositions = new Map<
     string,
-    { x: number; y: number; height: number }
+    { x: number; y: number; width: number; height: number }
   >();
 
   // Calculate start node position
@@ -359,53 +462,56 @@ export function layoutSingleWorkflow(
     y: number,
     isOrphan: boolean = false,
   ): number {
-    const height = calculateNodeHeight(node.inputs, node.opcode);
+    const dims = calculateNodeDimensions(node.id, node.inputs, node.opcode, expandedReporters);
 
     layoutNodes.push({
       node,
       x,
       y,
-      width: NODE_WIDTH,
-      height,
+      width: dims.width,
+      height: dims.height,
       isOrphan,
     });
-    nodePositions.set(node.id, { x, y, height });
-    updateBounds(x, y, NODE_WIDTH, height);
+    nodePositions.set(node.id, { x, y, width: dims.width, height: dims.height });
+    updateBounds(x, y, dims.width, dims.height);
 
-    let nextX = x + NODE_WIDTH + H_GAP;
+    let nextX = x + dims.width + H_GAP;
 
     // Layout branch children
     if (node.children.length > 0) {
-      let branchOffset = y + height + V_GAP;
+      let branchOffset = y + dims.height + V_GAP;
       const numBranches = node.children.length;
 
       for (let branchIndex = 0; branchIndex < numBranches; branchIndex++) {
         const branch = node.children[branchIndex];
         const branchColor = getBranchColor(branch.name);
 
-        let branchX = x + NODE_WIDTH + H_GAP;
+        let branchX = x + dims.width + H_GAP;
         let prevNodeId = node.id;
         let isFirstInBranch = true;
 
         for (const childNode of branch.children) {
-          const childHeight = calculateNodeHeight(
+          const childDims = calculateNodeDimensions(
+            childNode.id,
             childNode.inputs,
             childNode.opcode,
+            expandedReporters,
           );
 
           layoutNodes.push({
             node: childNode,
             x: branchX,
             y: branchOffset,
-            width: NODE_WIDTH,
-            height: childHeight,
+            width: childDims.width,
+            height: childDims.height,
           });
           nodePositions.set(childNode.id, {
             x: branchX,
             y: branchOffset,
-            height: childHeight,
+            width: childDims.width,
+            height: childDims.height,
           });
-          updateBounds(branchX, branchOffset, NODE_WIDTH, childHeight);
+          updateBounds(branchX, branchOffset, childDims.width, childDims.height);
 
           connections.push({
             from: prevNodeId,
@@ -418,7 +524,7 @@ export function layoutSingleWorkflow(
 
           prevNodeId = childNode.id;
           isFirstInBranch = false;
-          branchX += NODE_WIDTH + H_GAP;
+          branchX += childDims.width + H_GAP;
 
           if (childNode.children.length > 0) {
             branchX = Math.max(
@@ -456,24 +562,27 @@ export function layoutSingleWorkflow(
       let isFirstInBranch = true;
 
       for (const childNode of branch.children) {
-        const childHeight = calculateNodeHeight(
+        const childDims = calculateNodeDimensions(
+          childNode.id,
           childNode.inputs,
           childNode.opcode,
+          expandedReporters,
         );
 
         layoutNodes.push({
           node: childNode,
           x: branchX,
           y: branchY,
-          width: NODE_WIDTH,
-          height: childHeight,
+          width: childDims.width,
+          height: childDims.height,
         });
         nodePositions.set(childNode.id, {
           x: branchX,
           y: branchY,
-          height: childHeight,
+          width: childDims.width,
+          height: childDims.height,
         });
-        updateBounds(branchX, branchY, NODE_WIDTH, childHeight);
+        updateBounds(branchX, branchY, childDims.width, childDims.height);
 
         connections.push({
           from: prevNodeId,
@@ -486,7 +595,7 @@ export function layoutSingleWorkflow(
 
         prevNodeId = childNode.id;
         isFirstInBranch = false;
-        branchX += NODE_WIDTH + H_GAP;
+        branchX += childDims.width + H_GAP;
       }
 
       maxX = Math.max(maxX, branchX);
@@ -596,16 +705,21 @@ export function getWorkflowUnderPoint(
   x: number,
   y: number,
 ): string | null {
+  // Padding for hit detection - accounts for label area above group and general tolerance
+  const labelHeight = 28;
+  const padding = 16;
+
   // Sort by y position descending (bottom to top) so lower workflows take priority
   // This handles the case where dropping near the top border of a workflow
   const sortedGroups = [...groups].sort((a, b) => b.y - a.y);
 
   for (const group of sortedGroups) {
+    // Expand hit area to include label above and some padding around edges
     if (
-      x >= group.x &&
-      x <= group.x + group.width &&
-      y >= group.y &&
-      y <= group.y + group.height
+      x >= group.x - padding &&
+      x <= group.x + group.width + padding &&
+      y >= group.y - labelHeight - padding &&
+      y <= group.y + group.height + padding
     ) {
       return group.name;
     }

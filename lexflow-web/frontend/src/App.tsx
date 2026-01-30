@@ -1,13 +1,34 @@
 import { useEffect } from "react";
 import { MainLayout } from "./components/layout";
-import { Canvas } from "./components/visualization";
+import { Canvas } from "./components/canvas";
 import { CodeEditor } from "./components/editor";
 import { ExecutionPanel } from "./components/execution";
 import { NodeEditorPanel } from "./components/node-editor";
 import { NodePalette, DragPreview } from "./components/palette";
-import { useWorkflowStore } from "./store";
+import { ConfirmDialog } from "./components/ui";
+import { useWorkflowStore, useUiStore } from "./store";
 import { useKeyboardShortcuts, useWorkflowParsing } from "./hooks";
 import { useBackendProvider, supportsExamples } from "./providers";
+
+// Global confirm dialog connected to store
+function GlobalConfirmDialog() {
+  const confirmDialog = useUiStore((s) => s.confirmDialog);
+
+  if (!confirmDialog) return null;
+
+  return (
+    <ConfirmDialog
+      isOpen={confirmDialog.isOpen}
+      title={confirmDialog.title}
+      message={confirmDialog.message}
+      confirmLabel={confirmDialog.confirmLabel}
+      cancelLabel={confirmDialog.cancelLabel}
+      variant={confirmDialog.variant}
+      onConfirm={confirmDialog.onConfirm}
+      onCancel={confirmDialog.onCancel}
+    />
+  );
+}
 
 export function App() {
   const { setExamples, setOpcodes } = useWorkflowStore();
@@ -40,6 +61,7 @@ export function App() {
         palette={<NodePalette />}
       />
       <DragPreview />
+      <GlobalConfirmDialog />
     </>
   );
 }

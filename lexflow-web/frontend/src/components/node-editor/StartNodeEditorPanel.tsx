@@ -1,11 +1,32 @@
-import { useState } from "react";
-import { useWorkflowStore, useSelectionStore } from "../../store";
-import type { WorkflowNode } from "../../api/types";
-import styles from "./NodeEditorPanel.module.css";
+import { useState } from "react"
+import { useWorkflowStore, useSelectionStore, useUiStore } from "@/store"
+import type { WorkflowNode } from "@/api/types"
+import { cn } from "@/lib/cn"
+import {
+  panelVariants,
+  headerVariants,
+  titleVariants,
+  closeBtnVariants,
+  contentVariants,
+  emptyVariants,
+  nodeInfoVariants,
+  colorBarVariants,
+  nodeDetailsVariants,
+  nodeTypeVariants,
+  nodeNameVariants,
+  sectionVariants,
+  sectionTitleVariants,
+  noInputsVariants,
+  inputVariants,
+  inputPreviewVariants,
+  valueContentVariants,
+  editInputVariants,
+  actionBtnVariants,
+} from "./NodeEditorPanel/styles"
 
 interface StartNodeEditorPanelProps {
-  workflowName: string;
-  onClose: () => void;
+  workflowName: string
+  onClose: () => void
 }
 
 export function StartNodeEditorPanel({
@@ -18,192 +39,168 @@ export function StartNodeEditorPanel({
     updateVariable,
     deleteVariable,
     updateWorkflowInterface,
-  } = useWorkflowStore();
-  const { selectStartNode } = useSelectionStore();
+  } = useWorkflowStore()
+  const { selectStartNode } = useSelectionStore()
 
-  // Find the workflow
   const workflow = tree?.workflows.find((w) => w.name === workflowName) as
     | WorkflowNode
-    | undefined;
+    | undefined
 
-  const [newVarName, setNewVarName] = useState("");
-  const [newVarValue, setNewVarValue] = useState("");
-  const [editingVar, setEditingVar] = useState<string | null>(null);
-  const [editVarName, setEditVarName] = useState("");
-  const [editVarValue, setEditVarValue] = useState("");
+  const [newVarName, setNewVarName] = useState("")
+  const [newVarValue, setNewVarValue] = useState("")
+  const [editingVar, setEditingVar] = useState<string | null>(null)
+  const [editVarName, setEditVarName] = useState("")
+  const [editVarValue, setEditVarValue] = useState("")
 
-  const [newInput, setNewInput] = useState("");
-  const [newOutput, setNewOutput] = useState("");
+  const [newInput, setNewInput] = useState("")
+  const [newOutput, setNewOutput] = useState("")
 
   if (!workflow) {
     return (
-      <div className={styles.panel}>
-        <div className={styles.header}>
-          <span className={styles.title}>Start Node</span>
-          <button className={styles.closeBtn} onClick={onClose}>
+      <div className={panelVariants()}>
+        <div className={headerVariants()}>
+          <span className={titleVariants()}>Start Node</span>
+          <button className={closeBtnVariants()} onClick={onClose}>
             ✕
           </button>
         </div>
-        <div className={styles.empty}>
+        <div className={emptyVariants()}>
           <p>Workflow not found</p>
         </div>
       </div>
-    );
+    )
   }
 
   const handleClose = () => {
-    selectStartNode(null);
-    onClose();
-  };
+    selectStartNode(null)
+    onClose()
+  }
 
-  // Variable operations
   const handleAddVariable = () => {
-    if (!newVarName.trim()) return;
-    const value = parseValue(newVarValue);
+    if (!newVarName.trim()) return
+    const value = parseValue(newVarValue)
     if (addVariable(workflowName, newVarName.trim(), value)) {
-      setNewVarName("");
-      setNewVarValue("");
+      setNewVarName("")
+      setNewVarValue("")
     }
-  };
+  }
 
   const handleStartEditVar = (name: string, value: unknown) => {
-    setEditingVar(name);
-    setEditVarName(name);
-    setEditVarValue(formatValue(value));
-  };
+    setEditingVar(name)
+    setEditVarName(name)
+    setEditVarValue(formatValue(value))
+  }
 
   const handleSaveEditVar = () => {
-    if (!editingVar || !editVarName.trim()) return;
-    const value = parseValue(editVarValue);
+    if (!editingVar || !editVarName.trim()) return
+    const value = parseValue(editVarValue)
     if (updateVariable(workflowName, editingVar, editVarName.trim(), value)) {
-      setEditingVar(null);
-      setEditVarName("");
-      setEditVarValue("");
+      setEditingVar(null)
+      setEditVarName("")
+      setEditVarValue("")
     }
-  };
+  }
 
   const handleCancelEditVar = () => {
-    setEditingVar(null);
-    setEditVarName("");
-    setEditVarValue("");
-  };
+    setEditingVar(null)
+    setEditVarName("")
+    setEditVarValue("")
+  }
 
   const handleDeleteVar = (name: string) => {
-    if (confirm(`Delete variable "$${name}"?`)) {
-      deleteVariable(workflowName, name);
-    }
-  };
+    useUiStore.getState().showConfirmDialog({
+      title: "Delete Variable",
+      message: `Delete variable "$${name}"?`,
+      confirmLabel: "Delete",
+      variant: "danger",
+      onConfirm: () => deleteVariable(workflowName, name),
+    })
+  }
 
-  // Interface operations
   const handleAddInput = () => {
-    if (!newInput.trim()) return;
-    const newInputs = [...workflow.interface.inputs, newInput.trim()];
+    if (!newInput.trim()) return
+    const newInputs = [...workflow.interface.inputs, newInput.trim()]
     if (
       updateWorkflowInterface(
         workflowName,
         newInputs,
-        workflow.interface.outputs,
+        workflow.interface.outputs
       )
     ) {
-      setNewInput("");
+      setNewInput("")
     }
-  };
+  }
 
   const handleRemoveInput = (input: string) => {
-    const newInputs = workflow.interface.inputs.filter((i) => i !== input);
+    const newInputs = workflow.interface.inputs.filter((i) => i !== input)
     updateWorkflowInterface(
       workflowName,
       newInputs,
-      workflow.interface.outputs,
-    );
-  };
+      workflow.interface.outputs
+    )
+  }
 
   const handleAddOutput = () => {
-    if (!newOutput.trim()) return;
-    const newOutputs = [...workflow.interface.outputs, newOutput.trim()];
+    if (!newOutput.trim()) return
+    const newOutputs = [...workflow.interface.outputs, newOutput.trim()]
     if (
       updateWorkflowInterface(
         workflowName,
         workflow.interface.inputs,
-        newOutputs,
+        newOutputs
       )
     ) {
-      setNewOutput("");
+      setNewOutput("")
     }
-  };
+  }
 
   const handleRemoveOutput = (output: string) => {
-    const newOutputs = workflow.interface.outputs.filter((o) => o !== output);
+    const newOutputs = workflow.interface.outputs.filter((o) => o !== output)
     updateWorkflowInterface(
       workflowName,
       workflow.interface.inputs,
-      newOutputs,
-    );
-  };
+      newOutputs
+    )
+  }
 
-  const varEntries = Object.entries(workflow.variables);
+  const varEntries = Object.entries(workflow.variables)
 
   return (
-    <div className={styles.panel}>
-      <div className={styles.header}>
-        <span className={styles.title}>Start Node</span>
-        <button className={styles.closeBtn} onClick={handleClose}>
+    <div className={panelVariants()}>
+      <div className={headerVariants()}>
+        <span className={titleVariants()}>Start Node</span>
+        <button className={closeBtnVariants()} onClick={handleClose}>
           ✕
         </button>
       </div>
 
-      <div className={styles.content}>
-        {/* Workflow info */}
-        <div className={styles.nodeInfo}>
+      <div className={contentVariants()}>
+        <div className={nodeInfoVariants()}>
           <div
-            className={styles.colorBar}
+            className={colorBarVariants()}
             style={{ backgroundColor: "#22C55E" }}
           />
-          <div className={styles.nodeDetails}>
-            <span className={styles.nodeType}>Workflow</span>
-            <h3 className={styles.nodeName}>{workflowName}</h3>
+          <div className={nodeDetailsVariants()}>
+            <span className={nodeTypeVariants()}>Workflow</span>
+            <h3 className={nodeNameVariants()}>{workflowName}</h3>
           </div>
         </div>
 
-        {/* Interface Inputs */}
-        <div className={styles.section}>
-          <h4>Interface Inputs</h4>
+        <div className={sectionVariants()}>
+          <h4 className={sectionTitleVariants()}>Interface Inputs</h4>
           {workflow.interface.inputs.length === 0 ? (
-            <p className={styles.noInputs}>No inputs defined</p>
+            <p className={noInputsVariants()}>No inputs defined</p>
           ) : (
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "6px",
-                marginBottom: "10px",
-              }}
-            >
+            <div className="flex flex-wrap gap-1.5 mb-2.5">
               {workflow.interface.inputs.map((input) => (
                 <span
                   key={input}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    padding: "4px 8px",
-                    background: "var(--bg-secondary)",
-                    borderRadius: "4px",
-                    fontSize: "0.85rem",
-                    color: "var(--color-cyan)",
-                  }}
+                  className="inline-flex items-center gap-1 px-2 py-1 bg-surface-2 rounded text-sm text-accent-blue"
                 >
                   {input}
                   <button
                     onClick={() => handleRemoveInput(input)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "var(--text-muted)",
-                      cursor: "pointer",
-                      padding: "0 2px",
-                      fontSize: "0.8rem",
-                    }}
+                    className="bg-transparent border-none text-text-muted cursor-pointer p-0 text-xs hover:text-text-primary"
                     title="Remove input"
                   >
                     ✕
@@ -212,65 +209,39 @@ export function StartNodeEditorPanel({
               ))}
             </div>
           )}
-          <div style={{ display: "flex", gap: "6px" }}>
+          <div className="flex gap-1.5">
             <input
               type="text"
-              className={styles.input}
+              className={cn(inputVariants(), "flex-1")}
               placeholder="New input name"
               value={newInput}
               onChange={(e) => setNewInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddInput()}
-              style={{ flex: 1 }}
             />
             <button
-              className={styles.actionBtn}
+              className={cn(actionBtnVariants(), "flex-none w-auto")}
               onClick={handleAddInput}
-              style={{ flex: "none", width: "auto" }}
             >
               Add
             </button>
           </div>
         </div>
 
-        {/* Interface Outputs */}
-        <div className={styles.section}>
-          <h4>Interface Outputs</h4>
+        <div className={sectionVariants()}>
+          <h4 className={sectionTitleVariants()}>Interface Outputs</h4>
           {workflow.interface.outputs.length === 0 ? (
-            <p className={styles.noInputs}>No outputs defined</p>
+            <p className={noInputsVariants()}>No outputs defined</p>
           ) : (
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "6px",
-                marginBottom: "10px",
-              }}
-            >
+            <div className="flex flex-wrap gap-1.5 mb-2.5">
               {workflow.interface.outputs.map((output) => (
                 <span
                   key={output}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    padding: "4px 8px",
-                    background: "var(--bg-secondary)",
-                    borderRadius: "4px",
-                    fontSize: "0.85rem",
-                    color: "var(--color-magenta)",
-                  }}
+                  className="inline-flex items-center gap-1 px-2 py-1 bg-surface-2 rounded text-sm text-accent-violet"
                 >
                   {output}
                   <button
                     onClick={() => handleRemoveOutput(output)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "var(--text-muted)",
-                      cursor: "pointer",
-                      padding: "0 2px",
-                      fontSize: "0.8rem",
-                    }}
+                    className="bg-transparent border-none text-text-muted cursor-pointer p-0 text-xs hover:text-text-primary"
                     title="Remove output"
                   >
                     ✕
@@ -279,53 +250,44 @@ export function StartNodeEditorPanel({
               ))}
             </div>
           )}
-          <div style={{ display: "flex", gap: "6px" }}>
+          <div className="flex gap-1.5">
             <input
               type="text"
-              className={styles.input}
+              className={cn(inputVariants(), "flex-1")}
               placeholder="New output name"
               value={newOutput}
               onChange={(e) => setNewOutput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddOutput()}
-              style={{ flex: 1 }}
             />
             <button
-              className={styles.actionBtn}
+              className={cn(actionBtnVariants(), "flex-none w-auto")}
               onClick={handleAddOutput}
-              style={{ flex: "none", width: "auto" }}
             >
               Add
             </button>
           </div>
         </div>
 
-        {/* Variables */}
-        <div className={styles.section}>
-          <h4>Variables</h4>
+        <div className={sectionVariants()}>
+          <h4 className={sectionTitleVariants()}>Variables</h4>
           {varEntries.length === 0 ? (
-            <p className={styles.noInputs}>No variables defined</p>
+            <p className={noInputsVariants()}>No variables defined</p>
           ) : (
-            <div style={{ marginBottom: "10px" }}>
+            <div className="mb-2.5">
               {varEntries.map(([name, value]) => (
-                <div key={name} style={{ marginBottom: "8px" }}>
+                <div key={name} className="mb-2">
                   {editingVar === name ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "6px",
-                      }}
-                    >
+                    <div className="flex flex-col gap-1.5">
                       <input
                         type="text"
-                        className={styles.editInput}
+                        className={editInputVariants()}
                         placeholder="Variable name"
                         value={editVarName}
                         onChange={(e) => setEditVarName(e.target.value)}
                       />
                       <input
                         type="text"
-                        className={styles.editInput}
+                        className={editInputVariants()}
                         placeholder="Default value"
                         value={editVarValue}
                         onChange={(e) => setEditVarValue(e.target.value)}
@@ -333,18 +295,16 @@ export function StartNodeEditorPanel({
                           e.key === "Enter" && handleSaveEditVar()
                         }
                       />
-                      <div style={{ display: "flex", gap: "6px" }}>
+                      <div className="flex gap-1.5">
                         <button
-                          className={styles.actionBtn}
+                          className={cn(actionBtnVariants(), "flex-1")}
                           onClick={handleSaveEditVar}
-                          style={{ flex: 1 }}
                         >
                           Save
                         </button>
                         <button
-                          className={styles.actionBtn}
+                          className={cn(actionBtnVariants(), "flex-1")}
                           onClick={handleCancelEditVar}
-                          style={{ flex: 1 }}
                         >
                           Cancel
                         </button>
@@ -352,37 +312,22 @@ export function StartNodeEditorPanel({
                     </div>
                   ) : (
                     <div
-                      className={`${styles.inputPreview} ${styles.editable}`}
+                      className={cn(inputPreviewVariants({ editable: true }), "cursor-pointer")}
                       onClick={() => handleStartEditVar(name, value)}
-                      style={{ cursor: "pointer" }}
                     >
-                      <span
-                        style={{
-                          color: "#4ADE80",
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontWeight: 500,
-                        }}
-                      >
+                      <span className="text-accent-green font-mono font-medium">
                         ${name}
                       </span>
-                      <span style={{ color: "var(--text-muted)" }}>=</span>
-                      <span className={styles.valueContent}>
+                      <span className="text-text-muted">=</span>
+                      <span className={valueContentVariants()}>
                         {formatValue(value)}
                       </span>
                       <button
                         onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteVar(name);
+                          e.stopPropagation()
+                          handleDeleteVar(name)
                         }}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: "var(--color-red)",
-                          cursor: "pointer",
-                          padding: "0 4px",
-                          marginLeft: "auto",
-                          fontSize: "0.8rem",
-                        }}
+                        className="bg-transparent border-none text-accent-red cursor-pointer px-1 ml-auto text-xs"
                         title="Delete variable"
                       >
                         ✕
@@ -393,54 +338,50 @@ export function StartNodeEditorPanel({
               ))}
             </div>
           )}
-          <div style={{ display: "flex", gap: "6px", flexDirection: "column" }}>
-            <div style={{ display: "flex", gap: "6px" }}>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex gap-1.5">
               <input
                 type="text"
-                className={styles.input}
+                className={cn(inputVariants(), "flex-1")}
                 placeholder="Variable name"
                 value={newVarName}
                 onChange={(e) => setNewVarName(e.target.value)}
-                style={{ flex: 1 }}
               />
               <input
                 type="text"
-                className={styles.input}
+                className={cn(inputVariants(), "flex-1")}
                 placeholder="Default value"
                 value={newVarValue}
                 onChange={(e) => setNewVarValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAddVariable()}
-                style={{ flex: 1 }}
               />
             </div>
-            <button className={styles.actionBtn} onClick={handleAddVariable}>
+            <button className={actionBtnVariants()} onClick={handleAddVariable}>
               Add Variable
             </button>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function formatValue(value: unknown): string {
-  if (value === null) return "null";
-  if (value === undefined) return "";
-  if (typeof value === "string") return value;
-  return JSON.stringify(value);
+  if (value === null) return "null"
+  if (value === undefined) return ""
+  if (typeof value === "string") return value
+  return JSON.stringify(value)
 }
 
 function parseValue(str: string): unknown {
-  if (!str || str === "") return "";
-  if (str === "null") return null;
-  if (str === "true") return true;
-  if (str === "false") return false;
+  if (!str || str === "") return ""
+  if (str === "null") return null
+  if (str === "true") return true
+  if (str === "false") return false
 
-  // Try to parse as JSON (for numbers, arrays, objects)
   try {
-    return JSON.parse(str);
+    return JSON.parse(str)
   } catch {
-    // Return as string if not valid JSON
-    return str;
+    return str
   }
 }

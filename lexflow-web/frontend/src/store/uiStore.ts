@@ -153,6 +153,52 @@ interface UiState {
   // Canvas center (for coordinate transformation)
   canvasCenter: { x: number; y: number };
   setCanvasCenter: (x: number, y: number) => void;
+
+  // Node context menu
+  contextMenu: {
+    nodeId: string;
+    x: number;
+    y: number;
+    hasReporters: boolean;
+    reportersExpanded: boolean;
+    isOrphan: boolean;
+  } | null;
+  showContextMenu: (data: {
+    nodeId: string;
+    x: number;
+    y: number;
+    hasReporters: boolean;
+    reportersExpanded: boolean;
+    isOrphan: boolean;
+  }) => void;
+  hideContextMenu: () => void;
+
+  // Expanded reporters state (per node)
+  expandedReporters: Record<string, boolean>;
+  toggleReportersExpanded: (nodeId: string) => void;
+  setReportersExpanded: (nodeId: string, expanded: boolean) => void;
+
+  // Confirm dialog
+  confirmDialog: {
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    variant?: "default" | "danger";
+    onConfirm: () => void;
+    onCancel: () => void;
+  } | null;
+  showConfirmDialog: (options: {
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    variant?: "default" | "danger";
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }) => void;
+  hideConfirmDialog: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -274,4 +320,49 @@ export const useUiStore = create<UiState>((set) => ({
   // Canvas center
   canvasCenter: { x: 400, y: 300 },
   setCanvasCenter: (x, y) => set({ canvasCenter: { x, y } }),
+
+  // Node context menu
+  contextMenu: null,
+  showContextMenu: (data) => set({ contextMenu: data }),
+  hideContextMenu: () => set({ contextMenu: null }),
+
+  // Expanded reporters state
+  expandedReporters: {},
+  toggleReportersExpanded: (nodeId) =>
+    set((s) => ({
+      expandedReporters: {
+        ...s.expandedReporters,
+        [nodeId]: !s.expandedReporters[nodeId],
+      },
+    })),
+  setReportersExpanded: (nodeId, expanded) =>
+    set((s) => ({
+      expandedReporters: {
+        ...s.expandedReporters,
+        [nodeId]: expanded,
+      },
+    })),
+
+  // Confirm dialog
+  confirmDialog: null,
+  showConfirmDialog: (options) =>
+    set({
+      confirmDialog: {
+        isOpen: true,
+        title: options.title,
+        message: options.message,
+        confirmLabel: options.confirmLabel,
+        cancelLabel: options.cancelLabel,
+        variant: options.variant,
+        onConfirm: () => {
+          options.onConfirm();
+          set({ confirmDialog: null });
+        },
+        onCancel: () => {
+          options.onCancel?.();
+          set({ confirmDialog: null });
+        },
+      },
+    }),
+  hideConfirmDialog: () => set({ confirmDialog: null }),
 }));
