@@ -1,0 +1,25 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.6
+    hooks:
+      - id: ruff-format
+        name: ruff format
+      - id: ruff
+        name: ruff lint
+        args: [--fix, --exit-non-zero-on-fix]
+
+  - repo: local
+    hooks:
+      - id: generate-opcode-docs
+        name: generate opcode docs
+        entry: uv run lexflow docs generate
+        language: system
+        pass_filenames: false
+        files: ^lexflow-core/src/lexflow/(opcodes.*\.py|grammar\.json)$
+
+      - id: generate-grammar-docs
+        name: generate grammar docs
+        entry: uv run lexflow docs generate --grammar
+        language: system
+        pass_filenames: false
+        files: ^lexflow-core/src/lexflow/grammar\.json$

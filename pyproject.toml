@@ -44,4 +44,5 @@ packages = ["lexflow-core/src/lexflow", "lexflow-cli/src/lexflow_cli", "lexflow-
 [dependency-groups]
 dev = [
     "ruff>=0.14.1",
+    "pre-commit>=4.0.0",
 ]
