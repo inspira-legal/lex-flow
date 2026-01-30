@@ -247,197 +247,58 @@ engine = Engine(program, opcodes=custom_registry)
 
 ## Built-in Opcodes Reference
 
-LexFlow includes 84 built-in opcodes organized by category:
+**IMPORTANT**: Always read the auto-generated documentation for the complete and up-to-date opcode reference:
 
-### I/O Operations (2)
-- `io_print(*values)` - Print values to stdout
-- `io_input(prompt="")` - Get input from user
+```bash
+# Read the full opcode reference (auto-generated from code)
+cat docs/OPCODE_REFERENCE.md
+```
 
-### Arithmetic Operators (5)
-- `operator_add(left, right)` - Add/concatenate
-- `operator_subtract(left, right)` - Subtract
-- `operator_multiply(left, right)` - Multiply
-- `operator_divide(left, right)` - True division
-- `operator_modulo(left, right)` - Modulo/remainder
+The opcode reference includes:
+- All built-in opcodes organized by category (I/O, operators, math, string, list, dict, object, type conversions, exceptions, workflow, control flow, async, HTTP, AI, etc.)
+- Complete function signatures with parameter types
+- Default values for optional parameters
+- Docstrings explaining each opcode's purpose
 
-### Comparison Operators (6)
-- `operator_equals(left, right)` - Equality check
-- `operator_not_equals(left, right)` - Inequality check
-- `operator_less_than(left, right)` - Less than
-- `operator_greater_than(left, right)` - Greater than
-- `operator_less_than_or_equals(left, right)` - Less than or equal
-- `operator_greater_than_or_equals(left, right)` - Greater than or equal
+### Key Opcode Categories
 
-### Logical Operators (3)
-- `operator_and(left, right)` - Logical AND
-- `operator_or(left, right)` - Logical OR
-- `operator_not(value)` - Logical NOT
+- **I/O Operations**: `io_print`, `io_input`
+- **Operators**: Arithmetic (`operator_add`, `operator_subtract`, etc.), comparison (`operator_equals`, `operator_less_than`, etc.), logical (`operator_and`, `operator_or`, `operator_not`)
+- **Math**: `math_random`, `math_abs`, `math_pow`, `math_sqrt`, `math_floor`, `math_ceil`
+- **String**: `string_length`, `string_upper`, `string_lower`, `string_trim`, `string_split`, `string_join`, `string_contains`, `string_replace`
+- **List**: `list_length`, `list_get`, `list_append`, `list_contains`, `list_range`
+- **Dictionary**: `dict_create`, `dict_get`, `dict_set`, `dict_keys`, `dict_values`, `dict_contains`
+- **Object**: `object_create`, `object_get`, `object_set`, `object_has`, `object_keys`
+- **Type Conversions**: `str`, `int`, `float`, `bool`, `len`, `range`
+- **Exceptions**: `throw`, `throw_value_error`, `throw_type_error`, `assert_true`, `assert_equals`
+- **Workflow**: `workflow_start`, `workflow_return`, `noop`
+- **Control Flow** (stubs for introspection): `control_if`, `control_if_else`, `control_while`, `control_for`, `control_foreach`, `control_try`
 
-### Math Operations (6)
-- `math_random(min_val, max_val)` - Random integer (inclusive)
-- `math_abs(value)` - Absolute value
-- `math_pow(base, exponent)` - Power
-- `math_sqrt(value)` - Square root
-- `math_floor(value)` - Floor
-- `math_ceil(value)` - Ceiling
+### Control Flow and Parser-Handled Opcodes
 
-### String Operations (8)
-- `string_length(text)` - Get length
-- `string_upper(text)` - Uppercase
-- `string_lower(text)` - Lowercase
-- `string_trim(text)` - Strip whitespace
-- `string_split(text, delimiter=" ")` - Split into list
-- `string_join(items, delimiter="")` - Join list to string
-- `string_contains(text, substring)` - Check substring
-- `string_replace(text, old, new)` - Replace all occurrences
+Some opcodes are **stub implementations** for documentation only. The actual execution is handled by the Parser/Executor:
 
-### List Operations (5)
-- `list_length(items)` - Get length
-- `list_get(items, index)` - Get item at index
-- `list_append(items, value)` - Append (returns new list)
-- `list_contains(items, value)` - Check if contains
-- `list_range(start, stop=None, step=1)` - Create range list
+- `data_get_variable`, `data_set_variable_to`, `workflow_return` - Converted to AST nodes by Parser
+- `control_if`, `control_while`, `control_for`, etc. - Executed by Executor via AST pattern matching
 
-### Dictionary Operations (15)
-- `dict_create(*args)` - Create from key-value pairs
-- `dict_from_lists(keys, values)` - Create from parallel lists
-- `dict_set(d, key, value)` - Set key (mutates)
-- `dict_get(d, key, default=None)` - Get value
-- `dict_pop(d, key, default=None)` - Remove and return
-- `dict_setdefault(d, key, default=None)` - Set if missing
-- `dict_update(d, other)` - Update from another dict
-- `dict_clear(d)` - Clear all items
-- `dict_copy(d)` - Shallow copy
-- `dict_keys(d)` - Get keys list
-- `dict_values(d)` - Get values list
-- `dict_items(d)` - Get (key, value) tuples
-- `dict_contains(d, key)` - Check if key exists
-- `dict_len(d)` - Get item count
-- `dict_is_empty(d)` - Check if empty
-
-### Object Operations (8)
-- `object_create()` - Create empty SimpleNamespace
-- `object_from_dict(d)` - Create from dict
-- `object_get(obj, key, default=None)` - Get attribute
-- `object_set(obj, key, value)` - Set attribute
-- `object_has(obj, key)` - Check attribute exists
-- `object_remove(obj, key)` - Remove attribute
-- `object_keys(obj)` - Get attribute names
-- `object_to_dict(obj)` - Convert to dict
-
-### Type Conversions (6)
-- `str(value)` - Convert to string
-- `int(value)` - Convert to integer
-- `float(value)` - Convert to float
-- `bool(value)` - Convert to boolean
-- `len(value)` - Get length
-- `range(*args)` - Create range list
-
-### Exception Operations (6)
-- `throw(message)` - Raise RuntimeError
-- `throw_value_error(message)` - Raise ValueError
-- `throw_type_error(message)` - Raise TypeError
-- `throw_assertion_error(message)` - Raise AssertionError
-- `assert_true(condition, message="Assertion failed")` - Assert truthy
-- `assert_equals(left, right, message="Values not equal")` - Assert equal
-
-### Workflow Operations (2)
-- `workflow_start()` - Entry point marker (no-op)
-- `noop()` - No operation
-
-### Special Operations - Parser Handled (3)
-
-**Important**: These opcodes are **stub implementations** for documentation and introspection only. The actual execution is handled by the **Parser** which converts them to AST nodes.
-
-- `data_get_variable(var_name)` - Get variable value (becomes Variable AST)
-- `data_set_variable_to(variable, value)` - Variable assignment (becomes Assign AST)
-- `workflow_return(value=None)` - Return from workflow (becomes Return AST)
-
-### Control Flow Stubs (9)
-
-**Important**: These opcodes are **stub implementations** for documentation and introspection only. The actual control flow execution is handled by the **Executor** via AST pattern matching, not by calling these opcodes.
-
-- `control_if(condition, then_branch)` - Conditional
-- `control_if_else(condition, then_branch, else_branch)` - If-else
-- `control_while(condition, body)` - While loop
-- `control_for(var, start, end, step=1, body=None)` - For loop
-- `control_foreach(var, iterable, body)` - For-each loop
-- `control_fork(*branches)` - Concurrent execution
-- `control_try(try_body, catch_handlers=None, finally_body=None)` - Exception handling
-- `control_throw(message)` - Throw exception
-- `workflow_call(workflow, *args)` - Call external workflow
-
-These stubs exist so that `get_interface()` returns documentation for control flow constructs. When you call them directly, they raise `NotImplementedError`.
+These stubs exist so `get_interface()` returns documentation. Calling them directly raises `NotImplementedError`.
 
 ## Integration Opcode Libraries
 
-### Pygame Integration (22 opcodes)
+For optional integrations (pygame, AI, HTTP, web), check `docs/OPCODE_REFERENCE.md` for complete listings.
 
-For games and visual applications:
-
-**Installation:**
+**Common installation patterns:**
 ```bash
-pip install lexflow[pygame]
+pip install lexflow[pygame]  # Pygame opcodes
+pip install lexflow[ai]      # Pydantic AI opcodes
+pip install lexflow[http]    # HTTP/scraping opcodes
 ```
 
-**Available opcodes:**
-- Window: `pygame_init`, `pygame_create_window`, `pygame_quit`
-- Events: `pygame_should_quit`, `pygame_process_events`, `pygame_get_key_pressed`
-- Drawing: `pygame_fill_screen`, `pygame_draw_text`, `pygame_draw_rect`, `pygame_draw_circle`
-- Display: `pygame_update_display`, `pygame_delay`, `pygame_get_ticks`
-- Helpers: `pygame_create_color`, `pygame_get_screen_width`, `pygame_get_screen_height`
-- Math: `math_sin`, `math_cos`, `math_multiply`, `math_add`
-- String: `string_char_at`
-
-**Usage:**
+**Registration pattern:**
 ```python
-# Import to register opcodes
 from lexflow.opcodes.opcodes_pygame import register_pygame_opcodes
-register_pygame_opcodes()
+register_pygame_opcodes()  # Call BEFORE creating Engine
 ```
-
-### Pydantic AI Integration (4 opcodes)
-
-For AI/LLM-powered workflows with Google Vertex AI:
-
-**Installation:**
-```bash
-pip install lexflow[ai]
-gcloud auth application-default login
-```
-
-**Available opcodes:**
-- `pydantic_ai_create_vertex_model(model_name, project=None, location=None)` - Create Vertex AI model
-- `pydantic_ai_create_agent(model, instructions="", system_prompt="")` - Create AI agent
-- `pydantic_ai_run_sync(agent, prompt)` - Run agent synchronously
-- `pydantic_ai_run(agent, prompt)` - Run agent asynchronously
-
-**Usage:**
-```python
-from lexflow.opcodes.opcodes_pydantic_ai import register_pydantic_ai_opcodes
-register_pydantic_ai_opcodes()
-```
-
-### Web Interactive Opcodes (11 opcodes)
-
-For browser-based interactive workflows (lexflow-web package):
-
-**Interactive (request-response):**
-- `web_input(prompt="")` - Text input field
-- `web_select(options, prompt="")` - Dropdown selection
-- `web_confirm(message)` - Yes/no dialog
-- `web_button(label)` - Click button
-
-**Display (fire-and-forget):**
-- `web_render(html)` - Raw HTML
-- `web_markdown(content)` - Markdown content
-- `web_alert(message, variant="info")` - Alert message
-- `web_progress(value, max=100, label="")` - Progress bar
-- `web_table(data)` - Table from list of dicts
-- `web_image(src, alt="")` - Image display
-- `web_clear()` - Clear content
-
-These use ContextVar for WebSocket communication - only work within the lexflow-web server context.
 
 ## Engine Integration
 

@@ -75,70 +75,46 @@ workflows:
       # ... more nodes
 ```
 
-## Key Opcodes You Use Frequently
+## Opcode and Grammar Reference
 
-**I/O Operations:**
-- `io_print(STRING)` - Print to output
-- `io_read_line(prompt)` - Read user input
+**IMPORTANT**: Always read the auto-generated documentation for complete and up-to-date references:
 
-**Arithmetic:**
-- `operator_add(OPERAND1, OPERAND2)`, `operator_subtract(OPERAND1, OPERAND2)`
-- `operator_multiply(OPERAND1, OPERAND2)`, `operator_divide(left, right)`
-- `operator_modulo(OPERAND1, OPERAND2)`, `operator_power(OPERAND1, OPERAND2)`
+```bash
+# Full opcode reference with signatures and descriptions
+cat docs/OPCODE_REFERENCE.md
 
-**Comparison:**
-- `operator_equals(left, right)`, `operator_not_equals(left, right)`
-- `operator_greater_than(OPERAND1, OPERAND2)`, `operator_less_than(OPERAND1, OPERAND2)`
-- `operator_greater_than_or_equal(OPERAND1, OPERAND2)`, `operator_less_than_or_equal(OPERAND1, OPERAND2)`
+# Grammar reference for control flow constructs
+cat docs/GRAMMAR_REFERENCE.md
+```
 
-**Logical:**
-- `operator_and(a, b)`, `operator_or(a, b)`, `operator_not(a)`
+### Commonly Used Opcode Categories
 
-**String Operations:**
-- `string_concat(a, b)`, `string_length(s)`, `string_substring(s, start, end)`
-- `string_split(s, delimiter)`, `string_join(list, delimiter)`
-- `string_upper(s)`, `string_lower(s)`, `string_trim(s)`
-- `string_contains(s, substring)`, `string_replace(s, old, new)`
+- **I/O**: `io_print`, `io_input`
+- **Arithmetic**: `operator_add`, `operator_subtract`, `operator_multiply`, `operator_divide`, `operator_modulo`
+- **Comparison**: `operator_equals`, `operator_not_equals`, `operator_less_than`, `operator_greater_than`, `operator_less_than_or_equals`, `operator_greater_than_or_equals`
+- **Logical**: `operator_and`, `operator_or`, `operator_not`
+- **String**: `string_length`, `string_upper`, `string_lower`, `string_trim`, `string_split`, `string_join`, `string_contains`, `string_replace`
+- **List**: `list_length`, `list_get`, `list_append`, `list_contains`, `list_range`
+- **Dictionary**: `dict_create`, `dict_get`, `dict_set`, `dict_keys`, `dict_values`, `dict_contains`
+- **Type Conversion**: `str`, `int`, `float`, `bool`, `len`, `range`
+- **Exceptions**: `throw`, `throw_value_error`, `throw_type_error`, `assert_true`, `assert_equals`
 
-**List Operations:**
-- `list_create(*items)`, `list_append(list, item)`, `list_length(list)`
-- `list_get(list, index)`, `list_set(list, index, value)`
-- `list_slice(list, start, end)`, `list_reverse(list)`, `list_sort(list)`
-- `list_contains(list, item)`, `list_index_of(list, item)`
-- `list_map(list, workflow)`, `list_filter(list, workflow)`, `list_reduce(list, workflow, initial)`
+### Essential Workflow Opcodes
 
-**Dictionary Operations:**
-- `dict_create()`, `dict_set(dict, key, value)`, `dict_get(dict, key, default)`
-- `dict_keys(dict)`, `dict_values(dict)`, `dict_has_key(dict, key)`
-- `dict_remove(dict, key)`, `dict_merge(dict1, dict2)`
+- `workflow_start` - Entry point (required in every workflow)
+- `workflow_call(WORKFLOW, ARG1, ARG2, ...)` - Call another workflow
+- `workflow_return(VALUE)` - Return value from workflow
+- `data_set_variable_to(VARIABLE, VALUE)` - Variable assignment
+- `data_get_variable(VARIABLE)` - Get variable value
 
-**Control Flow:**
+### Control Flow Opcodes
+
 - `control_if` - Conditional (without else)
 - `control_if_else` - Conditional with else branch
 - `control_while` - While loops
 - `control_for` - For loops (counter-based)
 - `control_foreach` - Iterate over lists
 - `control_try` - Exception handling
-
-**Exceptions:**
-- `throw_value_error(message)` - Raise ValueError
-- `throw_type_error(message)` - Raise TypeError
-- `throw_assertion_error(message)` - Raise AssertionError
-- `throw(message)` - Raise generic exception
-
-**Type Conversion:**
-- `type_to_string(value)`, `type_to_number(value)`, `type_to_boolean(value)`
-- `type_to_list(value)`, `type_of(value)`
-- `str(value)` - Convert to string (alias)
-
-**Variables:**
-- `data_set_variable_to(VARIABLE, VALUE)` - Explicit variable assignment
-- `data_get_variable(VARIABLE)` - Get variable value
-
-**Workflow:**
-- `workflow_start` - Entry point (required in every workflow)
-- `workflow_call(WORKFLOW, ARG1, ARG2, ...)` - Call another workflow
-- `workflow_return(VALUE)` - Return value from workflow
 
 ## Node Input Formats
 
