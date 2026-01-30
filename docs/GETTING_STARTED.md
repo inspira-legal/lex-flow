@@ -63,7 +63,30 @@ This command will:
 - Install the lexflow CLI tool
 - Set up development tools (pytest, ruff)
 
-### 4. Activate the Virtual Environment
+### 4. Set Up Pre-commit Hooks (Recommended)
+
+Pre-commit hooks ensure code quality by running formatters, linters, and documentation generators before each commit:
+
+```bash
+uv run pre-commit install
+```
+
+This installs hooks that automatically:
+- Format code with `ruff format`
+- Lint and fix issues with `ruff check`
+- Regenerate opcode docs when `opcodes*.py` or `grammar.json` changes
+- Regenerate grammar docs when `grammar.json` changes
+
+**Run hooks manually:**
+```bash
+# Run on all files
+uv run pre-commit run --all-files
+
+# Run on staged files only
+uv run pre-commit run
+```
+
+### 5. Activate the Virtual Environment
 
 **macOS and Linux:**
 ```bash
@@ -80,7 +103,7 @@ source .venv/bin/activate
 uv run lexflow --help
 ```
 
-### 5. Verify Installation
+### 6. Verify Installation
 
 Check that the LexFlow CLI is available:
 

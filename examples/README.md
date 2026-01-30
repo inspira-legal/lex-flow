@@ -275,9 +275,8 @@ lexflow examples/data_structures/dictionaries.yaml
 ## More Resources
 
 - [Getting Started Guide](../docs/GETTING_STARTED.md) - Installation and setup
-- [Grammar Reference](../docs/GRAMMAR.md) - Complete language specification
-- [Opcode Reference](../docs/OPCODE_REFERENCE.md) - All available operations
-- [Exception Handling Guide](../docs/EXCEPTION_HANDLING.md) - Detailed exception patterns
+- [Grammar Reference](../docs/GRAMMAR_REFERENCE.md) - Control flow constructs and language specification (auto-generated)
+- [Opcode Reference](../docs/OPCODE_REFERENCE.md) - All available operations (auto-generated)
 
 ---
 
