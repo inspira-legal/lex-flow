@@ -24,11 +24,12 @@ export {
   getGrammar,
 };
 
-// Node layout dimensions
+// Node layout dimensions (balanced square-ish proportions)
 export const NODE_DIMENSIONS = {
-  WIDTH: 180,
-  HEIGHT: 80,
-  MIN_HEIGHT: 60,
+  WIDTH: 110,
+  HEIGHT: 70,
+  MIN_HEIGHT: 70,
+  EXPANDED_INPUT_HEIGHT: 30,
   SLOT_HEIGHT: 24,
   HEADER_HEIGHT: 32,
   PADDING: 8,

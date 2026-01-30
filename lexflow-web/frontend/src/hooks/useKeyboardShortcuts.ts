@@ -112,15 +112,17 @@ export function useKeyboardShortcuts() {
       // Delete/Backspace
       if (e.key === "Delete" || e.key === "Backspace") {
         if (selectedNodeId && selectedNodeId !== "start") {
-          if (
-            confirm(
-              `Delete node "${selectedNodeId}"? This action can be undone with Ctrl+Z.`,
-            )
-          ) {
-            deleteNode(selectedNodeId);
-            clearSelection();
-            closeNodeEditor();
-          }
+          useUiStore.getState().showConfirmDialog({
+            title: "Delete Node",
+            message: `Delete node "${selectedNodeId}"? This action can be undone with Ctrl+Z.`,
+            confirmLabel: "Delete",
+            variant: "danger",
+            onConfirm: () => {
+              deleteNode(selectedNodeId);
+              clearSelection();
+              closeNodeEditor();
+            },
+          });
         }
       }
     };
