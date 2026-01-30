@@ -1,6 +1,5 @@
 """Integration tests for background tasks (Spawn)."""
 
-import io
 import pytest
 import yaml
 

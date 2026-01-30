@@ -30,7 +30,7 @@ from .ast import (
     Expression,
     Statement,
 )
-from .grammar import get_grammar, get_construct
+from .grammar import get_grammar
 
 
 # ============= Error Handling =============

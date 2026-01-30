@@ -1,6 +1,5 @@
 """Tests for the grammar module - the single source of truth for LexFlow constructs."""
 
-import pytest
 from lexflow.grammar import (
     get_grammar,
     get_construct,

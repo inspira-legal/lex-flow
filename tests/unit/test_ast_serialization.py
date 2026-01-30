@@ -1,6 +1,5 @@
 """Tests for AST model JSON serialization with discriminators."""
 
-import pytest
 from lexflow import Parser, Program
 from lexflow.ast import (
     Literal,

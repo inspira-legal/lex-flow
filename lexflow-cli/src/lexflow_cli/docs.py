@@ -1,7 +1,7 @@
 """Documentation generation from code introspection."""
 
 import inspect
-from typing import Any, get_type_hints
+from typing import Any
 
 from lexflow.opcodes import default_registry
 from lexflow.grammar import get_grammar
