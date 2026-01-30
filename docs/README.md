@@ -11,8 +11,6 @@ Before you keep reading keep in mind that LexFlow is still in early development 
 **[LexFlow Web](../lexflow-web/README.md)** - Visual workflow editor and execution environment
 
 - [Getting Started](../lexflow-web/docs/GETTING_STARTED.md) - Installation and setup
-- [User Guide](../lexflow-web/docs/USER_GUIDE.md) - How to use the visual editor
-- [Customization](../lexflow-web/docs/CUSTOMIZATION.md) - Custom backends and providers
 
 ### Getting Started
 
