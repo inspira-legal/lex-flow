@@ -124,42 +124,21 @@ jobs:
           npm ci
           npm run build:all
 
-      - name: Create library archive
-        working-directory: lexflow-web/frontend
-        run: |
-          mkdir -p release-assets
-          cp dist/lexflow-editor.umd.js release-assets/
-          cp dist/lexflow-editor.umd.js.map release-assets/
-          cp dist/lexflow-editor.es.js release-assets/
-          cp dist/lexflow-editor.css release-assets/
-          cp -r dist/types release-assets/
-          cd release-assets && zip -r ../lexflow-editor-dist.zip .
-
-      - name: Release lexflow-web
-        id: release
-        working-directory: lexflow-web
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit dist files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          semantic-release version
-          semantic-release publish
+          git add -f lexflow-web/frontend/dist/lexflow-editor.umd.js
+          git add -f lexflow-web/frontend/dist/lexflow-editor.es.js
+          git add -f lexflow-web/frontend/dist/lexflow-editor.css
+          git add -f lexflow-web/frontend/dist/types/
+          git diff --staged --quiet || git commit -m "chore(web): build frontend library [skip ci]"
+          git push origin main
 
-      - name: Get release tag
-        id: get_tag
+      - name: Release lexflow-web
         working-directory: lexflow-web
-        run: |
-          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-
-      - name: Upload library assets to release
-        if: steps.get_tag.outputs.tag != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload ${{ steps.get_tag.outputs.tag }} \
-            lexflow-web/frontend/lexflow-editor-dist.zip \
-            lexflow-web/frontend/dist/lexflow-editor.umd.js \
-            lexflow-web/frontend/dist/lexflow-editor.css \
-            --clobber
+          semantic-release version
+          semantic-release publish
