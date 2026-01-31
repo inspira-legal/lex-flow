@@ -224,6 +224,7 @@ class Workflow(BaseModel):
     params: list[str]
     body: Statement
     locals: dict[str, Any] = {}
+    description: Optional[str] = None
 
 
 class Program(BaseModel):

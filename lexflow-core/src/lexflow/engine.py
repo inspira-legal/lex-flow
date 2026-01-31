@@ -107,6 +107,19 @@ class Engine:
             return await self._run_internal()
 
     async def _run_internal(self) -> Any:
+        # Set workflow manager context for ai_agent_with_tools (if pydantic_ai available)
+        wm_token = None
+        try:
+            from .opcodes.opcodes_pydantic_ai import (
+                set_workflow_manager_context,
+                reset_workflow_manager_context,
+            )
+
+            wm_token = set_workflow_manager_context(self.workflows)
+        except ImportError:
+            # pydantic_ai not installed, context not needed
+            pass
+
         # Start metrics collection
         self.metrics.start_execution()
 
@@ -117,6 +130,14 @@ class Engine:
             # Return final stack value
             return self.runtime.pop() if self.runtime.stack else None
         finally:
+            # Cleanup workflow manager context
+            if wm_token is not None:
+                try:
+                    from .opcodes.opcodes_pydantic_ai import reset_workflow_manager_context
+
+                    reset_workflow_manager_context(wm_token)
+                except ImportError:
+                    pass
             # Cleanup background tasks
             await self.tasks.cleanup()
             # End metrics collection
