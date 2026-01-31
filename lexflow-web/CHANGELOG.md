@@ -2,6 +2,42 @@
 
 <!-- version list -->
 
+## v1.3.0 (2026-01-31)
+
+### Chores
+
+- Add pre-commit hooks for code quality and docs generation
+  ([`3d981d4`](https://github.com/inspira-legal/lex-flow/commit/3d981d41ce2b4b214c7d2126ac1889f38ecb1bb0))
+
+- **cli**: Release 1.1.0
+  ([`55afa40`](https://github.com/inspira-legal/lex-flow/commit/55afa40d74f37f517f801ff6ceb78558480ee50f))
+
+- **core**: Release 1.1.0
+  ([`e91b3dc`](https://github.com/inspira-legal/lex-flow/commit/e91b3dcc6f62de5a3fd0c74947fa4b10dfd6f904))
+
+### Documentation
+
+- Regenerate opcode reference
+  ([`f163fea`](https://github.com/inspira-legal/lex-flow/commit/f163feac9a34f84d9853933c9506053320924500))
+
+- Simplify docs README
+  ([`2ae0249`](https://github.com/inspira-legal/lex-flow/commit/2ae0249a1eca8fe1bcd1adbd4fbd0c9128f785f8))
+
+- Update agents to reference auto-generated docs
+  ([`26a1fd7`](https://github.com/inspira-legal/lex-flow/commit/26a1fd78ee1efef63ce6b12f653c9e7435a3af1f))
+
+- Update getting started and fix examples README links
+  ([`d7cd50f`](https://github.com/inspira-legal/lex-flow/commit/d7cd50fa908add4cf07cc105470e4500d5c282bf))
+
+- Updating docs
+  ([`fa50c84`](https://github.com/inspira-legal/lex-flow/commit/fa50c84568ca452884302d2b055f09fb849102dd))
+
+### Features
+
+- **web**: Add embeddable editor library
+  ([`9a09f05`](https://github.com/inspira-legal/lex-flow/commit/9a09f054ada301e3527d09a77097de7a5b8ce41d))
+
+
 ## v1.2.0 (2026-01-30)
 
 ### Bug Fixes
