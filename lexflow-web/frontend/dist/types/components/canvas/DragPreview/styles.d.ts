@@ -1,0 +1,12 @@
+import type { CSSProperties } from "react";
+export declare const orphanDragPreviewStyle: CSSProperties;
+export declare const orphanDragLineStyle: CSSProperties;
+export declare const orphanStartCircleStyle: CSSProperties;
+export declare const orphanGhostNodeStyle: CSSProperties;
+export declare const orphanGhostRectStyle: CSSProperties;
+export declare const orphanGhostLabelStyle: CSSProperties;
+export declare const orphanCursorCircleStyle: CSSProperties;
+export declare const variableDragPreviewStyle: CSSProperties;
+export declare const variableGhostRectStyle: CSSProperties;
+export declare const variableGhostTextStyle: CSSProperties;
+export declare const variableCursorCircleStyle: CSSProperties;

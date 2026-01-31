@@ -1,0 +1,54 @@
+export declare const panelVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const resizeHandleVariants: (props?: ({
+    isResizing?: boolean | null | undefined;
+} & import("class-variance-authority/types").ClassProp) | undefined) => string;
+export declare const headerVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const titleGroupVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const titleVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const statusDotVariants: (props?: ({
+    status?: "idle" | "running" | "error" | null | undefined;
+} & import("class-variance-authority/types").ClassProp) | undefined) => string;
+export declare const actionsVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const separatorVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const toggleBtnVariants: (props?: ({
+    active?: boolean | null | undefined;
+} & import("class-variance-authority/types").ClassProp) | undefined) => string;
+export declare const runBtnVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const cancelBtnVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const iconBtnVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const closeBtnVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const inputsRowVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const labelVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const inputFieldVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const inputFieldLabelVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const inputFieldInputVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const progressContainerVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const progressBarVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const progressFillVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const progressLabelVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const panesVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const paneVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const paneHeaderVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const paneContentVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const paneResizerVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const emptyStateVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const placeholderVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const outputTextVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const errorVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const resultVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const resultLabelVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const resultCodeVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const cursorVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const alertsContainerVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const alertVariants: (props?: ({
+    variant?: "success" | "error" | "info" | "warning" | null | undefined;
+} & import("class-variance-authority/types").ClassProp) | undefined) => string;
+export declare const alertDismissVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const htmlContentVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const markdownContentVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const tableContainerVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const tableVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const tableHeaderVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const tableCellVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const imageContainerVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const imageVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;

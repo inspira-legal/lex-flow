@@ -1,0 +1,12 @@
+import type { CSSProperties } from "react";
+export declare const START_NODE_WIDTH = 160;
+export declare const START_NODE_HEIGHT = 80;
+export declare function getCardStyle(isSelected: boolean, isHovered: boolean): CSSProperties;
+export declare const colorBarStyle: CSSProperties;
+export declare const flagIconStyle: CSSProperties;
+export declare const nameStyle: CSSProperties;
+export declare const interfaceLabelStyle: CSSProperties;
+export declare const variableStyle: CSSProperties;
+export declare const moreVarsStyle: CSSProperties;
+export declare function getOutputPortStyle(isHovered: boolean): CSSProperties;
+export declare const dragHandleStyle: CSSProperties;

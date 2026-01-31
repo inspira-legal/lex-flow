@@ -1,0 +1,10 @@
+export declare const overlayVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const cardVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const promptTextVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const inputVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const selectVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const actionsVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const submitBtnVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const cancelBtnVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const buttonPromptVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const actionButtonVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;

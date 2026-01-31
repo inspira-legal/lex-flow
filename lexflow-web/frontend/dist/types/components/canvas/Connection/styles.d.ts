@@ -1,0 +1,10 @@
+import type { CSSProperties } from "react";
+export declare function calculateBezierPath(x1: number, y1: number, x2: number, y2: number): string;
+export declare const hitAreaStyle: CSSProperties;
+export declare function getPathShadowStyle(color: string, isSelected: boolean): CSSProperties;
+export declare function getPathStyle(color: string, isSelected: boolean, isDotted: boolean): CSSProperties;
+export declare const flowDotStyle: CSSProperties;
+export declare const labelStyle: CSSProperties;
+export declare const deleteButtonStyle: CSSProperties;
+export declare function getDeleteButtonCircleStyle(): CSSProperties;
+export declare const deleteButtonTextStyle: CSSProperties;

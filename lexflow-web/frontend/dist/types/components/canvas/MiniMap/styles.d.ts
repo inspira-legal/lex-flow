@@ -1,0 +1,11 @@
+import type { CSSProperties } from "react";
+export declare const MINIMAP_WIDTH = 160;
+export declare const MINIMAP_HEIGHT = 120;
+export declare const NODE_WIDTH = 180;
+export declare const NODE_HEIGHT = 80;
+export declare const H_GAP = 60;
+export declare const V_GAP = 40;
+export declare const WORKFLOW_GAP = 80;
+export declare const minimapVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const viewportStyle: CSSProperties;
+export declare function getNodeColor(type: string): string;
