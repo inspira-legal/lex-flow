@@ -146,13 +146,16 @@ async def _execute_with_messaging(
     send_queue: asyncio.Queue,
 ) -> Any:
     """Execute workflow with bidirectional WebSocket messaging via channels."""
+    disconnected = asyncio.Event()
 
     async def channel_to_websocket():
         """Forward messages from web_send channel to WebSocket."""
-        while True:
+        while not disconnected.is_set():
             try:
-                msg = await web_send_channel.receive()
+                msg = await asyncio.wait_for(web_send_channel.receive(), timeout=0.1)
                 await websocket.send_json(msg)
+            except asyncio.TimeoutError:
+                continue
             except RuntimeError:
                 # Channel closed
                 break
@@ -162,7 +165,12 @@ async def _execute_with_messaging(
     async def output_queue_sender():
         """Send queued output messages to WebSocket."""
         while True:
-            msg = await send_queue.get()
+            try:
+                msg = await asyncio.wait_for(send_queue.get(), timeout=0.1)
+            except asyncio.TimeoutError:
+                if disconnected.is_set():
+                    break
+                continue
             if msg is None:  # Shutdown signal
                 break
             try:
@@ -170,52 +178,84 @@ async def _execute_with_messaging(
             except Exception:
                 break
 
-    async def websocket_to_channel():
-        """Forward response messages from WebSocket to web_recv channel."""
-        while True:
-            try:
+    async def websocket_receiver():
+        """Receive messages from WebSocket and forward responses to channel."""
+        try:
+            while True:
                 msg = await websocket.receive_json()
-                if msg.get("type", "").endswith("_response"):
+                # Forward responses to channel if available
+                if web_recv_channel is not None and msg.get("type", "").endswith(
+                    "_response"
+                ):
                     await web_recv_channel.send(msg)
-            except WebSocketDisconnect:
-                break
-            except Exception:
-                break
+        except WebSocketDisconnect:
+            disconnected.set()
+        except Exception:
+            disconnected.set()
 
-    # Start bridge tasks (only start channel tasks if channels are provided)
-    channel_sender_task = None
-    receiver_task = None
+    # Collect all tasks for cleanup
+    tasks: list[asyncio.Task] = []
+
+    # Start bridge tasks
     if web_send_channel is not None:
-        channel_sender_task = asyncio.create_task(channel_to_websocket())
-    if web_recv_channel is not None:
-        receiver_task = asyncio.create_task(websocket_to_channel())
-    output_sender_task = asyncio.create_task(output_queue_sender())
+        tasks.append(asyncio.create_task(channel_to_websocket()))
+    tasks.append(asyncio.create_task(output_queue_sender()))
+
+    # Start receiver task
+    receiver_task = asyncio.create_task(websocket_receiver())
+    tasks.append(receiver_task)
+
+    # Run engine in a task so we can cancel it on disconnect
+    engine_task = asyncio.create_task(engine.run(inputs=inputs))
+    tasks.append(engine_task)
 
     try:
-        # Execute workflow
-        result = await engine.run(inputs=inputs)
+        # Wait for either execution to complete or WebSocket to disconnect
+        done, _ = await asyncio.wait(
+            [engine_task, receiver_task],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
 
-        # Flush any remaining output
-        output.flush()
+        if engine_task in done:
+            # Normal completion - get result (may raise if engine failed)
+            result = engine_task.result()
 
-        # Signal output sender to stop
-        await send_queue.put(None)
-        await output_sender_task
+            # Flush any remaining output
+            output.flush()
 
-        # Close web_send channel to stop channel_sender_task
+            # Signal output sender to stop
+            await send_queue.put(None)
+
+            # Close web_send channel to stop channel_sender_task
+            if web_send_channel is not None:
+                web_send_channel.close()
+
+            return result
+        else:
+            # WebSocket disconnected - cancel execution
+            raise WebSocketDisconnect()
+
+    finally:
+        # Signal disconnection to stop polling tasks
+        disconnected.set()
+
+        # Close channels to unblock any waiting operations
         if web_send_channel is not None:
             web_send_channel.close()
-            await channel_sender_task
+        if web_recv_channel is not None:
+            web_recv_channel.close()
 
-        return result
-    finally:
-        # Cancel receiver if it was started
-        if receiver_task is not None:
-            receiver_task.cancel()
-            try:
-                await receiver_task
-            except asyncio.CancelledError:
-                pass
+        # Signal output queue to stop
+        await send_queue.put(None)
+
+        # Cancel all tasks and wait for them to complete
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+
+        # Wait for all tasks to finish (with timeout to avoid hanging)
+        if tasks:
+            await asyncio.wait(tasks, timeout=1.0)
 
 
 def _serialize_result(result: Any) -> Any:
