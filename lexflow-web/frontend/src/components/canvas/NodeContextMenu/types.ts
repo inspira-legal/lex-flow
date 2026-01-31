@@ -10,4 +10,7 @@ export interface NodeContextMenuProps {
   onDelete: () => void
   onDuplicate: () => void
   onClose: () => void
+  // Multi-selection support
+  selectedNodeIds?: string[]
+  onExtractToWorkflow?: () => void
 }

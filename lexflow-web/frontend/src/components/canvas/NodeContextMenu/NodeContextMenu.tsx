@@ -22,6 +22,8 @@ export function NodeContextMenu({
   onDelete,
   onDuplicate,
   onClose,
+  selectedNodeIds,
+  onExtractToWorkflow,
 }: NodeContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -123,6 +125,24 @@ export function NodeContextMenu({
         <span className={cn(menuItemLabelVariants())}>Delete</span>
         <span className={cn(menuItemShortcutVariants())}>Del</span>
       </button>
+
+      {/* Extract to Workflow - shown when 2+ nodes are selected */}
+      {selectedNodeIds && selectedNodeIds.length >= 2 && onExtractToWorkflow && (
+        <>
+          <div className={cn(menuDividerVariants())} role="separator" />
+          <button
+            className={cn(menuItemVariants())}
+            onClick={() => {
+              onExtractToWorkflow()
+              onClose()
+            }}
+            role="menuitem"
+          >
+            <span className={cn(menuItemIconVariants())}>↗</span>
+            <span className={cn(menuItemLabelVariants())}>Extract to Workflow</span>
+          </button>
+        </>
+      )}
     </div>
   )
 }

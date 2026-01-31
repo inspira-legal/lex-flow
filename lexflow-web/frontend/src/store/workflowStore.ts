@@ -101,6 +101,16 @@ interface WorkflowState {
   ) => boolean;
   deleteWorkflow: (name: string) => boolean;
 
+  // Extract to workflow
+  extractToWorkflow: (
+    nodeIds: string[],
+    sourceWorkflowName: string,
+    newWorkflowName: string,
+    inputs: string[],
+    outputs: string[],
+    variables: Record<string, unknown>,
+  ) => { success: boolean; errors: string[] };
+
   // Examples
   examples: ExampleInfo[];
   setExamples: (examples: ExampleInfo[]) => void;
@@ -448,6 +458,24 @@ export const useWorkflowStore = create<WorkflowState>()(
           state.setSource(result.source);
         }
         return result.success;
+      },
+
+      // Extract nodes to a new workflow
+      extractToWorkflow: (nodeIds, sourceWorkflowName, newWorkflowName, inputs, outputs, variables) => {
+        const state = get();
+        const result = WorkflowService.extractToWorkflow(
+          state.source,
+          nodeIds,
+          sourceWorkflowName,
+          newWorkflowName,
+          inputs,
+          outputs,
+          variables,
+        );
+        if (result.success) {
+          state.setSource(result.source);
+        }
+        return { success: result.success, errors: result.errors };
       },
 
       // Examples

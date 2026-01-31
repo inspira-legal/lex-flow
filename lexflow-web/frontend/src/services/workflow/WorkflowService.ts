@@ -25,7 +25,7 @@ export function formatYamlValue(value: unknown): string {
       value.includes("\n") ||
       value.startsWith(" ") ||
       value.endsWith(" ") ||
-      /^[\[\]{}>|*&!%@`]/.test(value)
+      /^[[{}>|*&!%@`]/.test(value)
     ) {
       return JSON.stringify(value);
     }
@@ -1746,6 +1746,585 @@ export function deleteWorkflow(
   return { source: newLines.join("\n"), success: true };
 }
 
+// ====== Extract to Workflow Feature ======
+
+export interface ChainValidationResult {
+  isValid: boolean;
+  orderedNodeIds: string[];
+  firstNodeId: string | null;
+  lastNodeId: string | null;
+  predecessorNodeId: string | null; // Node before first selected
+  successorNodeId: string | null;   // Node after last selected
+  errors: string[];
+}
+
+// Branching opcodes that cannot be extracted
+const BRANCHING_OPCODES = [
+  "control_if",
+  "control_for",
+  "control_for_each",
+  "control_while",
+  "control_repeat_until",
+  "control_try",
+  "control_fork",
+];
+
+// Find which workflow a node belongs to by searching the source
+function findNodeWorkflow(source: string, nodeId: string): string | null {
+  const lines = source.split("\n");
+  let currentWorkflow: string | null = null;
+  let inNodes = false;
+  let workflowIndent = -1;
+
+  for (const line of lines) {
+    const nameMatch = line.match(/^(\s*)-?\s*name:\s*(\w+)/);
+    if (nameMatch) {
+      currentWorkflow = nameMatch[2];
+      workflowIndent = nameMatch[1].length;
+      inNodes = false;
+    }
+
+    const nodesMatch = line.match(/^(\s*)nodes:\s*$/);
+    if (nodesMatch && currentWorkflow) {
+      inNodes = true;
+    }
+
+    if (inNodes) {
+      const nodeMatch = line.match(/^(\s+)([a-zA-Z_][a-zA-Z0-9_]*):\s*$/);
+      if (nodeMatch && nodeMatch[2] === nodeId) {
+        return currentWorkflow;
+      }
+
+      // Check if we've left the workflow
+      const lineIndent = line.search(/\S/);
+      if (line.trim() && lineIndent !== -1 && lineIndent <= workflowIndent) {
+        inNodes = false;
+      }
+    }
+  }
+
+  return null;
+}
+
+// Get the opcode of a node
+function getNodeOpcode(source: string, nodeId: string): string | null {
+  const range = findNodeLineRange(source, nodeId);
+  if (!range) return null;
+
+  const lines = source.split("\n");
+  for (let i = range.startLine + 1; i < range.endLine; i++) {
+    const opcodeMatch = lines[i].match(/^\s+opcode:\s*(\S+)/);
+    if (opcodeMatch) {
+      return opcodeMatch[1];
+    }
+  }
+  return null;
+}
+
+// Get the next pointer of a node
+function getNodeNext(source: string, nodeId: string, workflowName?: string): string | null {
+  const range = findNodeLineRange(source, nodeId, workflowName);
+  if (!range) return null;
+
+  const lines = source.split("\n");
+  for (let i = range.startLine + 1; i < range.endLine; i++) {
+    const nextMatch = lines[i].match(/^\s+next:\s*(\S+)/);
+    if (nextMatch) {
+      const next = nextMatch[1];
+      return next === "null" ? null : next;
+    }
+  }
+  return null;
+}
+
+// Find node that points to a given node
+function findPredecessor(source: string, nodeId: string, workflowName: string): string | null {
+  const workflowRange = findWorkflowNodesRange(source, workflowName);
+  if (!workflowRange) return null;
+
+  const lines = source.split("\n");
+  let currentNode: string | null = null;
+
+  for (let i = workflowRange.startLine; i < workflowRange.endLine; i++) {
+    const line = lines[i];
+
+    // Track current node
+    const nodeMatch = line.match(/^(\s+)([a-zA-Z_][a-zA-Z0-9_]*):\s*$/);
+    if (nodeMatch) {
+      currentNode = nodeMatch[2];
+    }
+
+    // Check next pointer
+    const nextMatch = line.match(/^\s+next:\s*(\S+)/);
+    if (nextMatch && nextMatch[1] === nodeId && currentNode) {
+      return currentNode;
+    }
+  }
+
+  return null;
+}
+
+// Find all reporter node IDs referenced by a set of nodes (recursively)
+function findReporterNodes(source: string, nodeIds: string[]): string[] {
+  const reporterIds: string[] = [];
+  const visited = new Set<string>();
+
+  function findReportersInNode(nodeId: string) {
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
+
+    const range = findNodeLineRange(source, nodeId);
+    if (!range) return;
+
+    const lines = source.split("\n");
+    const nodeContent = lines.slice(range.startLine, range.endLine).join("\n");
+
+    // Find all { node: "reporter_id" } or { node: reporter_id } references
+    // Match both quoted and unquoted node IDs
+    const quotedMatches = nodeContent.matchAll(/\{\s*node:\s*["']([^"']+)["']\s*\}/g);
+    for (const match of quotedMatches) {
+      const reporterId = match[1];
+      if (!reporterIds.includes(reporterId) && !nodeIds.includes(reporterId)) {
+        reporterIds.push(reporterId);
+        findReportersInNode(reporterId);
+      }
+    }
+
+    // Also match unquoted node IDs: { node: some_id }
+    const unquotedMatches = nodeContent.matchAll(/\{\s*node:\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}/g);
+    for (const match of unquotedMatches) {
+      const reporterId = match[1];
+      if (!reporterIds.includes(reporterId) && !nodeIds.includes(reporterId)) {
+        reporterIds.push(reporterId);
+        findReportersInNode(reporterId);
+      }
+    }
+  }
+
+  for (const nodeId of nodeIds) {
+    findReportersInNode(nodeId);
+  }
+
+  return reporterIds;
+}
+
+// Validate that selected nodes form a linear chain
+export function validateLinearChain(
+  source: string,
+  nodeIds: string[],
+  workflowName: string
+): ChainValidationResult {
+  const errors: string[] = [];
+
+  if (nodeIds.length < 2) {
+    return {
+      isValid: false,
+      orderedNodeIds: [],
+      firstNodeId: null,
+      lastNodeId: null,
+      predecessorNodeId: null,
+      successorNodeId: null,
+      errors: ["Select at least 2 nodes to extract"],
+    };
+  }
+
+  // Verify all nodes are in the same workflow
+  for (const nodeId of nodeIds) {
+    const nodeWorkflow = findNodeWorkflow(source, nodeId);
+    if (nodeWorkflow !== workflowName) {
+      errors.push(`Node "${nodeId}" is not in workflow "${workflowName}"`);
+    }
+  }
+  if (errors.length > 0) {
+    return {
+      isValid: false,
+      orderedNodeIds: [],
+      firstNodeId: null,
+      lastNodeId: null,
+      predecessorNodeId: null,
+      successorNodeId: null,
+      errors,
+    };
+  }
+
+  // Check for branching opcodes
+  for (const nodeId of nodeIds) {
+    const opcode = getNodeOpcode(source, nodeId);
+    if (opcode && BRANCHING_OPCODES.includes(opcode)) {
+      errors.push(`Cannot extract "${nodeId}": branching nodes (${opcode}) are not supported`);
+    }
+  }
+  if (errors.length > 0) {
+    return {
+      isValid: false,
+      orderedNodeIds: [],
+      firstNodeId: null,
+      lastNodeId: null,
+      predecessorNodeId: null,
+      successorNodeId: null,
+      errors,
+    };
+  }
+
+  // Build next pointer map for selected nodes
+  const nodeSet = new Set(nodeIds);
+  const nextMap: Record<string, string | null> = {};
+  for (const nodeId of nodeIds) {
+    nextMap[nodeId] = getNodeNext(source, nodeId, workflowName);
+  }
+
+  // Find the first node (one that no other selected node points to)
+  const pointedTo = new Set(Object.values(nextMap).filter((n) => n && nodeSet.has(n)));
+  const candidates = nodeIds.filter((id) => !pointedTo.has(id));
+
+  if (candidates.length !== 1) {
+    return {
+      isValid: false,
+      orderedNodeIds: [],
+      firstNodeId: null,
+      lastNodeId: null,
+      predecessorNodeId: null,
+      successorNodeId: null,
+      errors: ["Selected nodes do not form a single connected chain"],
+    };
+  }
+
+  // Walk the chain and build ordered list
+  const orderedNodeIds: string[] = [];
+  let current: string | null = candidates[0];
+  const visited = new Set<string>();
+
+  while (current && nodeSet.has(current) && !visited.has(current)) {
+    visited.add(current);
+    orderedNodeIds.push(current);
+    current = nextMap[current] || null;
+  }
+
+  // Verify all nodes are in the chain
+  if (orderedNodeIds.length !== nodeIds.length) {
+    return {
+      isValid: false,
+      orderedNodeIds: [],
+      firstNodeId: null,
+      lastNodeId: null,
+      predecessorNodeId: null,
+      successorNodeId: null,
+      errors: ["Selected nodes are not contiguous (some nodes are disconnected)"],
+    };
+  }
+
+  const firstNodeId = orderedNodeIds[0];
+  const lastNodeId = orderedNodeIds[orderedNodeIds.length - 1];
+
+  // Find predecessor and successor
+  const predecessorNodeId = findPredecessor(source, firstNodeId, workflowName);
+  const successorNodeId = getNodeNext(source, lastNodeId, workflowName);
+
+  return {
+    isValid: true,
+    orderedNodeIds,
+    firstNodeId,
+    lastNodeId,
+    predecessorNodeId,
+    successorNodeId,
+    errors: [],
+  };
+}
+
+export interface ChainVariables {
+  suggestedInputs: string[];
+  suggestedOutputs: string[];
+}
+
+// Analyze variables used and assigned in a chain of nodes
+export function analyzeChainVariables(
+  source: string,
+  nodeIds: string[]
+): ChainVariables {
+  const variablesUsed = new Set<string>();
+  const variablesSet = new Set<string>();
+
+  for (const nodeId of nodeIds) {
+    const range = findNodeLineRange(source, nodeId);
+    if (!range) continue;
+
+    const lines = source.split("\n");
+    const nodeContent = lines.slice(range.startLine, range.endLine).join("\n");
+
+    // Find variables referenced in inputs: { variable: "name" }
+    const variableMatches = nodeContent.matchAll(/\{\s*variable:\s*["']([^"']+)["']\s*\}/g);
+    for (const match of variableMatches) {
+      variablesUsed.add(match[1]);
+    }
+
+    // Find variables being set via data_set_variable_to opcode
+    const opcode = getNodeOpcode(source, nodeId);
+    if (opcode === "data_set_variable_to") {
+      // Find VARIABLE input which contains the variable name
+      const varNameMatch = nodeContent.match(/VARIABLE:\s*\{\s*literal:\s*["']([^"']+)["']\s*\}/);
+      if (varNameMatch) {
+        variablesSet.add(varNameMatch[1]);
+      }
+    }
+  }
+
+  // Inputs: variables used but not set within the chain
+  // Outputs: variables set within the chain
+  const suggestedInputs = [...variablesUsed].filter((v) => !variablesSet.has(v));
+  const suggestedOutputs = [...variablesSet];
+
+  return { suggestedInputs, suggestedOutputs };
+}
+
+export interface ExtractToWorkflowResult {
+  source: string;
+  success: boolean;
+  newWorkflowCallNodeId: string | null;
+  errors: string[];
+}
+
+// Extract selected nodes into a new workflow
+export function extractToWorkflow(
+  source: string,
+  nodeIds: string[],
+  sourceWorkflowName: string,
+  newWorkflowName: string,
+  newWorkflowInputs: string[],
+  newWorkflowOutputs: string[],
+  newWorkflowVariables: Record<string, unknown>
+): ExtractToWorkflowResult {
+  // Validate the chain first
+  const validation = validateLinearChain(source, nodeIds, sourceWorkflowName);
+  if (!validation.isValid) {
+    return {
+      source,
+      success: false,
+      newWorkflowCallNodeId: null,
+      errors: validation.errors,
+    };
+  }
+
+  const { orderedNodeIds, firstNodeId, lastNodeId, predecessorNodeId, successorNodeId } = validation;
+
+  // Find all reporter nodes referenced by the chain nodes
+  const reporterNodeIds = findReporterNodes(source, orderedNodeIds);
+
+  let result = source;
+
+  // Step 1: Create the new workflow
+  const addWorkflowResult = addWorkflow(
+    result,
+    newWorkflowName,
+    newWorkflowInputs,
+    newWorkflowOutputs,
+    newWorkflowVariables
+  );
+  if (!addWorkflowResult.success) {
+    return {
+      source,
+      success: false,
+      newWorkflowCallNodeId: null,
+      errors: [`Failed to create workflow "${newWorkflowName}"`],
+    };
+  }
+  result = addWorkflowResult.source;
+
+  // Step 2: Extract node YAML blocks (in reverse order to preserve line numbers)
+  // First extract chain nodes, then reporter nodes
+  const chainBlocks: Array<{ id: string; yaml: string; indent: number }> = [];
+  const reporterBlocks: Array<{ id: string; yaml: string; indent: number }> = [];
+
+  // Extract chain nodes (in reverse to preserve line numbers)
+  for (const nodeId of [...orderedNodeIds].reverse()) {
+    const range = findNodeLineRange(result, nodeId, sourceWorkflowName);
+    if (!range) {
+      return {
+        source,
+        success: false,
+        newWorkflowCallNodeId: null,
+        errors: [`Could not find node "${nodeId}"`],
+      };
+    }
+
+    const lines = result.split("\n");
+    const nodeYaml = lines.slice(range.startLine, range.endLine).join("\n");
+    chainBlocks.unshift({ id: nodeId, yaml: nodeYaml, indent: range.indent });
+
+    // Delete from source workflow
+    const deleteResult = deleteNode(result, nodeId);
+    if (!deleteResult.success) {
+      return {
+        source,
+        success: false,
+        newWorkflowCallNodeId: null,
+        errors: [`Failed to delete node "${nodeId}"`],
+      };
+    }
+    result = deleteResult.source;
+  }
+
+  // Extract reporter nodes (in reverse to preserve line numbers)
+  for (const nodeId of [...reporterNodeIds].reverse()) {
+    // Try with workflow scope first, then global
+    let range = findNodeLineRange(result, nodeId, sourceWorkflowName);
+    if (!range) {
+      range = findNodeLineRange(result, nodeId);
+    }
+    if (!range) {
+      continue;
+    }
+
+    const lines = result.split("\n");
+    const nodeYaml = lines.slice(range.startLine, range.endLine).join("\n");
+    reporterBlocks.unshift({ id: nodeId, yaml: nodeYaml, indent: range.indent });
+
+    // Delete from source workflow
+    const deleteResult = deleteNode(result, nodeId);
+    if (deleteResult.success) {
+      result = deleteResult.source;
+    }
+  }
+
+  // Combine: chain nodes first, then reporters
+  const nodeBlocks = [...chainBlocks, ...reporterBlocks];
+
+  // Step 3: Insert nodes into new workflow after start node
+  // Find the new workflow's nodes section
+  const newWorkflowRange = findWorkflowNodesRange(result, newWorkflowName);
+  if (!newWorkflowRange) {
+    return {
+      source,
+      success: false,
+      newWorkflowCallNodeId: null,
+      errors: [`Could not find nodes section in new workflow "${newWorkflowName}"`],
+    };
+  }
+
+  // Find the start node's end in the new workflow
+  const startRange = findNodeLineRange(result, "start", newWorkflowName);
+  if (!startRange) {
+    return {
+      source,
+      success: false,
+      newWorkflowCallNodeId: null,
+      errors: [`Could not find start node in new workflow`],
+    };
+  }
+
+  // Calculate the target indent for nodes in new workflow
+  const targetIndent = startRange.indent;
+
+  // Build the nodes YAML with adjusted indentation
+  const insertLines: string[] = [];
+  for (let i = 0; i < nodeBlocks.length; i++) {
+    const block = nodeBlocks[i];
+    const blockLines = block.yaml.split("\n");
+
+    // Adjust indentation
+    const indentDiff = targetIndent - block.indent;
+    const adjustedLines = blockLines.map((line) => {
+      if (line.trim() === "") return line;
+      if (indentDiff > 0) {
+        return " ".repeat(indentDiff) + line;
+      } else if (indentDiff < 0) {
+        return line.slice(-indentDiff);
+      }
+      return line;
+    });
+
+    insertLines.push(...adjustedLines);
+  }
+
+  // Insert after start node
+  const lines = result.split("\n");
+  const insertPoint = startRange.endLine;
+  lines.splice(insertPoint, 0, ...insertLines);
+  result = lines.join("\n");
+
+  // Step 4: Update start.next to point to first extracted node
+  const connectStartResult = connectNodes(result, "start", firstNodeId!, newWorkflowName);
+  if (!connectStartResult.success) {
+    return {
+      source,
+      success: false,
+      newWorkflowCallNodeId: null,
+      errors: [`Failed to connect start to "${firstNodeId}"`],
+    };
+  }
+  result = connectStartResult.source;
+
+  // Step 5: Set last node's next to null (end of new workflow)
+  const disconnectLastResult = disconnectNode(result, lastNodeId!, newWorkflowName);
+  if (!disconnectLastResult.success) {
+    return {
+      source,
+      success: false,
+      newWorkflowCallNodeId: null,
+      errors: [`Failed to disconnect last node "${lastNodeId}"`],
+    };
+  }
+  result = disconnectLastResult.source;
+
+  // Step 6: Add workflow_call node in source workflow
+  const callNodeResult = addWorkflowCallNode(
+    result,
+    newWorkflowName,
+    newWorkflowInputs,
+    sourceWorkflowName
+  );
+  if (!callNodeResult.nodeId) {
+    return {
+      source,
+      success: false,
+      newWorkflowCallNodeId: null,
+      errors: [`Failed to create workflow_call node`],
+    };
+  }
+  result = callNodeResult.source;
+  const newCallNodeId = callNodeResult.nodeId;
+
+  // Step 7: Wire predecessor to workflow_call
+  if (predecessorNodeId) {
+    // Check if predecessor is "start"
+    const connectPredResult = connectNodes(
+      result,
+      predecessorNodeId === "start" ? "start" : predecessorNodeId,
+      newCallNodeId,
+      sourceWorkflowName
+    );
+    if (!connectPredResult.success) {
+      return {
+        source,
+        success: false,
+        newWorkflowCallNodeId: null,
+        errors: [`Failed to connect predecessor to workflow_call`],
+      };
+    }
+    result = connectPredResult.source;
+  }
+
+  // Step 8: Wire workflow_call to successor
+  if (successorNodeId) {
+    const connectSuccResult = connectNodes(result, newCallNodeId, successorNodeId, sourceWorkflowName);
+    if (!connectSuccResult.success) {
+      return {
+        source,
+        success: false,
+        newWorkflowCallNodeId: null,
+        errors: [`Failed to connect workflow_call to successor`],
+      };
+    }
+    result = connectSuccResult.source;
+  }
+
+  return {
+    source: result,
+    success: true,
+    newWorkflowCallNodeId: newCallNodeId,
+    errors: [],
+  };
+}
+
 // Export all functions as a service object for convenience
 export const workflowService = {
   formatYamlValue,
@@ -1772,4 +2351,7 @@ export const workflowService = {
   removeDynamicInput,
   addWorkflow,
   deleteWorkflow,
+  validateLinearChain,
+  analyzeChainVariables,
+  extractToWorkflow,
 };

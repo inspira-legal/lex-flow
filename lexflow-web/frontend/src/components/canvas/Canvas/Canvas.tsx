@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from "react"
 import { useUiStore, useWorkflowStore, useSelectionStore } from "@/store"
+import * as WorkflowService from "@/services/workflow/WorkflowService"
 import { WorkflowNode } from "../WorkflowNode"
 import { StartNode } from "../StartNode"
 import { Connection } from "../Connection"
@@ -70,9 +71,10 @@ export function Canvas() {
     hideCanvasContextMenu,
     showCreateWorkflowModal,
     showConfirmDialog,
+    showExtractWorkflowModal,
   } = useUiStore()
-  const { tree, parseError, disconnectConnection, deleteNode, duplicateNode, deleteWorkflow } = useWorkflowStore()
-  const { selectedConnection, selectConnection } = useSelectionStore()
+  const { tree, parseError, source, disconnectConnection, deleteNode, duplicateNode, deleteWorkflow } = useWorkflowStore()
+  const { selectedConnection, selectConnection, selectedNodeIds, clearMultiSelection } = useSelectionStore()
 
   const svgRef = useRef<SVGSVGElement>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
@@ -448,9 +450,54 @@ export function Canvas() {
           isOrphan={contextMenu.isOrphan}
           onExpandReporters={() => setReportersExpanded(contextMenu.nodeId, true)}
           onCollapseReporters={() => setReportersExpanded(contextMenu.nodeId, false)}
-          onDelete={() => deleteNode(contextMenu.nodeId)}
+          onDelete={() => {
+            deleteNode(contextMenu.nodeId)
+            clearMultiSelection()
+          }}
           onDuplicate={() => duplicateNode(contextMenu.nodeId)}
           onClose={hideContextMenu}
+          selectedNodeIds={selectedNodeIds}
+          onExtractToWorkflow={() => {
+            // Find which workflow the first selected node belongs to
+            const nodeIds = selectedNodeIds.length > 0 ? selectedNodeIds : [contextMenu.nodeId]
+            if (nodeIds.length < 2) return
+
+            // Find the workflow containing the first node by searching tree
+            let workflowName = "main"
+            if (tree) {
+              for (const wf of tree.workflows) {
+                const hasNode = (nodes: typeof wf.children): boolean =>
+                  nodes.some((n) => nodeIds.includes(n.id) || n.children.some((b) => hasNode(b.children)))
+                if (hasNode(wf.children) || (wf.orphans && hasNode(wf.orphans))) {
+                  workflowName = wf.name
+                  break
+                }
+              }
+            }
+
+            // Validate the chain first
+            const validation = WorkflowService.validateLinearChain(source, nodeIds, workflowName)
+            if (!validation.isValid) {
+              showConfirmDialog({
+                title: "Cannot Extract",
+                message: validation.errors.join("\n"),
+                confirmLabel: "OK",
+                onConfirm: () => {},
+              })
+              return
+            }
+
+            // Analyze variables for suggestions
+            const variables = WorkflowService.analyzeChainVariables(source, nodeIds)
+
+            // Show the extract workflow modal
+            showExtractWorkflowModal(
+              validation.orderedNodeIds,
+              workflowName,
+              variables.suggestedInputs,
+              variables.suggestedOutputs
+            )
+          }}
         />
       )}
 

@@ -219,6 +219,9 @@ export const WorkflowNode = memo(function WorkflowNode({
   const {
     selectedNodeId,
     selectNode,
+    selectedNodeIds,
+    toggleNodeSelection,
+    clearMultiSelection,
     selectedReporter,
     selectReporter,
   } = useSelectionStore()
@@ -230,6 +233,7 @@ export const WorkflowNode = memo(function WorkflowNode({
   const color = getNodeColor(node.type)
   const icon = getNodeIcon(node.opcode, node.type)
   const isSelected = selectedNodeId === node.id && !selectedReporter
+  const isMultiSelected = selectedNodeIds.includes(node.id)
   const isSearchMatch = searchResults.includes(node.id)
   const status = nodeStatus[node.id] || "idle"
   const displayName = formatOpcodeName(node.opcode)
@@ -295,6 +299,16 @@ export const WorkflowNode = memo(function WorkflowNode({
       justDraggedRef.current = false
       return
     }
+
+    // Ctrl/Cmd+click for multi-selection
+    if (e.ctrlKey || e.metaKey) {
+      toggleNodeSelection(node.id)
+      selectReporter(null)
+      return
+    }
+
+    // Normal click - clear multi-selection and select single node
+    clearMultiSelection()
     selectNode(node.id)
     selectReporter(null)
     openNodeEditor()
@@ -303,7 +317,14 @@ export const WorkflowNode = memo(function WorkflowNode({
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    selectNode(node.id)
+
+    // If this node is part of multi-selection, keep the selection
+    // Otherwise, select just this node (clears multi-selection)
+    if (!selectedNodeIds.includes(node.id)) {
+      clearMultiSelection()
+      selectNode(node.id)
+    }
+
     showContextMenu({
       nodeId: node.id,
       x: e.clientX,
@@ -403,7 +424,7 @@ export const WorkflowNode = memo(function WorkflowNode({
         width={totalWidth}
         height={totalHeight}
         rx={8}
-        style={getCardStyle(color, isSelected, isSearchMatch, isOrphan ?? false, isHovered, status, showInputSlots)}
+        style={getCardStyle(color, isSelected, isSearchMatch, isOrphan ?? false, isHovered, status, showInputSlots, isMultiSelected)}
       />
 
       {/* Color accent bar */}

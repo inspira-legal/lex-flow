@@ -5,7 +5,8 @@ import { CodeEditor } from "./components/editor";
 import { ExecutionPanel } from "./components/execution";
 import { NodeEditorPanel } from "./components/node-editor";
 import { NodePalette, DragPreview } from "./components/palette";
-import { ConfirmDialog, NewWorkflowModal } from "./components/ui";
+import { ConfirmDialog, NewWorkflowModal, ExtractWorkflowModal } from "./components/ui";
+import { useSelectionStore } from "./store";
 import { useWorkflowStore, useUiStore } from "./store";
 import { useKeyboardShortcuts, useWorkflowParsing } from "./hooks";
 import { useBackendProvider, supportsExamples } from "./providers";
@@ -55,6 +56,54 @@ function GlobalNewWorkflowModal() {
   );
 }
 
+// Global extract workflow modal connected to store
+function GlobalExtractWorkflowModal() {
+  const extractWorkflowModal = useUiStore((s) => s.extractWorkflowModal);
+  const hideExtractWorkflowModal = useUiStore((s) => s.hideExtractWorkflowModal);
+  const tree = useWorkflowStore((s) => s.tree);
+  const extractToWorkflow = useWorkflowStore((s) => s.extractToWorkflow);
+  const clearMultiSelection = useSelectionStore((s) => s.clearMultiSelection);
+  const showConfirmDialog = useUiStore((s) => s.showConfirmDialog);
+
+  // Get existing workflow names for validation
+  const existingWorkflowNames = tree?.workflows.map((w) => w.name) ?? [];
+
+  if (!extractWorkflowModal) return null;
+
+  return (
+    <ExtractWorkflowModal
+      isOpen={extractWorkflowModal.isOpen}
+      existingWorkflowNames={existingWorkflowNames}
+      nodeIds={extractWorkflowModal.nodeIds}
+      suggestedInputs={extractWorkflowModal.suggestedInputs}
+      suggestedOutputs={extractWorkflowModal.suggestedOutputs}
+      onConfirm={(data) => {
+        const result = extractToWorkflow(
+          extractWorkflowModal.nodeIds,
+          extractWorkflowModal.workflowName,
+          data.name,
+          data.inputs,
+          data.outputs,
+          data.variables
+        );
+        if (result.success) {
+          clearMultiSelection();
+          hideExtractWorkflowModal();
+        } else {
+          // Show error dialog
+          showConfirmDialog({
+            title: "Extraction Failed",
+            message: result.errors.join("\n"),
+            confirmLabel: "OK",
+            onConfirm: () => {},
+          });
+        }
+      }}
+      onCancel={hideExtractWorkflowModal}
+    />
+  );
+}
+
 export function App() {
   const { setExamples, setOpcodes } = useWorkflowStore();
   const provider = useBackendProvider();
@@ -88,6 +137,7 @@ export function App() {
       <DragPreview />
       <GlobalConfirmDialog />
       <GlobalNewWorkflowModal />
+      <GlobalExtractWorkflowModal />
     </>
   );
 }

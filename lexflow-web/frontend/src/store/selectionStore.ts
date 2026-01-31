@@ -25,6 +25,12 @@ interface SelectionState {
   selectedNodeId: string | null;
   selectNode: (id: string | null) => void;
 
+  // Multi-node selection (for extract to workflow feature)
+  selectedNodeIds: string[];
+  toggleNodeSelection: (id: string) => void; // Ctrl/Cmd+click
+  addToSelection: (id: string) => void;
+  clearMultiSelection: () => void;
+
   // Reporter selection
   selectedReporter: SelectedReporter | null;
   selectReporter: (reporter: SelectedReporter | null) => void;
@@ -44,7 +50,24 @@ interface SelectionState {
 export const useSelectionStore = create<SelectionState>((set) => ({
   // Node selection
   selectedNodeId: null,
-  selectNode: (id) => set({ selectedNodeId: id }),
+  selectNode: (id) => set({ selectedNodeId: id, selectedNodeIds: [] }),
+
+  // Multi-node selection
+  selectedNodeIds: [],
+  toggleNodeSelection: (id) =>
+    set((s) => {
+      const ids = s.selectedNodeIds.includes(id)
+        ? s.selectedNodeIds.filter((i) => i !== id)
+        : [...s.selectedNodeIds, id];
+      return { selectedNodeIds: ids, selectedNodeId: ids.length > 0 ? ids[ids.length - 1] : null };
+    }),
+  addToSelection: (id) =>
+    set((s) => ({
+      selectedNodeIds: s.selectedNodeIds.includes(id)
+        ? s.selectedNodeIds
+        : [...s.selectedNodeIds, id],
+    })),
+  clearMultiSelection: () => set({ selectedNodeIds: [] }),
 
   // Reporter selection
   selectedReporter: null,
@@ -62,6 +85,7 @@ export const useSelectionStore = create<SelectionState>((set) => ({
   clearSelection: () =>
     set({
       selectedNodeId: null,
+      selectedNodeIds: [],
       selectedReporter: null,
       selectedConnection: null,
       selectedStartNode: null,

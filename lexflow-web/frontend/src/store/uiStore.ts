@@ -209,6 +209,22 @@ interface UiState {
   createWorkflowModal: { isOpen: boolean } | null;
   showCreateWorkflowModal: () => void;
   hideCreateWorkflowModal: () => void;
+
+  // Extract to workflow modal
+  extractWorkflowModal: {
+    isOpen: boolean;
+    nodeIds: string[];
+    workflowName: string;
+    suggestedInputs: string[];
+    suggestedOutputs: string[];
+  } | null;
+  showExtractWorkflowModal: (
+    nodeIds: string[],
+    workflowName: string,
+    suggestedInputs?: string[],
+    suggestedOutputs?: string[]
+  ) => void;
+  hideExtractWorkflowModal: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -385,4 +401,18 @@ export const useUiStore = create<UiState>((set) => ({
   createWorkflowModal: null,
   showCreateWorkflowModal: () => set({ createWorkflowModal: { isOpen: true } }),
   hideCreateWorkflowModal: () => set({ createWorkflowModal: null }),
+
+  // Extract to workflow modal
+  extractWorkflowModal: null,
+  showExtractWorkflowModal: (nodeIds, workflowName, suggestedInputs = [], suggestedOutputs = []) =>
+    set({
+      extractWorkflowModal: {
+        isOpen: true,
+        nodeIds,
+        workflowName,
+        suggestedInputs,
+        suggestedOutputs,
+      },
+    }),
+  hideExtractWorkflowModal: () => set({ extractWorkflowModal: null }),
 }));

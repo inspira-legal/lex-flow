@@ -23,7 +23,8 @@ export function getCardStyle(
   isOrphan: boolean,
   isHovered: boolean,
   status: string,
-  _isExpanded: boolean
+  _isExpanded: boolean,
+  isMultiSelected = false
 ): CSSProperties {
   let stroke = "transparent"
   let strokeWidth = 1.5
@@ -36,18 +37,27 @@ export function getCardStyle(
     opacity = 0.9
   }
 
-  if (isHovered && !isSelected) {
+  if (isHovered && !isSelected && !isMultiSelected) {
     stroke = color
     strokeWidth = 1.5
     opacity = 1
   }
 
-  if (isSearchMatch && !isSelected) {
+  if (isSearchMatch && !isSelected && !isMultiSelected) {
     stroke = "#facc15"
     strokeWidth = 2
     strokeDasharray = "none"
   }
 
+  // Multi-selected - bright cyan/teal to really pop
+  if (isMultiSelected) {
+    stroke = "#22d3ee" // Cyan-400 - bright and distinct
+    strokeWidth = 2.5
+    strokeDasharray = "none"
+    opacity = 1
+  }
+
+  // Primary selection (blue solid border) - takes precedence over multi
   if (isSelected) {
     stroke = "var(--color-accent-blue)"
     strokeWidth = 2
@@ -61,17 +71,25 @@ export function getCardStyle(
     stroke = "var(--color-accent-red)"
   }
 
+  // Determine the shadow/glow effect
+  let filter = "drop-shadow(0 1px 3px rgba(0, 0, 0, 0.2))"
+  if (isHovered && !isSelected && !isMultiSelected) {
+    filter = "drop-shadow(0 2px 8px rgba(0, 0, 0, 0.25))"
+  }
+  if (isMultiSelected && !isSelected) {
+    filter = "drop-shadow(0 0 10px rgba(34, 211, 238, 0.5))" // Cyan glow
+  }
+  if (isSelected) {
+    filter = "drop-shadow(0 0 8px rgba(59, 130, 246, 0.3))"
+  }
+
   return {
     fill: "var(--color-surface-1)",
     stroke,
     strokeWidth,
     strokeDasharray,
     opacity,
-    filter: isSelected
-      ? "drop-shadow(0 0 8px rgba(59, 130, 246, 0.3))"
-      : isHovered
-        ? "drop-shadow(0 2px 8px rgba(0, 0, 0, 0.25))"
-        : "drop-shadow(0 1px 3px rgba(0, 0, 0, 0.2))",
+    filter,
     transition: "all 0.15s ease",
     animation: status === "running" ? "pulse 1.5s ease-in-out infinite" : "none",
   }
