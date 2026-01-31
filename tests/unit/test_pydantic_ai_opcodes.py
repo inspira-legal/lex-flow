@@ -2,13 +2,28 @@
 
 import importlib.util
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
+import asyncio
+from unittest.mock import Mock, patch, AsyncMock, MagicMock
 from lexflow import default_registry
 
 pytestmark = pytest.mark.asyncio
 
 
 PYDANTIC_AI_AVAILABLE = importlib.util.find_spec("pydantic_ai") is not None
+
+# Try to import helper functions for testing
+try:
+    from lexflow.opcodes.opcodes_pydantic_ai import (
+        _normalize_messages,
+        _format_messages_for_prompt,
+        _validate_tools_exist,
+        _create_tool_wrapper,
+        _create_output_model,
+        _tool_call_context,
+    )
+    HELPERS_AVAILABLE = True
+except ImportError:
+    HELPERS_AVAILABLE = False
 
 
 @pytest.mark.skipif(not PYDANTIC_AI_AVAILABLE, reason="pydantic-ai not installed")
@@ -158,3 +173,287 @@ async def test_import_error_when_not_installed():
         await default_registry.call(
             "pydantic_ai_create_vertex_model", ["gemini-1.5-flash"]
         )
+
+
+@pytest.mark.skipif(not HELPERS_AVAILABLE, reason="pydantic-ai helpers not available")
+class TestAiAgentWithToolsHelpers:
+    """Tests for ai_agent_with_tools helper functions."""
+
+    def test_normalize_messages_string(self):
+        """String input normalizes to user message."""
+        result = _normalize_messages("Hello")
+        assert result == [{"role": "user", "content": "Hello"}]
+
+    def test_normalize_messages_list(self):
+        """List input passes through unchanged."""
+        messages = [{"role": "system", "content": "You are helpful"}]
+        result = _normalize_messages(messages)
+        assert result == messages
+
+    def test_normalize_messages_complex(self):
+        """Complex list with multiple messages."""
+        messages = [
+            {"role": "system", "content": "System prompt"},
+            {"role": "user", "content": "User message"},
+        ]
+        result = _normalize_messages(messages)
+        assert result == messages
+
+    def test_format_messages_for_prompt(self):
+        """Messages format correctly as prompt string."""
+        messages = [
+            {"role": "system", "content": "Be helpful"},
+            {"role": "user", "content": "Hi"},
+        ]
+        result = _format_messages_for_prompt(messages)
+        assert "System: Be helpful" in result
+        assert "User: Hi" in result
+
+    def test_validate_tools_exist_success(self):
+        """Validation passes for existing tools."""
+        # Should not raise - these are built-in opcodes
+        _validate_tools_exist(["operator_add", "operator_multiply"], default_registry)
+
+    def test_validate_tools_exist_failure(self):
+        """Validation fails for non-existent tools."""
+        with pytest.raises(ValueError, match="not found"):
+            _validate_tools_exist(["nonexistent_tool_xyz"], default_registry)
+
+    def test_create_output_model_none(self):
+        """None input returns None."""
+        result = _create_output_model(None)
+        assert result is None
+
+    @pytest.mark.skipif(not PYDANTIC_AI_AVAILABLE, reason="pydantic-ai not installed")
+    def test_create_output_model_simple(self):
+        """Simple schema creates valid model."""
+        schema = {"text": "string"}
+        model = _create_output_model(schema)
+        assert model is not None
+        # Verify model has expected fields
+        assert "text" in model.model_fields
+
+    @pytest.mark.skipif(not PYDANTIC_AI_AVAILABLE, reason="pydantic-ai not installed")
+    def test_create_output_model_with_data(self):
+        """Schema with data creates nested model."""
+        schema = {"text": "string", "data": {"value": "int", "name": "string"}}
+        model = _create_output_model(schema)
+        assert model is not None
+        assert "text" in model.model_fields
+        assert "data" in model.model_fields
+
+
+@pytest.mark.skipif(not HELPERS_AVAILABLE, reason="pydantic-ai helpers not available")
+class TestToolWrapper:
+    """Tests for tool wrapper functionality."""
+
+    async def test_tool_wrapper_kwargs_to_args(self):
+        """Tool wrapper correctly maps kwargs to positional args."""
+        wrapper = _create_tool_wrapper(
+            "operator_add",
+            default_registry,
+            {"operator_add"}
+        )
+
+        # Setup context
+        ctx = {"count": 0, "max": 10, "allowlist": {"operator_add"}}
+        token = _tool_call_context.set(ctx)
+
+        try:
+            result = await wrapper(left=5, right=3)
+            assert result == 8
+        finally:
+            _tool_call_context.reset(token)
+
+    async def test_tool_wrapper_permission_denied(self):
+        """Tool wrapper raises PermissionError when tool not in allowlist."""
+        wrapper = _create_tool_wrapper(
+            "operator_add",
+            default_registry,
+            {"operator_add"}  # In wrapper's knowledge
+        )
+
+        # Setup context with EMPTY allowlist
+        ctx = {"count": 0, "max": 10, "allowlist": set()}  # Not in context allowlist
+        token = _tool_call_context.set(ctx)
+
+        try:
+            with pytest.raises(PermissionError, match="not in allowlist"):
+                await wrapper(left=5, right=3)
+        finally:
+            _tool_call_context.reset(token)
+
+    async def test_tool_wrapper_max_calls_exceeded(self):
+        """Tool wrapper raises RuntimeError when max_tool_calls exceeded."""
+        wrapper = _create_tool_wrapper(
+            "operator_add",
+            default_registry,
+            {"operator_add"}
+        )
+
+        # Setup context with max=1
+        ctx = {"count": 1, "max": 1, "allowlist": {"operator_add"}}
+        token = _tool_call_context.set(ctx)
+
+        try:
+            with pytest.raises(RuntimeError, match="Maximum tool calls"):
+                await wrapper(left=5, right=3)
+        finally:
+            _tool_call_context.reset(token)
+
+    async def test_tool_wrapper_missing_required_param(self):
+        """Tool wrapper raises ValueError for missing required parameter."""
+        wrapper = _create_tool_wrapper(
+            "operator_add",
+            default_registry,
+            {"operator_add"}
+        )
+
+        ctx = {"count": 0, "max": 10, "allowlist": {"operator_add"}}
+        token = _tool_call_context.set(ctx)
+
+        try:
+            with pytest.raises(ValueError, match="Missing required parameter"):
+                await wrapper(left=5)  # Missing 'right'
+        finally:
+            _tool_call_context.reset(token)
+
+
+@pytest.mark.skipif(not PYDANTIC_AI_AVAILABLE, reason="pydantic-ai not installed")
+class TestAiAgentWithToolsOpcode:
+    """Integration tests for ai_agent_with_tools opcode."""
+
+    async def test_basic_call_structure(self):
+        """Test that opcode returns expected structure."""
+        # Create mock agent
+        mock_agent = MagicMock()
+        mock_agent._model = MagicMock()
+        mock_agent._instructions = "Test instructions"
+
+        # Mock Agent and Tool at pydantic_ai level (where they're imported from)
+        with (
+            patch("pydantic_ai.Agent") as MockAgent,
+            patch("pydantic_ai.Tool") as MockTool,
+        ):
+            mock_result = MagicMock()
+            mock_result.output = "Test response"
+
+            mock_instance = AsyncMock()
+            mock_instance.run = AsyncMock(return_value=mock_result)
+            MockAgent.return_value = mock_instance
+            MockTool.return_value = MagicMock()
+
+            result = await default_registry.call(
+                "ai_agent_with_tools",
+                [mock_agent, "Test prompt", ["operator_add"]]
+            )
+
+            assert "text" in result
+            assert "data" in result
+            assert result["text"] == "Test response"
+
+    async def test_timeout_error(self):
+        """Test timeout raises TimeoutError."""
+        mock_agent = MagicMock()
+        mock_agent._model = MagicMock()
+
+        with (
+            patch("pydantic_ai.Agent") as MockAgent,
+            patch("pydantic_ai.Tool") as MockTool,
+        ):
+            async def slow_run(prompt):
+                await asyncio.sleep(10)
+                return MagicMock(output="done")
+
+            mock_instance = MagicMock()
+            mock_instance.run = slow_run
+            MockAgent.return_value = mock_instance
+            MockTool.return_value = MagicMock()
+
+            with pytest.raises(TimeoutError):
+                await default_registry.call(
+                    "ai_agent_with_tools",
+                    [
+                        mock_agent,
+                        "Test",
+                        ["operator_add"],
+                        None,  # output
+                        10,    # max_tool_calls
+                        0.1,   # timeout_seconds (very short)
+                    ]
+                )
+
+    async def test_invalid_tools_raises_valueerror(self):
+        """Test that non-existent tools raise ValueError."""
+        mock_agent = MagicMock()
+        mock_agent._model = MagicMock()
+
+        with pytest.raises(ValueError, match="not found"):
+            await default_registry.call(
+                "ai_agent_with_tools",
+                [mock_agent, "Test", ["fake_nonexistent_opcode"]]
+            )
+
+    async def test_messages_string_normalization(self):
+        """Test that string messages are normalized correctly."""
+        mock_agent = MagicMock()
+        mock_agent._model = MagicMock()
+        mock_agent._instructions = None
+        mock_agent._system_prompt = None
+
+        with (
+            patch("pydantic_ai.Agent") as MockAgent,
+            patch("pydantic_ai.Tool") as MockTool,
+        ):
+            mock_result = MagicMock()
+            mock_result.output = "Response"
+
+            mock_instance = AsyncMock()
+            mock_instance.run = AsyncMock(return_value=mock_result)
+            MockAgent.return_value = mock_instance
+            MockTool.return_value = MagicMock()
+
+            result = await default_registry.call(
+                "ai_agent_with_tools",
+                [mock_agent, "Hello world", ["operator_add"]]
+            )
+
+            # Check that run was called with formatted message
+            mock_instance.run.assert_called_once()
+            call_args = mock_instance.run.call_args[0][0]
+            assert "User: Hello world" in call_args
+
+    async def test_messages_list_normalization(self):
+        """Test that list messages are formatted correctly."""
+        mock_agent = MagicMock()
+        mock_agent._model = MagicMock()
+        mock_agent._instructions = None
+        mock_agent._system_prompt = None
+
+        with (
+            patch("pydantic_ai.Agent") as MockAgent,
+            patch("pydantic_ai.Tool") as MockTool,
+        ):
+            mock_result = MagicMock()
+            mock_result.output = "Response"
+
+            mock_instance = AsyncMock()
+            mock_instance.run = AsyncMock(return_value=mock_result)
+            MockAgent.return_value = mock_instance
+            MockTool.return_value = MagicMock()
+
+            messages = [
+                {"role": "system", "content": "Be helpful"},
+                {"role": "user", "content": "Hi there"},
+            ]
+
+            result = await default_registry.call(
+                "ai_agent_with_tools",
+                [mock_agent, messages, ["operator_add"]]
+            )
+
+            # Check that run was called with formatted messages
+            mock_instance.run.assert_called_once()
+            call_args = mock_instance.run.call_args[0][0]
+            assert "System: Be helpful" in call_args
+            assert "User: Hi there" in call_args
