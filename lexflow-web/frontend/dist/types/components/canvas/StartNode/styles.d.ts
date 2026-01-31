@@ -8,5 +8,5 @@ export declare const nameStyle: CSSProperties;
 export declare const interfaceLabelStyle: CSSProperties;
 export declare const variableStyle: CSSProperties;
 export declare const moreVarsStyle: CSSProperties;
-export declare function getOutputPortStyle(isHovered: boolean): CSSProperties;
+export declare function getOutputPortStyle(isHovered: boolean, isDragging?: boolean): CSSProperties;
 export declare const dragHandleStyle: CSSProperties;

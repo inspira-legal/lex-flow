@@ -151,6 +151,18 @@ interface UiState {
         onCancel?: () => void;
     }) => void;
     hideConfirmDialog: () => void;
+    canvasContextMenu: {
+        x: number;
+        y: number;
+        workflowName?: string;
+    } | null;
+    showCanvasContextMenu: (x: number, y: number, workflowName?: string) => void;
+    hideCanvasContextMenu: () => void;
+    createWorkflowModal: {
+        isOpen: boolean;
+    } | null;
+    showCreateWorkflowModal: () => void;
+    hideCreateWorkflowModal: () => void;
 }
 export declare const useUiStore: import("zustand").UseBoundStore<import("zustand").StoreApi<UiState>>;
 export {};

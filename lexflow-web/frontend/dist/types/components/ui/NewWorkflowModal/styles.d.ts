@@ -1,0 +1,18 @@
+export { overlayVariants, buttonBaseVariants, cancelButtonVariants, confirmButtonVariants, } from "../ConfirmDialog/styles";
+export declare const dialogVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const headerVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const titleVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const bodyVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const footerVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const formFieldVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const labelVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const inputVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const errorVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const tagListVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const tagVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const tagRemoveVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const addRowVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const addButtonVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const variableRowVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const smallInputVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;
+export declare const removeButtonVariants: (props?: import("class-variance-authority/types").ClassProp | undefined) => string;

@@ -19,10 +19,10 @@ interface WorkflowState {
     addWorkflowCallNode: (workflowName: string, params: string[], targetWorkflow?: string) => string | null;
     duplicateNode: (nodeId: string) => string | null;
     updateNodeInput: (nodeId: string, inputKey: string, newValue: string) => boolean;
-    connectNodes: (fromNodeId: string, toNodeId: string) => boolean;
+    connectNodes: (fromNodeId: string, toNodeId: string, workflowName?: string) => boolean;
     connectBranch: (fromNodeId: string, toNodeId: string, branchLabel: string) => boolean;
-    disconnectNode: (nodeId: string) => boolean;
-    disconnectConnection: (fromNodeId: string, toNodeId: string, branchLabel?: string) => boolean;
+    disconnectNode: (nodeId: string, workflowName?: string) => boolean;
+    disconnectConnection: (fromNodeId: string, toNodeId: string, branchLabel?: string, workflowName?: string) => boolean;
     convertOrphanToReporter: (orphanNodeId: string, targetNodeId: string, inputKey: string) => boolean;
     updateReporterInput: (reporterNodeId: string, inputKey: string, newValue: string) => boolean;
     deleteReporter: (parentNodeId: string, inputPath: string[]) => boolean;
@@ -34,6 +34,8 @@ interface WorkflowState {
     removeDynamicBranch: (nodeId: string, branchName: string) => boolean;
     addDynamicInput: (nodeId: string, inputPrefix: string) => boolean;
     removeDynamicInput: (nodeId: string, inputName: string) => boolean;
+    addWorkflow: (name: string, inputs?: string[], outputs?: string[], variables?: Record<string, unknown>) => boolean;
+    deleteWorkflow: (name: string) => boolean;
     examples: ExampleInfo[];
     setExamples: (examples: ExampleInfo[]) => void;
     opcodes: OpcodeInterface[];
