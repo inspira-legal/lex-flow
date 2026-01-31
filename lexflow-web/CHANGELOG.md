@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.3.1 (2026-01-31)
+
+### Bug Fixes
+
+- **web**: Use jsDelivr CDN instead of GitHub release assets
+  ([`d4521fa`](https://github.com/inspira-legal/lex-flow/commit/d4521facbaa45e5976d1f5a3c76db166a4918005))
+
+### Chores
+
+- **web**: Build frontend library [skip ci]
+  ([`4054ad8`](https://github.com/inspira-legal/lex-flow/commit/4054ad8fc06be0c850feefbbf51fbae73b7fbf67))
+
+
 ## v1.3.0 (2026-01-31)
 
 ### Chores
