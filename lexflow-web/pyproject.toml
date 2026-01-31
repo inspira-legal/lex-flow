@@ -1,6 +1,6 @@
 [project]
 name = "lexflow-web"
-version = "1.4.0"
+version = "1.5.0"
 description = "Web frontend for LexFlow workflow visualization and execution"
 requires-python = ">=3.10"
 dependencies = [

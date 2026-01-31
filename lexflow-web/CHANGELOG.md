@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.5.0 (2026-01-31)
+
+### Chores
+
+- **web**: Build frontend library [skip ci]
+  ([`43ac2c1`](https://github.com/inspira-legal/lex-flow/commit/43ac2c15044fedd5064a5321f1f1d95332796532))
+
+### Features
+
+- **web**: Add extract to workflow feature
+  ([`cfa5ee6`](https://github.com/inspira-legal/lex-flow/commit/cfa5ee61c6d60c52fcc07f345fdc25b7842729a7))
+
+
 ## v1.4.0 (2026-01-31)
 
 ### Chores
