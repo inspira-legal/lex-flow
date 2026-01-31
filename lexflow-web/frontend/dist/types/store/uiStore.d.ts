@@ -163,6 +163,15 @@ interface UiState {
     } | null;
     showCreateWorkflowModal: () => void;
     hideCreateWorkflowModal: () => void;
+    extractWorkflowModal: {
+        isOpen: boolean;
+        nodeIds: string[];
+        workflowName: string;
+        suggestedInputs: string[];
+        suggestedOutputs: string[];
+    } | null;
+    showExtractWorkflowModal: (nodeIds: string[], workflowName: string, suggestedInputs?: string[], suggestedOutputs?: string[]) => void;
+    hideExtractWorkflowModal: () => void;
 }
 export declare const useUiStore: import("zustand").UseBoundStore<import("zustand").StoreApi<UiState>>;
 export {};

@@ -3,7 +3,7 @@ export declare const NODE_WIDTH = 110;
 export declare const NODE_HEIGHT = 70;
 export declare const NODE_EXPANDED_INPUT_HEIGHT = 30;
 export declare const NODE_TYPE_ICONS: Record<string, string>;
-export declare function getCardStyle(color: string, isSelected: boolean, isSearchMatch: boolean, isOrphan: boolean, isHovered: boolean, status: string, _isExpanded: boolean): CSSProperties;
+export declare function getCardStyle(color: string, isSelected: boolean, isSearchMatch: boolean, isOrphan: boolean, isHovered: boolean, status: string, _isExpanded: boolean, isMultiSelected?: boolean): CSSProperties;
 export declare function getColorBarStyle(color: string): CSSProperties;
 export declare function getIconContainerStyle(color: string, isHovered: boolean): CSSProperties;
 export declare const iconStyle: CSSProperties;

@@ -14,6 +14,10 @@ export interface SelectedConnection {
 interface SelectionState {
     selectedNodeId: string | null;
     selectNode: (id: string | null) => void;
+    selectedNodeIds: string[];
+    toggleNodeSelection: (id: string) => void;
+    addToSelection: (id: string) => void;
+    clearMultiSelection: () => void;
     selectedReporter: SelectedReporter | null;
     selectReporter: (reporter: SelectedReporter | null) => void;
     selectedConnection: SelectedConnection | null;

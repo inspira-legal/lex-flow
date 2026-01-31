@@ -35,6 +35,28 @@ export declare function addDynamicInput(source: string, nodeId: string, inputPre
 export declare function removeDynamicInput(source: string, nodeId: string, inputName: string): OperationResult;
 export declare function addWorkflow(source: string, name: string, inputs?: string[], outputs?: string[], variables?: Record<string, unknown>): OperationResult;
 export declare function deleteWorkflow(source: string, name: string): OperationResult;
+export interface ChainValidationResult {
+    isValid: boolean;
+    orderedNodeIds: string[];
+    firstNodeId: string | null;
+    lastNodeId: string | null;
+    predecessorNodeId: string | null;
+    successorNodeId: string | null;
+    errors: string[];
+}
+export declare function validateLinearChain(source: string, nodeIds: string[], workflowName: string): ChainValidationResult;
+export interface ChainVariables {
+    suggestedInputs: string[];
+    suggestedOutputs: string[];
+}
+export declare function analyzeChainVariables(source: string, nodeIds: string[]): ChainVariables;
+export interface ExtractToWorkflowResult {
+    source: string;
+    success: boolean;
+    newWorkflowCallNodeId: string | null;
+    errors: string[];
+}
+export declare function extractToWorkflow(source: string, nodeIds: string[], sourceWorkflowName: string, newWorkflowName: string, newWorkflowInputs: string[], newWorkflowOutputs: string[], newWorkflowVariables: Record<string, unknown>): ExtractToWorkflowResult;
 export declare const workflowService: {
     formatYamlValue: typeof formatYamlValue;
     findNodeLineRange: typeof findNodeLineRange;
@@ -60,4 +82,7 @@ export declare const workflowService: {
     removeDynamicInput: typeof removeDynamicInput;
     addWorkflow: typeof addWorkflow;
     deleteWorkflow: typeof deleteWorkflow;
+    validateLinearChain: typeof validateLinearChain;
+    analyzeChainVariables: typeof analyzeChainVariables;
+    extractToWorkflow: typeof extractToWorkflow;
 };

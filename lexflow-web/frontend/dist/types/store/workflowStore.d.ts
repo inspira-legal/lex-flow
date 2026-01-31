@@ -36,6 +36,10 @@ interface WorkflowState {
     removeDynamicInput: (nodeId: string, inputName: string) => boolean;
     addWorkflow: (name: string, inputs?: string[], outputs?: string[], variables?: Record<string, unknown>) => boolean;
     deleteWorkflow: (name: string) => boolean;
+    extractToWorkflow: (nodeIds: string[], sourceWorkflowName: string, newWorkflowName: string, inputs: string[], outputs: string[], variables: Record<string, unknown>) => {
+        success: boolean;
+        errors: string[];
+    };
     examples: ExampleInfo[];
     setExamples: (examples: ExampleInfo[]) => void;
     opcodes: OpcodeInterface[];
