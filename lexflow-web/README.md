@@ -120,7 +120,7 @@ The editor works standalone for editing workflows. To execute workflows, run the
 
 ```bash
 # Install
-pip install lexflow-web
+uv tool install lexflow-web
 
 # Run (starts both API server and serves the web UI)
 lexflow-web

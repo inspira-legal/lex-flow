@@ -15,7 +15,7 @@ A stack-based visual programming workflow interpreter. Define workflows in YAML/
 ### Run a Workflow
 
 ```bash
-pip install lexflow-cli
+uv tool install lexflow-cli
 lexflow examples/basics/hello_world.yaml
 ```
 
