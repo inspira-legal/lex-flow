@@ -29,32 +29,6 @@ except ImportError:
 # Context var for tracking thread-safe tool calls
 _tool_call_context: ContextVar[dict] = ContextVar("tool_call_context", default=None)
 
-# Context var for WorkflowManager access during tool execution
-_workflow_manager_context: ContextVar[Any] = ContextVar(
-    "workflow_manager", default=None
-)
-
-
-def set_workflow_manager_context(manager) -> Any:
-    """Set WorkflowManager for tool execution.
-
-    Args:
-        manager: WorkflowManager instance
-
-    Returns:
-        Token for resetting the context
-    """
-    return _workflow_manager_context.set(manager)
-
-
-def reset_workflow_manager_context(token) -> None:
-    """Reset WorkflowManager context.
-
-    Args:
-        token: Token from set_workflow_manager_context
-    """
-    _workflow_manager_context.reset(token)
-
 
 def _check_availability():
     """Check if pydantic_ai is available and raise helpful error if not."""
@@ -154,11 +128,7 @@ def _create_output_model(output_schema: Optional[dict]):
     return create_model("OutputModel", text=(str, ...), data=(Any, None))
 
 
-def _create_tool_wrapper(
-    opcode_name: str,
-    registry,
-    allowlist: set
-) -> Callable:
+def _create_tool_wrapper(opcode_name: str, registry, allowlist: set) -> Callable:
     """Create tool wrapper that converts kwargs -> positional args.
 
     PydanticAI calls tools with kwargs (JSON object).
@@ -297,6 +267,7 @@ def _create_workflow_wrapper(
     Returns:
         Async function usable as a tool
     """
+
     async def workflow_wrapper(**kwargs) -> Any:
         # Check tracking context (max_tool_calls)
         ctx = _tool_call_context.get()
@@ -344,7 +315,9 @@ def _create_workflow_wrapper(
 
     workflow_wrapper.__signature__ = inspect.Signature(sig_params)
     workflow_wrapper.__name__ = workflow_name
-    workflow_wrapper.__doc__ = workflow.description or f"Execute workflow {workflow_name}"
+    workflow_wrapper.__doc__ = (
+        workflow.description or f"Execute workflow {workflow_name}"
+    )
 
     # Set __annotations__ for get_type_hints() used by pydantic_ai
     workflow_wrapper.__annotations__ = {p: Any for p in workflow.params}
@@ -541,10 +514,11 @@ def register_pydantic_ai_opcodes():
         # 3. Validate workflows exist (if any)
         manager = None
         if workflow_tools:
-            manager = _workflow_manager_context.get()
-            if manager is None:
+            try:
+                manager = await default_registry.call("_get_workflow_manager", [])
+            except RuntimeError:
                 raise RuntimeError(
-                    "Workflow tools require WorkflowManager context. "
+                    "Workflow tools require Engine context. "
                     "Ensure you're running via Engine."
                 )
             _validate_workflow_tools_exist(workflow_tools, manager)
@@ -613,9 +587,7 @@ def register_pydantic_ai_opcodes():
                 }
 
         except asyncio.TimeoutError:
-            raise TimeoutError(
-                f"Agent execution exceeded {timeout_seconds} seconds"
-            )
+            raise TimeoutError(f"Agent execution exceeded {timeout_seconds} seconds")
         except (PermissionError, ValueError, RuntimeError):
             # Re-raise known exceptions without wrapping
             raise

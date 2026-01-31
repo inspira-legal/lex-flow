@@ -20,8 +20,11 @@ Quick reference for all available opcodes in LexFlow.
 - [Data Operations](#data-operations)
 - [Control Flow](#control-flow)
 - [Async Operations](#async-operations)
+- [HTTP Operations](#http-operations)
+- [AI Operations (Pydantic AI)](#ai-operations-pydantic-ai)
 - [Chat Operations](#chat-operations)
 - [GitHub Operations](#github-operations)
+- [Pygame Operations](#pygame-operations)
 - [Task Operations](#task-operations)
 - [Other Operations](#other-operations)
 
@@ -232,6 +235,27 @@ Absolute value.
 
 ---
 
+### `math_add(left, right)`
+
+Add two numbers (preserving floating point).
+
+Args:
+    left: First number
+    right: Second number
+
+Returns:
+    Sum of left + right
+
+
+**Parameters:**
+
+- `left` (float, required)
+- `right` (float, required)
+
+**Returns:** `float`
+
+---
+
 ### `math_ceil(value)`
 
 Ceiling operation.
@@ -240,11 +264,47 @@ Ceiling operation.
 
 ---
 
+### `math_cos(angle)`
+
+Calculate cosine of an angle (in radians).
+
+Args:
+    angle: Angle in radians
+
+Returns:
+    Cosine value between -1 and 1
+
+
+**Returns:** `float`
+
+---
+
 ### `math_floor(value)`
 
 Floor operation.
 
 **Returns:** `int`
+
+---
+
+### `math_multiply(left, right)`
+
+Multiply two numbers.
+
+Args:
+    left: First number
+    right: Second number
+
+Returns:
+    Product of left * right
+
+
+**Parameters:**
+
+- `left` (float, required)
+- `right` (float, required)
+
+**Returns:** `float`
 
 ---
 
@@ -274,6 +334,21 @@ Generate random integer between min and max (inclusive).
 
 ---
 
+### `math_sin(angle)`
+
+Calculate sine of an angle (in radians).
+
+Args:
+    angle: Angle in radians
+
+Returns:
+    Sine value between -1 and 1
+
+
+**Returns:** `float`
+
+---
+
 ### `math_sqrt(value)`
 
 Square root.
@@ -283,6 +358,27 @@ Square root.
 ---
 
 ## String Operations
+
+### `string_char_at(text, index)`
+
+Get character at specific index in string.
+
+Args:
+    text: The string
+    index: Index position (0-based)
+
+Returns:
+    Character at that position, or empty string if index out of bounds
+
+
+**Parameters:**
+
+- `text` (str, required)
+- `index` (int, required)
+
+**Returns:** `str`
+
+---
 
 ### `string_contains(text, substring)`
 
@@ -338,7 +434,14 @@ Join list items into string.
 
 ### `string_length(text)`
 
-Get string length.
+Get the length of a string.
+
+Args:
+    text: The string
+
+Returns:
+    Length of the string
+
 
 **Returns:** `int`
 
@@ -1117,6 +1220,371 @@ Execute body with timeout, optionally running on_timeout if exceeded.
 
 ---
 
+## HTTP Operations
+
+### `http_get(url, headers=None, timeout=30.0)`
+
+Perform an HTTP GET request.
+
+Args:
+    url: The URL to request
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
+
+Returns:
+    Response dict with keys:
+    - status: HTTP status code (int)
+    - headers: Response headers (dict)
+    - text: Response body as text (str)
+    - json: Parsed JSON if content-type is application/json (dict or None)
+
+Example:
+    url: "https://api.example.com/data"
+    headers: {"Authorization": "Bearer token123"}
+
+
+**Parameters:**
+
+- `url` (str, required)
+- `headers` (Optional, optional, default: `None`)
+- `timeout` (float, optional, default: `30.0`)
+
+**Returns:** `Dict`
+
+---
+
+### `http_post(url, data=None, json=None, headers=None, timeout=30.0)`
+
+Perform an HTTP POST request.
+
+Args:
+    url: The URL to request
+    data: Form data to send (for form-encoded POST)
+    json: JSON data to send (for JSON POST, sets Content-Type automatically)
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
+
+Returns:
+    Response dict with keys:
+    - status: HTTP status code (int)
+    - headers: Response headers (dict)
+    - text: Response body as text (str)
+    - json: Parsed JSON if content-type is application/json (dict or None)
+
+Example:
+    url: "https://api.example.com/users"
+    json: {"name": "Alice", "email": "alice@example.com"}
+
+Note:
+    If both data and json are provided, json takes precedence.
+
+
+**Parameters:**
+
+- `url` (str, required)
+- `data` (Optional, optional, default: `None`)
+- `json` (Optional, optional, default: `None`)
+- `headers` (Optional, optional, default: `None`)
+- `timeout` (float, optional, default: `30.0`)
+
+**Returns:** `Dict`
+
+---
+
+### `http_request(method, url, data=None, json=None, headers=None, timeout=30.0)`
+
+Perform a generic HTTP request with any method.
+
+Args:
+    method: HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+    url: The URL to request
+    data: Form data to send
+    json: JSON data to send (sets Content-Type automatically)
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
+
+Returns:
+    Response dict with keys:
+    - status: HTTP status code (int)
+    - headers: Response headers (dict)
+    - text: Response body as text (str)
+    - json: Parsed JSON if content-type is application/json (dict or None)
+
+Example:
+    method: "PUT"
+    url: "https://api.example.com/users/123"
+    json: {"name": "Updated Name"}
+
+
+**Parameters:**
+
+- `method` (str, required)
+- `url` (str, required)
+- `data` (Optional, optional, default: `None`)
+- `json` (Optional, optional, default: `None`)
+- `headers` (Optional, optional, default: `None`)
+- `timeout` (float, optional, default: `30.0`)
+
+**Returns:** `Dict`
+
+---
+
+### `http_session_create(timeout=30.0, headers=None)`
+
+Create an HTTP session for reuse with control_with.
+
+Args:
+    timeout: Default request timeout in seconds
+    headers: Default headers for all requests
+
+Returns:
+    HTTPSession object (use with control_with)
+
+Example:
+    with_session:
+      opcode: control_with
+      inputs:
+        RESOURCE: { node: create_session }
+        VAR: { literal: "session" }
+        BODY: { branch: use_session }
+
+
+**Parameters:**
+
+- `timeout` (float, optional, default: `30.0`)
+- `headers` (Optional, optional, default: `None`)
+
+**Returns:** `HTTPSession`
+
+---
+
+### `http_session_get(session, url, headers=None)`
+
+Perform GET request using a session.
+
+Args:
+    session: HTTPSession from http_session_create
+    url: The URL to request
+    headers: Optional additional headers
+
+Returns:
+    Response dict (same as http_get)
+
+
+**Parameters:**
+
+- `session` (HTTPSession, required)
+- `url` (str, required)
+- `headers` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `http_session_post(session, url, data=None, json=None, headers=None)`
+
+Perform POST request using a session.
+
+Args:
+    session: HTTPSession from http_session_create
+    url: The URL to request
+    data: Form data to send
+    json: JSON data to send
+    headers: Optional additional headers
+
+Returns:
+    Response dict (same as http_post)
+
+
+**Parameters:**
+
+- `session` (HTTPSession, required)
+- `url` (str, required)
+- `data` (Optional, optional, default: `None`)
+- `json` (Optional, optional, default: `None`)
+- `headers` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `http_stream_chunks(url, chunk_size=8192, headers=None, timeout=30.0)`
+
+Stream chunks from an HTTP response.
+
+Yields raw byte chunks as they become available.
+
+Args:
+    url: The URL to request
+    chunk_size: Size of each chunk in bytes (default: 8192)
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
+
+Yields:
+    Byte chunks from the response
+
+
+**Parameters:**
+
+- `url` (str, required)
+- `chunk_size` (int, optional, default: `8192`)
+- `headers` (Optional, optional, default: `None`)
+- `timeout` (float, optional, default: `30.0`)
+
+**Returns:** `AsyncGenerator`
+
+---
+
+### `http_stream_lines(url, headers=None, timeout=30.0)`
+
+Stream lines from an HTTP response.
+
+Yields each line as it becomes available. Useful for streaming APIs
+like Server-Sent Events or newline-delimited JSON.
+
+Args:
+    url: The URL to request
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
+
+Yields:
+    Each line from the response (stripped of newlines)
+
+Example usage with control_async_foreach:
+    async_loop:
+      opcode: control_async_foreach
+      inputs:
+        VAR: { literal: "line" }
+        ITERABLE: { node: stream_lines }
+        BODY: { branch: process_line }
+
+
+**Parameters:**
+
+- `url` (str, required)
+- `headers` (Optional, optional, default: `None`)
+- `timeout` (float, optional, default: `30.0`)
+
+**Returns:** `AsyncGenerator`
+
+---
+
+## AI Operations (Pydantic AI)
+
+### `pydantic_ai_create_agent(model, instructions="", system_prompt="")`
+
+Create a pydantic_ai Agent.
+
+Args:
+    model: Model instance (from pydantic_ai_create_vertex_model)
+    instructions: Optional instructions for the agent
+    system_prompt: Optional static system prompt
+
+Returns:
+    Agent instance ready to use
+
+Example:
+    model: { node: vertex_model }
+    instructions: "You are a helpful assistant. Be concise."
+
+
+**Parameters:**
+
+- `model` (Any, required)
+- `instructions` (str, optional, default: `""`)
+- `system_prompt` (str, optional, default: `""`)
+
+**Returns:** `Any`
+
+---
+
+### `pydantic_ai_create_vertex_model(model_name, project=None, location=None)`
+
+Create a Google Vertex AI model instance.
+
+Args:
+    model_name: Name of the model (e.g., "gemini-1.5-flash", "gemini-1.5-pro")
+    project: Optional GCP project ID (uses default if not specified)
+    location: Optional region (e.g., "us-central1", "asia-east1")
+
+Returns:
+    GoogleModel instance configured for Vertex AI
+
+Example:
+    model_name: "gemini-1.5-flash"
+    location: "us-central1"
+
+Authentication:
+    Requires Google Cloud authentication via:
+    - gcloud auth application-default login
+    - Or GOOGLE_APPLICATION_CREDENTIALS environment variable
+
+
+**Parameters:**
+
+- `model_name` (str, required)
+- `project` (Optional, optional, default: `None`)
+- `location` (Optional, optional, default: `None`)
+
+**Returns:** `Any`
+
+---
+
+### `pydantic_ai_run(agent, prompt)`
+
+Run agent asynchronously with a prompt.
+
+Args:
+    agent: Agent instance (from pydantic_ai_create_agent)
+    prompt: User prompt/query to send to the agent
+
+Returns:
+    String output from the agent
+
+Example:
+    agent: { node: my_agent }
+    prompt: "Explain quantum computing in one sentence."
+
+
+**Parameters:**
+
+- `agent` (Any, required)
+- `prompt` (str, required)
+
+**Returns:** `str`
+
+---
+
+### `pydantic_ai_run_sync(agent, prompt)`
+
+Run agent with a prompt.
+
+Args:
+    agent: Agent instance (from pydantic_ai_create_agent)
+    prompt: User prompt/query to send to the agent
+
+Returns:
+    String output from the agent
+
+Example:
+    agent: { node: my_agent }
+    prompt: "What is 2+2?"
+
+Note:
+    Both pydantic_ai_run_sync and pydantic_ai_run work identically
+    in LexFlow (both are async). The _sync suffix is kept for
+    backward compatibility.
+
+
+**Parameters:**
+
+- `agent` (Any, required)
+- `prompt` (str, required)
+
+**Returns:** `str`
+
+---
+
 ## Chat Operations
 
 ### `chat_add_assistant(history, content)`
@@ -1630,6 +2098,272 @@ Example:
 
 ---
 
+## Pygame Operations
+
+### `pygame_create_color(r, g, b)`
+
+Create an RGB color list.
+
+Args:
+    r: Red value (0-255)
+    g: Green value (0-255)
+    b: Blue value (0-255)
+
+Returns:
+    List [r, g, b]
+
+
+**Parameters:**
+
+- `r` (int, required)
+- `g` (int, required)
+- `b` (int, required)
+
+**Returns:** `list`
+
+---
+
+### `pygame_create_window(width, height, title="LexFlow + Pygame")`
+
+Create a pygame window and return the display surface.
+
+Args:
+    width: Window width in pixels
+    height: Window height in pixels
+    title: Window title
+
+Returns:
+    pygame.Surface object representing the display
+
+
+**Parameters:**
+
+- `width` (int, required)
+- `height` (int, required)
+- `title` (str, optional, default: `"LexFlow + Pygame"`)
+
+**Returns:** `Any`
+
+---
+
+### `pygame_delay(milliseconds)`
+
+Async delay in milliseconds.
+
+Use this to control frame rate in your game loop.
+Example: pygame_delay(16) for ~60 FPS
+
+Args:
+    milliseconds: Delay duration in milliseconds
+
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_draw_circle(screen, x, y, radius, color)`
+
+Draw a filled circle on the screen.
+
+Args:
+    screen: The display surface
+    x: Center X position
+    y: Center Y position
+    radius: Circle radius
+    color: RGB color as [r, g, b]
+
+
+**Parameters:**
+
+- `screen` (Any, required)
+- `x` (int, required)
+- `y` (int, required)
+- `radius` (int, required)
+- `color` (list, required)
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_draw_rect(screen, x, y, width, height, color, filled=True)`
+
+Draw a rectangle on the screen.
+
+Args:
+    screen: The display surface
+    x: X position (left edge)
+    y: Y position (top edge)
+    width: Rectangle width
+    height: Rectangle height
+    color: RGB color as [r, g, b]
+    filled: If True, fill the rectangle; if False, draw outline only (default: True)
+
+
+**Parameters:**
+
+- `screen` (Any, required)
+- `x` (int, required)
+- `y` (int, required)
+- `width` (int, required)
+- `height` (int, required)
+- `color` (list, required)
+- `filled` (bool, optional, default: `True`)
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_draw_text(screen, text, x, y, font_size=48, color=None)`
+
+Draw text on the screen.
+
+Args:
+    screen: The display surface
+    text: Text to render
+    x: X position (left edge)
+    y: Y position (top edge)
+    font_size: Font size in pixels (default: 48)
+    color: RGB color as [r, g, b], defaults to white [255, 255, 255]
+
+
+**Parameters:**
+
+- `screen` (Any, required)
+- `text` (str, required)
+- `x` (int, required)
+- `y` (int, required)
+- `font_size` (int, optional, default: `48`)
+- `color` (list, optional, default: `None`)
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_fill_screen(screen, color)`
+
+Fill the entire screen with a color.
+
+Args:
+    screen: The display surface
+    color: RGB color as [r, g, b] where each value is 0-255
+
+
+**Parameters:**
+
+- `screen` (Any, required)
+- `color` (list, required)
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_get_key_pressed(key_name)`
+
+Check if a specific key is currently pressed.
+
+Args:
+    key_name: Key name (e.g., "up", "down", "left", "right", "space", "w", "a", "s", "d")
+
+Returns:
+    True if key is pressed, False otherwise
+
+
+**Returns:** `bool`
+
+---
+
+### `pygame_get_screen_height(screen)`
+
+Get the height of the screen.
+
+Args:
+    screen: The display surface
+
+Returns:
+    Height in pixels
+
+
+**Returns:** `int`
+
+---
+
+### `pygame_get_screen_width(screen)`
+
+Get the width of the screen.
+
+Args:
+    screen: The display surface
+
+Returns:
+    Width in pixels
+
+
+**Returns:** `int`
+
+---
+
+### `pygame_get_ticks()`
+
+Get the number of milliseconds since pygame.init() was called.
+
+Returns:
+    Milliseconds elapsed since pygame initialization
+
+
+**Returns:** `int`
+
+---
+
+### `pygame_init()`
+
+Initialize pygame engine.
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_process_events()`
+
+Process pygame events (keeps window responsive).
+
+Call this in your game loop to prevent window freezing.
+
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_quit()`
+
+Quit pygame and close all windows.
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_should_quit()`
+
+Check if user wants to quit (clicked X button).
+
+Returns:
+    True if quit event detected, False otherwise.
+
+Note:
+    Use this in control_while conditions for game loops.
+
+
+**Returns:** `bool`
+
+---
+
+### `pygame_update_display()`
+
+Update the display to show all drawn elements.
+
+**Returns:** `NoneType`
+
+---
+
 ## Task Operations
 
 ### `task_await(task, timeout=None)`
@@ -1802,6 +2536,20 @@ in a background task.
 
 ## Other Operations
 
+### `_get_workflow_manager()`
+
+Get the WorkflowManager instance for workflow execution.
+
+This is an internal privileged opcode used by ai_agent_with_tools
+to access workflows as tools. Not intended for direct use.
+
+Note: This is a privileged opcode - implementation is injected by Engine.
+
+
+**Returns:** `Any`
+
+---
+
 ### `channel_close(channel)`
 
 Close a channel.
@@ -1951,11 +2699,325 @@ Clear the current terminal line.
 
 ---
 
+### `embedding_create(text, project, location="us-central1", model="text-embedding-004")`
+
+Create an embedding vector for a single text.
+
+Args:
+    text: Text to embed
+    project: Google Cloud project ID
+    location: Google Cloud region (default: "us-central1")
+    model: Embedding model name (default: "text-embedding-004")
+
+Returns:
+    List of floats representing the embedding vector
+
+Example:
+    text: "What is machine learning?"
+    project: "my-gcp-project"
+    location: "us-central1"
+    model: "text-embedding-004"
+
+Note:
+    Requires Google Cloud authentication via:
+    - gcloud auth application-default login
+    - Or GOOGLE_APPLICATION_CREDENTIALS environment variable
+
+
+**Parameters:**
+
+- `text` (str, required)
+- `project` (str, required)
+- `location` (str, optional, default: `"us-central1"`)
+- `model` (str, optional, default: `"text-embedding-004"`)
+
+**Returns:** `List`
+
+---
+
+### `embedding_create_batch(texts, project, location="us-central1", model="text-embedding-004")`
+
+Create embedding vectors for multiple texts (more efficient).
+
+Args:
+    texts: List of texts to embed
+    project: Google Cloud project ID
+    location: Google Cloud region (default: "us-central1")
+    model: Embedding model name (default: "text-embedding-004")
+
+Returns:
+    List of embedding vectors (each is a list of floats)
+
+Example:
+    texts: ["First document", "Second document"]
+    project: "my-gcp-project"
+    location: "us-central1"
+
+Note:
+    More efficient than calling embedding_create multiple times.
+    Automatically batches into groups of 250 (Vertex AI limit).
+
+
+**Parameters:**
+
+- `texts` (List, required)
+- `project` (str, required)
+- `location` (str, optional, default: `"us-central1"`)
+- `model` (str, optional, default: `"text-embedding-004"`)
+
+**Returns:** `List`
+
+---
+
+### `html_get_attr(element, attr, default=None)`
+
+Get an attribute value from an HTML element.
+
+Args:
+    element: BeautifulSoup element
+    attr: Attribute name (e.g., "href", "class", "id", "src")
+    default: Value to return if attribute not found (default: None)
+
+Returns:
+    Attribute value as string, or default if not found
+
+Example:
+    element: { node: link_element }
+    attr: "href"
+    default: "#"
+
+Note:
+    For attributes that can have multiple values (like "class"),
+    returns them joined with spaces.
+
+
+**Parameters:**
+
+- `element` (Any, required)
+- `attr` (str, required)
+- `default` (Optional, optional, default: `None`)
+
+**Returns:** `Optional`
+
+---
+
+### `html_get_text(element, strip=True)`
+
+Get the text content from an HTML element.
+
+Args:
+    element: BeautifulSoup element
+    strip: Whether to strip leading/trailing whitespace (default: True)
+
+Returns:
+    Text content of the element
+
+Example:
+    element: { node: title_element }
+    strip: true
+
+
+**Parameters:**
+
+- `element` (Any, required)
+- `strip` (bool, optional, default: `True`)
+
+**Returns:** `str`
+
+---
+
+### `html_parse(html_text)`
+
+Parse an HTML string into a BeautifulSoup object.
+
+Args:
+    html_text: HTML content as a string
+
+Returns:
+    BeautifulSoup object that can be used with html_select* opcodes
+
+Example:
+    html_text: "<html><body><h1>Hello</h1></body></html>"
+
+
+**Returns:** `Any`
+
+---
+
+### `html_select(soup, selector)`
+
+Select elements matching a CSS selector.
+
+Args:
+    soup: BeautifulSoup object or element (from html_parse)
+    selector: CSS selector string
+
+Returns:
+    List of matching elements (may be empty)
+
+Example:
+    soup: { node: parsed_html }
+    selector: "div.item > a.link"
+
+
+**Parameters:**
+
+- `soup` (Any, required)
+- `selector` (str, required)
+
+**Returns:** `List`
+
+---
+
+### `html_select_one(soup, selector)`
+
+Select the first element matching a CSS selector.
+
+Args:
+    soup: BeautifulSoup object or element (from html_parse)
+    selector: CSS selector string
+
+Returns:
+    First matching element, or None if no match found
+
+Example:
+    soup: { node: parsed_html }
+    selector: "h1.title"
+
+
+**Parameters:**
+
+- `soup` (Any, required)
+- `selector` (str, required)
+
+**Returns:** `Optional`
+
+---
+
+### `introspect_context()`
+
+Get execution context including program, workflows, and opcodes.
+
+Returns a dictionary with:
+- program: Program metadata (globals, main workflow, externals)
+- workflows: Available workflow definitions
+- opcodes: List of registered opcode names
+
+Note: This is a privileged opcode - implementation is injected by Engine.
+
+
+**Returns:** `dict`
+
+---
+
+### `json_parse(text)`
+
+Parse a JSON string into a Python object.
+
+Args:
+    text: JSON string to parse
+
+Returns:
+    Parsed Python object (dict, list, str, int, float, bool, or None)
+
+Raises:
+    ValueError: If the string is not valid JSON
+
+Example:
+    text: '{"name": "Alice", "age": 30}'
+
+
+**Returns:** `Any`
+
+---
+
+### `json_stringify(obj, indent=None)`
+
+Convert a Python object to a JSON string.
+
+Args:
+    obj: Python object to serialize (dict, list, str, int, float, bool, None)
+    indent: Number of spaces for indentation (None for compact output)
+
+Returns:
+    JSON string representation
+
+Raises:
+    TypeError: If the object is not JSON serializable
+
+Example:
+    obj: {"name": "Alice", "items": [1, 2, 3]}
+    indent: 2
+
+
+**Parameters:**
+
+- `obj` (Any, required)
+- `indent` (Optional, optional, default: `None`)
+
+**Returns:** `str`
+
+---
+
 ### `noop()`
 
 No operation.
 
 **Returns:** `NoneType`
+
+---
+
+### `pdf_extract_pages(file_path)`
+
+Extract text from a PDF file page by page.
+
+Args:
+    file_path: Path to the PDF file
+
+Returns:
+    List of strings, one per page
+
+Example:
+    file_path: "/path/to/document.pdf"
+
+
+**Returns:** `List`
+
+---
+
+### `pdf_extract_text(file_path)`
+
+Extract all text from a PDF file.
+
+Args:
+    file_path: Path to the PDF file
+
+Returns:
+    Extracted text from all pages concatenated
+
+Example:
+    file_path: "/path/to/document.pdf"
+
+
+**Returns:** `str`
+
+---
+
+### `pdf_page_count(file_path)`
+
+Get the number of pages in a PDF file.
+
+Args:
+    file_path: Path to the PDF file
+
+Returns:
+    Number of pages in the PDF
+
+Example:
+    file_path: "/path/to/document.pdf"
+
+
+**Returns:** `int`
 
 ---
 
@@ -2014,6 +3076,232 @@ Example:
 - `width` (int, optional, default: `30`)
 
 **Returns:** `NoneType`
+
+---
+
+### `qdrant_collection_exists(client, name)`
+
+Check if a Qdrant collection exists.
+
+Args:
+    client: QdrantClient instance (from qdrant_connect)
+    name: Collection name to check
+
+Returns:
+    True if collection exists, False otherwise
+
+Example:
+    client: { node: qdrant_client }
+    name: "my_documents"
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `name` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `qdrant_connect(url="http://localhost:6333")`
+
+Create a Qdrant client connection.
+
+Args:
+    url: Qdrant server URL (default: "http://localhost:6333")
+
+Returns:
+    QdrantClient instance
+
+Example:
+    url: "http://localhost:6333"
+
+
+**Returns:** `Any`
+
+---
+
+### `qdrant_create_collection(client, name, vector_size=768)`
+
+Create a Qdrant collection if it doesn't exist.
+
+Args:
+    client: QdrantClient instance (from qdrant_connect)
+    name: Collection name
+    vector_size: Dimension of embedding vectors (default: 768 for text-embedding-004)
+
+Returns:
+    True if collection was created, False if it already existed
+
+Example:
+    client: { node: qdrant_client }
+    name: "my_documents"
+    vector_size: 768
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `name` (str, required)
+- `vector_size` (int, optional, default: `768`)
+
+**Returns:** `bool`
+
+---
+
+### `qdrant_delete(client, collection, ids)`
+
+Delete points from a Qdrant collection by IDs.
+
+Args:
+    client: QdrantClient instance (from qdrant_connect)
+    collection: Collection name
+    ids: List of point IDs to delete
+
+Returns:
+    True if deletion was successful
+
+Example:
+    client: { node: qdrant_client }
+    collection: "my_documents"
+    ids: [1, 2, 3]
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `collection` (str, required)
+- `ids` (List, required)
+
+**Returns:** `bool`
+
+---
+
+### `qdrant_delete_collection(client, name)`
+
+Delete a Qdrant collection.
+
+Args:
+    client: QdrantClient instance (from qdrant_connect)
+    name: Collection name to delete
+
+Returns:
+    True if deletion was successful
+
+Example:
+    client: { node: qdrant_client }
+    name: "my_documents"
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `name` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `qdrant_search(client, collection, query_vector, limit=5)`
+
+Search for similar vectors in a Qdrant collection.
+
+Args:
+    client: QdrantClient instance (from qdrant_connect)
+    collection: Collection name
+    query_vector: Embedding vector to search for
+    limit: Maximum number of results to return (default: 5)
+
+Returns:
+    List of dicts with keys: id, score, payload
+
+Example:
+    client: { node: qdrant_client }
+    collection: "my_documents"
+    query_vector: [0.1, 0.2, ...]
+    limit: 5
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `collection` (str, required)
+- `query_vector` (List, required)
+- `limit` (int, optional, default: `5`)
+
+**Returns:** `List`
+
+---
+
+### `qdrant_upsert(client, collection, id, vector, payload=None)`
+
+Insert or update a single point in a Qdrant collection.
+
+Args:
+    client: QdrantClient instance (from qdrant_connect)
+    collection: Collection name
+    id: Unique identifier for the point (integer)
+    vector: Embedding vector (list of floats)
+    payload: Optional metadata dict (e.g., {"text": "...", "source": "file.pdf"})
+
+Returns:
+    True if upsert was successful
+
+Example:
+    client: { node: qdrant_client }
+    collection: "my_documents"
+    id: 1
+    vector: [0.1, 0.2, ...]
+    payload: {"text": "Document content", "source": "doc.pdf", "page": 1}
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `collection` (str, required)
+- `id` (int, required)
+- `vector` (List, required)
+- `payload` (Optional, optional, default: `None`)
+
+**Returns:** `bool`
+
+---
+
+### `qdrant_upsert_batch(client, collection, ids, vectors, payloads=None)`
+
+Insert or update multiple points in a Qdrant collection.
+
+Args:
+    client: QdrantClient instance (from qdrant_connect)
+    collection: Collection name
+    ids: List of unique identifiers (integers)
+    vectors: List of embedding vectors
+    payloads: Optional list of metadata dicts (same length as ids)
+
+Returns:
+    True if upsert was successful
+
+Example:
+    client: { node: qdrant_client }
+    collection: "my_documents"
+    ids: [1, 2, 3]
+    vectors: [[0.1, 0.2, ...], [0.3, 0.4, ...], [0.5, 0.6, ...]]
+    payloads: [{"text": "Doc 1"}, {"text": "Doc 2"}, {"text": "Doc 3"}]
+
+Note:
+    More efficient than calling qdrant_upsert multiple times.
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `collection` (str, required)
+- `ids` (List, required)
+- `vectors` (List, required)
+- `payloads` (Optional, optional, default: `None`)
+
+**Returns:** `bool`
 
 ---
 
@@ -2274,4 +3562,4 @@ Example:
 
 ## Summary
 
-**Total opcodes:** 149
+**Total opcodes:** 204
