@@ -1,18 +1,51 @@
 {
-  "name": "frontend",
-  "private": true,
-  "version": "0.0.0",
+  "name": "@lexflow/editor",
+  "version": "0.1.0",
+  "description": "Embeddable visual workflow editor for LexFlow",
   "type": "module",
+  "main": "./dist/lexflow-editor.es.js",
+  "module": "./dist/lexflow-editor.es.js",
+  "types": "./dist/types/lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/lib/index.d.ts",
+      "import": "./dist/lexflow-editor.es.js",
+      "require": "./dist/lexflow-editor.umd.js"
+    },
+    "./style.css": "./dist/lexflow-editor.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
   "scripts": {
     "copy-grammar": "cp ../../lexflow-core/src/lexflow/grammar.json src/",
     "predev": "npm run copy-grammar",
     "dev": "vite",
     "prebuild": "npm run copy-grammar",
     "build": "tsc -b && vite build",
+    "build:lib": "BUILD_LIB=true vite build && tsc --project tsconfig.lib.json",
+    "build:umd": "BUILD_LIB=true BUILD_UMD=true vite build",
+    "build:all": "npm run build:lib && npm run build:umd",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build:all"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -42,5 +75,19 @@
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
     "vitest": "^4.0.18"
-  }
+  },
+  "keywords": [
+    "lexflow",
+    "workflow",
+    "editor",
+    "visual-programming",
+    "react",
+    "embeddable"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/inspira/lex-flow.git",
+    "directory": "lexflow-web/frontend"
+  },
+  "license": "MIT"
 }

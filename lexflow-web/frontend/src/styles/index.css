@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @source "../components/**/*.ts";
 
+/* Ensure spacing variable is available globally */
+:root {
+  --spacing: 0.25rem;
+}
+
 /* Root layout with edge padding */
 #root {
   height: 100vh;

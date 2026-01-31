@@ -2,7 +2,7 @@ import Editor, { type Monaco } from "@monaco-editor/react"
 import type { editor } from "monaco-editor"
 import { useWorkflowStore } from "@/store"
 import { useTheme } from "@/lib/theme"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, lazy, Suspense } from "react"
 import { cn } from "@/lib/cn"
 import {
   editorContainerVariants,
@@ -13,9 +13,42 @@ import {
 } from "./styles"
 import type { CodeEditorProps } from "./types"
 
-export function CodeEditor({ className }: CodeEditorProps) {
+// Lazy load LiteEditor for code splitting
+const LiteEditor = lazy(() =>
+  import("./LiteEditor").then((m) => ({ default: m.LiteEditor }))
+)
+
+// Loading fallback
+function EditorLoading() {
+  return (
+    <div className={cn(editorContainerVariants())}>
+      <div className={editorHeaderVariants()}>
+        <span className={editorTitleVariants()}>Editor</span>
+      </div>
+      <div className={cn(editorWrapperVariants(), "flex items-center justify-center")}>
+        <span className="text-text-muted text-sm">Loading editor...</span>
+      </div>
+    </div>
+  )
+}
+
+export function CodeEditor({ className, lite = false }: CodeEditorProps) {
   const { source, setSource, isParsing } = useWorkflowStore()
   const { theme } = useTheme()
+
+  // Use lite editor if requested
+  if (lite) {
+    return (
+      <Suspense fallback={<EditorLoading />}>
+        <LiteEditor
+          className={className}
+          value={source}
+          onChange={setSource}
+          isParsing={isParsing}
+        />
+      </Suspense>
+    )
+  }
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<Monaco | null>(null)
 
