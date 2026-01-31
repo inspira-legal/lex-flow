@@ -1,10 +1,13 @@
 # Interactive Web Demo
 # Run this with the web frontend to see interactive web opcodes in action
+#
+# Note: web_send and web_recv channels are automatically injected by the
+# WebSocket handler when running in the web frontend.
 
 workflows:
   - name: main
     interface:
-      inputs: []
+      inputs: ["web_send", "web_recv"]
       outputs: []
     variables:
       user_name: ""
@@ -19,6 +22,8 @@ workflows:
         opcode: web_markdown
         next: save_name
         inputs:
+          web_send:
+            variable: web_send
           content:
             literal: "# Welcome to LexFlow!\n\nThis demo shows interactive web opcodes."
 
@@ -27,6 +32,10 @@ workflows:
         opcode: web_input
         isReporter: true
         inputs:
+          web_send:
+            variable: web_send
+          web_recv:
+            variable: web_recv
           prompt:
             literal: "What is your name?"
 
@@ -62,6 +71,8 @@ workflows:
         opcode: web_alert
         next: save_color
         inputs:
+          web_send:
+            variable: web_send
           message:
             node: greeting_msg
           variant:
@@ -72,6 +83,10 @@ workflows:
         opcode: web_select
         isReporter: true
         inputs:
+          web_send:
+            variable: web_send
+          web_recv:
+            variable: web_recv
           options:
             literal: ["Red", "Green", "Blue", "Purple"]
           prompt:
@@ -109,6 +124,8 @@ workflows:
         opcode: web_markdown
         next: check_confirm
         inputs:
+          web_send:
+            variable: web_send
           content:
             node: color_msg
 
@@ -117,6 +134,10 @@ workflows:
         opcode: web_confirm
         isReporter: true
         inputs:
+          web_send:
+            variable: web_send
+          web_recv:
+            variable: web_recv
           message:
             literal: "Would you like to see a progress demo?"
 
@@ -133,6 +154,8 @@ workflows:
         opcode: web_progress
         next: progress_50
         inputs:
+          web_send:
+            variable: web_send
           value:
             literal: 25
           max:
@@ -144,6 +167,8 @@ workflows:
         opcode: web_progress
         next: progress_75
         inputs:
+          web_send:
+            variable: web_send
           value:
             literal: 50
           max:
@@ -155,6 +180,8 @@ workflows:
         opcode: web_progress
         next: progress_100
         inputs:
+          web_send:
+            variable: web_send
           value:
             literal: 75
           max:
@@ -166,6 +193,8 @@ workflows:
         opcode: web_progress
         next: show_table
         inputs:
+          web_send:
+            variable: web_send
           value:
             literal: 100
           max:
@@ -177,6 +206,8 @@ workflows:
         opcode: web_table
         next: null
         inputs:
+          web_send:
+            variable: web_send
           data:
             literal:
               - name: Alice
@@ -190,6 +221,8 @@ workflows:
         opcode: web_alert
         next: null
         inputs:
+          web_send:
+            variable: web_send
           message:
             literal: "Demo complete! Thanks for trying LexFlow."
           variant:

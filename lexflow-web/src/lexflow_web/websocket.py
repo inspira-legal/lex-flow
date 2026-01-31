@@ -8,9 +8,10 @@ import yaml
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from lexflow import Engine, Parser
+from lexflow.channel import Channel
 
 # Import web opcodes to register them with the default registry
-from . import opcodes as web_opcodes
+from . import opcodes as web_opcodes  # noqa: F401
 
 router = APIRouter()
 
@@ -40,46 +41,6 @@ class StreamingWebSocketOutput:
         if self.buffer:
             self.send_queue.put_nowait({"type": "output", "line": self.buffer})
             self.buffer = ""
-
-
-class WebContext:
-    """Context manager for web opcodes providing send/receive via WebSocket."""
-
-    def __init__(self, websocket: WebSocket, send_queue: asyncio.Queue):
-        self.websocket = websocket
-        self.send_queue = send_queue
-        self.response_queue: asyncio.Queue[dict] = asyncio.Queue()
-        self._send_token = None
-        self._receive_token = None
-
-    async def send(self, message: dict) -> None:
-        """Send a message to the frontend via the send queue."""
-        await self.send_queue.put(message)
-
-    async def receive(self) -> dict:
-        """Wait for a response from the frontend."""
-        return await self.response_queue.get()
-
-    def route_message(self, message: dict) -> bool:
-        """Route incoming message. Returns True if it was a response message."""
-        msg_type = message.get("type", "")
-        if msg_type.endswith("_response"):
-            self.response_queue.put_nowait(message)
-            return True
-        return False
-
-    def __enter__(self):
-        """Set context variables for web opcodes."""
-        self._send_token = web_opcodes.web_send.set(self.send)
-        self._receive_token = web_opcodes.web_receive.set(self.receive)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Reset context variables."""
-        if self._send_token:
-            web_opcodes.web_send.reset(self._send_token)
-        if self._receive_token:
-            web_opcodes.web_receive.reset(self._receive_token)
 
 
 def _parse_workflow_content(content: str) -> dict:
@@ -118,17 +79,36 @@ async def websocket_execute(websocket: WebSocket):
                 parser = Parser()
                 program = parser.parse_dict(workflow_data)
 
-                # Queue for outgoing messages
+                # Queue for outgoing messages (used by StreamingWebSocketOutput)
                 send_queue: asyncio.Queue[dict] = asyncio.Queue()
 
-                # Create output handler and web context
+                # Create channels for web opcodes (functionally pure communication)
+                web_send_channel = Channel(maxsize=100)
+                web_recv_channel = Channel(maxsize=100)
+
+                # Create output handler
                 output = StreamingWebSocketOutput(websocket, send_queue)
                 engine = Engine(program, output=output, metrics=include_metrics)
 
-                with WebContext(websocket, send_queue) as web_ctx:
-                    result = await _execute_with_messaging(
-                        engine, inputs, websocket, web_ctx, output, send_queue
-                    )
+                # Only inject web channels if workflow declares them as inputs
+                main_params = set(program.main.params)
+                all_inputs = inputs.copy() if inputs else {}
+                if "web_send" in main_params:
+                    all_inputs["web_send"] = web_send_channel
+                if "web_recv" in main_params:
+                    all_inputs["web_recv"] = web_recv_channel
+
+                # Only pass channels to messaging handler if workflow uses them
+                uses_web_channels = "web_send" in main_params
+                result = await _execute_with_messaging(
+                    engine,
+                    all_inputs if all_inputs else None,
+                    websocket,
+                    web_send_channel if uses_web_channels else None,
+                    web_recv_channel if uses_web_channels else None,
+                    output,
+                    send_queue,
+                )
 
                 # Send completion message
                 response: dict[str, Any] = {
@@ -160,14 +140,27 @@ async def _execute_with_messaging(
     engine: Engine,
     inputs: dict | None,
     websocket: WebSocket,
-    web_ctx: WebContext,
+    web_send_channel: Channel | None,
+    web_recv_channel: Channel | None,
     output: StreamingWebSocketOutput,
     send_queue: asyncio.Queue,
 ) -> Any:
-    """Execute workflow with bidirectional WebSocket messaging."""
+    """Execute workflow with bidirectional WebSocket messaging via channels."""
 
-    async def sender():
-        """Send queued messages to WebSocket."""
+    async def channel_to_websocket():
+        """Forward messages from web_send channel to WebSocket."""
+        while True:
+            try:
+                msg = await web_send_channel.receive()
+                await websocket.send_json(msg)
+            except RuntimeError:
+                # Channel closed
+                break
+            except Exception:
+                break
+
+    async def output_queue_sender():
+        """Send queued output messages to WebSocket."""
         while True:
             msg = await send_queue.get()
             if msg is None:  # Shutdown signal
@@ -177,41 +170,52 @@ async def _execute_with_messaging(
             except Exception:
                 break
 
-    async def receiver():
-        """Receive messages from WebSocket and route responses."""
+    async def websocket_to_channel():
+        """Forward response messages from WebSocket to web_recv channel."""
         while True:
             try:
                 msg = await websocket.receive_json()
-                web_ctx.route_message(msg)
+                if msg.get("type", "").endswith("_response"):
+                    await web_recv_channel.send(msg)
             except WebSocketDisconnect:
                 break
             except Exception:
                 break
 
-    # Start sender and receiver tasks
-    sender_task = asyncio.create_task(sender())
-    receiver_task = asyncio.create_task(receiver())
+    # Start bridge tasks (only start channel tasks if channels are provided)
+    channel_sender_task = None
+    receiver_task = None
+    if web_send_channel is not None:
+        channel_sender_task = asyncio.create_task(channel_to_websocket())
+    if web_recv_channel is not None:
+        receiver_task = asyncio.create_task(websocket_to_channel())
+    output_sender_task = asyncio.create_task(output_queue_sender())
 
     try:
         # Execute workflow
-        result = await engine.run(inputs=inputs if inputs else None)
+        result = await engine.run(inputs=inputs)
 
         # Flush any remaining output
         output.flush()
 
-        # Signal sender to stop and wait for it to drain the queue
+        # Signal output sender to stop
         await send_queue.put(None)
-        await sender_task
+        await output_sender_task
+
+        # Close web_send channel to stop channel_sender_task
+        if web_send_channel is not None:
+            web_send_channel.close()
+            await channel_sender_task
 
         return result
     finally:
-        # Cancel receiver
-        receiver_task.cancel()
-
-        try:
-            await receiver_task
-        except asyncio.CancelledError:
-            pass
+        # Cancel receiver if it was started
+        if receiver_task is not None:
+            receiver_task.cancel()
+            try:
+                await receiver_task
+            except asyncio.CancelledError:
+                pass
 
 
 def _serialize_result(result: Any) -> Any:

@@ -1,33 +1,11 @@
-"""Web-specific opcodes for interactive browser workflows."""
+"""Web-specific opcodes for interactive browser workflows.
 
-from contextvars import ContextVar
-from typing import Callable, Awaitable
+These opcodes use Channel for communication, making them functionally pure.
+Channels are passed as workflow inputs by the WebSocket handler.
+"""
 
 from lexflow import opcode
-
-# Type aliases
-WebSender = Callable[[dict], Awaitable[None]]
-WebReceiver = Callable[[], Awaitable[dict]]
-
-# Context variables set by websocket handler before engine.run()
-web_send: ContextVar[WebSender | None] = ContextVar("web_send", default=None)
-web_receive: ContextVar[WebReceiver | None] = ContextVar("web_receive", default=None)
-
-
-def _get_sender() -> WebSender:
-    """Get the web sender, raising if not in web context."""
-    sender = web_send.get()
-    if sender is None:
-        raise RuntimeError("web_* opcodes require a web context (WebSocket connection)")
-    return sender
-
-
-def _get_receiver() -> WebReceiver:
-    """Get the web receiver, raising if not in web context."""
-    receiver = web_receive.get()
-    if receiver is None:
-        raise RuntimeError("web_* opcodes require a web context (WebSocket connection)")
-    return receiver
+from lexflow.channel import Channel
 
 
 # =============================================================================
@@ -36,52 +14,39 @@ def _get_receiver() -> WebReceiver:
 
 
 @opcode()
-async def web_input(prompt: str = "") -> str:
+async def web_input(web_send: Channel, web_recv: Channel, prompt: str = "") -> str:
     """Display an input field and wait for user text input."""
-    sender = _get_sender()
-    receiver = _get_receiver()
-
-    await sender({"type": "input_request", "prompt": prompt})
-    response = await receiver()
-
+    await web_send.send({"type": "input_request", "prompt": prompt})
+    response = await web_recv.receive()
     return str(response.get("value", ""))
 
 
 @opcode()
-async def web_select(options: list, prompt: str = "") -> str:
+async def web_select(
+    web_send: Channel, web_recv: Channel, options: list, prompt: str = ""
+) -> str:
     """Display a dropdown selection and wait for user choice."""
-    sender = _get_sender()
-    receiver = _get_receiver()
-
-    # Ensure options are strings
     str_options = [str(opt) for opt in options]
-
-    await sender({"type": "select_request", "prompt": prompt, "options": str_options})
-    response = await receiver()
-
+    await web_send.send(
+        {"type": "select_request", "prompt": prompt, "options": str_options}
+    )
+    response = await web_recv.receive()
     return str(response.get("value", ""))
 
 
 @opcode()
-async def web_confirm(message: str) -> bool:
+async def web_confirm(web_send: Channel, web_recv: Channel, message: str) -> bool:
     """Display a confirmation dialog and wait for yes/no response."""
-    sender = _get_sender()
-    receiver = _get_receiver()
-
-    await sender({"type": "confirm_request", "message": message})
-    response = await receiver()
-
+    await web_send.send({"type": "confirm_request", "message": message})
+    response = await web_recv.receive()
     return bool(response.get("value", False))
 
 
 @opcode()
-async def web_button(label: str) -> None:
+async def web_button(web_send: Channel, web_recv: Channel, label: str) -> None:
     """Display a button and wait for it to be clicked."""
-    sender = _get_sender()
-    receiver = _get_receiver()
-
-    await sender({"type": "button_request", "label": label})
-    await receiver()  # Just wait for click, no return value needed
+    await web_send.send({"type": "button_request", "label": label})
+    await web_recv.receive()
 
 
 # =============================================================================
@@ -90,53 +55,49 @@ async def web_button(label: str) -> None:
 
 
 @opcode()
-async def web_render(html: str) -> None:
+async def web_render(web_send: Channel, html: str) -> None:
     """Render raw HTML content in the execution panel."""
-    sender = _get_sender()
-    await sender({"type": "render_html", "html": html})
+    await web_send.send({"type": "render_html", "html": html})
 
 
 @opcode()
-async def web_markdown(content: str) -> None:
+async def web_markdown(web_send: Channel, content: str) -> None:
     """Render markdown content in the execution panel."""
-    sender = _get_sender()
-    await sender({"type": "render_markdown", "content": content})
+    await web_send.send({"type": "render_markdown", "content": content})
 
 
 @opcode()
-async def web_alert(message: str, variant: str = "info") -> None:
+async def web_alert(web_send: Channel, message: str, variant: str = "info") -> None:
     """Display an alert message. Variant: info, success, warning, error."""
-    sender = _get_sender()
-    await sender({"type": "alert", "message": message, "variant": variant})
+    await web_send.send({"type": "alert", "message": message, "variant": variant})
 
 
 @opcode()
-async def web_progress(value: int, max: int = 100, label: str = "") -> None:
+async def web_progress(
+    web_send: Channel, value: int, max: int = 100, label: str = ""
+) -> None:
     """Update the progress bar in the execution panel."""
-    sender = _get_sender()
-    await sender({"type": "progress", "value": value, "max": max, "label": label})
+    await web_send.send(
+        {"type": "progress", "value": value, "max": max, "label": label}
+    )
 
 
 @opcode()
-async def web_table(data: list) -> None:
+async def web_table(web_send: Channel, data: list) -> None:
     """Render a table from a list of dictionaries."""
-    sender = _get_sender()
-    # Ensure data is serializable
     serialized = [
         dict(row) if isinstance(row, dict) else {"value": row} for row in data
     ]
-    await sender({"type": "render_table", "data": serialized})
+    await web_send.send({"type": "render_table", "data": serialized})
 
 
 @opcode()
-async def web_image(src: str, alt: str = "") -> None:
+async def web_image(web_send: Channel, src: str, alt: str = "") -> None:
     """Display an image by URL or base64 data URI."""
-    sender = _get_sender()
-    await sender({"type": "render_image", "src": src, "alt": alt})
+    await web_send.send({"type": "render_image", "src": src, "alt": alt})
 
 
 @opcode()
-async def web_clear() -> None:
+async def web_clear(web_send: Channel) -> None:
     """Clear all rendered content from the execution panel."""
-    sender = _get_sender()
-    await sender({"type": "clear_content"})
+    await web_send.send({"type": "clear_content"})
