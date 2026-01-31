@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v1.4.0 (2026-01-31)
+
+### Chores
+
+- **web**: Build frontend library [skip ci]
+  ([`0096067`](https://github.com/inspira-legal/lex-flow/commit/0096067f1cce018081d9b29999fd9f8bfb9240ab))
+
+### Documentation
+
+- Add README for monorepo and lexflow-web
+  ([`a8a5e79`](https://github.com/inspira-legal/lex-flow/commit/a8a5e793dad6ee73f712f49743338af51eaffe32))
+
+- Use uv instead of pip in README examples
+  ([`488a5d6`](https://github.com/inspira-legal/lex-flow/commit/488a5d65dd735d411292da1b03a03b78fa3b734d))
+
+### Features
+
+- **web**: Add workflow create/delete and fix start node wiring
+  ([`521aec5`](https://github.com/inspira-legal/lex-flow/commit/521aec53feb0740f30b8a268459bd4fccd6439d8))
+
+
 ## v1.3.1 (2026-01-31)
 
 ### Bug Fixes
