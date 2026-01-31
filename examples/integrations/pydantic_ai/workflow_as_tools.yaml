@@ -99,7 +99,7 @@ workflows:
 
       print_tools_info:
         opcode: io_print
-        next: run_with_try
+        next: print_user_prompt_header
         inputs:
           STRING:
             literal: |
@@ -108,6 +108,41 @@ workflows:
                  - operator_multiply (opcode): Multiply two numbers
                  - calcular_desconto (workflow): Calculate discount on a price
                  - verificar_orcamento (workflow): Check if price fits budget
+
+      print_user_prompt_header:
+        opcode: io_print
+        next: print_user_prompt
+        inputs:
+          STRING:
+            literal: "\n4. User prompt being sent to agent:\n   ---\n"
+
+      print_user_prompt:
+        opcode: io_print
+        next: print_user_prompt_footer
+        inputs:
+          STRING:
+            literal: |
+              I want to buy a laptop that costs $1200.
+              There's a 15% discount available.
+              My budget is $1100.
+
+              Can you:
+              1. Calculate the final price after the discount
+              2. Tell me if it fits my budget
+
+      print_user_prompt_footer:
+        opcode: io_print
+        next: print_executing
+        inputs:
+          STRING:
+            literal: "   ---\n"
+
+      print_executing:
+        opcode: io_print
+        next: run_with_try
+        inputs:
+          STRING:
+            literal: "\n5. Executing agent (tool calls will be shown below)...\n"
 
       # === Execute Agent with Error Handling ===
 
@@ -247,8 +282,52 @@ workflows:
     nodes:
       start:
         opcode: workflow_start
-        next: calc_multiplicador
+        next: print_start
         inputs: {}
+
+      # Print workflow invocation - build message with operator_add
+      concat_msg_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "\n   [TOOL] calcular_desconto called (price="
+          OPERAND2:
+            variable: preco_original
+
+      concat_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: concat_msg_1
+          OPERAND2:
+            literal: ", discount="
+
+      concat_msg_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: concat_msg_2
+          OPERAND2:
+            variable: percentual_desconto
+
+      concat_msg_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: concat_msg_3
+          OPERAND2:
+            literal: "%)\n"
+
+      print_start:
+        opcode: io_print
+        next: calc_multiplicador
+        inputs:
+          STRING:
+            node: concat_msg_4
 
       # Calculate multiplier: (100 - discount) / 100
       # e.g., 15% discount = 0.85 multiplier
@@ -293,12 +372,38 @@ workflows:
 
       calc_preco_final:
         opcode: data_set_variable_to
-        next: return_result
+        next: print_result
         inputs:
           VARIABLE:
             literal: "preco_final"
           VALUE:
             node: multiply_price
+
+      # Print result before returning - build message with operator_add
+      concat_result_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "   [TOOL] calcular_desconto returning: $"
+          OPERAND2:
+            variable: preco_final
+
+      concat_result_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: concat_result_1
+          OPERAND2:
+            literal: "\n"
+
+      print_result:
+        opcode: io_print
+        next: return_result
+        inputs:
+          STRING:
+            node: concat_result_2
 
       return_result:
         opcode: workflow_return
@@ -318,16 +423,61 @@ workflows:
     variables:
       preco: 0
       orcamento: 0
+      resultado: false
     nodes:
       start:
         opcode: workflow_start
-        next: return_result
+        next: print_start
         inputs: {}
+
+      # Print workflow invocation - build message with operator_add
+      concat_params_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "\n   [TOOL] verificar_orcamento called (price=$"
+          OPERAND2:
+            variable: preco
+
+      concat_params_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: concat_params_1
+          OPERAND2:
+            literal: ", budget=$"
+
+      concat_params_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: concat_params_2
+          OPERAND2:
+            variable: orcamento
+
+      concat_params_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: concat_params_3
+          OPERAND2:
+            literal: ")\n"
+
+      print_start:
+        opcode: io_print
+        next: store_resultado
+        inputs:
+          STRING:
+            node: concat_params_4
 
       # Check if price <= budget
 
       check_budget:
-        opcode: operator_less_than_or_equal
+        opcode: operator_less_than_or_equals
         isReporter: true
         inputs:
           OPERAND1:
@@ -335,9 +485,44 @@ workflows:
           OPERAND2:
             variable: orcamento
 
+      store_resultado:
+        opcode: data_set_variable_to
+        next: print_result
+        inputs:
+          VARIABLE:
+            literal: "resultado"
+          VALUE:
+            node: check_budget
+
+      # Print result before returning - build message with operator_add
+      concat_result_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "   [TOOL] verificar_orcamento returning: "
+          OPERAND2:
+            variable: resultado
+
+      concat_result_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: concat_result_1
+          OPERAND2:
+            literal: "\n"
+
+      print_result:
+        opcode: io_print
+        next: return_result
+        inputs:
+          STRING:
+            node: concat_result_2
+
       return_result:
         opcode: workflow_return
         next: null
         inputs:
           VALUE:
-            node: check_budget
+            variable: resultado
