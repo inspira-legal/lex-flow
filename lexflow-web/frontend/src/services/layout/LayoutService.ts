@@ -18,6 +18,23 @@ const V_GAP = LAYOUT_GAPS.VERTICAL;
 const WORKFLOW_GAP = LAYOUT_GAPS.WORKFLOW;
 const START_NODE_GAP = 40;
 
+// Calculate dynamic start node height based on content (mirrors StartNode.tsx logic)
+function calculateStartNodeHeight(
+  workflowInterface: WorkflowInterface,
+  variables: Record<string, unknown>,
+): number {
+  const baseHeight = 50; // Header + padding
+  const inputs = workflowInterface.inputs || [];
+  const outputs = workflowInterface.outputs || [];
+  const interfaceHeight = inputs.length > 0 || outputs.length > 0 ? 18 : 0;
+
+  const varEntries = Object.entries(variables).slice(0, 3);
+  const hasMoreVars = Object.keys(variables).length > 3;
+  const variablesHeight = varEntries.length * 14 + (hasMoreVars ? 12 : 0);
+
+  return Math.max(START_NODE_HEIGHT, baseHeight + interfaceHeight + variablesHeight + 10);
+}
+
 // Layout types
 export interface LayoutNode {
   node: TreeNode;
@@ -605,8 +622,9 @@ export function layoutSingleWorkflow(
     return maxX;
   }
 
-  // Include start node in bounds
-  updateBounds(startNodeX, startNodeY, START_NODE_WIDTH, START_NODE_HEIGHT);
+  // Include start node in bounds (use dynamic height based on content)
+  const startNodeHeight = calculateStartNodeHeight(workflow.interface, workflow.variables);
+  updateBounds(startNodeX, startNodeY, START_NODE_WIDTH, startNodeHeight);
 
   // Layout all nodes in the workflow
   let x = realNodeOffsetX;
@@ -649,7 +667,7 @@ export function layoutSingleWorkflow(
     minX = Math.min(minX, startNodeX);
     minY = Math.min(minY, startNodeY);
     maxX = Math.max(maxX, startNodeX + START_NODE_WIDTH + 20);
-    maxY = Math.max(maxY, startNodeY + START_NODE_HEIGHT);
+    maxY = Math.max(maxY, startNodeY + startNodeHeight);
   }
 
   // Layout orphan nodes

@@ -199,6 +199,16 @@ interface UiState {
     onCancel?: () => void;
   }) => void;
   hideConfirmDialog: () => void;
+
+  // Canvas context menu (for background/workflow right-click)
+  canvasContextMenu: { x: number; y: number; workflowName?: string } | null;
+  showCanvasContextMenu: (x: number, y: number, workflowName?: string) => void;
+  hideCanvasContextMenu: () => void;
+
+  // Create workflow modal
+  createWorkflowModal: { isOpen: boolean } | null;
+  showCreateWorkflowModal: () => void;
+  hideCreateWorkflowModal: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -365,4 +375,14 @@ export const useUiStore = create<UiState>((set) => ({
       },
     }),
   hideConfirmDialog: () => set({ confirmDialog: null }),
+
+  // Canvas context menu
+  canvasContextMenu: null,
+  showCanvasContextMenu: (x, y, workflowName) => set({ canvasContextMenu: { x, y, workflowName } }),
+  hideCanvasContextMenu: () => set({ canvasContextMenu: null }),
+
+  // Create workflow modal
+  createWorkflowModal: null,
+  showCreateWorkflowModal: () => set({ createWorkflowModal: { isOpen: true } }),
+  hideCreateWorkflowModal: () => set({ createWorkflowModal: null }),
 }));

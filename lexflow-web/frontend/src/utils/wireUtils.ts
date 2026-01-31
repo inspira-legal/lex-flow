@@ -5,6 +5,15 @@ import type { NodeSlotPositions, SlotPosition } from "../store/uiStore";
 export const WIRE_SNAP_DISTANCE = 25;
 export const NODE_WIDTH = 180;
 
+// Convert registry node IDs to YAML node IDs for comparison
+// Start nodes use "start-{workflowName}" in registry but "start" in YAML
+function toYamlNodeId(registryId: string): string {
+  if (registryId.startsWith("start-")) {
+    return "start";
+  }
+  return registryId;
+}
+
 export function calculateDistance(
   x1: number,
   y1: number,
@@ -68,12 +77,15 @@ export function findNearestPortFromRegistry(
   // Determine which port type we're looking for (opposite of source)
   const targetPortType = sourcePort === "output" ? "input" : "output";
 
+  // Normalize source ID for comparison (handles start-* vs start)
+  const normalizedSourceId = toYamlNodeId(sourceNodeId);
+
   let nearestPort: NearbyPort | null = null;
   let nearestDistance = WIRE_SNAP_DISTANCE;
 
   for (const [nodeId, slots] of Object.entries(slotPositions)) {
-    // Skip the source node
-    if (nodeId === sourceNodeId) continue;
+    // Skip the source node (compare using normalized IDs)
+    if (toYamlNodeId(nodeId) === normalizedSourceId) continue;
 
     // Get the target port position from registry
     const portPos = targetPortType === "input" ? slots.input : slots.output;

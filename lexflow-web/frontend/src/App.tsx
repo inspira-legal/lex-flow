@@ -5,7 +5,7 @@ import { CodeEditor } from "./components/editor";
 import { ExecutionPanel } from "./components/execution";
 import { NodeEditorPanel } from "./components/node-editor";
 import { NodePalette, DragPreview } from "./components/palette";
-import { ConfirmDialog } from "./components/ui";
+import { ConfirmDialog, NewWorkflowModal } from "./components/ui";
 import { useWorkflowStore, useUiStore } from "./store";
 import { useKeyboardShortcuts, useWorkflowParsing } from "./hooks";
 import { useBackendProvider, supportsExamples } from "./providers";
@@ -26,6 +26,31 @@ function GlobalConfirmDialog() {
       variant={confirmDialog.variant}
       onConfirm={confirmDialog.onConfirm}
       onCancel={confirmDialog.onCancel}
+    />
+  );
+}
+
+// Global new workflow modal connected to store
+function GlobalNewWorkflowModal() {
+  const createWorkflowModal = useUiStore((s) => s.createWorkflowModal);
+  const hideCreateWorkflowModal = useUiStore((s) => s.hideCreateWorkflowModal);
+  const tree = useWorkflowStore((s) => s.tree);
+  const addWorkflow = useWorkflowStore((s) => s.addWorkflow);
+
+  // Get existing workflow names for validation
+  const existingWorkflowNames = tree?.workflows.map((w) => w.name) ?? [];
+
+  if (!createWorkflowModal) return null;
+
+  return (
+    <NewWorkflowModal
+      isOpen={createWorkflowModal.isOpen}
+      existingWorkflowNames={existingWorkflowNames}
+      onConfirm={(data) => {
+        addWorkflow(data.name, data.inputs, data.outputs, data.variables);
+        hideCreateWorkflowModal();
+      }}
+      onCancel={hideCreateWorkflowModal}
     />
   );
 }
@@ -62,6 +87,7 @@ export function App() {
       />
       <DragPreview />
       <GlobalConfirmDialog />
+      <GlobalNewWorkflowModal />
     </>
   );
 }

@@ -42,17 +42,18 @@ interface WorkflowState {
     inputKey: string,
     newValue: string,
   ) => boolean;
-  connectNodes: (fromNodeId: string, toNodeId: string) => boolean;
+  connectNodes: (fromNodeId: string, toNodeId: string, workflowName?: string) => boolean;
   connectBranch: (
     fromNodeId: string,
     toNodeId: string,
     branchLabel: string,
   ) => boolean;
-  disconnectNode: (nodeId: string) => boolean;
+  disconnectNode: (nodeId: string, workflowName?: string) => boolean;
   disconnectConnection: (
     fromNodeId: string,
     toNodeId: string,
     branchLabel?: string,
+    workflowName?: string,
   ) => boolean;
   convertOrphanToReporter: (
     orphanNodeId: string,
@@ -90,6 +91,15 @@ interface WorkflowState {
   removeDynamicBranch: (nodeId: string, branchName: string) => boolean;
   addDynamicInput: (nodeId: string, inputPrefix: string) => boolean;
   removeDynamicInput: (nodeId: string, inputName: string) => boolean;
+
+  // Workflow operations
+  addWorkflow: (
+    name: string,
+    inputs?: string[],
+    outputs?: string[],
+    variables?: Record<string, unknown>,
+  ) => boolean;
+  deleteWorkflow: (name: string) => boolean;
 
   // Examples
   examples: ExampleInfo[];
@@ -255,9 +265,9 @@ export const useWorkflowStore = create<WorkflowState>()(
       },
 
       // Connect two nodes (set fromNodeId.next = toNodeId)
-      connectNodes: (fromNodeId, toNodeId) => {
+      connectNodes: (fromNodeId, toNodeId, workflowName) => {
         const state = get();
-        const result = WorkflowService.connectNodes(state.source, fromNodeId, toNodeId);
+        const result = WorkflowService.connectNodes(state.source, fromNodeId, toNodeId, workflowName);
         if (result.success) {
           state.setSource(result.source);
         }
@@ -275,9 +285,9 @@ export const useWorkflowStore = create<WorkflowState>()(
       },
 
       // Disconnect a node (set its next: to null)
-      disconnectNode: (nodeId) => {
+      disconnectNode: (nodeId, workflowName) => {
         const state = get();
-        const result = WorkflowService.disconnectNode(state.source, nodeId);
+        const result = WorkflowService.disconnectNode(state.source, nodeId, workflowName);
         if (result.success) {
           state.setSource(result.source);
         }
@@ -361,9 +371,9 @@ export const useWorkflowStore = create<WorkflowState>()(
       },
 
       // Disconnect a specific connection between two nodes
-      disconnectConnection: (fromNodeId, toNodeId, branchLabel) => {
+      disconnectConnection: (fromNodeId, toNodeId, branchLabel, workflowName) => {
         const state = get();
-        const result = WorkflowService.disconnectConnection(state.source, fromNodeId, toNodeId, branchLabel);
+        const result = WorkflowService.disconnectConnection(state.source, fromNodeId, toNodeId, branchLabel, workflowName);
         if (result.success) {
           state.setSource(result.source);
         }
@@ -414,6 +424,26 @@ export const useWorkflowStore = create<WorkflowState>()(
       removeDynamicInput: (nodeId, inputName) => {
         const state = get();
         const result = WorkflowService.removeDynamicInput(state.source, nodeId, inputName);
+        if (result.success) {
+          state.setSource(result.source);
+        }
+        return result.success;
+      },
+
+      // Add a new workflow
+      addWorkflow: (name, inputs = [], outputs = [], variables = {}) => {
+        const state = get();
+        const result = WorkflowService.addWorkflow(state.source, name, inputs, outputs, variables);
+        if (result.success) {
+          state.setSource(result.source);
+        }
+        return result.success;
+      },
+
+      // Delete a workflow (cannot delete "main")
+      deleteWorkflow: (name) => {
+        const state = get();
+        const result = WorkflowService.deleteWorkflow(state.source, name);
         if (result.success) {
           state.setSource(result.source);
         }

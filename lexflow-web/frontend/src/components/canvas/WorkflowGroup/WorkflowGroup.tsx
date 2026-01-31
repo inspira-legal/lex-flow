@@ -54,7 +54,7 @@ export function WorkflowGroup({
   const labelWidth = displayName.length * 7 + 24
 
   return (
-    <g style={{ pointerEvents: "none" }}>
+    <g style={{ pointerEvents: "none" }} data-workflow-group={name}>
       {/* Dotted border rectangle */}
       <rect
         x={layout.rect.x}

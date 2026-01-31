@@ -1,5 +1,5 @@
-import { useRef, useEffect, useState, memo } from "react"
-import { useUiStore, useSelectionStore } from "@/store"
+import { useRef, useEffect, useState, memo, useCallback } from "react"
+import { useUiStore, useSelectionStore, useWorkflowStore } from "@/store"
 import type { NodeSlotPositions } from "@/store/uiStore"
 import {
   START_NODE_WIDTH,
@@ -31,8 +31,11 @@ export const StartNode = memo(function StartNode({
     setIsDraggingNode,
     registerSlotPositions,
     unregisterSlotPositions,
+    draggingWire,
+    setDraggingWire,
   } = useUiStore()
   const { selectedStartNode, selectStartNode, selectNode } = useSelectionStore()
+  const { connectNodes } = useWorkflowStore()
 
   const [isHovered, setIsHovered] = useState(false)
 
@@ -86,6 +89,56 @@ export const StartNode = memo(function StartNode({
     window.addEventListener("mousemove", handleMouseMove)
     window.addEventListener("mouseup", handleMouseUp)
   }
+
+  // Handle dragging from output port to connect start node to first node
+  const handleOutputPortMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      e.preventDefault()
+      const outputX = x + START_NODE_WIDTH
+      const outputY = y + 30
+      setDraggingWire({
+        sourceNodeId: startNodeId, // Use registry ID (start-{workflowName}) to preserve workflow context
+        sourcePort: "output",
+        sourceX: outputX,
+        sourceY: outputY,
+        dragX: outputX,
+        dragY: outputY,
+        nearbyPort: null,
+      })
+    },
+    [x, y, startNodeId, setDraggingWire]
+  )
+
+  // Handle completing connection when dragging from input to output (reverse direction)
+  const handleOutputPortMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      e.preventDefault()
+      if (
+        draggingWire &&
+        draggingWire.sourcePort === "input" &&
+        !draggingWire.sourceNodeId.startsWith("start-")
+      ) {
+        // Connect from start to the source node (reverse: someone dragged from their input to our output)
+        // Pass workflowName to scope the start node to this workflow
+        connectNodes("start", draggingWire.sourceNodeId, workflowName)
+        setDraggingWire(null)
+      }
+    },
+    [draggingWire, workflowName, connectNodes, setDraggingWire]
+  )
+
+  // Check if this output port should be highlighted during wire dragging
+  const isOutputPortHighlighted =
+    draggingWire?.nearbyPort?.nodeId === startNodeId &&
+    draggingWire?.nearbyPort?.port === "output"
+
+  // Check if this is a valid drop target for reverse connections
+  const isValidOutputDropTarget =
+    !!draggingWire &&
+    draggingWire.sourcePort === "input" &&
+    !draggingWire.sourceNodeId.startsWith("start-")
 
   // Format variables for display
   const varEntries = Object.entries(variables).slice(0, 3)
@@ -172,12 +225,26 @@ export const StartNode = memo(function StartNode({
         </g>
       )}
 
+      {/* Larger invisible hit area for output port during reverse drag */}
+      {isValidOutputDropTarget && (
+        <circle
+          cx={START_NODE_WIDTH}
+          cy={30}
+          r={16}
+          fill="transparent"
+          style={{ cursor: "pointer" }}
+          onMouseUp={handleOutputPortMouseUp}
+        />
+      )}
+
       {/* Output port (connects to first real node) */}
       <circle
         cx={START_NODE_WIDTH}
         cy={30}
         r={6}
-        style={getOutputPortStyle(isHovered)}
+        style={getOutputPortStyle(isHovered || isOutputPortHighlighted, !!draggingWire)}
+        onMouseDown={handleOutputPortMouseDown}
+        onMouseUp={handleOutputPortMouseUp}
       />
 
       {/* Drag handle for free layout mode */}

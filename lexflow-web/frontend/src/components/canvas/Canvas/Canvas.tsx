@@ -8,8 +8,9 @@ import { MiniMap } from "../MiniMap"
 import { NodeSearch } from "../NodeSearch"
 import { WorkflowGroup } from "../WorkflowGroup"
 import { NodeContextMenu } from "../NodeContextMenu"
+import { CanvasContextMenu } from "../CanvasContextMenu"
 import { useCanvasInteraction } from "@/hooks"
-import { layoutAllWorkflows } from "@/services/layout/LayoutService"
+import { layoutAllWorkflows, getWorkflowUnderPoint } from "@/services/layout/LayoutService"
 import { cn } from "@/lib/cn"
 import { ZoomOutIcon, ZoomInIcon, FitViewIcon, GridIcon } from "@/components/icons"
 import {
@@ -26,6 +27,23 @@ import {
   emptyStateTitleVariants,
   emptyStateTextVariants,
 } from "./styles"
+
+// Convert registry node IDs to YAML node IDs
+// Start nodes use "start-{workflowName}" in registry but "start" in YAML
+function toYamlNodeId(registryId: string): string {
+  if (registryId.startsWith("start-")) {
+    return "start"
+  }
+  return registryId
+}
+
+// Extract workflow name from start node registry ID
+function getWorkflowNameFromStartNode(registryId: string): string | undefined {
+  if (registryId.startsWith("start-")) {
+    return registryId.slice(6) // Remove "start-" prefix
+  }
+  return undefined
+}
 
 export function Canvas() {
   const {
@@ -47,8 +65,13 @@ export function Canvas() {
     hideContextMenu,
     setReportersExpanded,
     expandedReporters,
+    canvasContextMenu,
+    showCanvasContextMenu,
+    hideCanvasContextMenu,
+    showCreateWorkflowModal,
+    showConfirmDialog,
   } = useUiStore()
-  const { tree, parseError, disconnectConnection, deleteNode, duplicateNode } = useWorkflowStore()
+  const { tree, parseError, disconnectConnection, deleteNode, duplicateNode, deleteWorkflow } = useWorkflowStore()
   const { selectedConnection, selectConnection } = useSelectionStore()
 
   const svgRef = useRef<SVGSVGElement>(null)
@@ -163,6 +186,33 @@ export function Canvas() {
   const { handleWheel, handleMouseDown, handleMouseMove, handleMouseUp, isDragging } =
     useCanvasInteraction({ svgRef, centerX, centerY })
 
+  // Handle canvas right-click for context menu
+  const handleCanvasContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      // Only show canvas context menu if click is on the SVG itself, background rect, or workflow group
+      const target = e.target as Element
+      const isBackground = target.tagName === "svg" || (target.tagName === "rect" && target.getAttribute("fill") === "transparent")
+      const isWorkflowGroup = target.closest("[data-workflow-group]") !== null
+
+      if (isBackground || isWorkflowGroup) {
+        e.preventDefault()
+
+        // Convert screen coords to canvas coords to detect which workflow was clicked
+        if (svgRef.current) {
+          const rect = svgRef.current.getBoundingClientRect()
+          const canvasX = (e.clientX - rect.left - panX - rect.width / 2) / zoom + centerX
+          const canvasY = (e.clientY - rect.top - panY - rect.height / 2) / zoom + centerY
+
+          const workflowName = getWorkflowUnderPoint(groups, canvasX, canvasY)
+          showCanvasContextMenu(e.clientX, e.clientY, workflowName || undefined)
+        } else {
+          showCanvasContextMenu(e.clientX, e.clientY)
+        }
+      }
+    },
+    [showCanvasContextMenu, svgRef, panX, panY, zoom, centerX, centerY, groups]
+  )
+
   // Handle minimap navigation
   const handleMinimapNavigate = useCallback(
     (newPanX: number, newPanY: number) => {
@@ -256,6 +306,7 @@ export function Canvas() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onContextMenu={handleCanvasContextMenu}
         style={{ cursor: isDragging ? "grabbing" : "grab" }}
         role="application"
         aria-label="Workflow canvas. Use mouse to pan and scroll to zoom."
@@ -311,7 +362,9 @@ export function Canvas() {
                 })
               }
               onDelete={() => {
-                disconnectConnection(conn.from, conn.to, conn.label)
+                // Get workflow name if disconnecting from a start node
+                const workflowName = getWorkflowNameFromStartNode(conn.from)
+                disconnectConnection(toYamlNodeId(conn.from), toYamlNodeId(conn.to), conn.label, workflowName)
                 selectConnection(null)
               }}
             />
@@ -398,6 +451,26 @@ export function Canvas() {
           onDelete={() => deleteNode(contextMenu.nodeId)}
           onDuplicate={() => duplicateNode(contextMenu.nodeId)}
           onClose={hideContextMenu}
+        />
+      )}
+
+      {/* Canvas context menu (background right-click) */}
+      {canvasContextMenu && (
+        <CanvasContextMenu
+          x={canvasContextMenu.x}
+          y={canvasContextMenu.y}
+          workflowName={canvasContextMenu.workflowName}
+          onCreateWorkflow={showCreateWorkflowModal}
+          onDeleteWorkflow={(name) => {
+            showConfirmDialog({
+              title: "Delete Workflow",
+              message: `Are you sure you want to delete the workflow "${name}"? This action cannot be undone.`,
+              confirmLabel: "Delete",
+              variant: "danger",
+              onConfirm: () => deleteWorkflow(name),
+            })
+          }}
+          onClose={hideCanvasContextMenu}
         />
       )}
     </div>

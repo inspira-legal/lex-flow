@@ -39,6 +39,7 @@ export function StartNodeEditorPanel({
     updateVariable,
     deleteVariable,
     updateWorkflowInterface,
+    deleteWorkflow,
   } = useWorkflowStore()
   const { selectStartNode } = useSelectionStore()
 
@@ -114,6 +115,19 @@ export function StartNodeEditorPanel({
       confirmLabel: "Delete",
       variant: "danger",
       onConfirm: () => deleteVariable(workflowName, name),
+    })
+  }
+
+  const handleDeleteWorkflow = () => {
+    useUiStore.getState().showConfirmDialog({
+      title: "Delete Workflow",
+      message: `Are you sure you want to delete the workflow "${workflowName}"? This action cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "danger",
+      onConfirm: () => {
+        deleteWorkflow(workflowName)
+        handleClose()
+      },
     })
   }
 
@@ -361,6 +375,19 @@ export function StartNodeEditorPanel({
             </button>
           </div>
         </div>
+
+        {/* Delete Workflow (only for non-main workflows) */}
+        {workflowName !== "main" && (
+          <div className={sectionVariants()}>
+            <h4 className={sectionTitleVariants()}>Danger Zone</h4>
+            <button
+              className="w-full px-3 py-2 text-sm font-medium bg-accent-red/10 text-accent-red border border-accent-red/30 rounded hover:bg-accent-red/20 transition-colors"
+              onClick={handleDeleteWorkflow}
+            >
+              Delete Workflow
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

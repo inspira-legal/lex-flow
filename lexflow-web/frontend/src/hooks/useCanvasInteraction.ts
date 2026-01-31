@@ -4,6 +4,23 @@ import { useState, useCallback } from "react";
 import { useUiStore, useWorkflowStore, useSelectionStore } from "../store";
 import { findNearestPortFromRegistry } from "../utils/wireUtils";
 
+// Convert registry node IDs to YAML node IDs
+// Start nodes use "start-{workflowName}" in registry but "start" in YAML
+function toYamlNodeId(registryId: string): string {
+  if (registryId.startsWith("start-")) {
+    return "start";
+  }
+  return registryId;
+}
+
+// Extract workflow name from start node registry ID
+function getWorkflowNameFromStartNode(registryId: string): string | undefined {
+  if (registryId.startsWith("start-")) {
+    return registryId.slice(6); // Remove "start-" prefix
+  }
+  return undefined;
+}
+
 interface UseCanvasInteractionProps {
   svgRef: React.RefObject<SVGSVGElement | null>;
   centerX: number;
@@ -183,25 +200,23 @@ export function useCanvasInteraction({
     // Complete wire connection if near a valid port
     if (draggingWire) {
       if (draggingWire.nearbyPort) {
+        // Convert registry IDs to YAML IDs (handles start-* -> start conversion)
+        const sourceId = toYamlNodeId(draggingWire.sourceNodeId);
+        const targetId = toYamlNodeId(draggingWire.nearbyPort.nodeId);
+
+        // Get workflow name if connecting from/to a start node
+        const sourceWorkflow = getWorkflowNameFromStartNode(draggingWire.sourceNodeId);
+        const targetWorkflow = getWorkflowNameFromStartNode(draggingWire.nearbyPort.nodeId);
+
         if (draggingWire.branchLabel) {
           // Branch connection
-          connectBranch(
-            draggingWire.sourceNodeId,
-            draggingWire.nearbyPort.nodeId,
-            draggingWire.branchLabel,
-          );
+          connectBranch(sourceId, targetId, draggingWire.branchLabel);
         } else if (draggingWire.sourcePort === "output") {
-          // Regular: output to input
-          connectNodes(
-            draggingWire.sourceNodeId,
-            draggingWire.nearbyPort.nodeId,
-          );
+          // Regular: output to input - use source workflow for start nodes
+          connectNodes(sourceId, targetId, sourceWorkflow);
         } else {
-          // Reverse: input to output
-          connectNodes(
-            draggingWire.nearbyPort.nodeId,
-            draggingWire.sourceNodeId,
-          );
+          // Reverse: input to output - use target workflow for start nodes
+          connectNodes(targetId, sourceId, targetWorkflow);
         }
       }
       setDraggingWire(null);

@@ -45,17 +45,79 @@ export function formatYamlValue(value: unknown): string {
   return JSON.stringify(value);
 }
 
-// Find node line range in source
+// Find the line range for a specific workflow's nodes section
+function findWorkflowNodesRange(
+  source: string,
+  workflowName: string,
+): { startLine: number; endLine: number; nodesIndent: number } | null {
+  const lines = source.split("\n");
+
+  let inTargetWorkflow = false;
+  let nodesStartLine = -1;
+  let nodesIndent = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Track which workflow we're in
+    const nameMatch = line.match(/^\s*-?\s*name:\s*(\w+)/);
+    if (nameMatch) {
+      inTargetWorkflow = nameMatch[1] === workflowName;
+    }
+
+    // Find the nodes section within the target workflow
+    if (inTargetWorkflow) {
+      const nodesMatch = line.match(/^(\s*)nodes:\s*$/);
+      if (nodesMatch) {
+        nodesStartLine = i;
+        nodesIndent = nodesMatch[1].length;
+
+        // Find where the nodes section ends
+        let nodesEndLine = i + 1;
+        while (nodesEndLine < lines.length) {
+          const nextLine = lines[nodesEndLine];
+          if (nextLine.trim() === "" || nextLine.trim().startsWith("#")) {
+            nodesEndLine++;
+            continue;
+          }
+          const nextIndent = nextLine.search(/\S/);
+          if (nextIndent !== -1 && nextIndent <= nodesIndent) {
+            break;
+          }
+          nodesEndLine++;
+        }
+
+        return { startLine: nodesStartLine, endLine: nodesEndLine, nodesIndent };
+      }
+    }
+  }
+
+  return null;
+}
+
+// Find node line range in source, optionally scoped to a specific workflow
 export function findNodeLineRange(
   source: string,
   nodeId: string,
+  workflowName?: string,
 ): { startLine: number; endLine: number; indent: number } | null {
   const lines = source.split("\n");
+
+  let searchStartLine = 0;
+  let searchEndLine = lines.length;
+
+  // If workflow name is specified, only search within that workflow's nodes section
+  if (workflowName) {
+    const workflowRange = findWorkflowNodesRange(source, workflowName);
+    if (!workflowRange) return null;
+    searchStartLine = workflowRange.startLine;
+    searchEndLine = workflowRange.endLine;
+  }
 
   let nodeStartLine = -1;
   let nodeIndent = -1;
 
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = searchStartLine; i < searchEndLine; i++) {
     const line = lines[i];
     const match = line.match(/^(\s+)([a-zA-Z_][a-zA-Z0-9_]*):\s*$/);
     if (match && match[2] === nodeId) {
@@ -343,9 +405,10 @@ export function connectNodes(
   source: string,
   fromNodeId: string,
   toNodeId: string,
+  workflowName?: string,
 ): OperationResult {
   const lines = source.split("\n");
-  const range = findNodeLineRange(source, fromNodeId);
+  const range = findNodeLineRange(source, fromNodeId, workflowName);
   if (!range) {
     return { source, success: false };
   }
@@ -381,9 +444,10 @@ export function connectNodes(
 export function disconnectNode(
   source: string,
   nodeId: string,
+  workflowName?: string,
 ): OperationResult {
   const lines = source.split("\n");
-  const range = findNodeLineRange(source, nodeId);
+  const range = findNodeLineRange(source, nodeId, workflowName);
   if (!range) {
     return { source, success: false };
   }
@@ -610,13 +674,14 @@ export function disconnectConnection(
   fromNodeId: string,
   toNodeId: string,
   branchLabel?: string,
+  workflowName?: string,
 ): OperationResult {
   if (!branchLabel) {
-    return disconnectNode(source, fromNodeId);
+    return disconnectNode(source, fromNodeId, workflowName);
   }
 
   const lines = source.split("\n");
-  const range = findNodeLineRange(source, fromNodeId);
+  const range = findNodeLineRange(source, fromNodeId, workflowName);
   if (!range) {
     return { source, success: false };
   }
@@ -1521,6 +1586,166 @@ export function removeDynamicInput(
   return { source: newLines.join("\n"), success: true };
 }
 
+// Add a new workflow to the source
+export function addWorkflow(
+  source: string,
+  name: string,
+  inputs: string[] = [],
+  outputs: string[] = [],
+  variables: Record<string, unknown> = {},
+): OperationResult {
+  // Validate workflow name is a valid identifier
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+    return { source, success: false };
+  }
+
+  // Check for duplicate workflow name
+  const lines = source.split("\n");
+  for (const line of lines) {
+    const nameMatch = line.match(/^\s*-?\s*name:\s*(\w+)/);
+    if (nameMatch && nameMatch[1] === name) {
+      return { source, success: false };
+    }
+  }
+
+  // Find the end of the workflows array
+  let lastWorkflowEndLine = -1;
+  let inWorkflows = false;
+  let workflowIndent = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Look for "workflows:" line
+    const workflowsMatch = line.match(/^(\s*)workflows:\s*$/);
+    if (workflowsMatch) {
+      inWorkflows = true;
+      workflowIndent = workflowsMatch[1].length;
+      continue;
+    }
+
+    if (inWorkflows) {
+      // Check if we've left the workflows section
+      const lineIndent = line.search(/\S/);
+      if (line.trim() !== "" && lineIndent !== -1 && lineIndent <= workflowIndent) {
+        break;
+      }
+      lastWorkflowEndLine = i;
+    }
+  }
+
+  // If no workflows section found, can't add
+  if (!inWorkflows) {
+    return { source, success: false };
+  }
+
+  // Build the new workflow YAML with 2-space indentation
+  const indent = "  ";
+  const propIndent = "    ";
+  const varIndent = "      ";
+
+  const inputsStr = inputs.length > 0 ? `[${inputs.map((i) => `"${i}"`).join(", ")}]` : "[]";
+  const outputsStr = outputs.length > 0 ? `[${outputs.map((o) => `"${o}"`).join(", ")}]` : "[]";
+
+  let workflowYaml = `${indent}- name: ${name}\n`;
+  workflowYaml += `${propIndent}interface:\n`;
+  workflowYaml += `${varIndent}inputs: ${inputsStr}\n`;
+  workflowYaml += `${varIndent}outputs: ${outputsStr}\n`;
+
+  // Add variables section
+  const varEntries = Object.entries(variables);
+  if (varEntries.length === 0) {
+    workflowYaml += `${propIndent}variables: {}\n`;
+  } else {
+    workflowYaml += `${propIndent}variables:\n`;
+    for (const [varName, varValue] of varEntries) {
+      workflowYaml += `${varIndent}${varName}: ${formatYamlValue(varValue)}\n`;
+    }
+  }
+
+  // Add nodes section with just a start node
+  workflowYaml += `${propIndent}nodes:\n`;
+  workflowYaml += `${varIndent}start:\n`;
+  workflowYaml += `${varIndent}  next: null`;
+
+  // Insert after the last workflow
+  const insertLine = lastWorkflowEndLine + 1;
+  const newLines = [
+    ...lines.slice(0, insertLine),
+    workflowYaml,
+    ...lines.slice(insertLine),
+  ];
+
+  return { source: newLines.join("\n"), success: true };
+}
+
+// Delete a workflow from the source
+export function deleteWorkflow(
+  source: string,
+  name: string,
+): OperationResult {
+  // Cannot delete "main" workflow
+  if (name === "main") {
+    return { source, success: false };
+  }
+
+  const lines = source.split("\n");
+
+  // Find the workflow's starting line (- name: workflowName)
+  let workflowStartLine = -1;
+  let workflowIndent = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Match "  - name: workflowName" pattern
+    const nameMatch = line.match(/^(\s*)-\s*name:\s*(\w+)/);
+    if (nameMatch && nameMatch[2] === name) {
+      workflowStartLine = i;
+      workflowIndent = nameMatch[1].length;
+      break;
+    }
+  }
+
+  if (workflowStartLine === -1) {
+    return { source, success: false };
+  }
+
+  // Find where this workflow ends (next workflow or end of workflows section)
+  let workflowEndLine = workflowStartLine + 1;
+  while (workflowEndLine < lines.length) {
+    const line = lines[workflowEndLine];
+
+    // Empty lines are part of the workflow
+    if (line.trim() === "" || line.trim().startsWith("#")) {
+      workflowEndLine++;
+      continue;
+    }
+
+    const lineIndent = line.search(/\S/);
+
+    // If we hit another workflow entry (same indent level with "- name:")
+    const nextWorkflowMatch = line.match(/^(\s*)-\s*name:\s*\w+/);
+    if (nextWorkflowMatch && nextWorkflowMatch[1].length === workflowIndent) {
+      break;
+    }
+
+    // If we hit something at the same or lower indent that's not part of the workflow
+    if (lineIndent !== -1 && lineIndent <= workflowIndent && !line.trim().startsWith("-")) {
+      break;
+    }
+
+    workflowEndLine++;
+  }
+
+  // Remove the workflow lines
+  const newLines = [
+    ...lines.slice(0, workflowStartLine),
+    ...lines.slice(workflowEndLine),
+  ];
+
+  return { source: newLines.join("\n"), success: true };
+}
+
 // Export all functions as a service object for convenience
 export const workflowService = {
   formatYamlValue,
@@ -1545,4 +1770,6 @@ export const workflowService = {
   removeDynamicBranch,
   addDynamicInput,
   removeDynamicInput,
+  addWorkflow,
+  deleteWorkflow,
 };

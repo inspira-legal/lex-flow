@@ -54,13 +54,15 @@ export const moreVarsStyle: CSSProperties = {
   fontStyle: "italic",
 }
 
-export function getOutputPortStyle(isHovered: boolean): CSSProperties {
+export function getOutputPortStyle(isHovered: boolean, isDragging = false): CSSProperties {
   return {
     fill: isHovered ? GREEN_500 : "var(--color-surface-2)",
     stroke: isHovered ? GREEN_400 : GREEN_500,
     strokeWidth: 2,
     transition: "all 0.15s ease",
     filter: isHovered ? `drop-shadow(0 0 4px ${GREEN_500})` : "none",
+    cursor: isDragging ? "pointer" : "crosshair",
+    pointerEvents: "all",
   }
 }
 
