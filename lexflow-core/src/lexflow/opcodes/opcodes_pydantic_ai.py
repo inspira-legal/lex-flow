@@ -29,6 +29,32 @@ except ImportError:
 # Context var for tracking thread-safe tool calls
 _tool_call_context: ContextVar[dict] = ContextVar("tool_call_context", default=None)
 
+# Context var for WorkflowManager access during tool execution
+_workflow_manager_context: ContextVar[Any] = ContextVar(
+    "workflow_manager", default=None
+)
+
+
+def set_workflow_manager_context(manager) -> Any:
+    """Set WorkflowManager for tool execution.
+
+    Args:
+        manager: WorkflowManager instance
+
+    Returns:
+        Token for resetting the context
+    """
+    return _workflow_manager_context.set(manager)
+
+
+def reset_workflow_manager_context(token) -> None:
+    """Reset WorkflowManager context.
+
+    Args:
+        token: Token from set_workflow_manager_context
+    """
+    _workflow_manager_context.reset(token)
+
 
 def _check_availability():
     """Check if pydantic_ai is available and raise helpful error if not."""
@@ -210,6 +236,123 @@ def _create_tool_wrapper(
     return tool_wrapper
 
 
+def _is_workflow_tool(tool: Union[str, dict]) -> bool:
+    """Check if tool spec is a workflow reference.
+
+    Args:
+        tool: Tool specification (string for opcode, dict for workflow)
+
+    Returns:
+        True if tool is a workflow reference
+    """
+    return isinstance(tool, dict) and "workflow" in tool
+
+
+def _get_workflow_name(tool: dict) -> str:
+    """Extract workflow name from tool spec.
+
+    Args:
+        tool: Dict with {"workflow": "name"}
+
+    Returns:
+        Workflow name string
+    """
+    return tool["workflow"]
+
+
+def _validate_workflow_tools_exist(tools: List[dict], manager) -> None:
+    """Validate that all workflows exist in manager.
+
+    Args:
+        tools: List of workflow tool specs (dicts with "workflow" key)
+        manager: WorkflowManager instance
+
+    Raises:
+        ValueError: If any workflow doesn't exist
+    """
+    available = set(manager.workflows.keys())
+    requested = {_get_workflow_name(t) for t in tools}
+    missing = requested - available
+    if missing:
+        raise ValueError(f"Workflows not found: {missing}")
+
+
+def _create_workflow_wrapper(
+    workflow_name: str,
+    workflow,
+    manager,
+    allowlist: set,
+) -> Callable:
+    """Create tool wrapper for a workflow.
+
+    This wrapper allows workflows to be called as tools by AI agents.
+    It maps kwargs from the LLM to positional args for the workflow.
+
+    Args:
+        workflow_name: Name of the workflow
+        workflow: Workflow AST object from manager.workflows
+        manager: WorkflowManager instance for executing the workflow
+        allowlist: Set of allowed tool names (opcodes and workflows)
+
+    Returns:
+        Async function usable as a tool
+    """
+    async def workflow_wrapper(**kwargs) -> Any:
+        # Check tracking context (max_tool_calls)
+        ctx = _tool_call_context.get()
+        if ctx:
+            # Verify allowlist (extra security)
+            if workflow_name not in ctx["allowlist"]:
+                raise PermissionError(f"Workflow '{workflow_name}' not in allowlist")
+
+            # Increment counter
+            ctx["count"] += 1
+            if ctx["count"] > ctx["max"]:
+                raise RuntimeError(f"Maximum tool calls ({ctx['max']}) exceeded")
+
+        # Map kwargs to positional args based on workflow.params order
+        args_list = []
+        for param_name in workflow.params:
+            if param_name in kwargs:
+                args_list.append(kwargs[param_name])
+            elif param_name in workflow.locals:
+                args_list.append(workflow.locals[param_name])
+            else:
+                raise ValueError(
+                    f"Missing required parameter '{param_name}' for workflow '{workflow_name}'"
+                )
+
+        # Execute workflow via manager
+        return await manager.call(workflow_name, args_list)
+
+    # Build proper signature for PydanticAI to introspect
+    # This tells the LLM what parameters the tool expects
+    sig_params = []
+    for param_name in workflow.params:
+        default = inspect.Parameter.empty
+        if param_name in workflow.locals:
+            default = workflow.locals[param_name]
+
+        sig_params.append(
+            inspect.Parameter(
+                param_name,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                default=default,
+                annotation=Any,
+            )
+        )
+
+    workflow_wrapper.__signature__ = inspect.Signature(sig_params)
+    workflow_wrapper.__name__ = workflow_name
+    workflow_wrapper.__doc__ = workflow.description or f"Execute workflow {workflow_name}"
+
+    # Set __annotations__ for get_type_hints() used by pydantic_ai
+    workflow_wrapper.__annotations__ = {p: Any for p in workflow.params}
+    workflow_wrapper.__annotations__["return"] = Any
+
+    return workflow_wrapper
+
+
 def register_pydantic_ai_opcodes():
     """Register pydantic_ai opcodes to the default registry."""
     if not PYDANTIC_AI_AVAILABLE:
@@ -330,21 +473,23 @@ def register_pydantic_ai_opcodes():
     async def ai_agent_with_tools(
         agent: Any,
         messages: Union[str, List[dict]],
-        tools: List[str],
+        tools: List[Union[str, dict]],
         output: Optional[dict] = None,
         max_tool_calls: int = 10,
         timeout_seconds: float = 300.0,
     ) -> dict:
-        """Run an AI agent with access to LexFlow opcodes as tools.
+        """Run an AI agent with access to LexFlow opcodes and workflows as tools.
 
         This opcode enables agentic workflows where the LLM can reason about
-        and call LexFlow opcodes to accomplish tasks.
+        and call LexFlow opcodes or workflows to accomplish tasks.
 
         Args:
             agent: Pre-created agent from pydantic_ai_create_agent
             messages: String prompt or list of {role, content} message dicts.
                      If string, normalizes to [{role: "user", content: <string>}]
-            tools: List of opcode names the agent is allowed to call
+            tools: List of tools the agent is allowed to call. Can be:
+                   - String: opcode name (e.g., "operator_add")
+                   - Dict: workflow reference (e.g., {"workflow": "my_workflow"})
             output: Optional schema for structured output: {text: "string", data: {...}}
             max_tool_calls: Maximum number of tool calls allowed (default: 10)
             timeout_seconds: Timeout for entire operation in seconds (default: 300)
@@ -356,7 +501,8 @@ def register_pydantic_ai_opcodes():
             PermissionError: If agent tries to call a tool not in the allowlist
             ValueError: If tools don't exist or messages format is invalid
             TimeoutError: If execution exceeds timeout_seconds
-            RuntimeError: If max_tool_calls exceeded or LLM/tool error occurs
+            RuntimeError: If max_tool_calls exceeded, LLM/tool error, or
+                         workflow tools used without WorkflowManager context
 
         Example YAML:
             agent_call:
@@ -369,42 +515,64 @@ def register_pydantic_ai_opcodes():
                   literal:
                     - operator_multiply
                     - operator_add
+                    - {workflow: "custom_calculation"}
                 max_tool_calls: {literal: 5}
                 timeout_seconds: {literal: 30}
 
         Note:
             This is a reporter opcode (isReporter: true, no next).
-            To avoid re-execution, store the result in a variable immediately:
+            To avoid re-execution, store the result in a variable immediately.
 
-            store_result:
-              opcode: data_set_variable_to
-              next: ...
-              inputs:
-                VARIABLE: {literal: "result"}
-                VALUE: {node: agent_call}
+            Workflow tools require the workflow to be defined in the same file
+            or included via --include. The workflow's interface.description
+            is used as the tool description for the LLM.
         """
         _check_availability()
 
         from pydantic_ai import Agent, Tool
 
-        # 1. Validate that tools exist in the registry
-        _validate_tools_exist(tools, default_registry)
+        # 1. Separate tools by type
+        opcode_tools = [t for t in tools if isinstance(t, str)]
+        workflow_tools = [t for t in tools if _is_workflow_tool(t)]
 
-        # 2. Normalize messages
+        # 2. Validate opcodes exist in registry
+        _validate_tools_exist(opcode_tools, default_registry)
+
+        # 3. Validate workflows exist (if any)
+        manager = None
+        if workflow_tools:
+            manager = _workflow_manager_context.get()
+            if manager is None:
+                raise RuntimeError(
+                    "Workflow tools require WorkflowManager context. "
+                    "Ensure you're running via Engine."
+                )
+            _validate_workflow_tools_exist(workflow_tools, manager)
+
+        # 4. Normalize messages
         normalized_messages = _normalize_messages(messages)
         prompt = _format_messages_for_prompt(normalized_messages)
 
-        # 3. Create tool wrappers
-        allowlist = set(tools)
+        # 5. Create unified allowlist
+        allowlist = set(opcode_tools) | {_get_workflow_name(t) for t in workflow_tools}
+
+        # 6. Create tool wrappers for opcodes
         tool_objects = []
-        for tool_name in tools:
+        for tool_name in opcode_tools:
             wrapper = _create_tool_wrapper(tool_name, default_registry, allowlist)
             tool_objects.append(Tool(wrapper, name=tool_name))
 
-        # 4. Create structured output model (if specified)
+        # 7. Create tool wrappers for workflows
+        for tool_spec in workflow_tools:
+            wf_name = _get_workflow_name(tool_spec)
+            workflow = manager.workflows[wf_name]
+            wrapper = _create_workflow_wrapper(wf_name, workflow, manager, allowlist)
+            tool_objects.append(Tool(wrapper, name=wf_name))
+
+        # 8. Create structured output model (if specified)
         result_type = _create_output_model(output)
 
-        # 5. Create new agent with tools
+        # 9. Create new agent with tools
         # PydanticAI requires tools at Agent creation time
         agent_kwargs = {
             "model": agent._model,
@@ -423,16 +591,16 @@ def register_pydantic_ai_opcodes():
 
         agent_with_tools = Agent(**agent_kwargs)
 
-        # 6. Setup tool call tracking context
+        # 10. Setup tool call tracking context
         ctx = {"count": 0, "max": max_tool_calls, "allowlist": allowlist}
         token = _tool_call_context.set(ctx)
 
         try:
-            # 7. Execute with timeout
+            # 11. Execute with timeout
             async with asyncio.timeout(timeout_seconds):
                 result = await agent_with_tools.run(prompt)
 
-            # 8. Format output
+            # 12. Format output
             if result_type and hasattr(result.output, "text"):
                 return {
                     "text": result.output.text,

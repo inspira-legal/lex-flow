@@ -20,6 +20,13 @@ try:
         _create_tool_wrapper,
         _create_output_model,
         _tool_call_context,
+        _is_workflow_tool,
+        _get_workflow_name,
+        _validate_workflow_tools_exist,
+        _create_workflow_wrapper,
+        _workflow_manager_context,
+        set_workflow_manager_context,
+        reset_workflow_manager_context,
     )
     HELPERS_AVAILABLE = True
 except ImportError:
@@ -457,3 +464,387 @@ class TestAiAgentWithToolsOpcode:
             call_args = mock_instance.run.call_args[0][0]
             assert "System: Be helpful" in call_args
             assert "User: Hi there" in call_args
+
+
+@pytest.mark.skipif(not HELPERS_AVAILABLE, reason="pydantic-ai helpers not available")
+class TestWorkflowToolHelpers:
+    """Tests for workflow tool helper functions."""
+
+    def test_is_workflow_tool_string(self):
+        """String tool spec is not a workflow tool."""
+        assert _is_workflow_tool("operator_add") is False
+
+    def test_is_workflow_tool_dict_with_workflow(self):
+        """Dict with workflow key is a workflow tool."""
+        assert _is_workflow_tool({"workflow": "my_workflow"}) is True
+
+    def test_is_workflow_tool_dict_without_workflow(self):
+        """Dict without workflow key is not a workflow tool."""
+        assert _is_workflow_tool({"other": "value"}) is False
+
+    def test_get_workflow_name(self):
+        """Extract workflow name from tool spec."""
+        result = _get_workflow_name({"workflow": "my_workflow"})
+        assert result == "my_workflow"
+
+    def test_validate_workflow_tools_exist_success(self):
+        """Validation passes when workflows exist."""
+        mock_manager = Mock()
+        mock_manager.workflows = {"workflow_a": Mock(), "workflow_b": Mock()}
+
+        # Should not raise
+        _validate_workflow_tools_exist(
+            [{"workflow": "workflow_a"}, {"workflow": "workflow_b"}],
+            mock_manager,
+        )
+
+    def test_validate_workflow_tools_exist_failure(self):
+        """Validation fails when workflow doesn't exist."""
+        mock_manager = Mock()
+        mock_manager.workflows = {"workflow_a": Mock()}
+
+        with pytest.raises(ValueError, match="Workflows not found"):
+            _validate_workflow_tools_exist(
+                [{"workflow": "nonexistent_workflow"}],
+                mock_manager,
+            )
+
+
+@pytest.mark.skipif(not HELPERS_AVAILABLE, reason="pydantic-ai helpers not available")
+class TestWorkflowWrapper:
+    """Tests for workflow wrapper functionality."""
+
+    async def test_workflow_wrapper_basic(self):
+        """Workflow wrapper correctly calls manager."""
+        # Create mock workflow
+        mock_workflow = Mock()
+        mock_workflow.params = ["x", "y"]
+        mock_workflow.locals = {}
+        mock_workflow.description = "Test workflow description"
+
+        # Create mock manager
+        mock_manager = AsyncMock()
+        mock_manager.call = AsyncMock(return_value=42)
+
+        wrapper = _create_workflow_wrapper(
+            "test_workflow",
+            mock_workflow,
+            mock_manager,
+            {"test_workflow"},
+        )
+
+        # Setup context
+        ctx = {"count": 0, "max": 10, "allowlist": {"test_workflow"}}
+        token = _tool_call_context.set(ctx)
+
+        try:
+            result = await wrapper(x=10, y=20)
+            assert result == 42
+            mock_manager.call.assert_called_once_with("test_workflow", [10, 20])
+        finally:
+            _tool_call_context.reset(token)
+
+    async def test_workflow_wrapper_with_defaults(self):
+        """Workflow wrapper uses defaults from workflow.locals."""
+        mock_workflow = Mock()
+        mock_workflow.params = ["x", "y"]
+        mock_workflow.locals = {"y": 100}
+        mock_workflow.description = None
+
+        mock_manager = AsyncMock()
+        mock_manager.call = AsyncMock(return_value=110)
+
+        wrapper = _create_workflow_wrapper(
+            "test_workflow",
+            mock_workflow,
+            mock_manager,
+            {"test_workflow"},
+        )
+
+        ctx = {"count": 0, "max": 10, "allowlist": {"test_workflow"}}
+        token = _tool_call_context.set(ctx)
+
+        try:
+            # Only provide x, y should use default
+            result = await wrapper(x=10)
+            assert result == 110
+            mock_manager.call.assert_called_once_with("test_workflow", [10, 100])
+        finally:
+            _tool_call_context.reset(token)
+
+    async def test_workflow_wrapper_permission_denied(self):
+        """Workflow wrapper raises PermissionError when not in allowlist."""
+        mock_workflow = Mock()
+        mock_workflow.params = ["x"]
+        mock_workflow.locals = {}
+        mock_workflow.description = None
+
+        mock_manager = AsyncMock()
+
+        wrapper = _create_workflow_wrapper(
+            "test_workflow",
+            mock_workflow,
+            mock_manager,
+            {"test_workflow"},
+        )
+
+        # Context with empty allowlist
+        ctx = {"count": 0, "max": 10, "allowlist": set()}
+        token = _tool_call_context.set(ctx)
+
+        try:
+            with pytest.raises(PermissionError, match="not in allowlist"):
+                await wrapper(x=10)
+        finally:
+            _tool_call_context.reset(token)
+
+    async def test_workflow_wrapper_max_calls_exceeded(self):
+        """Workflow wrapper raises RuntimeError when max_tool_calls exceeded."""
+        mock_workflow = Mock()
+        mock_workflow.params = ["x"]
+        mock_workflow.locals = {}
+        mock_workflow.description = None
+
+        mock_manager = AsyncMock()
+
+        wrapper = _create_workflow_wrapper(
+            "test_workflow",
+            mock_workflow,
+            mock_manager,
+            {"test_workflow"},
+        )
+
+        ctx = {"count": 1, "max": 1, "allowlist": {"test_workflow"}}
+        token = _tool_call_context.set(ctx)
+
+        try:
+            with pytest.raises(RuntimeError, match="Maximum tool calls"):
+                await wrapper(x=10)
+        finally:
+            _tool_call_context.reset(token)
+
+    async def test_workflow_wrapper_missing_required_param(self):
+        """Workflow wrapper raises ValueError for missing required parameter."""
+        mock_workflow = Mock()
+        mock_workflow.params = ["x", "y"]
+        mock_workflow.locals = {}  # No defaults
+        mock_workflow.description = None
+
+        mock_manager = AsyncMock()
+
+        wrapper = _create_workflow_wrapper(
+            "test_workflow",
+            mock_workflow,
+            mock_manager,
+            {"test_workflow"},
+        )
+
+        ctx = {"count": 0, "max": 10, "allowlist": {"test_workflow"}}
+        token = _tool_call_context.set(ctx)
+
+        try:
+            with pytest.raises(ValueError, match="Missing required parameter"):
+                await wrapper(x=10)  # Missing 'y'
+        finally:
+            _tool_call_context.reset(token)
+
+    def test_workflow_wrapper_signature(self):
+        """Workflow wrapper has correct signature for PydanticAI."""
+        mock_workflow = Mock()
+        mock_workflow.params = ["a", "b"]
+        mock_workflow.locals = {"b": 42}
+        mock_workflow.description = "Custom description"
+
+        mock_manager = Mock()
+
+        wrapper = _create_workflow_wrapper(
+            "my_workflow",
+            mock_workflow,
+            mock_manager,
+            {"my_workflow"},
+        )
+
+        # Check signature
+        import inspect
+
+        sig = inspect.signature(wrapper)
+        params = list(sig.parameters.keys())
+        assert params == ["a", "b"]
+        assert sig.parameters["a"].default is inspect.Parameter.empty
+        assert sig.parameters["b"].default == 42
+
+        # Check docstring
+        assert wrapper.__doc__ == "Custom description"
+        assert wrapper.__name__ == "my_workflow"
+
+    def test_workflow_wrapper_default_description(self):
+        """Workflow wrapper uses default description when none provided."""
+        mock_workflow = Mock()
+        mock_workflow.params = []
+        mock_workflow.locals = {}
+        mock_workflow.description = None
+
+        mock_manager = Mock()
+
+        wrapper = _create_workflow_wrapper(
+            "my_workflow",
+            mock_workflow,
+            mock_manager,
+            {"my_workflow"},
+        )
+
+        assert wrapper.__doc__ == "Execute workflow my_workflow"
+
+
+@pytest.mark.skipif(not PYDANTIC_AI_AVAILABLE, reason="pydantic-ai not installed")
+class TestAiAgentWithToolsWorkflows:
+    """Tests for ai_agent_with_tools with workflow tools."""
+
+    async def test_backward_compatibility_opcodes_only(self):
+        """Tools with only opcode strings still works."""
+        mock_agent = MagicMock()
+        mock_agent._model = MagicMock()
+        mock_agent._instructions = None
+        mock_agent._system_prompt = None
+
+        with (
+            patch("pydantic_ai.Agent") as MockAgent,
+            patch("pydantic_ai.Tool") as MockTool,
+        ):
+            mock_result = MagicMock()
+            mock_result.output = "Response"
+
+            mock_instance = AsyncMock()
+            mock_instance.run = AsyncMock(return_value=mock_result)
+            MockAgent.return_value = mock_instance
+            MockTool.return_value = MagicMock()
+
+            result = await default_registry.call(
+                "ai_agent_with_tools",
+                [mock_agent, "Test", ["operator_add", "operator_multiply"]],
+            )
+
+            assert result["text"] == "Response"
+
+    async def test_workflow_tools_without_context_raises_error(self):
+        """Using workflow tools without WorkflowManager context raises RuntimeError."""
+        mock_agent = MagicMock()
+        mock_agent._model = MagicMock()
+
+        # Ensure no context is set
+        reset_workflow_manager_context(_workflow_manager_context.set(None))
+
+        with pytest.raises(RuntimeError, match="WorkflowManager context"):
+            await default_registry.call(
+                "ai_agent_with_tools",
+                [mock_agent, "Test", [{"workflow": "some_workflow"}]],
+            )
+
+    async def test_workflow_tools_with_context(self):
+        """Workflow tools work correctly with WorkflowManager context."""
+        mock_agent = MagicMock()
+        mock_agent._model = MagicMock()
+        mock_agent._instructions = None
+        mock_agent._system_prompt = None
+
+        # Create mock workflow
+        mock_workflow = Mock()
+        mock_workflow.params = ["x"]
+        mock_workflow.locals = {}
+        mock_workflow.description = "Double the input"
+
+        # Create mock manager
+        mock_manager = Mock()
+        mock_manager.workflows = {"double": mock_workflow}
+
+        # Set context
+        token = set_workflow_manager_context(mock_manager)
+
+        try:
+            with (
+                patch("pydantic_ai.Agent") as MockAgent,
+                patch("pydantic_ai.Tool") as MockTool,
+            ):
+                mock_result = MagicMock()
+                mock_result.output = "Response"
+
+                mock_instance = AsyncMock()
+                mock_instance.run = AsyncMock(return_value=mock_result)
+                MockAgent.return_value = mock_instance
+                MockTool.return_value = MagicMock()
+
+                result = await default_registry.call(
+                    "ai_agent_with_tools",
+                    [mock_agent, "Test", [{"workflow": "double"}]],
+                )
+
+                assert result["text"] == "Response"
+                # Verify Tool was called for the workflow
+                assert MockTool.call_count == 1
+        finally:
+            reset_workflow_manager_context(token)
+
+    async def test_mixed_opcode_and_workflow_tools(self):
+        """Mix of opcode and workflow tools works correctly."""
+        mock_agent = MagicMock()
+        mock_agent._model = MagicMock()
+        mock_agent._instructions = None
+        mock_agent._system_prompt = None
+
+        # Create mock workflow
+        mock_workflow = Mock()
+        mock_workflow.params = ["x"]
+        mock_workflow.locals = {}
+        mock_workflow.description = "Custom workflow"
+
+        mock_manager = Mock()
+        mock_manager.workflows = {"custom": mock_workflow}
+
+        token = set_workflow_manager_context(mock_manager)
+
+        try:
+            with (
+                patch("pydantic_ai.Agent") as MockAgent,
+                patch("pydantic_ai.Tool") as MockTool,
+            ):
+                mock_result = MagicMock()
+                mock_result.output = "Response"
+
+                mock_instance = AsyncMock()
+                mock_instance.run = AsyncMock(return_value=mock_result)
+                MockAgent.return_value = mock_instance
+                MockTool.return_value = MagicMock()
+
+                result = await default_registry.call(
+                    "ai_agent_with_tools",
+                    [
+                        mock_agent,
+                        "Test",
+                        ["operator_add", {"workflow": "custom"}, "operator_multiply"],
+                    ],
+                )
+
+                assert result["text"] == "Response"
+                # Verify Tool was called for each tool (2 opcodes + 1 workflow)
+                assert MockTool.call_count == 3
+        finally:
+            reset_workflow_manager_context(token)
+
+    async def test_invalid_workflow_raises_valueerror(self):
+        """Non-existent workflow raises ValueError."""
+        mock_agent = MagicMock()
+        mock_agent._model = MagicMock()
+
+        mock_manager = Mock()
+        mock_manager.workflows = {"existing": Mock()}
+
+        token = set_workflow_manager_context(mock_manager)
+
+        try:
+            with pytest.raises(ValueError, match="Workflows not found"):
+                await default_registry.call(
+                    "ai_agent_with_tools",
+                    [mock_agent, "Test", [{"workflow": "nonexistent"}]],
+                )
+        finally:
+            reset_workflow_manager_context(token)
