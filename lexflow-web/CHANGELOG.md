@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.5.1 (2026-02-01)
+
+### Bug Fixes
+
+- **web**: Properly cleanup WebSocket tasks on disconnect
+  ([`fa5e341`](https://github.com/inspira-legal/lex-flow/commit/fa5e3411742154b4c1260ff6239f4db14389c2ed))
+
+### Refactoring
+
+- **web**: Replace context vars with channels for web opcodes
+  ([`0ef42d6`](https://github.com/inspira-legal/lex-flow/commit/0ef42d67fec29ed9bdf50cf906da1b9a9eb77426))
+
+
 ## v1.5.0 (2026-01-31)
 
 ### Chores
