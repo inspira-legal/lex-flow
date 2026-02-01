@@ -12,6 +12,7 @@ import { NodeContextMenu } from "../NodeContextMenu"
 import { CanvasContextMenu } from "../CanvasContextMenu"
 import { useCanvasInteraction } from "@/hooks"
 import { layoutAllWorkflows, getWorkflowUnderPoint } from "@/services/layout/LayoutService"
+import { toYamlNodeId, getWorkflowNameFromSlotId } from "@/utils/wireUtils"
 import { cn } from "@/lib/cn"
 import { ZoomOutIcon, ZoomInIcon, FitViewIcon, GridIcon } from "@/components/icons"
 import {
@@ -28,23 +29,6 @@ import {
   emptyStateTitleVariants,
   emptyStateTextVariants,
 } from "./styles"
-
-// Convert registry node IDs to YAML node IDs
-// Start nodes use "start-{workflowName}" in registry but "start" in YAML
-function toYamlNodeId(registryId: string): string {
-  if (registryId.startsWith("start-")) {
-    return "start"
-  }
-  return registryId
-}
-
-// Extract workflow name from start node registry ID
-function getWorkflowNameFromStartNode(registryId: string): string | undefined {
-  if (registryId.startsWith("start-")) {
-    return registryId.slice(6) // Remove "start-" prefix
-  }
-  return undefined
-}
 
 export function Canvas() {
   const {
@@ -364,8 +348,8 @@ export function Canvas() {
                 })
               }
               onDelete={() => {
-                // Get workflow name if disconnecting from a start node
-                const workflowName = getWorkflowNameFromStartNode(conn.from)
+                // Get workflow name from slot ID (handles both start-* and workflowName::nodeId)
+                const workflowName = getWorkflowNameFromSlotId(conn.from)
                 disconnectConnection(toYamlNodeId(conn.from), toYamlNodeId(conn.to), conn.label, workflowName)
                 selectConnection(null)
               }}
@@ -398,27 +382,31 @@ export function Canvas() {
           ))}
 
           {/* Nodes */}
-          {layoutNodes.map((ln) => (
-            <WorkflowNode
-              key={ln.node.id}
-              node={ln.node}
-              x={ln.x}
-              y={ln.y}
-              isOrphan={ln.isOrphan}
-              zoom={zoom}
-              onDrag={
-                layoutMode === "free"
-                  ? (dx, dy) => {
-                      const currentOffset = nodePositions[ln.node.id] || {
-                        x: 0,
-                        y: 0,
+          {layoutNodes.map((ln) => {
+            const compositeId = `${ln.workflowName}::${ln.node.id}`
+            return (
+              <WorkflowNode
+                key={compositeId}
+                node={ln.node}
+                x={ln.x}
+                y={ln.y}
+                isOrphan={ln.isOrphan}
+                zoom={zoom}
+                workflowName={ln.workflowName}
+                onDrag={
+                  layoutMode === "free"
+                    ? (dx, dy) => {
+                        const currentOffset = nodePositions[compositeId] || {
+                          x: 0,
+                          y: 0,
+                        }
+                        setNodePosition(compositeId, currentOffset.x + dx, currentOffset.y + dy)
                       }
-                      setNodePosition(ln.node.id, currentOffset.x + dx, currentOffset.y + dy)
-                    }
-                  : undefined
-              }
-            />
-          ))}
+                    : undefined
+                }
+              />
+            )
+          })}
 
           {/* Wire drag preview (rendered last, on top) */}
           <WireDragPreview />
@@ -440,66 +428,63 @@ export function Canvas() {
       )}
 
       {/* Node context menu */}
-      {contextMenu && (
-        <NodeContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          nodeId={contextMenu.nodeId}
-          hasReporters={contextMenu.hasReporters}
-          reportersExpanded={contextMenu.reportersExpanded}
-          isOrphan={contextMenu.isOrphan}
-          onExpandReporters={() => setReportersExpanded(contextMenu.nodeId, true)}
-          onCollapseReporters={() => setReportersExpanded(contextMenu.nodeId, false)}
-          onDelete={() => {
-            deleteNode(contextMenu.nodeId)
-            clearMultiSelection()
-          }}
-          onDuplicate={() => duplicateNode(contextMenu.nodeId)}
-          onClose={hideContextMenu}
-          selectedNodeIds={selectedNodeIds}
-          onExtractToWorkflow={() => {
-            // Find which workflow the first selected node belongs to
-            const nodeIds = selectedNodeIds.length > 0 ? selectedNodeIds : [contextMenu.nodeId]
-            if (nodeIds.length < 2) return
+      {contextMenu && (() => {
+        // Context menu nodeId is now a composite ID (workflowName::nodeId)
+        // Extract raw nodeId for YAML operations, keep compositeId for UI state
+        const rawNodeId = toYamlNodeId(contextMenu.nodeId)
 
-            // Find the workflow containing the first node by searching tree
-            let workflowName = "main"
-            if (tree) {
-              for (const wf of tree.workflows) {
-                const hasNode = (nodes: typeof wf.children): boolean =>
-                  nodes.some((n) => nodeIds.includes(n.id) || n.children.some((b) => hasNode(b.children)))
-                if (hasNode(wf.children) || (wf.orphans && hasNode(wf.orphans))) {
-                  workflowName = wf.name
-                  break
-                }
+        return (
+          <NodeContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            nodeId={rawNodeId}
+            hasReporters={contextMenu.hasReporters}
+            reportersExpanded={contextMenu.reportersExpanded}
+            isOrphan={contextMenu.isOrphan}
+            onExpandReporters={() => setReportersExpanded(contextMenu.nodeId, true)}
+            onCollapseReporters={() => setReportersExpanded(contextMenu.nodeId, false)}
+            onDelete={() => {
+              deleteNode(rawNodeId)
+              clearMultiSelection()
+            }}
+            onDuplicate={() => duplicateNode(rawNodeId)}
+            onClose={hideContextMenu}
+            selectedNodeIds={selectedNodeIds}
+            onExtractToWorkflow={() => {
+              // Convert composite IDs to raw node IDs for YAML operations
+              const compositeIds = selectedNodeIds.length > 0 ? selectedNodeIds : [contextMenu.nodeId]
+              const rawNodeIds = compositeIds.map(toYamlNodeId)
+              if (rawNodeIds.length < 2) return
+
+              // Extract workflow name from the first composite ID
+              let workflowName = getWorkflowNameFromSlotId(compositeIds[0]) || "main"
+
+              // Validate the chain first
+              const validation = WorkflowService.validateLinearChain(source, rawNodeIds, workflowName)
+              if (!validation.isValid) {
+                showConfirmDialog({
+                  title: "Cannot Extract",
+                  message: validation.errors.join("\n"),
+                  confirmLabel: "OK",
+                  onConfirm: () => {},
+                })
+                return
               }
-            }
 
-            // Validate the chain first
-            const validation = WorkflowService.validateLinearChain(source, nodeIds, workflowName)
-            if (!validation.isValid) {
-              showConfirmDialog({
-                title: "Cannot Extract",
-                message: validation.errors.join("\n"),
-                confirmLabel: "OK",
-                onConfirm: () => {},
-              })
-              return
-            }
+              // Analyze variables for suggestions
+              const variables = WorkflowService.analyzeChainVariables(source, rawNodeIds)
 
-            // Analyze variables for suggestions
-            const variables = WorkflowService.analyzeChainVariables(source, nodeIds)
-
-            // Show the extract workflow modal
-            showExtractWorkflowModal(
-              validation.orderedNodeIds,
-              workflowName,
-              variables.suggestedInputs,
-              variables.suggestedOutputs
-            )
-          }}
-        />
-      )}
+              // Show the extract workflow modal
+              showExtractWorkflowModal(
+                validation.orderedNodeIds,
+                workflowName,
+                variables.suggestedInputs,
+                variables.suggestedOutputs
+              )
+            }}
+          />
+        )
+      })()}
 
       {/* Canvas context menu (background right-click) */}
       {canvasContextMenu && (

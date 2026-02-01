@@ -1,6 +1,7 @@
 import { useUiStore, useWorkflowStore } from "@/store"
 import { checkTypeCompatibility, getCompatibilityColor } from "@/utils/typeCompatibility"
 import { getInputDisplayName } from "@/utils/workflowUtils"
+import { toYamlNodeId } from "@/utils/wireUtils"
 import {
   inputSlotStyle,
   getSlotBgStyle,
@@ -47,16 +48,18 @@ export function InputSlot({
   const handleMouseUp = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (draggingOrphan) {
+      // Extract raw node ID from composite ID for YAML operations
+      const orphanRawNodeId = toYamlNodeId(draggingOrphan.nodeId)
+
       // Type compatibility check (confirm dialog if incompatible)
       if (compatibility === false) {
-        const orphanNodeId = draggingOrphan.nodeId
         useUiStore.getState().showConfirmDialog({
           title: "Type Mismatch",
           message: `The orphan node's return type may not be compatible with the input "${inputKey}". Continue anyway?`,
           confirmLabel: "Continue",
           variant: "default",
           onConfirm: () => {
-            convertOrphanToReporter(orphanNodeId, nodeId, inputKey)
+            convertOrphanToReporter(orphanRawNodeId, nodeId, inputKey)
             setDraggingOrphan(null)
           },
           onCancel: () => {
@@ -66,7 +69,7 @@ export function InputSlot({
         return
       }
       // Convert the orphan to a reporter for this input
-      convertOrphanToReporter(draggingOrphan.nodeId, nodeId, inputKey)
+      convertOrphanToReporter(orphanRawNodeId, nodeId, inputKey)
       setDraggingOrphan(null)
     } else if (draggingVariable) {
       // Update the input to use the variable reference

@@ -6,6 +6,7 @@ import { NODE_WIDTH } from "../utils/wireUtils";
 
 interface UseNodePortsProps {
   nodeId: string;
+  slotId: string;  // Composite ID for slot registry (workflowName::nodeId)
   x: number;
   y: number;
 }
@@ -29,6 +30,7 @@ interface UseNodePortsReturn {
 
 export function useNodePorts({
   nodeId,
+  slotId,
   x,
   y,
 }: UseNodePortsProps): UseNodePortsReturn {
@@ -43,7 +45,7 @@ export function useNodePorts({
       const outputX = x + NODE_WIDTH;
       const outputY = y + 30;
       setDraggingWire({
-        sourceNodeId: nodeId,
+        sourceNodeId: slotId,
         sourcePort: "output",
         sourceX: outputX,
         sourceY: outputY,
@@ -52,7 +54,7 @@ export function useNodePorts({
         nearbyPort: null,
       });
     },
-    [nodeId, x, y, setDraggingWire],
+    [slotId, x, y, setDraggingWire],
   );
 
   // Handle dragging from a branch port
@@ -68,7 +70,7 @@ export function useNodePorts({
       const outputX = x + portX;
       const outputY = y + portY;
       setDraggingWire({
-        sourceNodeId: nodeId,
+        sourceNodeId: slotId,
         sourcePort: "output",
         sourceX: outputX,
         sourceY: outputY,
@@ -78,7 +80,7 @@ export function useNodePorts({
         branchLabel: branchName,
       });
     },
-    [nodeId, x, y, setDraggingWire],
+    [slotId, x, y, setDraggingWire],
   );
 
   // Handle dragging from input port (reverse direction)
@@ -89,7 +91,7 @@ export function useNodePorts({
       const inputX = x;
       const inputY = y + 30;
       setDraggingWire({
-        sourceNodeId: nodeId,
+        sourceNodeId: slotId,
         sourcePort: "input",
         sourceX: inputX,
         sourceY: inputY,
@@ -98,7 +100,7 @@ export function useNodePorts({
         nearbyPort: null,
       });
     },
-    [nodeId, x, y, setDraggingWire],
+    [slotId, x, y, setDraggingWire],
   );
 
   // Handle completing connection when dragging from input to output
@@ -137,23 +139,23 @@ export function useNodePorts({
 
   // Check if ports should be highlighted based on proximity
   const isInputPortHighlighted =
-    draggingWire?.nearbyPort?.nodeId === nodeId &&
+    draggingWire?.nearbyPort?.nodeId === slotId &&
     draggingWire?.nearbyPort?.port === "input";
 
   const isOutputPortHighlighted =
-    draggingWire?.nearbyPort?.nodeId === nodeId &&
+    draggingWire?.nearbyPort?.nodeId === slotId &&
     draggingWire?.nearbyPort?.port === "output";
 
   // Check if this node is a valid drop target
   const isValidDropTarget =
     !!draggingWire &&
     draggingWire.sourcePort === "output" &&
-    draggingWire.sourceNodeId !== nodeId;
+    draggingWire.sourceNodeId !== slotId;
 
   const isValidOutputDropTarget =
     !!draggingWire &&
     draggingWire.sourcePort === "input" &&
-    draggingWire.sourceNodeId !== nodeId;
+    draggingWire.sourceNodeId !== slotId;
 
   return {
     handleOutputPortMouseDown,

@@ -199,6 +199,7 @@ export const WorkflowNode = memo(function WorkflowNode({
   isOrphan,
   zoom = 1,
   onDrag,
+  workflowName,
 }: WorkflowNodeProps) {
   const { opcodes } = useWorkflowStore()
   const {
@@ -227,15 +228,20 @@ export const WorkflowNode = memo(function WorkflowNode({
   } = useSelectionStore()
 
   const [isHovered, setIsHovered] = useState(false)
-  const showReporters = expandedReporters[node.id] ?? false
+
+  // Composite ID for UI state that needs to be unique across workflows
+  const compositeId = `${workflowName}::${node.id}`
+
+  const showReporters = expandedReporters[compositeId] ?? false
 
   const opcodeInfo = opcodes.find((op) => op.name === node.opcode)
   const color = getNodeColor(node.type)
   const icon = getNodeIcon(node.opcode, node.type)
-  const isSelected = selectedNodeId === node.id && !selectedReporter
-  const isMultiSelected = selectedNodeIds.includes(node.id)
-  const isSearchMatch = searchResults.includes(node.id)
-  const status = nodeStatus[node.id] || "idle"
+  // Selection uses composite ID to avoid cross-workflow selection issues
+  const isSelected = selectedNodeId === compositeId && !selectedReporter
+  const isMultiSelected = selectedNodeIds.includes(compositeId)
+  const isSearchMatch = searchResults.includes(node.id) // Search still uses raw ID for YAML matching
+  const status = nodeStatus[node.id] || "idle" // Status comes from execution engine, uses raw ID
   const displayName = formatOpcodeName(node.opcode)
 
   const justDraggedRef = useRef(false)
@@ -256,8 +262,9 @@ export const WorkflowNode = memo(function WorkflowNode({
   const reporterCount = countReporters(node.inputs)
 
   // Check if we should show expanded input slots
+  // Compare with compositeId to handle same node IDs across workflows
   const showInputSlots = !!(
-    draggingVariable || (draggingOrphan && draggingOrphan.nodeId !== node.id)
+    draggingVariable || (draggingOrphan && draggingOrphan.nodeId !== compositeId)
   )
 
   // Get input keys for slot display (only regular inputs)
@@ -281,6 +288,9 @@ export const WorkflowNode = memo(function WorkflowNode({
   const totalWidth = Math.max(NODE_WIDTH, reporterSectionWidth)
   const totalHeight = NODE_HEIGHT + inputSlotsHeight + reporterSectionHeight + branchSectionHeight
 
+  // slotId is the same as compositeId, used for slot registry
+  const slotId = compositeId
+
   const {
     handleOutputPortMouseDown,
     handleInputPortMouseDown,
@@ -291,7 +301,7 @@ export const WorkflowNode = memo(function WorkflowNode({
     isOutputPortHighlighted,
     isValidDropTarget,
     isValidOutputDropTarget,
-  } = useNodePorts({ nodeId: node.id, x, y })
+  } = useNodePorts({ nodeId: node.id, slotId, x, y })
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -300,16 +310,16 @@ export const WorkflowNode = memo(function WorkflowNode({
       return
     }
 
-    // Ctrl/Cmd+click for multi-selection
+    // Ctrl/Cmd+click for multi-selection (use compositeId for unique selection)
     if (e.ctrlKey || e.metaKey) {
-      toggleNodeSelection(node.id)
+      toggleNodeSelection(compositeId)
       selectReporter(null)
       return
     }
 
     // Normal click - clear multi-selection and select single node
     clearMultiSelection()
-    selectNode(node.id)
+    selectNode(compositeId)
     selectReporter(null)
     openNodeEditor()
   }
@@ -320,13 +330,14 @@ export const WorkflowNode = memo(function WorkflowNode({
 
     // If this node is part of multi-selection, keep the selection
     // Otherwise, select just this node (clears multi-selection)
-    if (!selectedNodeIds.includes(node.id)) {
+    if (!selectedNodeIds.includes(compositeId)) {
       clearMultiSelection()
-      selectNode(node.id)
+      selectNode(compositeId)
     }
 
+    // Context menu uses compositeId for UI state, but also needs raw nodeId for YAML operations
     showContextMenu({
-      nodeId: node.id,
+      nodeId: compositeId,
       x: e.clientX,
       y: e.clientY,
       hasReporters: reporterCount > 0,
@@ -347,7 +358,7 @@ export const WorkflowNode = memo(function WorkflowNode({
     const badgeCenterY = y
 
     setDraggingOrphan({
-      nodeId: node.id,
+      nodeId: compositeId,  // Use compositeId for UI state
       opcode: node.opcode,
       returnType: opcodeInfo?.return_type,
       fromX: badgeCenterX,
@@ -390,7 +401,7 @@ export const WorkflowNode = memo(function WorkflowNode({
     window.addEventListener("mouseup", handleMouseUp)
   }
 
-  // Register slot positions
+  // Register slot positions using composite ID (workflowName::nodeId)
   useEffect(() => {
     const positions: NodeSlotPositions = {
       input: { x, y: y + NODE_HEIGHT / 2 },
@@ -406,9 +417,9 @@ export const WorkflowNode = memo(function WorkflowNode({
       }
     })
 
-    registerSlotPositions(node.id, positions)
-    return () => unregisterSlotPositions(node.id)
-  }, [x, y, totalWidth, totalHeight, branchSlots.length, node.id, registerSlotPositions, unregisterSlotPositions])
+    registerSlotPositions(slotId, positions)
+    return () => unregisterSlotPositions(slotId)
+  }, [x, y, totalWidth, totalHeight, branchSlots.length, slotId, registerSlotPositions, unregisterSlotPositions])
 
   return (
     <g

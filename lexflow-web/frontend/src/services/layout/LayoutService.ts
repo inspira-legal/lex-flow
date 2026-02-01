@@ -43,6 +43,7 @@ export interface LayoutNode {
   width: number;
   height: number;
   isOrphan?: boolean;
+  workflowName: string;
 }
 
 export interface LayoutConnection {
@@ -488,6 +489,7 @@ export function layoutSingleWorkflow(
       width: dims.width,
       height: dims.height,
       isOrphan,
+      workflowName: workflow.name,
     });
     nodePositions.set(node.id, { x, y, width: dims.width, height: dims.height });
     updateBounds(x, y, dims.width, dims.height);
@@ -521,6 +523,7 @@ export function layoutSingleWorkflow(
             y: branchOffset,
             width: childDims.width,
             height: childDims.height,
+            workflowName: workflow.name,
           });
           nodePositions.set(childNode.id, {
             x: branchX,
@@ -531,8 +534,8 @@ export function layoutSingleWorkflow(
           updateBounds(branchX, branchOffset, childDims.width, childDims.height);
 
           connections.push({
-            from: prevNodeId,
-            to: childNode.id,
+            from: `${workflow.name}::${prevNodeId}`,
+            to: `${workflow.name}::${childNode.id}`,
             fromPort: isFirstInBranch ? branch.name : "output",
             toPort: "input",
             color: branchColor,
@@ -592,6 +595,7 @@ export function layoutSingleWorkflow(
           y: branchY,
           width: childDims.width,
           height: childDims.height,
+          workflowName: workflow.name,
         });
         nodePositions.set(childNode.id, {
           x: branchX,
@@ -602,8 +606,8 @@ export function layoutSingleWorkflow(
         updateBounds(branchX, branchY, childDims.width, childDims.height);
 
         connections.push({
-          from: prevNodeId,
-          to: childNode.id,
+          from: `${workflow.name}::${prevNodeId}`,
+          to: `${workflow.name}::${childNode.id}`,
           fromPort: isFirstInBranch ? branch.name : "output",
           toPort: "input",
           color: branchColor,
@@ -639,7 +643,7 @@ export function layoutSingleWorkflow(
     if (isFirstNode) {
       connections.push({
         from: `start-${workflow.name}`,
-        to: node.id,
+        to: `${workflow.name}::${node.id}`,
         fromPort: "output",
         toPort: "input",
         color: "#22C55E",
@@ -650,8 +654,8 @@ export function layoutSingleWorkflow(
     // Connect sequential nodes
     if (prevNode) {
       connections.push({
-        from: prevNode.id,
-        to: node.id,
+        from: `${workflow.name}::${prevNode.id}`,
+        to: `${workflow.name}::${node.id}`,
         fromPort: "output",
         toPort: "input",
         color: "#475569",
@@ -684,8 +688,8 @@ export function layoutSingleWorkflow(
     for (const orphan of orphans) {
       if (orphan.next) {
         connections.push({
-          from: orphan.id,
-          to: orphan.next,
+          from: `${workflow.name}::${orphan.id}`,
+          to: `${workflow.name}::${orphan.next}`,
           fromPort: "output",
           toPort: "input",
           color: "#6B7280",
@@ -695,8 +699,10 @@ export function layoutSingleWorkflow(
   }
 
   // Apply node position offsets (for free layout mode)
+  // Uses composite ID (workflowName::nodeId) to avoid collisions
   for (const layoutNode of layoutNodes) {
-    const offset = nodePositionOffsets[layoutNode.node.id];
+    const compositeId = `${layoutNode.workflowName}::${layoutNode.node.id}`;
+    const offset = nodePositionOffsets[compositeId];
     if (offset) {
       layoutNode.x += offset.x;
       layoutNode.y += offset.y;

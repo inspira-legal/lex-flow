@@ -6,12 +6,30 @@ export const WIRE_SNAP_DISTANCE = 25;
 export const NODE_WIDTH = 180;
 
 // Convert registry node IDs to YAML node IDs for comparison
-// Start nodes use "start-{workflowName}" in registry but "start" in YAML
-function toYamlNodeId(registryId: string): string {
+// Start nodes use "start-{workflowName}" in registry
+// Regular nodes use "workflowName::nodeId" in registry
+export function toYamlNodeId(registryId: string): string {
   if (registryId.startsWith("start-")) {
     return "start";
   }
+  // Handle workflowName::nodeId format
+  const idx = registryId.indexOf("::");
+  if (idx !== -1) {
+    return registryId.slice(idx + 2);
+  }
   return registryId;
+}
+
+// Extract workflow name from a slot registry ID
+export function getWorkflowNameFromSlotId(slotId: string): string | undefined {
+  if (slotId.startsWith("start-")) {
+    return slotId.slice(6);
+  }
+  const idx = slotId.indexOf("::");
+  if (idx !== -1) {
+    return slotId.slice(0, idx);
+  }
+  return undefined;
 }
 
 export function calculateDistance(
@@ -77,15 +95,12 @@ export function findNearestPortFromRegistry(
   // Determine which port type we're looking for (opposite of source)
   const targetPortType = sourcePort === "output" ? "input" : "output";
 
-  // Normalize source ID for comparison (handles start-* vs start)
-  const normalizedSourceId = toYamlNodeId(sourceNodeId);
-
   let nearestPort: NearbyPort | null = null;
   let nearestDistance = WIRE_SNAP_DISTANCE;
 
   for (const [nodeId, slots] of Object.entries(slotPositions)) {
-    // Skip the source node (compare using normalized IDs)
-    if (toYamlNodeId(nodeId) === normalizedSourceId) continue;
+    // Skip the source node (exact match on registry IDs)
+    if (nodeId === sourceNodeId) continue;
 
     // Get the target port position from registry
     const portPos = targetPortType === "input" ? slots.input : slots.output;

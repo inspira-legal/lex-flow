@@ -3,6 +3,7 @@ import { useWorkflowStore, useUiStore, useSelectionStore } from "@/store"
 import type { SelectedReporter } from "@/store/selectionStore"
 import type { TreeNode, FormattedValue, WorkflowTree } from "@/api/types"
 import { getInputDisplayName } from "@/utils/workflowUtils"
+import { toYamlNodeId } from "@/utils/wireUtils"
 import { StartNodeEditorPanel } from "../StartNodeEditorPanel"
 import {
   getNodeColor,
@@ -95,7 +96,9 @@ export function NodeEditorPanel({ className }: NodeEditorPanelProps) {
     )
   }
 
-  const selectedNode = selectedNodeId ? findNode(tree, selectedNodeId) : null
+  // Extract raw node ID from composite ID (workflowName::nodeId -> nodeId)
+  const rawNodeId = selectedNodeId ? toYamlNodeId(selectedNodeId) : null
+  const selectedNode = rawNodeId ? findNode(tree, rawNodeId) : null
 
   const opcodeInfo = selectedReporter
     ? opcodes.find((op) => op.name === selectedReporter.opcode)
@@ -109,8 +112,8 @@ export function NodeEditorPanel({ className }: NodeEditorPanelProps) {
   }
 
   const handleCopyId = () => {
-    if (selectedNodeId) {
-      navigator.clipboard.writeText(selectedNodeId)
+    if (rawNodeId) {
+      navigator.clipboard.writeText(rawNodeId)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
@@ -126,10 +129,10 @@ export function NodeEditorPanel({ className }: NodeEditorPanelProps) {
   }
 
   const handleFindInSource = () => {
-    if (selectedNodeId) {
+    if (rawNodeId) {
       const lines = source.split("\n")
       for (let i = 0; i < lines.length; i++) {
-        if (lines[i].includes(selectedNodeId + ":")) {
+        if (lines[i].includes(rawNodeId + ":")) {
           window.dispatchEvent(
             new CustomEvent("lexflow:goto-line", { detail: { line: i + 1 } })
           )
@@ -157,14 +160,14 @@ export function NodeEditorPanel({ className }: NodeEditorPanelProps) {
   }
 
   const handleDelete = () => {
-    if (selectedNodeId && selectedNodeId !== "start") {
+    if (rawNodeId && rawNodeId !== "start") {
       useUiStore.getState().showConfirmDialog({
         title: "Delete Node",
-        message: `Delete node "${selectedNodeId}"? This action can be undone with Ctrl+Z.`,
+        message: `Delete node "${rawNodeId}"? This action can be undone with Ctrl+Z.`,
         confirmLabel: "Delete",
         variant: "danger",
         onConfirm: () => {
-          deleteNode(selectedNodeId)
+          deleteNode(rawNodeId)
           closeNodeEditor()
         },
       })
@@ -172,8 +175,8 @@ export function NodeEditorPanel({ className }: NodeEditorPanelProps) {
   }
 
   const handleDuplicate = () => {
-    if (selectedNodeId && selectedNodeId !== "start") {
-      duplicateNode(selectedNodeId)
+    if (rawNodeId && rawNodeId !== "start") {
+      duplicateNode(rawNodeId)
     }
   }
 
@@ -264,26 +267,26 @@ export function NodeEditorPanel({ className }: NodeEditorPanelProps) {
   }
 
   const handleAddDynamicBranch = (branchPrefix: string) => {
-    if (selectedNodeId) {
-      addDynamicBranch(selectedNodeId, branchPrefix)
+    if (rawNodeId) {
+      addDynamicBranch(rawNodeId, branchPrefix)
     }
   }
 
   const handleRemoveDynamicBranch = (branchName: string) => {
-    if (selectedNodeId) {
-      removeDynamicBranch(selectedNodeId, branchName)
+    if (rawNodeId) {
+      removeDynamicBranch(rawNodeId, branchName)
     }
   }
 
   const handleAddDynamicInput = (inputPrefix: string) => {
-    if (selectedNodeId) {
-      addDynamicInput(selectedNodeId, inputPrefix)
+    if (rawNodeId) {
+      addDynamicInput(rawNodeId, inputPrefix)
     }
   }
 
   const handleRemoveDynamicInput = (inputName: string) => {
-    if (selectedNodeId) {
-      removeDynamicInput(selectedNodeId, inputName)
+    if (rawNodeId) {
+      removeDynamicInput(rawNodeId, inputName)
     }
   }
 
@@ -413,7 +416,7 @@ export function NodeEditorPanel({ className }: NodeEditorPanelProps) {
                   (p) => p.name.toUpperCase() === key
                 )}
                 onUpdate={(inputKey, newValue) =>
-                  updateNodeInput(selectedNodeId!, inputKey, newValue)
+                  updateNodeInput(rawNodeId!, inputKey, newValue)
                 }
               />
             ))
@@ -562,9 +565,9 @@ export function NodeEditorPanel({ className }: NodeEditorPanelProps) {
         <button
           className={actionBtnVariants()}
           onClick={handleDuplicate}
-          disabled={selectedNodeId === "start"}
+          disabled={rawNodeId === "start"}
           title={
-            selectedNodeId === "start"
+            rawNodeId === "start"
               ? "Cannot duplicate start node"
               : "Duplicate node (Ctrl+D)"
           }
@@ -574,9 +577,9 @@ export function NodeEditorPanel({ className }: NodeEditorPanelProps) {
         <button
           className={actionBtnDangerVariants()}
           onClick={handleDelete}
-          disabled={selectedNodeId === "start"}
+          disabled={rawNodeId === "start"}
           title={
-            selectedNodeId === "start"
+            rawNodeId === "start"
               ? "Cannot delete start node"
               : "Delete node (Del)"
           }
