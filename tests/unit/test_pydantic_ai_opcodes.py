@@ -24,13 +24,25 @@ try:
         _get_workflow_name,
         _validate_workflow_tools_exist,
         _create_workflow_wrapper,
-        _workflow_manager_context,
-        set_workflow_manager_context,
-        reset_workflow_manager_context,
     )
+
     HELPERS_AVAILABLE = True
 except ImportError:
     HELPERS_AVAILABLE = False
+
+
+def inject_workflow_manager(registry, manager):
+    """Helper to inject a workflow manager into the registry for testing."""
+
+    async def get_manager():
+        return manager
+
+    registry.inject("_get_workflow_manager", get_manager)
+
+
+def clear_workflow_manager_injection(registry):
+    """Helper to clear the workflow manager injection."""
+    registry.clear_injection("_get_workflow_manager")
 
 
 @pytest.mark.skipif(not PYDANTIC_AI_AVAILABLE, reason="pydantic-ai not installed")
@@ -257,9 +269,7 @@ class TestToolWrapper:
     async def test_tool_wrapper_kwargs_to_args(self):
         """Tool wrapper correctly maps kwargs to positional args."""
         wrapper = _create_tool_wrapper(
-            "operator_add",
-            default_registry,
-            {"operator_add"}
+            "operator_add", default_registry, {"operator_add"}
         )
 
         # Setup context
@@ -277,7 +287,7 @@ class TestToolWrapper:
         wrapper = _create_tool_wrapper(
             "operator_add",
             default_registry,
-            {"operator_add"}  # In wrapper's knowledge
+            {"operator_add"},  # In wrapper's knowledge
         )
 
         # Setup context with EMPTY allowlist
@@ -293,9 +303,7 @@ class TestToolWrapper:
     async def test_tool_wrapper_max_calls_exceeded(self):
         """Tool wrapper raises RuntimeError when max_tool_calls exceeded."""
         wrapper = _create_tool_wrapper(
-            "operator_add",
-            default_registry,
-            {"operator_add"}
+            "operator_add", default_registry, {"operator_add"}
         )
 
         # Setup context with max=1
@@ -311,9 +319,7 @@ class TestToolWrapper:
     async def test_tool_wrapper_missing_required_param(self):
         """Tool wrapper raises ValueError for missing required parameter."""
         wrapper = _create_tool_wrapper(
-            "operator_add",
-            default_registry,
-            {"operator_add"}
+            "operator_add", default_registry, {"operator_add"}
         )
 
         ctx = {"count": 0, "max": 10, "allowlist": {"operator_add"}}
@@ -351,8 +357,7 @@ class TestAiAgentWithToolsOpcode:
             MockTool.return_value = MagicMock()
 
             result = await default_registry.call(
-                "ai_agent_with_tools",
-                [mock_agent, "Test prompt", ["operator_add"]]
+                "ai_agent_with_tools", [mock_agent, "Test prompt", ["operator_add"]]
             )
 
             assert "text" in result
@@ -368,6 +373,7 @@ class TestAiAgentWithToolsOpcode:
             patch("pydantic_ai.Agent") as MockAgent,
             patch("pydantic_ai.Tool") as MockTool,
         ):
+
             async def slow_run(prompt):
                 await asyncio.sleep(10)
                 return MagicMock(output="done")
@@ -385,9 +391,9 @@ class TestAiAgentWithToolsOpcode:
                         "Test",
                         ["operator_add"],
                         None,  # output
-                        10,    # max_tool_calls
-                        0.1,   # timeout_seconds (very short)
-                    ]
+                        10,  # max_tool_calls
+                        0.1,  # timeout_seconds (very short)
+                    ],
                 )
 
     async def test_invalid_tools_raises_valueerror(self):
@@ -397,8 +403,7 @@ class TestAiAgentWithToolsOpcode:
 
         with pytest.raises(ValueError, match="not found"):
             await default_registry.call(
-                "ai_agent_with_tools",
-                [mock_agent, "Test", ["fake_nonexistent_opcode"]]
+                "ai_agent_with_tools", [mock_agent, "Test", ["fake_nonexistent_opcode"]]
             )
 
     async def test_messages_string_normalization(self):
@@ -420,9 +425,8 @@ class TestAiAgentWithToolsOpcode:
             MockAgent.return_value = mock_instance
             MockTool.return_value = MagicMock()
 
-            result = await default_registry.call(
-                "ai_agent_with_tools",
-                [mock_agent, "Hello world", ["operator_add"]]
+            await default_registry.call(
+                "ai_agent_with_tools", [mock_agent, "Hello world", ["operator_add"]]
             )
 
             # Check that run was called with formatted message
@@ -454,9 +458,8 @@ class TestAiAgentWithToolsOpcode:
                 {"role": "user", "content": "Hi there"},
             ]
 
-            result = await default_registry.call(
-                "ai_agent_with_tools",
-                [mock_agent, messages, ["operator_add"]]
+            await default_registry.call(
+                "ai_agent_with_tools", [mock_agent, messages, ["operator_add"]]
             )
 
             # Check that run was called with formatted messages
@@ -731,17 +734,17 @@ class TestAiAgentWithToolsWorkflows:
         mock_agent = MagicMock()
         mock_agent._model = MagicMock()
 
-        # Ensure no context is set
-        reset_workflow_manager_context(_workflow_manager_context.set(None))
+        # Ensure no injection is set
+        clear_workflow_manager_injection(default_registry)
 
-        with pytest.raises(RuntimeError, match="WorkflowManager context"):
+        with pytest.raises(RuntimeError, match="Engine context"):
             await default_registry.call(
                 "ai_agent_with_tools",
                 [mock_agent, "Test", [{"workflow": "some_workflow"}]],
             )
 
     async def test_workflow_tools_with_context(self):
-        """Workflow tools work correctly with WorkflowManager context."""
+        """Workflow tools work correctly with WorkflowManager injection."""
         mock_agent = MagicMock()
         mock_agent._model = MagicMock()
         mock_agent._instructions = None
@@ -757,8 +760,8 @@ class TestAiAgentWithToolsWorkflows:
         mock_manager = Mock()
         mock_manager.workflows = {"double": mock_workflow}
 
-        # Set context
-        token = set_workflow_manager_context(mock_manager)
+        # Inject workflow manager
+        inject_workflow_manager(default_registry, mock_manager)
 
         try:
             with (
@@ -782,7 +785,7 @@ class TestAiAgentWithToolsWorkflows:
                 # Verify Tool was called for the workflow
                 assert MockTool.call_count == 1
         finally:
-            reset_workflow_manager_context(token)
+            clear_workflow_manager_injection(default_registry)
 
     async def test_mixed_opcode_and_workflow_tools(self):
         """Mix of opcode and workflow tools works correctly."""
@@ -800,7 +803,7 @@ class TestAiAgentWithToolsWorkflows:
         mock_manager = Mock()
         mock_manager.workflows = {"custom": mock_workflow}
 
-        token = set_workflow_manager_context(mock_manager)
+        inject_workflow_manager(default_registry, mock_manager)
 
         try:
             with (
@@ -828,7 +831,7 @@ class TestAiAgentWithToolsWorkflows:
                 # Verify Tool was called for each tool (2 opcodes + 1 workflow)
                 assert MockTool.call_count == 3
         finally:
-            reset_workflow_manager_context(token)
+            clear_workflow_manager_injection(default_registry)
 
     async def test_invalid_workflow_raises_valueerror(self):
         """Non-existent workflow raises ValueError."""
@@ -838,7 +841,7 @@ class TestAiAgentWithToolsWorkflows:
         mock_manager = Mock()
         mock_manager.workflows = {"existing": Mock()}
 
-        token = set_workflow_manager_context(mock_manager)
+        inject_workflow_manager(default_registry, mock_manager)
 
         try:
             with pytest.raises(ValueError, match="Workflows not found"):
@@ -847,4 +850,4 @@ class TestAiAgentWithToolsWorkflows:
                     [mock_agent, "Test", [{"workflow": "nonexistent"}]],
                 )
         finally:
-            reset_workflow_manager_context(token)
+            clear_workflow_manager_injection(default_registry)

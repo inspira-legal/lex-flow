@@ -41,6 +41,8 @@ class OpcodeRegistry:
         self.signatures: dict[str, inspect.Signature] = {}
         self.categories: dict[str, CategoryInfo] = {}
         self.opcode_categories: dict[str, str] = {}  # opcode_name -> category_id
+        self._privileged: set[str] = set()
+        self._injected: dict[str, Callable] = {}
         self._register_builtin_categories()
         self._register_builtins()
 
@@ -148,7 +150,7 @@ class OpcodeRegistry:
         """List all registered categories sorted by order."""
         return sorted(self.categories.values(), key=lambda c: (c.order, c.id))
 
-    def register(self, name: str = None, *, category: str = None):
+    def register(self, name: str = None, *, category: str = None, privileged: bool = False):
         """
         Decorator to register an opcode with automatic argument unpacking.
 
@@ -165,9 +167,14 @@ class OpcodeRegistry:
             async def pydantic_ai_run(agent, prompt: str) -> str:
                 ...
 
+            @registry.register(privileged=True)
+            async def engine_only_op() -> dict:
+                pass  # Implementation injected by Engine
+
         Args:
             name: Custom opcode name (default: function name)
             category: Explicit category ID (default: auto-detect from prefix)
+            privileged: If True, opcode requires injection before use
         """
 
         def decorator(func: Callable) -> Callable:
@@ -182,34 +189,48 @@ class OpcodeRegistry:
             sig = inspect.signature(func)
             self.signatures[opcode_name] = sig
 
-            # wrapper that handles list unpacking
-            @wraps(func)
-            async def wrapper(args: list[Any]) -> Any:
-                # Get parameter information
-                params = list(sig.parameters.values())
+            if privileged:
+                # Mark as privileged - requires injection before use
+                self._privileged.add(opcode_name)
 
-                # Handle different parameter patterns
-                if params and params[-1].kind == inspect.Parameter.VAR_POSITIONAL:
-                    # Function accepts *args
-                    return await func(*args)
-                else:
-                    # Fixed parameters - unpack what we have
-                    # Handle optional parameters with defaults
-                    bound_args = []
-                    for i, param in enumerate(params):
-                        if i < len(args):
-                            bound_args.append(args[i])
-                        elif param.default != inspect.Parameter.empty:
-                            bound_args.append(param.default)
-                        else:
-                            raise ValueError(
-                                f"{opcode_name} requires {len(params)} arguments, got {len(args)}"
-                            )
+                # Create placeholder that raises if called without injection
+                @wraps(func)
+                async def placeholder(args: list[Any]) -> Any:
+                    raise RuntimeError(
+                        f"Privileged opcode '{opcode_name}' requires injection. "
+                        f"This opcode must be called within an Engine context."
+                    )
 
-                    return await func(*bound_args)
+                self.opcodes[opcode_name] = placeholder
+            else:
+                # wrapper that handles list unpacking
+                @wraps(func)
+                async def wrapper(args: list[Any]) -> Any:
+                    # Get parameter information
+                    params = list(sig.parameters.values())
 
-            # Store the wrapper
-            self.opcodes[opcode_name] = wrapper
+                    # Handle different parameter patterns
+                    if params and params[-1].kind == inspect.Parameter.VAR_POSITIONAL:
+                        # Function accepts *args
+                        return await func(*args)
+                    else:
+                        # Fixed parameters - unpack what we have
+                        # Handle optional parameters with defaults
+                        bound_args = []
+                        for i, param in enumerate(params):
+                            if i < len(args):
+                                bound_args.append(args[i])
+                            elif param.default != inspect.Parameter.empty:
+                                bound_args.append(param.default)
+                            else:
+                                raise ValueError(
+                                    f"{opcode_name} requires {len(params)} arguments, got {len(args)}"
+                                )
+
+                        return await func(*bound_args)
+
+                # Store the wrapper
+                self.opcodes[opcode_name] = wrapper
 
             # Return original function (so it can still be called directly if needed)
             return func
@@ -220,7 +241,59 @@ class OpcodeRegistry:
         """Call an opcode with arguments."""
         if name not in self.opcodes:
             raise ValueError(f"Unknown opcode: {name}")
+        # Check for injected implementation first (for privileged opcodes)
+        if name in self._injected:
+            return await self._injected[name](args)
         return await self.opcodes[name](args)
+
+    def inject(self, name: str, implementation: Callable) -> None:
+        """Inject implementation for a privileged opcode.
+
+        Args:
+            name: The opcode name to inject implementation for
+            implementation: Async function to use as the implementation
+
+        Raises:
+            ValueError: If opcode doesn't exist or is not privileged
+        """
+        if name not in self.opcodes:
+            raise ValueError(f"Unknown opcode: {name}")
+        if name not in self._privileged:
+            raise ValueError(
+                f"Opcode '{name}' is not privileged and cannot be injected"
+            )
+
+        # Get the signature for argument unpacking
+        sig = self.signatures[name]
+
+        # Create wrapper with argument unpacking
+        @wraps(implementation)
+        async def wrapper(args: list[Any]) -> Any:
+            params = list(sig.parameters.values())
+            if params and params[-1].kind == inspect.Parameter.VAR_POSITIONAL:
+                return await implementation(*args)
+            else:
+                bound_args = []
+                for i, param in enumerate(params):
+                    if i < len(args):
+                        bound_args.append(args[i])
+                    elif param.default != inspect.Parameter.empty:
+                        bound_args.append(param.default)
+                    else:
+                        raise ValueError(
+                            f"{name} requires {len(params)} arguments, got {len(args)}"
+                        )
+                return await implementation(*bound_args)
+
+        self._injected[name] = wrapper
+
+    def clear_injection(self, name: str) -> None:
+        """Remove injected implementation for a privileged opcode."""
+        self._injected.pop(name, None)
+
+    def is_privileged(self, name: str) -> bool:
+        """Check if an opcode is privileged (requires injection)."""
+        return name in self._privileged
 
     def get_interface(self, name: str) -> dict:
         """Get the interface of an opcode from its signature."""
@@ -918,6 +991,33 @@ class OpcodeRegistry:
                         await asyncio.sleep(delay)
 
             return gen()
+
+        # ============ Privileged Introspection Operations ============
+        # These opcodes require injection by the Engine to access internal state.
+
+        @self.register(privileged=True)
+        async def introspect_context() -> dict:
+            """Get execution context including program, workflows, and opcodes.
+
+            Returns a dictionary with:
+            - program: Program metadata (globals, main workflow, externals)
+            - workflows: Available workflow definitions
+            - opcodes: List of registered opcode names
+
+            Note: This is a privileged opcode - implementation is injected by Engine.
+            """
+            pass  # Implementation injected by Engine
+
+        @self.register(privileged=True)
+        async def _get_workflow_manager() -> Any:
+            """Get the WorkflowManager instance for workflow execution.
+
+            This is an internal privileged opcode used by ai_agent_with_tools
+            to access workflows as tools. Not intended for direct use.
+
+            Note: This is a privileged opcode - implementation is injected by Engine.
+            """
+            pass  # Implementation injected by Engine
 
 
 # Default global registry instance
