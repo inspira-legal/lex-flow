@@ -74,6 +74,12 @@ export const Connection = memo(function Connection({
     return null
   }
 
+  // Guard against uninitialized positions (both endpoints at origin or same point)
+  // This can happen briefly when a new node is added but hasn't registered its slot yet
+  if ((x1 === 0 && y1 === 0 && x2 === 0 && y2 === 0) || (x1 === x2 && y1 === y2)) {
+    return null
+  }
+
   const path = calculateBezierPath(x1, y1, x2, y2)
   const midX = (x1 + x2) / 2
   const midY = (y1 + y2) / 2
