@@ -270,25 +270,15 @@ export function Canvas() {
   // Handle add node menu selection
   const handleAddNodeSelect = useCallback(
     (opcode: OpcodeInterface) => {
-      console.log("[AddNode] handleAddNodeSelect called", { opcode, addNodeMenu })
       if (!addNodeMenu) {
-        console.log("[AddNode] addNodeMenu is null, returning")
         return
       }
-
-      console.log("[AddNode] Calling addNodeConnected", {
-        opcode: opcode.name,
-        sourceNodeId: addNodeMenu.sourceNodeId,
-        workflowName: addNodeMenu.workflowName
-      })
 
       const newNodeId = addNodeConnected(
         opcode,
         addNodeMenu.sourceNodeId,
         addNodeMenu.workflowName
       )
-
-      console.log("[AddNode] Result:", { newNodeId })
 
       if (newNodeId) {
         // Update selection to new node

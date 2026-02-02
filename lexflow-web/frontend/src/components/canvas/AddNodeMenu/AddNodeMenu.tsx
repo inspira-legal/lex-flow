@@ -24,6 +24,10 @@ import {
 } from "./styles"
 import type { AddNodeMenuProps } from "./types"
 
+// Menu dimensions for viewport adjustment (menu width: 320px, max-height: 480px + padding)
+const MENU_WIDTH_WITH_PADDING = 340
+const MENU_HEIGHT_WITH_PADDING = 500
+
 export function AddNodeMenu({
   x,
   y,
@@ -103,24 +107,26 @@ export function AddNodeMenu({
   }, [opcodes, search])
 
   // Adjust position to stay within viewport
-  const adjustedX = Math.min(x, window.innerWidth - 340)
-  const adjustedY = Math.min(y, window.innerHeight - 500)
+  const adjustedX = Math.min(x, window.innerWidth - MENU_WIDTH_WITH_PADDING)
+  const adjustedY = Math.min(y, window.innerHeight - MENU_HEIGHT_WITH_PADDING)
 
   const handleSelect = (opcode: OpcodeInterface) => {
     onSelect(opcode)
     onClose()
   }
 
-  const formatDisplayName = (name: string): string => {
-    return name
-      .replace(
-        /^(control_|data_|io_|operator_|list_|dict_|string_|math_|workflow_)/,
-        ""
-      )
-      .split("_")
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ")
-  }
+  // Generate formatDisplayName dynamically based on category prefixes
+  const formatDisplayName = useMemo(() => {
+    const prefixes = CATEGORIES.map((cat) => cat.prefix).join("|")
+    const regex = new RegExp(`^(${prefixes}|workflow_)`)
+    return (name: string): string => {
+      return name
+        .replace(regex, "")
+        .split("_")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ")
+    }
+  }, [CATEGORIES])
 
   const highlightText = (text: string, query: string): React.ReactNode => {
     if (!query) return <>{text}</>
@@ -139,6 +145,68 @@ export function AddNodeMenu({
         </span>
         {text.slice(index + query.length)}
       </>
+    )
+  }
+
+  // Reusable category section renderer
+  const renderCategorySection = (
+    categoryId: string,
+    label: string,
+    icon: string,
+    color: string,
+    categoryOpcodes: OpcodeInterface[]
+  ) => {
+    if (categoryOpcodes.length === 0) return null
+
+    const isExpanded = expandedCategory === categoryId
+
+    return (
+      <div key={categoryId} className={cn(categoryVariants())}>
+        <button
+          className={cn(categoryHeaderVariants())}
+          onClick={() =>
+            setExpandedCategory(isExpanded ? null : categoryId)
+          }
+          style={{ "--cat-color": color } as React.CSSProperties}
+        >
+          <span className={cn(categoryIconVariants())}>{icon}</span>
+          <span className={cn(categoryLabelVariants())}>{label}</span>
+          <span className={cn(categoryCountVariants())}>
+            {categoryOpcodes.length}
+          </span>
+          <span
+            className={cn(expandIconVariants())}
+            style={{
+              transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+            }}
+          >
+            ▶
+          </span>
+        </button>
+
+        {isExpanded && (
+          <div className={cn(categoryItemsVariants())}>
+            {categoryOpcodes.map((opcode) => (
+              <button
+                key={opcode.name}
+                className={cn(opcodeItemVariants())}
+                onClick={() => handleSelect(opcode)}
+                role="menuitem"
+              >
+                <span className={cn(opcodeNameVariants())}>
+                  {formatDisplayName(opcode.name)}
+                </span>
+                <span className={cn(opcodeRawVariants())}>{opcode.name}</span>
+                {opcode.description && (
+                  <span className={cn(opcodeDescVariants())}>
+                    {opcode.description}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -211,122 +279,21 @@ export function AddNodeMenu({
           </>
         ) : (
           <>
-            {CATEGORIES.map((cat) => {
-              const categoryOpcodes = grouped[cat.id]
-              if (categoryOpcodes.length === 0) return null
-
-              const isExpanded = expandedCategory === cat.id
-
-              return (
-                <div key={cat.id} className={cn(categoryVariants())}>
-                  <button
-                    className={cn(categoryHeaderVariants())}
-                    onClick={() =>
-                      setExpandedCategory(isExpanded ? null : cat.id)
-                    }
-                    style={{ "--cat-color": cat.color } as React.CSSProperties}
-                  >
-                    <span className={cn(categoryIconVariants())}>
-                      {cat.icon}
-                    </span>
-                    <span className={cn(categoryLabelVariants())}>
-                      {cat.label}
-                    </span>
-                    <span className={cn(categoryCountVariants())}>
-                      {categoryOpcodes.length}
-                    </span>
-                    <span
-                      className={cn(expandIconVariants())}
-                      style={{
-                        transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
-                      }}
-                    >
-                      ▶
-                    </span>
-                  </button>
-
-                  {isExpanded && (
-                    <div className={cn(categoryItemsVariants())}>
-                      {categoryOpcodes.map((opcode) => (
-                        <button
-                          key={opcode.name}
-                          className={cn(opcodeItemVariants())}
-                          onClick={() => handleSelect(opcode)}
-                          role="menuitem"
-                        >
-                          <span className={cn(opcodeNameVariants())}>
-                            {formatDisplayName(opcode.name)}
-                          </span>
-                          <span className={cn(opcodeRawVariants())}>
-                            {opcode.name}
-                          </span>
-                          {opcode.description && (
-                            <span className={cn(opcodeDescVariants())}>
-                              {opcode.description}
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            {CATEGORIES.map((cat) =>
+              renderCategorySection(
+                cat.id,
+                cat.label,
+                cat.icon,
+                cat.color,
+                grouped[cat.id]
               )
-            })}
-
-            {grouped["other"].length > 0 && (
-              <div className={cn(categoryVariants())}>
-                <button
-                  className={cn(categoryHeaderVariants())}
-                  onClick={() =>
-                    setExpandedCategory(
-                      expandedCategory === "other" ? null : "other"
-                    )
-                  }
-                  style={{ "--cat-color": "#64748B" } as React.CSSProperties}
-                >
-                  <span className={cn(categoryIconVariants())}>⚙</span>
-                  <span className={cn(categoryLabelVariants())}>Other</span>
-                  <span className={cn(categoryCountVariants())}>
-                    {grouped["other"].length}
-                  </span>
-                  <span
-                    className={cn(expandIconVariants())}
-                    style={{
-                      transform:
-                        expandedCategory === "other"
-                          ? "rotate(90deg)"
-                          : "rotate(0deg)",
-                    }}
-                  >
-                    ▶
-                  </span>
-                </button>
-
-                {expandedCategory === "other" && (
-                  <div className={cn(categoryItemsVariants())}>
-                    {grouped["other"].map((opcode) => (
-                      <button
-                        key={opcode.name}
-                        className={cn(opcodeItemVariants())}
-                        onClick={() => handleSelect(opcode)}
-                        role="menuitem"
-                      >
-                        <span className={cn(opcodeNameVariants())}>
-                          {formatDisplayName(opcode.name)}
-                        </span>
-                        <span className={cn(opcodeRawVariants())}>
-                          {opcode.name}
-                        </span>
-                        {opcode.description && (
-                          <span className={cn(opcodeDescVariants())}>
-                            {opcode.description}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+            )}
+            {renderCategorySection(
+              "other",
+              "Other",
+              "⚙",
+              "#64748B",
+              grouped["other"]
             )}
           </>
         )}
