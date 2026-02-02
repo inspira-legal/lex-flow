@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.6.1 (2026-02-02)
+
+### Bug Fixes
+
+- **web**: Wire execution override into WebSocket hook
+  ([`82633ea`](https://github.com/inspira-legal/lex-flow/commit/82633ea22b3e30563b096acb9dee0eb912f24d6d))
+
+### Chores
+
+- **web**: Build frontend library [skip ci]
+  ([`113565e`](https://github.com/inspira-legal/lex-flow/commit/113565ec0fb59b6e3f0b79b43a69898757b424ed))
+
+
 ## v1.6.0 (2026-02-02)
 
 ### Bug Fixes
