@@ -281,6 +281,43 @@ export function addNode(
   return { source: newLines.join("\n"), nodeId: newId };
 }
 
+// Add a new node and connect it to an existing source node
+export function addNodeAndConnect(
+  source: string,
+  opcode: OpcodeInterface,
+  sourceNodeId: string,
+  workflowName = "main",
+): NodeResult & { success: boolean } {
+  console.log("[WorkflowService] addNodeAndConnect", { opcode: opcode.name, sourceNodeId, workflowName });
+
+  // Step 1: Add the new node
+  const addResult = addNode(source, opcode, workflowName);
+  console.log("[WorkflowService] addNode result", { nodeId: addResult.nodeId });
+  if (!addResult.nodeId) {
+    console.log("[WorkflowService] addNode failed");
+    return { source, nodeId: null, success: false };
+  }
+
+  // Step 2: Connect source node's next to the new node
+  const connectResult = connectNodes(
+    addResult.source,
+    sourceNodeId,
+    addResult.nodeId,
+    workflowName
+  );
+  console.log("[WorkflowService] connectNodes result", { success: connectResult.success });
+  if (!connectResult.success) {
+    console.log("[WorkflowService] connectNodes failed");
+    return { source, nodeId: null, success: false };
+  }
+
+  return {
+    source: connectResult.source,
+    nodeId: addResult.nodeId,
+    success: true,
+  };
+}
+
 // Duplicate an existing node
 export function duplicateNode(source: string, nodeId: string): NodeResult {
   const range = findNodeLineRange(source, nodeId);
@@ -2408,6 +2445,7 @@ export const workflowService = {
   generateUniqueNodeId,
   deleteNode,
   addNode,
+  addNodeAndConnect,
   addWorkflowCallNode,
   duplicateNode,
   updateNodeInput,

@@ -226,6 +226,21 @@ interface UiState {
     suggestedOutputs?: string[]
   ) => void;
   hideExtractWorkflowModal: () => void;
+
+  // Add node menu
+  addNodeMenu: {
+    x: number;
+    y: number;
+    sourceNodeId: string;
+    workflowName: string;
+  } | null;
+  showAddNodeMenu: (
+    x: number,
+    y: number,
+    sourceNodeId: string,
+    workflowName: string
+  ) => void;
+  hideAddNodeMenu: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -423,4 +438,10 @@ export const useUiStore = create<UiState>((set) => ({
       },
     }),
   hideExtractWorkflowModal: () => set({ extractWorkflowModal: null }),
+
+  // Add node menu
+  addNodeMenu: null,
+  showAddNodeMenu: (x, y, sourceNodeId, workflowName) =>
+    set({ addNodeMenu: { x, y, sourceNodeId, workflowName } }),
+  hideAddNodeMenu: () => set({ addNodeMenu: null }),
 }));
