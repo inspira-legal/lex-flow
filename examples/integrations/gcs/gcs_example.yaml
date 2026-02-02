@@ -25,6 +25,10 @@ workflows:
       object_bytes: null
       metadata: null
       exists: false
+      # Configure these values for your GCS setup
+      project_id: "your-project-id"
+      bucket_name: "your-bucket-name"
+      object_name: "path/to/your/file.pdf"
     nodes:
       start:
         opcode: workflow_start
@@ -44,7 +48,7 @@ workflows:
         isReporter: true
         inputs:
           project:
-            literal: "your-project-id"
+            variable: "project_id"
 
       store_client:
         opcode: data_set_variable_to
@@ -70,7 +74,7 @@ workflows:
           client:
             variable: "client"
           bucket_name:
-            literal: "your-bucket-name"
+            variable: "bucket_name"
 
       store_bucket:
         opcode: data_set_variable_to
@@ -96,7 +100,7 @@ workflows:
           bucket:
             variable: "bucket"
           object_name:
-            literal: "path/to/your/file.pdf"
+            variable: "object_name"
 
       store_exists:
         opcode: data_set_variable_to
@@ -138,7 +142,7 @@ workflows:
           bucket:
             variable: "bucket"
           object_name:
-            literal: "path/to/your/file.pdf"
+            variable: "object_name"
 
       store_metadata:
         opcode: data_set_variable_to
@@ -164,7 +168,7 @@ workflows:
           bucket:
             variable: "bucket"
           object_name:
-            literal: "path/to/your/file.pdf"
+            variable: "object_name"
 
       store_bytes:
         opcode: data_set_variable_to

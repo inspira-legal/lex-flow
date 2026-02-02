@@ -14,6 +14,7 @@ Authentication:
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -75,9 +76,12 @@ def register_gcs_opcodes():
         """
         _check_availability()
 
-        if project:
-            return storage.Client(project=project)
-        return storage.Client()
+        def _create():
+            if project:
+                return storage.Client(project=project)
+            return storage.Client()
+
+        return await asyncio.to_thread(_create)
 
     @default_registry.register()
     async def gcs_get_bucket(client: Client, bucket_name: str) -> Bucket:
@@ -96,6 +100,7 @@ def register_gcs_opcodes():
         """
         _check_availability()
 
+        # bucket() is not a network call, just creates a reference
         return client.bucket(bucket_name)
 
     @default_registry.register()
@@ -116,7 +121,7 @@ def register_gcs_opcodes():
         _check_availability()
 
         blob = bucket.blob(object_name)
-        return blob.exists()
+        return await asyncio.to_thread(blob.exists)
 
     @default_registry.register()
     async def gcs_get_object_metadata(bucket: Bucket, object_name: str) -> dict:
@@ -141,7 +146,7 @@ def register_gcs_opcodes():
         _check_availability()
 
         blob = bucket.blob(object_name)
-        blob.reload()
+        await asyncio.to_thread(blob.reload)
 
         return {
             "name": blob.name,
@@ -171,7 +176,7 @@ def register_gcs_opcodes():
         _check_availability()
 
         blob = bucket.blob(object_name)
-        return blob.download_as_bytes()
+        return await asyncio.to_thread(blob.download_as_bytes)
 
     @default_registry.register()
     async def gcs_upload_object_from_bytes(
@@ -200,7 +205,10 @@ def register_gcs_opcodes():
         _check_availability()
 
         blob = bucket.blob(object_name)
-        blob.upload_from_string(data, content_type=content_type)
+        await asyncio.to_thread(blob.upload_from_string, data, content_type=content_type)
+
+        # Reload to get updated metadata
+        await asyncio.to_thread(blob.reload)
 
         return {
             "name": blob.name,
@@ -235,7 +243,10 @@ def register_gcs_opcodes():
         _check_availability()
 
         blob = bucket.blob(object_name)
-        blob.upload_from_string(data, content_type=content_type)
+        await asyncio.to_thread(blob.upload_from_string, data, content_type=content_type)
+
+        # Reload to get updated metadata
+        await asyncio.to_thread(blob.reload)
 
         return {
             "name": blob.name,
@@ -261,5 +272,5 @@ def register_gcs_opcodes():
         _check_availability()
 
         blob = bucket.blob(object_name)
-        blob.delete()
+        await asyncio.to_thread(blob.delete)
         return True
