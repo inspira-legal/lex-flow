@@ -72,6 +72,7 @@ export function ExecutionPanel({ className }: ExecutionPanelProps) {
     alerts,
     progress,
     removeAlert,
+    clearWorkflowInputs,
   } = useExecutionStore()
   const { toggleExecutionPanel } = useUiStore()
   const { execute, cancel, respondToPrompt } = useWebSocketExecution()
@@ -82,6 +83,15 @@ export function ExecutionPanel({ className }: ExecutionPanelProps) {
   const [isResizing, setIsResizing] = useState(false)
   const [showPreview, setShowPreview] = useState(true)
   const [showConsole, setShowConsole] = useState(true)
+
+  // Get workflow inputs interface
+  const inputs = tree?.interface?.inputs || []
+  const inputsKey = JSON.stringify(inputs)
+
+  // Clear workflow inputs when interface changes (e.g., switching examples)
+  useEffect(() => {
+    clearWorkflowInputs()
+  }, [inputsKey, clearWorkflowInputs])
 
   useEffect(() => {
     if (outputRef.current) {
@@ -130,14 +140,19 @@ export function ExecutionPanel({ className }: ExecutionPanelProps) {
   }, [isResizing])
 
   const handleRun = () => {
-    execute(source, workflowInputs)
+    // Filter inputs to only include those defined in current workflow
+    const validInputs: Record<string, unknown> = {}
+    for (const input of inputs) {
+      if (input in workflowInputs) {
+        validInputs[input] = workflowInputs[input]
+      }
+    }
+    execute(source, Object.keys(validInputs).length > 0 ? validInputs : undefined)
   }
 
   const handleCancel = () => {
     cancel()
   }
-
-  const inputs = tree?.interface?.inputs || []
 
   return (
     <div

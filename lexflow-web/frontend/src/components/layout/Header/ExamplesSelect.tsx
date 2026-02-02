@@ -7,6 +7,9 @@ export function ExamplesSelect({ className }: ExamplesSelectProps) {
   const { examples, setSource } = useWorkflowStore()
   const provider = useBackendProvider()
 
+  // Hide when no examples available
+  if (examples.length === 0) return null
+
   const handleSelect = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const path = e.target.value
     if (!path) return

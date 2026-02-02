@@ -25,6 +25,10 @@ export function MainLayout({
   executionPanel,
   palette,
   className,
+  onSave,
+  showSaveButton,
+  saveButtonLabel,
+  showExamples,
 }: MainLayoutProps) {
   const {
     isEditorOpen,
@@ -47,7 +51,12 @@ export function MainLayout({
 
   return (
     <div className={cn(layoutVariants(), className)}>
-      <Header />
+      <Header
+        onSave={onSave}
+        showSaveButton={showSaveButton}
+        saveButtonLabel={saveButtonLabel}
+        showExamples={showExamples}
+      />
 
       <div className={mainVariants()}>
         {/* Left: Editor Panel */}

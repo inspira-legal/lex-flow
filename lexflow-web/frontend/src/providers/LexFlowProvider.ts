@@ -13,6 +13,7 @@ import type {
 } from "../api/types";
 import { parseWorkflowSource } from "../services/yamlParser";
 import { workflowToTree } from "../services/visualization";
+import { validateOpcodes } from "./validation";
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -33,7 +34,15 @@ export function createLexFlowProvider(config: BackendConfig): BackendProvider {
     config,
 
     async listOpcodes(): Promise<OpcodeInterface[]> {
-      return fetchJson<OpcodeInterface[]>(`${apiBaseUrl}/opcodes`);
+      const url = config.opcodesUrl ?? `${apiBaseUrl}/opcodes`;
+      const raw = await fetchJson<unknown>(url);
+
+      if (config.opcodeAdapter) {
+        const adapted = config.opcodeAdapter(raw);
+        return validateOpcodes(adapted);
+      }
+
+      return raw as OpcodeInterface[];
     },
 
     async executeWorkflow(

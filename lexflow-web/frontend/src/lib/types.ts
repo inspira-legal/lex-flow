@@ -1,6 +1,10 @@
 // Public TypeScript types for the embeddable LexFlow Editor library
 
 import type { BackendProvider } from "../providers/types";
+import type { OpcodeInterface } from "../api/types";
+
+// Re-export EditorMetadata for advanced users
+export type { EditorMetadata } from "../services/metadata";
 
 // Theme configuration
 export type ThemePreset = "light" | "dark" | "system";
@@ -46,6 +50,21 @@ export interface LexFlowEditorProps {
   onExecute?: (result: ExecuteResult) => void;
   onError?: (error: string) => void;
   onReady?: () => void;
+
+  // Save functionality
+  onSave?: (source: string, metadata: import("../services/metadata").EditorMetadata) => void | Promise<void>;
+  showSaveButton?: boolean;
+  saveButtonLabel?: string;
+
+  // Examples visibility
+  showExamples?: boolean;
+
+  // Custom opcode endpoint
+  opcodesUrl?: string;
+  opcodeAdapter?: (rawData: unknown) => OpcodeInterface[];
+
+  // Execution override - bypasses normal WebSocket/REST flow
+  executeOverride?: (source: string, inputs?: Record<string, unknown>) => Promise<ExecuteResult>;
 
   // Styling
   className?: string;

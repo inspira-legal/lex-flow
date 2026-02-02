@@ -1,4 +1,4 @@
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { useWorkflowStore, useUiStore } from "@/store"
 import { cn } from "@/lib/cn"
 import { IconButton } from "@/components/ui"
@@ -6,6 +6,7 @@ import {
   FileIcon,
   UploadIcon,
   DownloadIcon,
+  SaveIcon,
   UndoIcon,
   RedoIcon,
   PlusIcon,
@@ -41,10 +42,42 @@ const DEFAULT_WORKFLOW = `workflows:
           MESSAGE: { literal: "Hello, LexFlow!" }
 `
 
-export function Header({ className }: HeaderProps) {
+export function Header({
+  className,
+  onSave,
+  showSaveButton,
+  saveButtonLabel = "Save",
+  showExamples,
+}: HeaderProps) {
   const { source, setSource, undo, redo, canUndo, canRedo } = useWorkflowStore()
   const { togglePalette, toggleEditor, isEditorOpen } = useUiStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (!onSave || isSaving) return
+    setIsSaving(true)
+    try {
+      const { nodePositions, workflowPositions, layoutMode, zoom, panX, panY } =
+        useUiStore.getState()
+
+      const metadata = createMetadataFromState(
+        layoutMode,
+        nodePositions,
+        workflowPositions,
+        zoom,
+        panX,
+        panY
+      )
+
+      await onSave(source, metadata)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Show save button if explicitly enabled, or if onSave is provided and not explicitly disabled
+  const shouldShowSaveButton = showSaveButton ?? !!onSave
 
   const handleNew = () => {
     if (source !== DEFAULT_WORKFLOW) {
@@ -163,6 +196,14 @@ export function Header({ className }: HeaderProps) {
           label="Export Workflow"
           onClick={handleExport}
         />
+        {shouldShowSaveButton && onSave && (
+          <IconButton
+            icon={<SaveIcon />}
+            label={saveButtonLabel}
+            onClick={handleSave}
+            disabled={isSaving}
+          />
+        )}
 
         <div className={dividerVariants()} />
 
@@ -198,7 +239,7 @@ export function Header({ className }: HeaderProps) {
 
       {/* Center section */}
       <div className="flex items-center justify-center">
-        <ExamplesSelect />
+        {showExamples !== false && <ExamplesSelect />}
       </div>
 
       {/* Right section */}

@@ -23,8 +23,12 @@ export type {
   ExecuteResult,
   BackendProvider,
   BackendConfig,
+  EditorMetadata,
 } from "./types";
 export type { ThemePreset } from "./theme/presets";
+
+// API types for opcode adapters
+export type { OpcodeInterface, OpcodeParameter } from "../api/types";
 
 // Theme utilities (from theme/ directory)
 export {

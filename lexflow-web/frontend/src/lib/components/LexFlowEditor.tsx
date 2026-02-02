@@ -15,7 +15,13 @@ import { NodePalette, DragPreview } from "@/components/palette";
 import { ConfirmDialog } from "@/components/ui";
 import { useWorkflowStore, useUiStore } from "@/store";
 import { ThemeProvider } from "../theme/index";
-import { BackendProviderWrapper, createLexFlowProvider, useBackendProvider, supportsExamples } from "@/providers";
+import {
+  BackendProviderWrapper,
+  createLexFlowProvider,
+  useBackendProvider,
+  supportsExamples,
+  ExecutionOverrideWrapper,
+} from "@/providers";
 import type { BackendProvider } from "@/providers";
 import type { LexFlowEditorProps, ExecuteResult, ThemeOption } from "../types";
 import { cn } from "../cn";
@@ -52,6 +58,10 @@ function EditorContent({
   onExecute,
   onError,
   onReady,
+  onSave,
+  showSaveButton,
+  saveButtonLabel,
+  showExamples,
 }: Pick<
   LexFlowEditorProps,
   | "lite"
@@ -63,6 +73,10 @@ function EditorContent({
   | "onExecute"
   | "onError"
   | "onReady"
+  | "onSave"
+  | "showSaveButton"
+  | "saveButtonLabel"
+  | "showExamples"
 >) {
   const { source, setExamples, setOpcodes, isExecuting, executionOutput, executionResult, executionError } = useWorkflowStore();
   const provider = useBackendProvider();
@@ -123,6 +137,10 @@ function EditorContent({
         executionPanel={showExecutionPanel ? <ExecutionPanel /> : undefined}
         nodeEditor={showNodeEditor ? <NodeEditorPanel /> : undefined}
         palette={showPalette ? <NodePalette /> : undefined}
+        onSave={onSave}
+        showSaveButton={showSaveButton}
+        saveButtonLabel={saveButtonLabel}
+        showExamples={showExamples}
       />
       <DragPreview />
       <GlobalConfirmDialog />
@@ -159,6 +177,13 @@ export const LexFlowEditor = forwardRef<LexFlowEditorHandle, LexFlowEditorProps>
       onExecute,
       onError,
       onReady,
+      onSave,
+      showSaveButton,
+      saveButtonLabel,
+      showExamples,
+      opcodesUrl,
+      opcodeAdapter,
+      executeOverride,
       className,
       style,
     },
@@ -172,8 +197,10 @@ export const LexFlowEditor = forwardRef<LexFlowEditorHandle, LexFlowEditorProps>
         createLexFlowProvider({
           apiBaseUrl: executionUrl ?? "/api",
           wsUrl: websocketUrl,
-          supportsExamples: true,
+          supportsExamples: showExamples !== false,
           supportsWebSocket: true,
+          opcodesUrl,
+          opcodeAdapter,
         })
     );
 
@@ -262,19 +289,25 @@ export const LexFlowEditor = forwardRef<LexFlowEditorHandle, LexFlowEditorProps>
         style={style}
       >
         <ThemeProvider>
-          <BackendProviderWrapper provider={providerRef.current}>
-            <EditorContent
-              lite={lite}
-              showCodeEditor={showCodeEditor}
-              showPalette={showPalette}
-              showExecutionPanel={showExecutionPanel}
-              showNodeEditor={showNodeEditor}
-              onSourceChange={onSourceChange}
-              onExecute={onExecute}
-              onError={onError}
-              onReady={onReady}
-            />
-          </BackendProviderWrapper>
+          <ExecutionOverrideWrapper override={executeOverride}>
+            <BackendProviderWrapper provider={providerRef.current}>
+              <EditorContent
+                lite={lite}
+                showCodeEditor={showCodeEditor}
+                showPalette={showPalette}
+                showExecutionPanel={showExecutionPanel}
+                showNodeEditor={showNodeEditor}
+                onSourceChange={onSourceChange}
+                onExecute={onExecute}
+                onError={onError}
+                onReady={onReady}
+                onSave={onSave}
+                showSaveButton={showSaveButton}
+                saveButtonLabel={saveButtonLabel}
+                showExamples={showExamples}
+              />
+            </BackendProviderWrapper>
+          </ExecutionOverrideWrapper>
         </ThemeProvider>
       </div>
     );

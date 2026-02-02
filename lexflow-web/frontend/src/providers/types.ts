@@ -15,6 +15,8 @@ export interface BackendConfig {
   wsUrl?: string; // WebSocket URL (auto-derived if not set)
   supportsExamples?: boolean; // Whether backend supports examples endpoint
   supportsWebSocket?: boolean; // Whether backend supports WebSocket execution
+  opcodesUrl?: string; // Custom URL for opcodes endpoint
+  opcodeAdapter?: (rawData: unknown) => OpcodeInterface[]; // Transform function for opcode API response
 }
 
 export interface BackendProvider {
