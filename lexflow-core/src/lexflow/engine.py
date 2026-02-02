@@ -69,6 +69,42 @@ class Engine:
         self.executor.opcodes = self.opcodes
         self.executor.tasks = self.tasks
 
+        # Setup privileged opcodes with engine-internal access
+        self._setup_privileged_opcodes()
+
+    def _setup_privileged_opcodes(self) -> None:
+        """Inject implementations for privileged opcodes that need engine access."""
+
+        async def get_context() -> dict:
+            return {
+                "program": {
+                    "globals": dict(self.program.globals),
+                    "main": {
+                        "name": self.program.main.name,
+                        "params": list(self.program.main.params),
+                    },
+                    "externals": {
+                        name: {"name": wf.name, "params": list(wf.params)}
+                        for name, wf in self.program.externals.items()
+                    },
+                },
+                "workflows": {
+                    name: {
+                        "name": wf.name,
+                        "params": list(wf.params),
+                        "locals": dict(wf.locals),
+                    }
+                    for name, wf in self.workflows.workflows.items()
+                },
+                "opcodes": self.opcodes.list_opcodes(),
+            }
+
+        async def get_workflow_manager():
+            return self.workflows
+
+        self.opcodes.inject("introspect_context", get_context)
+        self.opcodes.inject("_get_workflow_manager", get_workflow_manager)
+
     async def run(self, inputs: Optional[dict[str, Any]] = None) -> Any:
         """Run program to completion with optional output redirection and inputs.
 
@@ -107,19 +143,6 @@ class Engine:
             return await self._run_internal()
 
     async def _run_internal(self) -> Any:
-        # Set workflow manager context for ai_agent_with_tools (if pydantic_ai available)
-        wm_token = None
-        try:
-            from .opcodes.opcodes_pydantic_ai import (
-                set_workflow_manager_context,
-                reset_workflow_manager_context,
-            )
-
-            wm_token = set_workflow_manager_context(self.workflows)
-        except ImportError:
-            # pydantic_ai not installed, context not needed
-            pass
-
         # Start metrics collection
         self.metrics.start_execution()
 
@@ -130,14 +153,6 @@ class Engine:
             # Return final stack value
             return self.runtime.pop() if self.runtime.stack else None
         finally:
-            # Cleanup workflow manager context
-            if wm_token is not None:
-                try:
-                    from .opcodes.opcodes_pydantic_ai import reset_workflow_manager_context
-
-                    reset_workflow_manager_context(wm_token)
-                except ImportError:
-                    pass
             # Cleanup background tasks
             await self.tasks.cleanup()
             # End metrics collection
