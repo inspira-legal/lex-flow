@@ -177,6 +177,7 @@ interface UiState {
   expandedReporters: Record<string, boolean>;
   toggleReportersExpanded: (nodeId: string) => void;
   setReportersExpanded: (nodeId: string, expanded: boolean) => void;
+  setMultipleReportersExpanded: (ids: string[], expanded: boolean) => void;
 
   // Confirm dialog
   confirmDialog: {
@@ -366,6 +367,13 @@ export const useUiStore = create<UiState>((set) => ({
       expandedReporters: {
         ...s.expandedReporters,
         [nodeId]: expanded,
+      },
+    })),
+  setMultipleReportersExpanded: (ids, expanded) =>
+    set((s) => ({
+      expandedReporters: {
+        ...s.expandedReporters,
+        ...Object.fromEntries(ids.map((id) => [id, expanded])),
       },
     })),
 

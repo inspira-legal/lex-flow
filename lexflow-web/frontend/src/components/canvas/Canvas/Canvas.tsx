@@ -29,6 +29,60 @@ import {
   emptyStateTitleVariants,
   emptyStateTextVariants,
 } from "./styles"
+import type { FormattedValue, TreeNode, WorkflowNode as WorkflowNodeType } from "@/api/types"
+
+// Collect all reporter IDs from a node's inputs recursively
+function collectAllReporterIds(
+  inputs: Record<string, FormattedValue>,
+  workflowName: string,
+  collected: Set<string> = new Set()
+): string[] {
+  for (const value of Object.values(inputs)) {
+    if (value.type === "reporter" && value.id) {
+      const compositeId = `${workflowName}::${value.id}`
+      collected.add(compositeId)
+      // Recursively collect from nested inputs
+      if (value.inputs) {
+        collectAllReporterIds(value.inputs, workflowName, collected)
+      }
+    }
+  }
+  return Array.from(collected)
+}
+
+// Find a node in the tree by composite ID
+function findNodeInTree(
+  workflows: WorkflowNodeType[],
+  compositeId: string
+): { node: TreeNode; workflowName: string } | null {
+  const [workflowName, nodeId] = compositeId.split("::")
+  const workflow = workflows.find((w) => w.name === workflowName)
+  if (!workflow) return null
+
+  // Search in main children
+  const searchNodes = (nodes: TreeNode[]): TreeNode | null => {
+    for (const node of nodes) {
+      if (node.id === nodeId) return node
+      // Search in branch children
+      for (const branch of node.children) {
+        const found = searchNodes(branch.children)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
+  const node = searchNodes(workflow.children)
+  if (node) return { node, workflowName }
+
+  // Search in orphans
+  if (workflow.orphans) {
+    const orphanNode = searchNodes(workflow.orphans)
+    if (orphanNode) return { node: orphanNode, workflowName }
+  }
+
+  return null
+}
 
 export function Canvas() {
   const {
@@ -49,6 +103,7 @@ export function Canvas() {
     contextMenu,
     hideContextMenu,
     setReportersExpanded,
+    setMultipleReportersExpanded,
     expandedReporters,
     canvasContextMenu,
     showCanvasContextMenu,
@@ -441,8 +496,34 @@ export function Canvas() {
             hasReporters={contextMenu.hasReporters}
             reportersExpanded={contextMenu.reportersExpanded}
             isOrphan={contextMenu.isOrphan}
-            onExpandReporters={() => setReportersExpanded(contextMenu.nodeId, true)}
-            onCollapseReporters={() => setReportersExpanded(contextMenu.nodeId, false)}
+            onExpandReporters={() => {
+              // Expand the node itself
+              setReportersExpanded(contextMenu.nodeId, true)
+              // Find the node and expand all nested reporters
+              if (tree) {
+                const result = findNodeInTree(tree.workflows, contextMenu.nodeId)
+                if (result) {
+                  const allReporterIds = collectAllReporterIds(result.node.inputs, result.workflowName)
+                  if (allReporterIds.length > 0) {
+                    setMultipleReportersExpanded(allReporterIds, true)
+                  }
+                }
+              }
+            }}
+            onCollapseReporters={() => {
+              // Collapse the node itself
+              setReportersExpanded(contextMenu.nodeId, false)
+              // Find the node and collapse all nested reporters
+              if (tree) {
+                const result = findNodeInTree(tree.workflows, contextMenu.nodeId)
+                if (result) {
+                  const allReporterIds = collectAllReporterIds(result.node.inputs, result.workflowName)
+                  if (allReporterIds.length > 0) {
+                    setMultipleReportersExpanded(allReporterIds, false)
+                  }
+                }
+              }
+            }}
             onDelete={() => {
               deleteNode(rawNodeId)
               clearMultiSelection()

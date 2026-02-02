@@ -98,18 +98,20 @@ const REPORTER_LABEL_HEIGHT = 16 // Height for input key label
 const INPUT_SLOT_HEIGHT = 28 // Height for literal/variable input slots
 
 // Calculate nested reporter dimensions recursively
-// expandedReporters: Record of reporterId -> boolean for expansion state
+// expandedReporters: Record of compositeId (workflowName::nodeId) -> boolean for expansion state
 function calculateReporterDimensions(
   value: FormattedValue,
   showInputSlots: boolean,
-  expandedReporters: Record<string, boolean>
+  expandedReporters: Record<string, boolean>,
+  workflowName: string
 ): { width: number; height: number } {
   if (value.type !== "reporter" || !value.opcode) {
     return { width: 0, height: 0 }
   }
 
-  // Check if THIS reporter is expanded
-  const isExpanded = expandedReporters[value.id || ""] ?? false
+  // Check if THIS reporter is expanded using composite ID
+  const compositeId = `${workflowName}::${value.id || ""}`
+  const isExpanded = expandedReporters[compositeId] ?? false
 
   // If collapsed, just return minimum node size
   if (!isExpanded && !showInputSlots) {
@@ -142,7 +144,7 @@ function calculateReporterDimensions(
       let maxChildWidth = 0
 
       for (const nested of nestedReporters) {
-        const childDims = calculateReporterDimensions(nested.value, showInputSlots, expandedReporters)
+        const childDims = calculateReporterDimensions(nested.value, showInputSlots, expandedReporters, workflowName)
         childrenHeight += REPORTER_LABEL_HEIGHT + childDims.height + REPORTER_GAP
         maxChildWidth = Math.max(maxChildWidth, childDims.width)
       }
@@ -169,11 +171,12 @@ function calculateReporterDimensions(
 function calculateAllReportersHeight(
   reporterInputs: Array<{ key: string; value: FormattedValue }>,
   showInputSlots: boolean,
-  expandedReporters: Record<string, boolean>
+  expandedReporters: Record<string, boolean>,
+  workflowName: string
 ): number {
   let totalHeight = 0
   for (const { value } of reporterInputs) {
-    const dims = calculateReporterDimensions(value, showInputSlots, expandedReporters)
+    const dims = calculateReporterDimensions(value, showInputSlots, expandedReporters, workflowName)
     totalHeight += REPORTER_LABEL_HEIGHT + dims.height + REPORTER_GAP
   }
   return totalHeight
@@ -182,11 +185,12 @@ function calculateAllReportersHeight(
 function calculateAllReportersWidth(
   reporterInputs: Array<{ key: string; value: FormattedValue }>,
   showInputSlots: boolean,
-  expandedReporters: Record<string, boolean>
+  expandedReporters: Record<string, boolean>,
+  workflowName: string
 ): number {
   let maxWidth = NODE_WIDTH
   for (const { value } of reporterInputs) {
-    const dims = calculateReporterDimensions(value, showInputSlots, expandedReporters)
+    const dims = calculateReporterDimensions(value, showInputSlots, expandedReporters, workflowName)
     maxWidth = Math.max(maxWidth, dims.width)
   }
   return maxWidth
@@ -278,12 +282,12 @@ export const WorkflowNode = memo(function WorkflowNode({
   // Show reporters section when expanded OR when in drag mode
   const showReporterSection = showReporters || showInputSlots
   const reporterSectionHeight = showReporterSection && reporterInputs.length > 0
-    ? calculateAllReportersHeight(reporterInputs, showInputSlots, expandedReporters)
+    ? calculateAllReportersHeight(reporterInputs, showInputSlots, expandedReporters, workflowName)
     : 0
 
   // Calculate width - expands to fit reporters
   const reporterSectionWidth = showReporterSection && reporterInputs.length > 0
-    ? calculateAllReportersWidth(reporterInputs, showInputSlots, expandedReporters) + REPORTER_PADDING * 2
+    ? calculateAllReportersWidth(reporterInputs, showInputSlots, expandedReporters, workflowName) + REPORTER_PADDING * 2
     : 0
   const totalWidth = Math.max(NODE_WIDTH, reporterSectionWidth)
   const totalHeight = NODE_HEIGHT + inputSlotsHeight + reporterSectionHeight + branchSectionHeight
@@ -500,6 +504,7 @@ export const WorkflowNode = memo(function WorkflowNode({
           opcodes={opcodes}
           expandedReporters={expandedReporters}
           showContextMenu={showContextMenu}
+          workflowName={workflowName}
         />
       )}
 
@@ -659,6 +664,7 @@ interface FullNodeReporterProps {
     reportersExpanded: boolean
     isOrphan: boolean
   }) => void
+  workflowName: string
 }
 
 function FullNodeReporter({
@@ -675,6 +681,7 @@ function FullNodeReporter({
   inputPath,
   expandedReporters,
   showContextMenu,
+  workflowName,
 }: FullNodeReporterProps) {
   const reporterColor = getGrammarReporterColor(value.opcode || "")
   const reporterName = formatOpcodeName(value.opcode || "")
@@ -683,8 +690,9 @@ function FullNodeReporter({
   const reporterOpcodeInfo = opcodes.find((op) => op.name === value.opcode)
   const reporterId = value.id || ""
 
-  // Check if THIS reporter is expanded
-  const isExpanded = expandedReporters[reporterId] ?? false
+  // Check if THIS reporter is expanded using composite ID
+  const compositeReporterId = `${workflowName}::${reporterId}`
+  const isExpanded = expandedReporters[compositeReporterId] ?? false
 
   const isSelected =
     selectedReporter &&
@@ -711,7 +719,7 @@ function FullNodeReporter({
   const shouldShowContent = isExpanded || showInputSlots
 
   // Calculate dimensions
-  const dims = calculateReporterDimensions(value, showInputSlots, expandedReporters)
+  const dims = calculateReporterDimensions(value, showInputSlots, expandedReporters, workflowName)
   const nodeWidth = dims.width
   const nodeHeight = dims.height
 
@@ -720,7 +728,7 @@ function FullNodeReporter({
   let currentY = NODE_HEIGHT
   if (shouldShowContent) {
     for (const nested of nestedReporters) {
-      const nestedDims = calculateReporterDimensions(nested.value, showInputSlots, expandedReporters)
+      const nestedDims = calculateReporterDimensions(nested.value, showInputSlots, expandedReporters, workflowName)
       nestedPositions.push({ key: nested.key, value: nested.value, y: currentY, height: nestedDims.height })
       currentY += REPORTER_LABEL_HEIGHT + nestedDims.height + REPORTER_GAP
     }
@@ -860,6 +868,7 @@ function FullNodeReporter({
             inputPath={currentPath}
             expandedReporters={expandedReporters}
             showContextMenu={showContextMenu}
+            workflowName={workflowName}
           />
         </g>
       ))}
@@ -913,6 +922,7 @@ interface ReporterChainProps {
     reportersExpanded: boolean
     isOrphan: boolean
   }) => void
+  workflowName: string
 }
 
 function ReporterChain({
@@ -926,13 +936,14 @@ function ReporterChain({
   opcodes,
   expandedReporters,
   showContextMenu,
+  workflowName,
 }: ReporterChainProps) {
   // Pre-calculate all Y positions
   const positions: Array<{ key: string; value: FormattedValue; y: number }> = []
   let yOffset = 0
   for (const { key, value } of reporterInputs) {
     positions.push({ key, value, y: yOffset })
-    const dims = calculateReporterDimensions(value, showInputSlots, expandedReporters)
+    const dims = calculateReporterDimensions(value, showInputSlots, expandedReporters, workflowName)
     yOffset += REPORTER_LABEL_HEIGHT + dims.height + REPORTER_GAP
   }
 
@@ -964,6 +975,7 @@ function ReporterChain({
             inputPath={[]}
             expandedReporters={expandedReporters}
             showContextMenu={showContextMenu}
+            workflowName={workflowName}
           />
         </g>
       ))}

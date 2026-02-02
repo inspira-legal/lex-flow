@@ -147,13 +147,16 @@ const INPUT_SLOT_HEIGHT = 28;
 function calculateReporterDimensions(
   value: FormattedValue,
   expandedReporters: Record<string, boolean>,
+  workflowName?: string,
 ): { width: number; height: number } {
   if (value.type !== "reporter" || !value.opcode) {
     return { width: 0, height: 0 };
   }
 
   const reporterId = value.id || "";
-  const isExpanded = expandedReporters[reporterId] ?? false;
+  // Use composite ID if workflow name provided
+  const compositeId = workflowName ? `${workflowName}::${reporterId}` : reporterId;
+  const isExpanded = expandedReporters[compositeId] ?? false;
 
   // If collapsed, just return minimum node size
   if (!isExpanded) {
@@ -183,7 +186,7 @@ function calculateReporterDimensions(
     let maxChildWidth = 0;
 
     for (const nested of nestedReporters) {
-      const childDims = calculateReporterDimensions(nested, expandedReporters);
+      const childDims = calculateReporterDimensions(nested, expandedReporters, workflowName);
       childrenHeight += REPORTER_LABEL_HEIGHT + childDims.height + REPORTER_GAP;
       maxChildWidth = Math.max(maxChildWidth, childDims.width);
     }
@@ -209,13 +212,14 @@ function calculateReporterDimensions(
 function calculateAllReportersDimensions(
   inputs: Record<string, FormattedValue>,
   expandedReporters: Record<string, boolean>,
+  workflowName?: string,
 ): { width: number; height: number } {
   let totalHeight = 0;
   let maxWidth: number = NODE_WIDTH;
 
   for (const value of Object.values(inputs)) {
     if (value.type === "reporter" && value.opcode) {
-      const dims = calculateReporterDimensions(value, expandedReporters);
+      const dims = calculateReporterDimensions(value, expandedReporters, workflowName);
       totalHeight += REPORTER_LABEL_HEIGHT + dims.height + REPORTER_GAP;
       maxWidth = Math.max(maxWidth, dims.width);
     }
@@ -230,9 +234,12 @@ export function calculateNodeDimensions(
   inputs: Record<string, FormattedValue>,
   opcode: string | undefined,
   expandedReporters: Record<string, boolean>,
+  workflowName?: string,
 ): { width: number; height: number } {
+  // Use composite ID if workflow name provided (for UI state matching)
+  const compositeId = workflowName ? `${workflowName}::${nodeId}` : nodeId;
   // Check if this node is expanded
-  const isExpanded = expandedReporters[nodeId] ?? false;
+  const isExpanded = expandedReporters[compositeId] ?? false;
 
   const controlFlowOpcodes = getControlFlowOpcodeSet();
   const hasBranchSlots = opcode && controlFlowOpcodes.has(opcode);
@@ -243,8 +250,8 @@ export function calculateNodeDimensions(
     return { width: NODE_WIDTH, height: NODE_HEIGHT + branchSlotsHeight };
   }
 
-  // Calculate expanded dimensions
-  const reporterDims = calculateAllReportersDimensions(inputs, expandedReporters);
+  // Calculate expanded dimensions (pass workflowName for nested reporters)
+  const reporterDims = calculateAllReportersDimensions(inputs, expandedReporters, workflowName);
   const reporterWidth = reporterDims.width + REPORTER_PADDING * 2;
   const reporterHeight = reporterDims.height;
 
@@ -480,7 +487,7 @@ export function layoutSingleWorkflow(
     y: number,
     isOrphan: boolean = false,
   ): number {
-    const dims = calculateNodeDimensions(node.id, node.inputs, node.opcode, expandedReporters);
+    const dims = calculateNodeDimensions(node.id, node.inputs, node.opcode, expandedReporters, workflow.name);
 
     layoutNodes.push({
       node,
@@ -515,6 +522,7 @@ export function layoutSingleWorkflow(
             childNode.inputs,
             childNode.opcode,
             expandedReporters,
+            workflow.name,
           );
 
           layoutNodes.push({
@@ -587,6 +595,7 @@ export function layoutSingleWorkflow(
           childNode.inputs,
           childNode.opcode,
           expandedReporters,
+          workflow.name,
         );
 
         layoutNodes.push({
