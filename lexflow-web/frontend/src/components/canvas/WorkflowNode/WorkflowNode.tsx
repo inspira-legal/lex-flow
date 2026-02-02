@@ -99,6 +99,9 @@ const REPORTER_GAP = 8 // Gap between siblings
 const REPORTER_LABEL_HEIGHT = 16 // Height for input key label
 const INPUT_SLOT_HEIGHT = 28 // Height for literal/variable input slots
 
+// UI timing constants
+const HIDE_ADD_BUTTON_DELAY_MS = 2000 // Delay before hiding the add button after mouse leave
+
 // Calculate nested reporter dimensions recursively
 // expandedReporters: Record of compositeId (workflowName::nodeId) -> boolean for expansion state
 function calculateReporterDimensions(
@@ -249,10 +252,10 @@ export const WorkflowNode = memo(function WorkflowNode({
       }
       setShowAddButton(true)
     } else {
-      // Hide after 2 second delay
+      // Hide after delay
       addButtonTimeoutRef.current = setTimeout(() => {
         setShowAddButton(false)
-      }, 2000)
+      }, HIDE_ADD_BUTTON_DELAY_MS)
     }
 
     return () => {

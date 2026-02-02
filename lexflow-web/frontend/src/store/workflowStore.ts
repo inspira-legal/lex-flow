@@ -260,19 +260,12 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Add a new node and connect it to a source node
       addNodeConnected: (opcode, sourceNodeId, workflowName = "main") => {
         const state = get();
-        console.log("[workflowStore] addNodeConnected called", {
-          opcode: opcode.name,
-          sourceNodeId,
-          workflowName,
-          sourceLength: state.source.length,
-        });
         const result = WorkflowService.addNodeAndConnect(
           state.source,
           opcode,
           sourceNodeId,
           workflowName,
         );
-        console.log("[workflowStore] addNodeAndConnect result", result);
         if (result.success && result.nodeId) {
           state.setSource(result.source);
           return result.nodeId;

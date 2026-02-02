@@ -288,13 +288,9 @@ export function addNodeAndConnect(
   sourceNodeId: string,
   workflowName = "main",
 ): NodeResult & { success: boolean } {
-  console.log("[WorkflowService] addNodeAndConnect", { opcode: opcode.name, sourceNodeId, workflowName });
-
   // Step 1: Add the new node
   const addResult = addNode(source, opcode, workflowName);
-  console.log("[WorkflowService] addNode result", { nodeId: addResult.nodeId });
   if (!addResult.nodeId) {
-    console.log("[WorkflowService] addNode failed");
     return { source, nodeId: null, success: false };
   }
 
@@ -305,9 +301,7 @@ export function addNodeAndConnect(
     addResult.nodeId,
     workflowName
   );
-  console.log("[WorkflowService] connectNodes result", { success: connectResult.success });
   if (!connectResult.success) {
-    console.log("[WorkflowService] connectNodes failed");
     return { source, nodeId: null, success: false };
   }
 
