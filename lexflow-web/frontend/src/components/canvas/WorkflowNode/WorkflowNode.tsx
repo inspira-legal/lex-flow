@@ -468,6 +468,15 @@ export const WorkflowNode = memo(function WorkflowNode({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Invisible hit area extending to add button - prevents hover flicker */}
+      <rect
+        x={0}
+        y={0}
+        width={totalWidth + 30}
+        height={totalHeight}
+        fill="transparent"
+        style={{ pointerEvents: 'all' }}
+      />
       {/* Main card */}
       <rect
         width={totalWidth}
