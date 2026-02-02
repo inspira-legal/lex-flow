@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.6.0 (2026-02-02)
+
+### Bug Fixes
+
+- **web**: Use composite IDs for node namespacing in visual editor
+  ([`fead6b7`](https://github.com/inspira-legal/lex-flow/commit/fead6b790ffc7383eeb799efc17cd90795ad6340))
+
+### Chores
+
+- **web**: Build frontend library [skip ci]
+  ([`420135a`](https://github.com/inspira-legal/lex-flow/commit/420135a80f1d6f3ce770b3c204426b0dbddd6398))
+
+### Features
+
+- **web**: Add save button, execution override, and custom opcode URL support
+  ([`de6b01a`](https://github.com/inspira-legal/lex-flow/commit/de6b01ae3777dbfe7cc012901531f265dc678c67))
+
+
 ## v1.5.1 (2026-02-01)
 
 ### Bug Fixes
