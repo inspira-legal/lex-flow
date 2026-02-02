@@ -1,6 +1,6 @@
 import { useRef, useCallback } from "react";
 import { useExecutionStore } from "../store";
-import { useBackendProvider } from "../providers";
+import { useBackendProvider, useExecutionOverride } from "../providers";
 
 interface ExecuteMessage {
   type: "start";
@@ -104,6 +104,7 @@ type ServerMessage =
 export function useWebSocketExecution() {
   const wsRef = useRef<WebSocket | null>(null);
   const provider = useBackendProvider();
+  const executeOverride = useExecutionOverride();
   const {
     setIsExecuting,
     appendExecutionOutput,
@@ -145,6 +146,28 @@ export function useWebSocketExecution() {
 
       clearExecution();
       setIsExecuting(true);
+
+      // Check for execution override first
+      if (executeOverride) {
+        try {
+          const result = await executeOverride(workflow, inputs);
+          if (result.output) {
+            appendExecutionOutput(result.output);
+          }
+          if (result.success) {
+            setExecutionResult(result.result);
+          } else {
+            setExecutionError(result.error || "Execution failed");
+          }
+        } catch (err) {
+          setExecutionError(
+            err instanceof Error ? err.message : "Execution failed",
+          );
+        } finally {
+          setIsExecuting(false);
+        }
+        return;
+      }
 
       // Get WebSocket URL from provider
       const wsUrl = provider.getWebSocketUrl();
@@ -290,6 +313,7 @@ export function useWebSocketExecution() {
       };
     },
     [
+      executeOverride,
       provider,
       clearExecution,
       setIsExecuting,

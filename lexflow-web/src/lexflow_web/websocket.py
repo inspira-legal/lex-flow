@@ -193,21 +193,24 @@ async def _execute_with_messaging(
         except Exception:
             disconnected.set()
 
-    # Collect all tasks for cleanup
-    tasks: list[asyncio.Task] = []
-
-    # Start bridge tasks
+    # Start bridge tasks (keep references for cleanup)
+    channel_sender_task = None
     if web_send_channel is not None:
-        tasks.append(asyncio.create_task(channel_to_websocket()))
-    tasks.append(asyncio.create_task(output_queue_sender()))
+        channel_sender_task = asyncio.create_task(channel_to_websocket())
+    output_sender_task = asyncio.create_task(output_queue_sender())
 
     # Start receiver task
     receiver_task = asyncio.create_task(websocket_receiver())
-    tasks.append(receiver_task)
 
     # Run engine in a task so we can cancel it on disconnect
     engine_task = asyncio.create_task(engine.run(inputs=inputs))
-    tasks.append(engine_task)
+
+    # Collect all tasks for cleanup
+    tasks = [
+        t
+        for t in [channel_sender_task, output_sender_task, receiver_task, engine_task]
+        if t
+    ]
 
     try:
         # Wait for either execution to complete or WebSocket to disconnect
@@ -223,12 +226,14 @@ async def _execute_with_messaging(
             # Flush any remaining output
             output.flush()
 
-            # Signal output sender to stop
+            # Signal output sender to stop and wait for it to finish
             await send_queue.put(None)
+            await output_sender_task
 
-            # Close web_send channel to stop channel_sender_task
+            # Close web_send channel and wait for channel sender to finish
             if web_send_channel is not None:
                 web_send_channel.close()
+                await channel_sender_task
 
             return result
         else:
