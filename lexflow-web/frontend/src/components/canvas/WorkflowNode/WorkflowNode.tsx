@@ -35,6 +35,8 @@ import {
   branchLabelStyle,
   getReporterBadgeStyle,
   reporterBadgeTextStyle,
+  getAddButtonStyle,
+  addButtonTextStyle,
 } from "./styles"
 import type { WorkflowNodeProps } from "./types"
 
@@ -220,6 +222,7 @@ export const WorkflowNode = memo(function WorkflowNode({
     unregisterSlotPositions,
     showContextMenu,
     expandedReporters,
+    showAddNodeMenu,
   } = useUiStore()
   const {
     selectedNodeId,
@@ -232,6 +235,32 @@ export const WorkflowNode = memo(function WorkflowNode({
   } = useSelectionStore()
 
   const [isHovered, setIsHovered] = useState(false)
+  const [isAddButtonHovered, setIsAddButtonHovered] = useState(false)
+  const [showAddButton, setShowAddButton] = useState(false)
+  const addButtonTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Handle add button visibility with delay
+  useEffect(() => {
+    if (isHovered || isAddButtonHovered) {
+      // Show immediately when hovering
+      if (addButtonTimeoutRef.current) {
+        clearTimeout(addButtonTimeoutRef.current)
+        addButtonTimeoutRef.current = null
+      }
+      setShowAddButton(true)
+    } else {
+      // Hide after 2 second delay
+      addButtonTimeoutRef.current = setTimeout(() => {
+        setShowAddButton(false)
+      }, 2000)
+    }
+
+    return () => {
+      if (addButtonTimeoutRef.current) {
+        clearTimeout(addButtonTimeoutRef.current)
+      }
+    }
+  }, [isHovered, isAddButtonHovered])
 
   // Composite ID for UI state that needs to be unique across workflows
   const compositeId = `${workflowName}::${node.id}`
@@ -405,6 +434,11 @@ export const WorkflowNode = memo(function WorkflowNode({
     window.addEventListener("mouseup", handleMouseUp)
   }
 
+  const handleAddNodeClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    showAddNodeMenu(e.clientX, e.clientY, node.id, workflowName)
+  }
+
   // Register slot positions using composite ID (workflowName::nodeId)
   useEffect(() => {
     const positions: NodeSlotPositions = {
@@ -566,6 +600,31 @@ export const WorkflowNode = memo(function WorkflowNode({
         onMouseDown={handleOutputPortMouseDown}
         onMouseUp={handleOutputPortMouseUp}
       />
+
+      {/* Add node button - shown on hover, not on workflow_start nodes */}
+      {showAddButton && node.opcode !== "workflow_start" && (
+        <g
+          className="add-node-button"
+          onClick={handleAddNodeClick}
+          onMouseEnter={() => setIsAddButtonHovered(true)}
+          onMouseLeave={() => setIsAddButtonHovered(false)}
+          style={{ cursor: 'pointer' }}
+        >
+          <circle
+            cx={totalWidth + 16}
+            cy={NODE_HEIGHT / 2}
+            r={10}
+            style={getAddButtonStyle(isAddButtonHovered)}
+          />
+          <text
+            x={totalWidth + 16}
+            y={NODE_HEIGHT / 2}
+            style={addButtonTextStyle}
+          >
+            +
+          </text>
+        </g>
+      )}
 
       {/* Branch ports */}
       {branchSlots.length > 0 && (

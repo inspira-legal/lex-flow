@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from "react"
 import { useUiStore, useWorkflowStore, useSelectionStore } from "@/store"
+import type { OpcodeInterface } from "@/api/types"
 import * as WorkflowService from "@/services/workflow/WorkflowService"
 import { WorkflowNode } from "../WorkflowNode"
 import { StartNode } from "../StartNode"
@@ -10,6 +11,7 @@ import { NodeSearch } from "../NodeSearch"
 import { WorkflowGroup } from "../WorkflowGroup"
 import { NodeContextMenu } from "../NodeContextMenu"
 import { CanvasContextMenu } from "../CanvasContextMenu"
+import { AddNodeMenu } from "../AddNodeMenu"
 import { useCanvasInteraction } from "@/hooks"
 import { layoutAllWorkflows, getWorkflowUnderPoint } from "@/services/layout/LayoutService"
 import { toYamlNodeId, getWorkflowNameFromSlotId } from "@/utils/wireUtils"
@@ -111,9 +113,12 @@ export function Canvas() {
     showCreateWorkflowModal,
     showConfirmDialog,
     showExtractWorkflowModal,
+    addNodeMenu,
+    hideAddNodeMenu,
+    openNodeEditor,
   } = useUiStore()
-  const { tree, parseError, source, disconnectConnection, deleteNode, duplicateNode, deleteWorkflow } = useWorkflowStore()
-  const { selectedConnection, selectConnection, selectedNodeIds, clearMultiSelection } = useSelectionStore()
+  const { tree, parseError, source, disconnectConnection, deleteNode, duplicateNode, deleteWorkflow, addNodeConnected, opcodes } = useWorkflowStore()
+  const { selectedConnection, selectConnection, selectedNodeIds, clearMultiSelection, selectNode } = useSelectionStore()
 
   const svgRef = useRef<SVGSVGElement>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
@@ -260,6 +265,41 @@ export function Canvas() {
       setPan(newPanX, newPanY)
     },
     [setPan]
+  )
+
+  // Handle add node menu selection
+  const handleAddNodeSelect = useCallback(
+    (opcode: OpcodeInterface) => {
+      console.log("[AddNode] handleAddNodeSelect called", { opcode, addNodeMenu })
+      if (!addNodeMenu) {
+        console.log("[AddNode] addNodeMenu is null, returning")
+        return
+      }
+
+      console.log("[AddNode] Calling addNodeConnected", {
+        opcode: opcode.name,
+        sourceNodeId: addNodeMenu.sourceNodeId,
+        workflowName: addNodeMenu.workflowName
+      })
+
+      const newNodeId = addNodeConnected(
+        opcode,
+        addNodeMenu.sourceNodeId,
+        addNodeMenu.workflowName
+      )
+
+      console.log("[AddNode] Result:", { newNodeId })
+
+      if (newNodeId) {
+        // Update selection to new node
+        selectNode(newNodeId)
+        // Open the node editor
+        openNodeEditor()
+      }
+
+      hideAddNodeMenu()
+    },
+    [addNodeMenu, addNodeConnected, selectNode, openNodeEditor, hideAddNodeMenu]
   )
 
   return (
@@ -584,6 +624,17 @@ export function Canvas() {
             })
           }}
           onClose={hideCanvasContextMenu}
+        />
+      )}
+
+      {/* Add node menu */}
+      {addNodeMenu && (
+        <AddNodeMenu
+          x={addNodeMenu.x}
+          y={addNodeMenu.y}
+          opcodes={opcodes}
+          onSelect={handleAddNodeSelect}
+          onClose={hideAddNodeMenu}
         />
       )}
     </div>
