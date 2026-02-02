@@ -2,191 +2,81 @@
   "version": "1.0",
   "categories": [
     {
-      "id": "io",
-      "label": "I/O Operations",
-      "prefix": "io_",
-      "color": "#22D3EE",
-      "icon": "📤"
-    },
-    {
-      "id": "operator",
-      "label": "Operators",
-      "prefix": "operator_",
-      "color": "#9C27B0",
-      "icon": "⚡"
-    },
-    {
-      "id": "math",
-      "label": "Math Operations",
-      "prefix": "math_",
-      "color": "#8B5CF6",
-      "icon": "🔢"
-    },
-    {
-      "id": "string",
-      "label": "String Operations",
-      "prefix": "string_",
-      "color": "#F472B6",
-      "icon": "📝"
-    },
-    {
-      "id": "list",
-      "label": "List Operations",
-      "prefix": "list_",
-      "color": "#3B82F6",
-      "icon": "📋"
-    },
-    {
-      "id": "dict",
-      "label": "Dictionary Operations",
-      "prefix": "dict_",
-      "color": "#F59E0B",
-      "icon": "📖"
-    },
-    {
-      "id": "object",
-      "label": "Object Operations",
-      "prefix": "object_",
-      "color": "#10B981",
-      "icon": "📦"
-    },
-    {
-      "id": "type",
-      "label": "Type Conversions",
-      "prefix": "type_",
-      "color": "#6B7280",
-      "icon": "🔄"
-    },
-    {
-      "id": "throw",
-      "label": "Exception Operations",
-      "prefix": "throw_",
-      "color": "#EF4444",
-      "icon": "⚠️"
-    },
-    {
-      "id": "assert",
-      "label": "Assertion Operations",
-      "prefix": "assert_",
-      "color": "#F97316",
-      "icon": "✓"
-    },
-    {
-      "id": "workflow",
-      "label": "Workflow Operations",
-      "prefix": "workflow_",
-      "color": "#E91E63",
-      "icon": "🔗"
+      "id": "control",
+      "prefix": "control_",
+      "label": "Control Flow",
+      "color": "#FF9500",
+      "icon": "\u27f3"
     },
     {
       "id": "data",
-      "label": "Data Operations",
       "prefix": "data_",
+      "label": "Data",
       "color": "#4CAF50",
-      "icon": "📦"
+      "icon": "\ud83d\udce6"
     },
     {
-      "id": "control",
-      "label": "Control Flow",
-      "prefix": "control_",
-      "color": "#FF9500",
-      "icon": "↻"
+      "id": "io",
+      "prefix": "io_",
+      "label": "I/O",
+      "color": "#22D3EE",
+      "icon": "\ud83d\udce4"
+    },
+    {
+      "id": "operator",
+      "prefix": "operator_",
+      "label": "Operators",
+      "color": "#9C27B0",
+      "icon": "\u26a1"
+    },
+    {
+      "id": "list",
+      "prefix": "list_",
+      "label": "Lists",
+      "color": "#3B82F6",
+      "icon": "\ud83d\udccb"
+    },
+    {
+      "id": "dict",
+      "prefix": "dict_",
+      "label": "Dicts",
+      "color": "#F59E0B",
+      "icon": "\ud83d\udcd6"
+    },
+    {
+      "id": "string",
+      "prefix": "string_",
+      "label": "Strings",
+      "color": "#F472B6",
+      "icon": "\ud83d\udcdd"
+    },
+    {
+      "id": "math",
+      "prefix": "math_",
+      "label": "Math",
+      "color": "#8B5CF6",
+      "icon": "\ud83d\udd22"
+    },
+    {
+      "id": "workflow",
+      "prefix": "workflow_",
+      "label": "Workflow",
+      "color": "#E91E63",
+      "icon": "\ud83d\udd17"
     },
     {
       "id": "async",
-      "label": "Async Operations",
       "prefix": "async_",
+      "label": "Async",
       "color": "#06B6D4",
-      "icon": "⏱"
+      "icon": "\u23f1"
     },
     {
-      "id": "pydantic_ai",
-      "label": "AI Operations (Pydantic AI)",
-      "prefix": "pydantic_ai_",
-      "color": "#10B981",
-      "icon": "🤖",
-      "requires": "ai"
-    },
-    {
-      "id": "http",
-      "label": "HTTP Operations",
-      "prefix": "http_",
-      "color": "#3B82F6",
-      "icon": "🌐",
-      "requires": "http"
-    },
-    {
-      "id": "html",
-      "label": "HTML Operations",
-      "prefix": "html_",
-      "color": "#E34F26",
-      "icon": "📄",
-      "requires": "http"
-    },
-    {
-      "id": "json",
-      "label": "JSON Operations",
-      "prefix": "json_",
-      "color": "#F59E0B",
-      "icon": "📋"
-    },
-    {
-      "id": "pygame",
-      "label": "Pygame Operations",
-      "prefix": "pygame_",
-      "color": "#00D86A",
-      "icon": "🎮",
-      "requires": "pygame"
-    },
-    {
-      "id": "rag",
-      "label": "RAG Operations",
-      "prefix": "rag_",
-      "color": "#8B5CF6",
-      "icon": "🔍",
-      "requires": "rag"
-    },
-    {
-      "id": "chat",
-      "label": "Chat Operations",
-      "prefix": "chat_",
-      "color": "#6366F1",
-      "icon": "💬"
-    },
-    {
-      "id": "cli",
-      "label": "CLI Operations",
-      "prefix": "cli_",
-      "color": "#EC4899",
-      "icon": "💻"
-    },
-    {
-      "id": "github",
-      "label": "GitHub Operations",
-      "prefix": "github_",
-      "color": "#24292F",
-      "icon": "🐙"
-    },
-    {
-      "id": "task",
-      "label": "Task Operations",
-      "prefix": "task_",
-      "color": "#0EA5E9",
-      "icon": "⚡"
-    },
-    {
-      "id": "channel",
-      "label": "Channel Operations",
-      "prefix": "channel_",
-      "color": "#14B8A6",
-      "icon": "📡"
-    },
-    {
-      "id": "sync",
-      "label": "Sync Primitives",
-      "prefix": "sync_",
-      "color": "#A855F7",
-      "icon": "🔒"
+      "id": "gcs",
+      "prefix": "gcs_",
+      "label": "Cloud Storage",
+      "color": "#4285F4",
+      "icon": "\u2601\ufe0f"
     }
   ],
   "constructs": [
