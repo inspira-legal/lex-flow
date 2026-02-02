@@ -1,2 +1,2 @@
 import type { MainLayoutProps } from "./types";
-export declare function MainLayout({ canvas, editor, nodeEditor, executionPanel, palette, className, }: MainLayoutProps): import("react/jsx-runtime").JSX.Element;
+export declare function MainLayout({ canvas, editor, nodeEditor, executionPanel, palette, className, onSave, showSaveButton, saveButtonLabel, showExamples, }: MainLayoutProps): import("react/jsx-runtime").JSX.Element;

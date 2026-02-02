@@ -11,8 +11,8 @@ export declare function useWorkflowState(): {
     canRedo: boolean;
     undo: () => void;
     redo: () => void;
-    opcodes: import("../api").OpcodeInterface[];
-    setOpcodes: (opcodes: import("../api").OpcodeInterface[]) => void;
+    opcodes: import("../lib").OpcodeInterface[];
+    setOpcodes: (opcodes: import("../lib").OpcodeInterface[]) => void;
     examples: import("../api").ExampleInfo[];
     setExamples: (examples: import("../api").ExampleInfo[]) => void;
 };

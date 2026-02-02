@@ -1,4 +1,6 @@
 import type { BackendProvider } from "../providers/types";
+import type { OpcodeInterface } from "../api/types";
+export type { EditorMetadata } from "../services/metadata";
 export type ThemePreset = "light" | "dark" | "system";
 export interface ThemeColors {
     accent?: string;
@@ -28,6 +30,13 @@ export interface LexFlowEditorProps {
     onExecute?: (result: ExecuteResult) => void;
     onError?: (error: string) => void;
     onReady?: () => void;
+    onSave?: (source: string, metadata: import("../services/metadata").EditorMetadata) => void | Promise<void>;
+    showSaveButton?: boolean;
+    saveButtonLabel?: string;
+    showExamples?: boolean;
+    opcodesUrl?: string;
+    opcodeAdapter?: (rawData: unknown) => OpcodeInterface[];
+    executeOverride?: (source: string, inputs?: Record<string, unknown>) => Promise<ExecuteResult>;
     className?: string;
     style?: React.CSSProperties;
     instanceId?: string;

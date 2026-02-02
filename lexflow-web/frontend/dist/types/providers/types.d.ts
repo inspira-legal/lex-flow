@@ -4,6 +4,8 @@ export interface BackendConfig {
     wsUrl?: string;
     supportsExamples?: boolean;
     supportsWebSocket?: boolean;
+    opcodesUrl?: string;
+    opcodeAdapter?: (rawData: unknown) => OpcodeInterface[];
 }
 export interface BackendProvider {
     name: string;

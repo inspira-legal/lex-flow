@@ -6,6 +6,7 @@ export interface LayoutNode {
     width: number;
     height: number;
     isOrphan?: boolean;
+    workflowName: string;
 }
 export interface LayoutConnection {
     from: string;

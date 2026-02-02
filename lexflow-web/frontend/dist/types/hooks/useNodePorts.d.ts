@@ -1,5 +1,6 @@
 interface UseNodePortsProps {
     nodeId: string;
+    slotId: string;
     x: number;
     y: number;
 }
@@ -14,5 +15,5 @@ interface UseNodePortsReturn {
     isValidDropTarget: boolean;
     isValidOutputDropTarget: boolean;
 }
-export declare function useNodePorts({ nodeId, x, y, }: UseNodePortsProps): UseNodePortsReturn;
+export declare function useNodePorts({ nodeId, slotId, x, y, }: UseNodePortsProps): UseNodePortsReturn;
 export {};

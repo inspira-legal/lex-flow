@@ -6,4 +6,5 @@ export interface WorkflowNodeProps {
     isOrphan?: boolean;
     zoom?: number;
     onDrag?: (dx: number, dy: number) => void;
+    workflowName: string;
 }
