@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v1.6.2 (2026-02-03)
+
+### Bug Fixes
+
+- **web**: Expand entire reporter chain and fix bounding box calculation
+  ([`833b001`](https://github.com/inspira-legal/lex-flow/commit/833b0015cbadc9b8f83b7756cd18afec02b71e7d))
+
+### Chores
+
+- Pin python version to 3.13
+  ([`1135ee6`](https://github.com/inspira-legal/lex-flow/commit/1135ee69e29a4f3547c3df021b4be91ea914a335))
+
+- **web**: Build frontend library [skip ci]
+  ([`e2c05b4`](https://github.com/inspira-legal/lex-flow/commit/e2c05b4b277ba7954df7ca9771b8a34c7316d45f))
+
+### Documentation
+
+- Add claude.md file to repo
+  ([`9adc6cc`](https://github.com/inspira-legal/lex-flow/commit/9adc6ccb97ee9556d3f3dac176696c8ddac099bd))
+
+
 ## v1.6.1 (2026-02-02)
 
 ### Bug Fixes
