@@ -39,7 +39,7 @@ export interface FullLayout {
 }
 export declare function calculateReporterTotalHeight(value: FormattedValue, includeLabel?: boolean): number;
 export declare function formatValueShort(value: FormattedValue): string;
-export declare function calculateNodeDimensions(nodeId: string, inputs: Record<string, FormattedValue>, opcode: string | undefined, expandedReporters: Record<string, boolean>): {
+export declare function calculateNodeDimensions(nodeId: string, inputs: Record<string, FormattedValue>, opcode: string | undefined, expandedReporters: Record<string, boolean>, workflowName?: string): {
     width: number;
     height: number;
 };

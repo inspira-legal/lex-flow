@@ -131,6 +131,7 @@ interface UiState {
     expandedReporters: Record<string, boolean>;
     toggleReportersExpanded: (nodeId: string) => void;
     setReportersExpanded: (nodeId: string, expanded: boolean) => void;
+    setMultipleReportersExpanded: (ids: string[], expanded: boolean) => void;
     confirmDialog: {
         isOpen: boolean;
         title: string;
