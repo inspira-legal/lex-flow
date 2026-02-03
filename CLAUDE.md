@@ -12,6 +12,22 @@ LexFlow is a stack-based visual programming workflow interpreter written in Pyth
 - `lexflow-web/` - Web frontend for visualization and execution
 - Root `pyproject.toml` - Combined package configuration
 
+## Developing Workflows and Opcodes
+
+**Documentation References:**
+- **Workflow Grammar**: See `docs/GRAMMAR_REFERENCE.md` for the complete workflow syntax and structure
+- **Opcode Reference**: See `docs/OPCODE_REFERENCE.md` for all available opcodes and their signatures
+- **Core Module Guide**: See `lexflow-core/CLAUDE.md` for architecture, best practices, and common mistakes
+
+**Specialized Agents:**
+When developing LexFlow workflows or opcodes, use the specialized Claude Code agents:
+
+- **lexflow-workflow-writer**: Use this agent when creating, writing, or designing LexFlow workflow files. Invoke it for building new workflows, converting logic into LexFlow format, or structuring workflow systems with helper workflows.
+
+- **lexflow-opcode-developer**: Use this agent when creating, modifying, or reviewing LexFlow opcodes. Invoke it for developing new opcode libraries, adding opcodes to existing libraries, or reviewing opcode implementations.
+
+These agents have specialized knowledge of LexFlow conventions and will produce well-structured, idiomatic code.
+
 ## Coding Style Guidelines
 
 **Core Principle: KEEP IT SIMPLE**
