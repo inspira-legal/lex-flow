@@ -31,6 +31,11 @@ interface WorkflowState {
   // Node operations (pure - no selection side effects)
   deleteNode: (nodeId: string) => boolean;
   addNode: (opcode: OpcodeInterface, workflowName?: string) => string | null;
+  addNodeConnected: (
+    opcode: OpcodeInterface,
+    sourceNodeId: string,
+    workflowName?: string,
+  ) => string | null;
   addWorkflowCallNode: (
     workflowName: string,
     params: string[],
@@ -237,6 +242,22 @@ export const useWorkflowStore = create<WorkflowState>()(
           state.setSource(result.source);
         }
         return result.nodeId;
+      },
+
+      // Add a new node and connect it to a source node
+      addNodeConnected: (opcode, sourceNodeId, workflowName = "main") => {
+        const state = get();
+        const result = WorkflowService.addNodeAndConnect(
+          state.source,
+          opcode,
+          sourceNodeId,
+          workflowName,
+        );
+        if (result.success && result.nodeId) {
+          state.setSource(result.source);
+          return result.nodeId;
+        }
+        return null;
       },
 
       // Add a workflow_call node with ARG inputs
