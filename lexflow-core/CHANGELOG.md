@@ -2,6 +2,109 @@
 
 <!-- version list -->
 
+## v1.2.0 (2026-02-03)
+
+### Bug Fixes
+
+- **web**: Expand entire reporter chain and fix bounding box calculation
+  ([`833b001`](https://github.com/inspira-legal/lex-flow/commit/833b0015cbadc9b8f83b7756cd18afec02b71e7d))
+
+- **web**: Properly cleanup WebSocket tasks on disconnect
+  ([`fa5e341`](https://github.com/inspira-legal/lex-flow/commit/fa5e3411742154b4c1260ff6239f4db14389c2ed))
+
+- **web**: Use composite IDs for node namespacing in visual editor
+  ([`fead6b7`](https://github.com/inspira-legal/lex-flow/commit/fead6b790ffc7383eeb799efc17cd90795ad6340))
+
+- **web**: Use jsDelivr CDN instead of GitHub release assets
+  ([`d4521fa`](https://github.com/inspira-legal/lex-flow/commit/d4521facbaa45e5976d1f5a3c76db166a4918005))
+
+- **web**: Wire execution override into WebSocket hook
+  ([`82633ea`](https://github.com/inspira-legal/lex-flow/commit/82633ea22b3e30563b096acb9dee0eb912f24d6d))
+
+### Chores
+
+- Pin python version to 3.13
+  ([`1135ee6`](https://github.com/inspira-legal/lex-flow/commit/1135ee69e29a4f3547c3df021b4be91ea914a335))
+
+- **cli**: Release 1.1.0
+  ([`55afa40`](https://github.com/inspira-legal/lex-flow/commit/55afa40d74f37f517f801ff6ceb78558480ee50f))
+
+- **web**: Build frontend library [skip ci]
+  ([`e2c05b4`](https://github.com/inspira-legal/lex-flow/commit/e2c05b4b277ba7954df7ca9771b8a34c7316d45f))
+
+- **web**: Build frontend library [skip ci]
+  ([`113565e`](https://github.com/inspira-legal/lex-flow/commit/113565ec0fb59b6e3f0b79b43a69898757b424ed))
+
+- **web**: Build frontend library [skip ci]
+  ([`420135a`](https://github.com/inspira-legal/lex-flow/commit/420135a80f1d6f3ce770b3c204426b0dbddd6398))
+
+- **web**: Build frontend library [skip ci]
+  ([`43ac2c1`](https://github.com/inspira-legal/lex-flow/commit/43ac2c15044fedd5064a5321f1f1d95332796532))
+
+- **web**: Build frontend library [skip ci]
+  ([`0096067`](https://github.com/inspira-legal/lex-flow/commit/0096067f1cce018081d9b29999fd9f8bfb9240ab))
+
+- **web**: Build frontend library [skip ci]
+  ([`4054ad8`](https://github.com/inspira-legal/lex-flow/commit/4054ad8fc06be0c850feefbbf51fbae73b7fbf67))
+
+- **web**: Release 1.3.0
+  ([`d856a46`](https://github.com/inspira-legal/lex-flow/commit/d856a4699cf219478240a12eaa0a23e85876e631))
+
+- **web**: Release 1.3.1
+  ([`8630135`](https://github.com/inspira-legal/lex-flow/commit/8630135d9f81467c4eae3764d952e40e4e1eb3b2))
+
+- **web**: Release 1.4.0
+  ([`b2c90ec`](https://github.com/inspira-legal/lex-flow/commit/b2c90ec64b5c3a341af351758dc6f53654353698))
+
+- **web**: Release 1.5.0
+  ([`390c647`](https://github.com/inspira-legal/lex-flow/commit/390c647b50483e42151055e45f707d7259ff2fbb))
+
+- **web**: Release 1.5.1
+  ([`70aa1e4`](https://github.com/inspira-legal/lex-flow/commit/70aa1e447dfaf2110ea6f05364d53d32427408d1))
+
+- **web**: Release 1.6.0
+  ([`905a1de`](https://github.com/inspira-legal/lex-flow/commit/905a1de40f7a85bdfb1f0d2415c8696997ea94d9))
+
+- **web**: Release 1.6.1
+  ([`7dac326`](https://github.com/inspira-legal/lex-flow/commit/7dac326166152c3d7e891e861080cd9c820ebfcd))
+
+- **web**: Release 1.6.2
+  ([`7c2165e`](https://github.com/inspira-legal/lex-flow/commit/7c2165e472262d9c369e168382bc65b156247f04))
+
+### Documentation
+
+- Add claude.md file to repo
+  ([`9adc6cc`](https://github.com/inspira-legal/lex-flow/commit/9adc6ccb97ee9556d3f3dac176696c8ddac099bd))
+
+- Add README for monorepo and lexflow-web
+  ([`a8a5e79`](https://github.com/inspira-legal/lex-flow/commit/a8a5e793dad6ee73f712f49743338af51eaffe32))
+
+- Updating claude.md
+  ([`9f75f98`](https://github.com/inspira-legal/lex-flow/commit/9f75f9848b68b21ad9f3725a72f52781ab6774e2))
+
+- Use uv instead of pip in README examples
+  ([`488a5d6`](https://github.com/inspira-legal/lex-flow/commit/488a5d65dd735d411292da1b03a03b78fa3b734d))
+
+### Features
+
+- **web**: Add embeddable editor library
+  ([`9a09f05`](https://github.com/inspira-legal/lex-flow/commit/9a09f054ada301e3527d09a77097de7a5b8ce41d))
+
+- **web**: Add extract to workflow feature
+  ([`cfa5ee6`](https://github.com/inspira-legal/lex-flow/commit/cfa5ee61c6d60c52fcc07f345fdc25b7842729a7))
+
+- **web**: Add save button, execution override, and custom opcode URL support
+  ([`de6b01a`](https://github.com/inspira-legal/lex-flow/commit/de6b01ae3777dbfe7cc012901531f265dc678c67))
+
+- **web**: Add workflow create/delete and fix start node wiring
+  ([`521aec5`](https://github.com/inspira-legal/lex-flow/commit/521aec53feb0740f30b8a268459bd4fccd6439d8))
+
+### Refactoring
+
+- **web**: Replace context vars with channels for web opcodes
+  ([`0ef42d6`](https://github.com/inspira-legal/lex-flow/commit/0ef42d67fec29ed9bdf50cf906da1b9a9eb77426))
+
+
 ## v1.1.0 (2026-01-30)
 
 ### Bug Fixes
