@@ -711,6 +711,9 @@ class Parser:
             if isinstance(params[0], dict):
                 params = [input.get("name") for input in params]
 
+        # Extract description from interface
+        description = interface.get("description") if interface else None
+
         # Parse variables - only name-based format supported
         variables = wf_data.get("variables", {})
 
@@ -721,7 +724,13 @@ class Parser:
         # Variables are now always in format: {"var_name": default_value}
         locals_dict = variables.copy()
 
-        return Workflow(name=name, params=params, body=body, locals=locals_dict)
+        return Workflow(
+            name=name,
+            params=params,
+            body=body,
+            locals=locals_dict,
+            description=description,
+        )
 
     def _parse_nodes(self, nodes: dict) -> Statement:
         """Parse nodes into a Block statement using strategy pattern."""

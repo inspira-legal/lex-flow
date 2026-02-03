@@ -1,0 +1,226 @@
+# Example: AI Agent with Tools
+#
+# This workflow demonstrates using ai_agent_with_tools to let an LLM
+# call LexFlow opcodes to accomplish tasks.
+#
+# Prerequisites:
+#   - pip install lexflow[ai]
+#   - gcloud auth application-default login
+#
+# Run:
+#   uv run lexflow examples/integrations/pydantic_ai/agent_with_tools.yaml
+
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      model: null
+      agent: null
+      result: null
+      error_msg: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: store_model
+        inputs:
+          STRING:
+            literal: "\n=== AI Agent with Tools Demo ===\n\n"
+
+      # === Setup: Create Model and Agent ===
+
+      create_model:
+        opcode: pydantic_ai_create_vertex_model
+        isReporter: true
+        inputs:
+          model_name:
+            literal: "gemini-2.5-flash"
+          project:
+            literal: null
+          location:
+            literal: "us-central1"
+
+      store_model:
+        opcode: data_set_variable_to
+        next: print_model_created
+        inputs:
+          VARIABLE:
+            literal: "model"
+          VALUE:
+            node: create_model
+
+      print_model_created:
+        opcode: io_print
+        next: store_agent
+        inputs:
+          STRING:
+            literal: "1. Created Vertex AI model: gemini-2.5-flash\n"
+
+      create_agent:
+        opcode: pydantic_ai_create_agent
+        isReporter: true
+        inputs:
+          model:
+            variable: "model"
+          instructions:
+            literal: |
+              You are a math assistant. When asked to perform calculations,
+              use the provided tools to compute the answer. Show your reasoning.
+
+      store_agent:
+        opcode: data_set_variable_to
+        next: print_agent_created
+        inputs:
+          VARIABLE:
+            literal: "agent"
+          VALUE:
+            node: create_agent
+
+      print_agent_created:
+        opcode: io_print
+        next: run_with_try
+        inputs:
+          STRING:
+            literal: "2. Created AI agent with instructions\n\n"
+
+      # === Execute Agent with Error Handling ===
+
+      run_with_try:
+        opcode: control_try
+        next: show_success
+        inputs:
+          TRY:
+            branch: execute_agent
+          CATCH1:
+            exception_type: "PermissionError"
+            var: "error_msg"
+            body:
+              branch: handle_permission
+          CATCH2:
+            exception_type: "TimeoutError"
+            var: "error_msg"
+            body:
+              branch: handle_timeout
+          CATCH3:
+            exception_type: "RuntimeError"
+            var: "error_msg"
+            body:
+              branch: handle_runtime
+          CATCH4:
+            exception_type: null
+            var: "error_msg"
+            body:
+              branch: handle_generic
+
+      # === Agent Call ===
+
+      agent_call:
+        opcode: ai_agent_with_tools
+        isReporter: true
+        inputs:
+          agent:
+            variable: "agent"
+          messages:
+            literal: "Calculate 15 multiplied by 23, then check if the result is divisible by 5."
+          tools:
+            literal:
+              - operator_multiply
+              - operator_modulo
+              - operator_equals
+          output:
+            literal: null
+          max_tool_calls:
+            literal: 5
+          timeout_seconds:
+            literal: 60
+
+      execute_agent:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "result"
+          VALUE:
+            node: agent_call
+
+      # === Error Handlers ===
+
+      handle_permission:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n[ERROR] Permission denied: Agent tried to use a tool not in the allowlist.\n"
+
+      handle_timeout:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n[ERROR] Agent execution timed out.\n"
+
+      handle_runtime:
+        opcode: io_print
+        next: print_runtime_detail
+        inputs:
+          STRING:
+            literal: "\n[ERROR] Runtime error: "
+
+      print_runtime_detail:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            variable: error_msg
+
+      handle_generic:
+        opcode: io_print
+        next: print_generic_detail
+        inputs:
+          STRING:
+            literal: "\n[ERROR] Unknown error: "
+
+      print_generic_detail:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            variable: error_msg
+
+      # === Success Path ===
+
+      show_success:
+        opcode: io_print
+        next: show_response
+        inputs:
+          STRING:
+            literal: "\n=== Agent Response ===\n\n"
+
+      get_text:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: result
+          key:
+            literal: "text"
+
+      show_response:
+        opcode: io_print
+        next: show_footer
+        inputs:
+          STRING:
+            node: get_text
+
+      show_footer:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n\n=== Demo Complete ===\n"
