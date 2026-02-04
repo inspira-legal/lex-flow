@@ -18,16 +18,32 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | ID | Label | Prefix | Color | Icon |
 |:---|:------|:-------|:------|:-----|
-| `control` | Control Flow | `control_` | `#FF9500` | ⟳ |
-| `data` | Data | `data_` | `#4CAF50` | 📦 |
-| `io` | I/O | `io_` | `#22D3EE` | 📤 |
+| `io` | I/O Operations | `io_` | `#22D3EE` | 📤 |
 | `operator` | Operators | `operator_` | `#9C27B0` | ⚡ |
-| `list` | Lists | `list_` | `#3B82F6` | 📋 |
-| `dict` | Dicts | `dict_` | `#F59E0B` | 📖 |
-| `string` | Strings | `string_` | `#F472B6` | 📝 |
-| `math` | Math | `math_` | `#8B5CF6` | 🔢 |
-| `workflow` | Workflow | `workflow_` | `#E91E63` | 🔗 |
-| `async` | Async | `async_` | `#06B6D4` | ⏱ |
+| `math` | Math Operations | `math_` | `#8B5CF6` | 🔢 |
+| `string` | String Operations | `string_` | `#F472B6` | 📝 |
+| `list` | List Operations | `list_` | `#3B82F6` | 📋 |
+| `dict` | Dictionary Operations | `dict_` | `#F59E0B` | 📖 |
+| `object` | Object Operations | `object_` | `#10B981` | 📦 |
+| `type` | Type Conversions | `type_` | `#6B7280` | 🔄 |
+| `throw` | Exception Operations | `throw_` | `#EF4444` | ⚠️ |
+| `assert` | Assertion Operations | `assert_` | `#F97316` | ✓ |
+| `workflow` | Workflow Operations | `workflow_` | `#E91E63` | 🔗 |
+| `data` | Data Operations | `data_` | `#4CAF50` | 📦 |
+| `control` | Control Flow | `control_` | `#FF9500` | ↻ |
+| `async` | Async Operations | `async_` | `#06B6D4` | ⏱ |
+| `pydantic_ai` | AI Operations (Pydantic AI) | `pydantic_ai_` | `#10B981` | 🤖 |
+| `http` | HTTP Operations | `http_` | `#3B82F6` | 🌐 |
+| `html` | HTML Operations | `html_` | `#E34F26` | 📄 |
+| `json` | JSON Operations | `json_` | `#F59E0B` | 📋 |
+| `pygame` | Pygame Operations | `pygame_` | `#00D86A` | 🎮 |
+| `rag` | RAG Operations | `rag_` | `#8B5CF6` | 🔍 |
+| `chat` | Chat Operations | `chat_` | `#6366F1` | 💬 |
+| `cli` | CLI Operations | `cli_` | `#EC4899` | 💻 |
+| `github` | GitHub Operations | `github_` | `#24292F` | 🐙 |
+| `task` | Task Operations | `task_` | `#0EA5E9` | ⚡ |
+| `channel` | Channel Operations | `channel_` | `#14B8A6` | 📡 |
+| `sync` | Sync Primitives | `sync_` | `#A855F7` | 🔒 |
 
 ## Control Flow Constructs
 
@@ -382,7 +398,7 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 ## Summary
 
-- **Categories:** 10
+- **Categories:** 26
 - **Constructs:** 16
 - **Control Flow:** 12
 - **Data Operations:** 1

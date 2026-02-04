@@ -5,12 +5,12 @@ enabling web scraping and API integration workflows.
 
 Installation:
     pip install lexflow[http]
-    or:
-    pip install aiohttp beautifulsoup4
 """
 
 import json as json_module
 from typing import Any, AsyncGenerator, Dict, List, Optional
+
+from .opcodes import opcode, register_category
 
 try:
     import aiohttp
@@ -27,42 +27,47 @@ except ImportError:
     BS4_AVAILABLE = False
 
 
-def _check_aiohttp():
-    """Check if aiohttp is available and raise helpful error if not."""
-    if not AIOHTTP_AVAILABLE:
-        raise ImportError(
-            "aiohttp is not installed. Install it with:\n"
-            "  pip install lexflow[http]\n"
-            "or:\n"
-            "  pip install aiohttp"
-        )
-
-
-def _check_bs4():
-    """Check if beautifulsoup4 is available and raise helpful error if not."""
-    if not BS4_AVAILABLE:
-        raise ImportError(
-            "beautifulsoup4 is not installed. Install it with:\n"
-            "  pip install lexflow[http]\n"
-            "or:\n"
-            "  pip install beautifulsoup4"
-        )
-
-
 def register_http_opcodes():
     """Register HTTP and HTML parsing opcodes to the default registry."""
     if not AIOHTTP_AVAILABLE and not BS4_AVAILABLE:
         return
 
-    from .opcodes import default_registry
+    register_category(
+        id="http",
+        label="HTTP Operations",
+        prefix="http_",
+        color="#3B82F6",
+        icon="🌐",
+        requires="http",
+        order=210,
+    )
 
-    # ============================================================================
+    register_category(
+        id="html",
+        label="HTML Operations",
+        prefix="html_",
+        color="#E34F26",
+        icon="📄",
+        requires="http",
+        order=211,
+    )
+
+    register_category(
+        id="json",
+        label="JSON Operations",
+        prefix="json_",
+        color="#F59E0B",
+        icon="📋",
+        order=212,
+    )
+
+    # =========================================================================
     # HTTP Operations (require aiohttp)
-    # ============================================================================
+    # =========================================================================
 
     if AIOHTTP_AVAILABLE:
 
-        @default_registry.register()
+        @opcode(category="http")
         async def http_get(
             url: str,
             headers: Optional[Dict[str, str]] = None,
@@ -76,27 +81,14 @@ def register_http_opcodes():
                 timeout: Request timeout in seconds (default: 30.0)
 
             Returns:
-                Response dict with keys:
-                - status: HTTP status code (int)
-                - headers: Response headers (dict)
-                - text: Response body as text (str)
-                - json: Parsed JSON if content-type is application/json (dict or None)
-
-            Example:
-                url: "https://api.example.com/data"
-                headers: {"Authorization": "Bearer token123"}
+                Response dict with keys: status, headers, text, json
             """
-            _check_aiohttp()
-
             client_timeout = aiohttp.ClientTimeout(total=timeout)
             async with aiohttp.ClientSession(timeout=client_timeout) as session:
                 async with session.get(url, headers=headers) as response:
                     text = await response.text()
-
-                    # Try to parse JSON if content-type suggests it
                     json_data = None
-                    content_type = response.headers.get("Content-Type", "")
-                    if "application/json" in content_type:
+                    if "application/json" in response.headers.get("Content-Type", ""):
                         try:
                             json_data = json_module.loads(text)
                         except json_module.JSONDecodeError:
@@ -109,7 +101,7 @@ def register_http_opcodes():
                         "json": json_data,
                     }
 
-        @default_registry.register()
+        @opcode(category="http")
         async def http_post(
             url: str,
             data: Optional[Dict[str, Any]] = None,
@@ -122,37 +114,21 @@ def register_http_opcodes():
             Args:
                 url: The URL to request
                 data: Form data to send (for form-encoded POST)
-                json: JSON data to send (for JSON POST, sets Content-Type automatically)
+                json: JSON data to send (sets Content-Type automatically)
                 headers: Optional dictionary of HTTP headers
                 timeout: Request timeout in seconds (default: 30.0)
 
             Returns:
-                Response dict with keys:
-                - status: HTTP status code (int)
-                - headers: Response headers (dict)
-                - text: Response body as text (str)
-                - json: Parsed JSON if content-type is application/json (dict or None)
-
-            Example:
-                url: "https://api.example.com/users"
-                json: {"name": "Alice", "email": "alice@example.com"}
-
-            Note:
-                If both data and json are provided, json takes precedence.
+                Response dict with keys: status, headers, text, json
             """
-            _check_aiohttp()
-
             client_timeout = aiohttp.ClientTimeout(total=timeout)
             async with aiohttp.ClientSession(timeout=client_timeout) as session:
                 async with session.post(
                     url, data=data, json=json, headers=headers
                 ) as response:
                     text = await response.text()
-
-                    # Try to parse JSON if content-type suggests it
                     json_data = None
-                    content_type = response.headers.get("Content-Type", "")
-                    if "application/json" in content_type:
+                    if "application/json" in response.headers.get("Content-Type", ""):
                         try:
                             json_data = json_module.loads(text)
                         except json_module.JSONDecodeError:
@@ -165,7 +141,7 @@ def register_http_opcodes():
                         "json": json_data,
                     }
 
-        @default_registry.register()
+        @opcode(category="http")
         async def http_request(
             method: str,
             url: str,
@@ -185,19 +161,8 @@ def register_http_opcodes():
                 timeout: Request timeout in seconds (default: 30.0)
 
             Returns:
-                Response dict with keys:
-                - status: HTTP status code (int)
-                - headers: Response headers (dict)
-                - text: Response body as text (str)
-                - json: Parsed JSON if content-type is application/json (dict or None)
-
-            Example:
-                method: "PUT"
-                url: "https://api.example.com/users/123"
-                json: {"name": "Updated Name"}
+                Response dict with keys: status, headers, text, json
             """
-            _check_aiohttp()
-
             method = method.upper()
             client_timeout = aiohttp.ClientTimeout(total=timeout)
             async with aiohttp.ClientSession(timeout=client_timeout) as session:
@@ -205,11 +170,8 @@ def register_http_opcodes():
                     method, url, data=data, json=json, headers=headers
                 ) as response:
                     text = await response.text()
-
-                    # Try to parse JSON if content-type suggests it
                     json_data = None
-                    content_type = response.headers.get("Content-Type", "")
-                    if "application/json" in content_type:
+                    if "application/json" in response.headers.get("Content-Type", ""):
                         try:
                             json_data = json_module.loads(text)
                         except json_module.JSONDecodeError:
@@ -222,11 +184,11 @@ def register_http_opcodes():
                         "json": json_data,
                     }
 
-        # ============================================================================
+        # =====================================================================
         # HTTP Streaming Operations
-        # ============================================================================
+        # =====================================================================
 
-        @default_registry.register()
+        @opcode(category="http")
         async def http_stream_lines(
             url: str,
             headers: Optional[Dict[str, str]] = None,
@@ -244,17 +206,7 @@ def register_http_opcodes():
 
             Yields:
                 Each line from the response (stripped of newlines)
-
-            Example usage with control_async_foreach:
-                async_loop:
-                  opcode: control_async_foreach
-                  inputs:
-                    VAR: { literal: "line" }
-                    ITERABLE: { node: stream_lines }
-                    BODY: { branch: process_line }
             """
-            _check_aiohttp()
-
             client_timeout = aiohttp.ClientTimeout(total=timeout)
             async with aiohttp.ClientSession(timeout=client_timeout) as session:
                 async with session.get(url, headers=headers) as response:
@@ -263,7 +215,7 @@ def register_http_opcodes():
                         if decoded:
                             yield decoded
 
-        @default_registry.register()
+        @opcode(category="http")
         async def http_stream_chunks(
             url: str,
             chunk_size: int = 8192,
@@ -271,8 +223,6 @@ def register_http_opcodes():
             timeout: float = 30.0,
         ) -> AsyncGenerator[bytes, None]:
             """Stream chunks from an HTTP response.
-
-            Yields raw byte chunks as they become available.
 
             Args:
                 url: The URL to request
@@ -283,23 +233,18 @@ def register_http_opcodes():
             Yields:
                 Byte chunks from the response
             """
-            _check_aiohttp()
-
             client_timeout = aiohttp.ClientTimeout(total=timeout)
             async with aiohttp.ClientSession(timeout=client_timeout) as session:
                 async with session.get(url, headers=headers) as response:
                     async for chunk in response.content.iter_chunked(chunk_size):
                         yield chunk
 
-        # ============================================================================
+        # =====================================================================
         # HTTP Session Operations (context manager support)
-        # ============================================================================
+        # =====================================================================
 
         class HTTPSession:
-            """Reusable HTTP session for multiple requests.
-
-            Acts as an async context manager for use with control_with.
-            """
+            """Reusable HTTP session for multiple requests."""
 
             def __init__(
                 self,
@@ -329,8 +274,7 @@ def register_http_opcodes():
                 async with self._session.get(url, headers=headers) as response:
                     text = await response.text()
                     json_data = None
-                    content_type = response.headers.get("Content-Type", "")
-                    if "application/json" in content_type:
+                    if "application/json" in response.headers.get("Content-Type", ""):
                         try:
                             json_data = json_module.loads(text)
                         except json_module.JSONDecodeError:
@@ -355,8 +299,7 @@ def register_http_opcodes():
                 ) as response:
                     text = await response.text()
                     json_data = None
-                    content_type = response.headers.get("Content-Type", "")
-                    if "application/json" in content_type:
+                    if "application/json" in response.headers.get("Content-Type", ""):
                         try:
                             json_data = json_module.loads(text)
                         except json_module.JSONDecodeError:
@@ -368,7 +311,7 @@ def register_http_opcodes():
                         "json": json_data,
                     }
 
-        @default_registry.register()
+        @opcode(category="http")
         async def http_session_create(
             timeout: float = 30.0,
             headers: Optional[Dict[str, str]] = None,
@@ -381,19 +324,10 @@ def register_http_opcodes():
 
             Returns:
                 HTTPSession object (use with control_with)
-
-            Example:
-                with_session:
-                  opcode: control_with
-                  inputs:
-                    RESOURCE: { node: create_session }
-                    VAR: { literal: "session" }
-                    BODY: { branch: use_session }
             """
-            _check_aiohttp()
             return HTTPSession(timeout=timeout, headers=headers)
 
-        @default_registry.register()
+        @opcode(category="http")
         async def http_session_get(
             session: HTTPSession,
             url: str,
@@ -411,7 +345,7 @@ def register_http_opcodes():
             """
             return await session.get(url, headers=headers)
 
-        @default_registry.register()
+        @opcode(category="http")
         async def http_session_post(
             session: HTTPSession,
             url: str,
@@ -433,13 +367,13 @@ def register_http_opcodes():
             """
             return await session.post(url, data=data, json=json, headers=headers)
 
-    # ============================================================================
+    # =========================================================================
     # HTML Parsing Operations (require beautifulsoup4)
-    # ============================================================================
+    # =========================================================================
 
     if BS4_AVAILABLE:
 
-        @default_registry.register()
+        @opcode(category="html")
         async def html_parse(html_text: str) -> Any:
             """Parse an HTML string into a BeautifulSoup object.
 
@@ -447,15 +381,11 @@ def register_http_opcodes():
                 html_text: HTML content as a string
 
             Returns:
-                BeautifulSoup object that can be used with html_select* opcodes
-
-            Example:
-                html_text: "<html><body><h1>Hello</h1></body></html>"
+                BeautifulSoup object for use with html_select* opcodes
             """
-            _check_bs4()
             return BeautifulSoup(html_text, "html.parser")
 
-        @default_registry.register()
+        @opcode(category="html")
         async def html_select(soup: Any, selector: str) -> List[Any]:
             """Select elements matching a CSS selector.
 
@@ -465,15 +395,10 @@ def register_http_opcodes():
 
             Returns:
                 List of matching elements (may be empty)
-
-            Example:
-                soup: { node: parsed_html }
-                selector: "div.item > a.link"
             """
-            _check_bs4()
             return soup.select(selector)
 
-        @default_registry.register()
+        @opcode(category="html")
         async def html_select_one(soup: Any, selector: str) -> Optional[Any]:
             """Select the first element matching a CSS selector.
 
@@ -482,40 +407,27 @@ def register_http_opcodes():
                 selector: CSS selector string
 
             Returns:
-                First matching element, or None if no match found
-
-            Example:
-                soup: { node: parsed_html }
-                selector: "h1.title"
+                First matching element, or None if no match
             """
-            _check_bs4()
             return soup.select_one(selector)
 
-        @default_registry.register()
+        @opcode(category="html")
         async def html_get_text(element: Any, strip: bool = True) -> str:
             """Get the text content from an HTML element.
 
             Args:
                 element: BeautifulSoup element
-                strip: Whether to strip leading/trailing whitespace (default: True)
+                strip: Whether to strip whitespace (default: True)
 
             Returns:
                 Text content of the element
-
-            Example:
-                element: { node: title_element }
-                strip: true
             """
-            _check_bs4()
             if element is None:
                 return ""
-
             text = element.get_text()
-            if strip:
-                text = text.strip()
-            return text
+            return text.strip() if strip else text
 
-        @default_registry.register()
+        @opcode(category="html")
         async def html_get_attr(
             element: Any, attr: str, default: Optional[str] = None
         ) -> Optional[str]:
@@ -523,36 +435,24 @@ def register_http_opcodes():
 
             Args:
                 element: BeautifulSoup element
-                attr: Attribute name (e.g., "href", "class", "id", "src")
-                default: Value to return if attribute not found (default: None)
+                attr: Attribute name (e.g., "href", "class", "id")
+                default: Value to return if attribute not found
 
             Returns:
                 Attribute value as string, or default if not found
-
-            Example:
-                element: { node: link_element }
-                attr: "href"
-                default: "#"
-
-            Note:
-                For attributes that can have multiple values (like "class"),
-                returns them joined with spaces.
             """
-            _check_bs4()
             if element is None:
                 return default
-
             value = element.get(attr, default)
-            # Handle list attributes (like class)
             if isinstance(value, list):
                 return " ".join(value)
             return value
 
-    # ============================================================================
+    # =========================================================================
     # JSON Operations (no external dependencies)
-    # ============================================================================
+    # =========================================================================
 
-    @default_registry.register()
+    @opcode(category="json")
     async def json_parse(text: str) -> Any:
         """Parse a JSON string into a Python object.
 
@@ -564,32 +464,25 @@ def register_http_opcodes():
 
         Raises:
             ValueError: If the string is not valid JSON
-
-        Example:
-            text: '{"name": "Alice", "age": 30}'
         """
         try:
             return json_module.loads(text)
         except json_module.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON: {e}")
 
-    @default_registry.register()
+    @opcode(category="json")
     async def json_stringify(obj: Any, indent: Optional[int] = None) -> str:
         """Convert a Python object to a JSON string.
 
         Args:
-            obj: Python object to serialize (dict, list, str, int, float, bool, None)
-            indent: Number of spaces for indentation (None for compact output)
+            obj: Python object to serialize
+            indent: Number of spaces for indentation (None for compact)
 
         Returns:
             JSON string representation
 
         Raises:
             TypeError: If the object is not JSON serializable
-
-        Example:
-            obj: {"name": "Alice", "items": [1, 2, 3]}
-            indent: 2
         """
         try:
             return json_module.dumps(obj, indent=indent)

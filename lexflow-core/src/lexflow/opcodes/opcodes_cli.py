@@ -1,16 +1,27 @@
 """CLI utility opcodes for LexFlow - spinners, progress bars, colors.
 
 These opcodes provide rich CLI experiences with animated feedback.
+No external dependencies - uses standard library only.
 """
 
 import asyncio
 import sys
 
-from .opcodes import opcode
+from .opcodes import opcode, register_category
+
+# Register category at module load time
+register_category(
+    id="cli",
+    label="CLI Operations",
+    prefix="cli_",
+    color="#EC4899",
+    icon="💻",
+    order=250,
+)
 
 
 class Spinner:
-    """A spinner instance with local state (no global variables)."""
+    """A spinner instance with local state."""
 
     def __init__(self, message: str):
         self.message = message
@@ -45,38 +56,30 @@ class Spinner:
             except asyncio.CancelledError:
                 pass
 
-        # Clear the line
         sys.stdout.write("\r\033[K")
-
-        # Show final message
         icon = "✓" if success else "✗"
         final_message = message if message else f"{self.message} done"
         sys.stdout.write(f"{icon} {final_message}\n")
         sys.stdout.flush()
 
 
-@opcode()
+@opcode(category="cli")
 async def spinner_start(message: str = "Loading") -> Spinner:
-    """Start an animated spinner. Returns spinner object to control it later.
+    """Start an animated spinner.
 
     Args:
         message: Message to display next to spinner
 
     Returns:
         Spinner object (use with spinner_stop, spinner_update)
-
-    Example:
-        spinner = spinner_start("Fetching data")
-        # ... do work ...
-        spinner_stop(spinner, "Data loaded!")
     """
     spinner = Spinner(message)
     spinner.start()
-    await asyncio.sleep(0.01)  # Let it start
+    await asyncio.sleep(0.01)
     return spinner
 
 
-@opcode()
+@opcode(category="cli")
 async def spinner_update(spinner: Spinner, message: str) -> None:
     """Update the message of a running spinner.
 
@@ -87,7 +90,7 @@ async def spinner_update(spinner: Spinner, message: str) -> None:
     spinner.message = message
 
 
-@opcode()
+@opcode(category="cli")
 async def spinner_stop(
     spinner: Spinner, message: str = "", success: bool = True
 ) -> None:
@@ -95,16 +98,13 @@ async def spinner_stop(
 
     Args:
         spinner: Spinner object from spinner_start
-        message: Final message to display (empty = use original message + "done")
+        message: Final message (empty = original message + "done")
         success: True for checkmark, False for X mark
-
-    Example:
-        spinner_stop(spinner, "Loaded 42 items", success=True)
     """
     await spinner.stop(message, success)
 
 
-@opcode()
+@opcode(category="cli")
 async def spinner_fail(spinner: Spinner, message: str = "Failed") -> None:
     """Stop a spinner with failure indicator.
 
@@ -115,7 +115,7 @@ async def spinner_fail(spinner: Spinner, message: str = "Failed") -> None:
     await spinner.stop(message, success=False)
 
 
-@opcode()
+@opcode(category="cli")
 async def progress_bar(
     current: int, total: int, message: str = "", width: int = 30
 ) -> None:
@@ -126,10 +126,6 @@ async def progress_bar(
         total: Total/max value
         message: Optional message to show
         width: Bar width in characters (default: 30)
-
-    Example:
-        progress_bar(25, 100, "Processing files")
-        # Output: Processing files [███████░░░░░░░░░░░░░░░░░░░░░░░] 25%
     """
     if total <= 0:
         total = 1
@@ -147,35 +143,35 @@ async def progress_bar(
         sys.stdout.flush()
 
 
-@opcode()
+@opcode(category="cli")
 async def clear_line() -> None:
     """Clear the current terminal line."""
     sys.stdout.write("\r\033[K")
     sys.stdout.flush()
 
 
-@opcode()
+@opcode(category="cli")
 async def print_success(message: str) -> None:
     """Print a success message with green checkmark."""
     sys.stdout.write(f"✓ {message}\n")
     sys.stdout.flush()
 
 
-@opcode()
+@opcode(category="cli")
 async def print_error(message: str) -> None:
     """Print an error message with red X."""
     sys.stdout.write(f"✗ {message}\n")
     sys.stdout.flush()
 
 
-@opcode()
+@opcode(category="cli")
 async def print_warning(message: str) -> None:
     """Print a warning message with yellow indicator."""
     sys.stdout.write(f"⚠ {message}\n")
     sys.stdout.flush()
 
 
-@opcode()
+@opcode(category="cli")
 async def print_info(message: str) -> None:
     """Print an info message with blue indicator."""
     sys.stdout.write(f"ℹ {message}\n")

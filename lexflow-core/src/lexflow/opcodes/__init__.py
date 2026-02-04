@@ -1,4 +1,10 @@
-from .opcodes import OpcodeRegistry, default_registry, opcode
+from .opcodes import (
+    CategoryInfo,
+    OpcodeRegistry,
+    default_registry,
+    opcode,
+    register_category,
+)
 from .opcodes_http import register_http_opcodes
 from .opcodes_pydantic_ai import register_pydantic_ai_opcodes
 from .opcodes_pygame import register_pygame_opcodes
@@ -16,4 +22,10 @@ register_pydantic_ai_opcodes()
 register_pygame_opcodes()
 register_rag_opcodes()
 
-__all__ = ["OpcodeRegistry", "default_registry", "opcode"]
+__all__ = [
+    "CategoryInfo",
+    "OpcodeRegistry",
+    "default_registry",
+    "opcode",
+    "register_category",
+]

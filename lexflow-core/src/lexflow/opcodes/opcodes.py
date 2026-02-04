@@ -1,9 +1,36 @@
-from typing import Any, AsyncGenerator, Callable, List, Union, get_type_hints
+from typing import Any, AsyncGenerator, Callable, List, Optional, Union, get_type_hints
+from dataclasses import dataclass, field
 from functools import wraps
 from types import SimpleNamespace
 import asyncio
 import inspect
 import random
+
+
+@dataclass
+class CategoryInfo:
+    """Metadata for an opcode category."""
+
+    id: str
+    label: str
+    prefix: str
+    color: str = "#64748B"
+    icon: str = "⚡"
+    requires: Optional[str] = None  # pip extra required (e.g., "ai", "http")
+    order: int = field(default=100)  # display order in docs
+
+    def to_dict(self) -> dict:
+        """Convert to dict for grammar.json export."""
+        d = {
+            "id": self.id,
+            "label": self.label,
+            "prefix": self.prefix,
+            "color": self.color,
+            "icon": self.icon,
+        }
+        if self.requires:
+            d["requires"] = self.requires
+        return d
 
 
 class OpcodeRegistry:
@@ -12,9 +39,116 @@ class OpcodeRegistry:
     def __init__(self):
         self.opcodes: dict[str, Callable] = {}
         self.signatures: dict[str, inspect.Signature] = {}
+        self.categories: dict[str, CategoryInfo] = {}
+        self.opcode_categories: dict[str, str] = {}  # opcode_name -> category_id
+        self._register_builtin_categories()
         self._register_builtins()
 
-    def register(self, name: str = None):
+    def _register_builtin_categories(self):
+        """Register built-in categories."""
+        builtins = [
+            CategoryInfo("io", "I/O Operations", "io_", "#22D3EE", "📤", order=10),
+            CategoryInfo(
+                "operator", "Operators", "operator_", "#9C27B0", "⚡", order=20
+            ),
+            CategoryInfo("math", "Math Operations", "math_", "#8B5CF6", "🔢", order=30),
+            CategoryInfo(
+                "string", "String Operations", "string_", "#F472B6", "📝", order=40
+            ),
+            CategoryInfo("list", "List Operations", "list_", "#3B82F6", "📋", order=50),
+            CategoryInfo(
+                "dict", "Dictionary Operations", "dict_", "#F59E0B", "📖", order=60
+            ),
+            CategoryInfo(
+                "object", "Object Operations", "object_", "#10B981", "📦", order=70
+            ),
+            CategoryInfo(
+                "type", "Type Conversions", "type_", "#6B7280", "🔄", order=80
+            ),
+            CategoryInfo(
+                "throw", "Exception Operations", "throw_", "#EF4444", "⚠️", order=90
+            ),
+            CategoryInfo(
+                "assert", "Assertion Operations", "assert_", "#F97316", "✓", order=95
+            ),
+            CategoryInfo(
+                "workflow",
+                "Workflow Operations",
+                "workflow_",
+                "#E91E63",
+                "🔗",
+                order=100,
+            ),
+            CategoryInfo(
+                "data", "Data Operations", "data_", "#4CAF50", "📦", order=110
+            ),
+            CategoryInfo(
+                "control", "Control Flow", "control_", "#FF9500", "↻", order=120
+            ),
+            CategoryInfo(
+                "async", "Async Operations", "async_", "#06B6D4", "⏱", order=130
+            ),
+        ]
+        for cat in builtins:
+            self.categories[cat.id] = cat
+
+    def register_category(
+        self,
+        id: str,
+        label: str,
+        prefix: str,
+        color: str = "#64748B",
+        icon: str = "⚡",
+        requires: Optional[str] = None,
+        order: int = 200,
+    ) -> CategoryInfo:
+        """Register a category for opcodes.
+
+        Args:
+            id: Unique category identifier (e.g., "pydantic_ai")
+            label: Display label (e.g., "AI Operations (Pydantic AI)")
+            prefix: Opcode name prefix (e.g., "pydantic_ai_")
+            color: Hex color for UI display
+            icon: Emoji icon for UI display
+            requires: pip extra required (e.g., "ai" for lexflow[ai])
+            order: Display order in docs (lower = earlier)
+
+        Returns:
+            The registered CategoryInfo
+        """
+        cat = CategoryInfo(id, label, prefix, color, icon, requires, order)
+        self.categories[id] = cat
+        return cat
+
+    def get_category(self, opcode_name: str) -> Optional[CategoryInfo]:
+        """Get category for an opcode by name."""
+        # First check explicit mapping
+        if opcode_name in self.opcode_categories:
+            cat_id = self.opcode_categories[opcode_name]
+            return self.categories.get(cat_id)
+
+        # Fall back to prefix detection
+        for cat in self.categories.values():
+            if opcode_name.startswith(cat.prefix):
+                return cat
+
+        # Special cases for type conversions
+        if opcode_name in ("str", "int", "float", "bool", "len", "range"):
+            return self.categories.get("type")
+
+        # Special cases for other builtins
+        if opcode_name == "noop":
+            return self.categories.get("workflow")
+        if opcode_name == "throw":
+            return self.categories.get("throw")
+
+        return None
+
+    def list_categories(self) -> list[CategoryInfo]:
+        """List all registered categories sorted by order."""
+        return sorted(self.categories.values(), key=lambda c: (c.order, c.id))
+
+    def register(self, name: str = None, *, category: str = None):
         """
         Decorator to register an opcode with automatic argument unpacking.
 
@@ -26,11 +160,23 @@ class OpcodeRegistry:
             @registry.register("custom_name")
             async def another(s: str) -> str:
                 return s.upper()
+
+            @registry.register(category="pydantic_ai")
+            async def pydantic_ai_run(agent, prompt: str) -> str:
+                ...
+
+        Args:
+            name: Custom opcode name (default: function name)
+            category: Explicit category ID (default: auto-detect from prefix)
         """
 
         def decorator(func: Callable) -> Callable:
             # Get opcode name
             opcode_name = name if name else func.__name__
+
+            # Store category mapping if explicit
+            if category:
+                self.opcode_categories[opcode_name] = category
 
             # Store original signature for introspection
             sig = inspect.signature(func)
@@ -778,12 +924,48 @@ class OpcodeRegistry:
 default_registry = OpcodeRegistry()
 
 
-def opcode(name: str = None):
+def opcode(name: str = None, *, category: str = None):
     """Convenience decorator for registering opcodes to the default global registry.
 
     Usage:
         @opcode()
         async def fibonacci(n: int) -> int:
             return n if n <= 1 else fibonacci(n-1) + fibonacci(n-2)
+
+        @opcode(category="my_category")
+        async def my_category_op(x: int) -> int:
+            return x * 2
     """
-    return default_registry.register(name)
+    return default_registry.register(name, category=category)
+
+
+def register_category(
+    id: str,
+    label: str,
+    prefix: str,
+    color: str = "#64748B",
+    icon: str = "⚡",
+    requires: Optional[str] = None,
+    order: int = 200,
+) -> CategoryInfo:
+    """Register a category to the default global registry.
+
+    Usage:
+        from lexflow.opcodes import register_category, opcode
+
+        register_category(
+            id="my_lib",
+            label="My Library",
+            prefix="my_lib_",
+            color="#10B981",
+            icon="🚀",
+            requires="mylib",  # pip extra
+        )
+
+        @opcode()
+        async def my_lib_do_thing(x: int) -> int:
+            return x * 2
+    """
+    return default_registry.register_category(
+        id, label, prefix, color, icon, requires, order
+    )

@@ -20,8 +20,11 @@ Quick reference for all available opcodes in LexFlow.
 - [Data Operations](#data-operations)
 - [Control Flow](#control-flow)
 - [Async Operations](#async-operations)
+- [HTTP Operations](#http-operations)
+- [AI Operations (Pydantic AI)](#ai-operations-pydantic-ai)
 - [Chat Operations](#chat-operations)
 - [GitHub Operations](#github-operations)
+- [Pygame Operations](#pygame-operations)
 - [Task Operations](#task-operations)
 - [Other Operations](#other-operations)
 
@@ -1117,13 +1120,304 @@ Execute body with timeout, optionally running on_timeout if exceeded.
 
 ---
 
+## HTTP Operations
+
+### `http_get(url, headers=None, timeout=30.0)`
+
+Perform an HTTP GET request.
+
+Args:
+    url: The URL to request
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
+
+Returns:
+    Response dict with keys: status, headers, text, json
+
+
+**Parameters:**
+
+- `url` (str, required)
+- `headers` (Optional, optional, default: `None`)
+- `timeout` (float, optional, default: `30.0`)
+
+**Returns:** `Dict`
+
+---
+
+### `http_post(url, data=None, json=None, headers=None, timeout=30.0)`
+
+Perform an HTTP POST request.
+
+Args:
+    url: The URL to request
+    data: Form data to send (for form-encoded POST)
+    json: JSON data to send (sets Content-Type automatically)
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
+
+Returns:
+    Response dict with keys: status, headers, text, json
+
+
+**Parameters:**
+
+- `url` (str, required)
+- `data` (Optional, optional, default: `None`)
+- `json` (Optional, optional, default: `None`)
+- `headers` (Optional, optional, default: `None`)
+- `timeout` (float, optional, default: `30.0`)
+
+**Returns:** `Dict`
+
+---
+
+### `http_request(method, url, data=None, json=None, headers=None, timeout=30.0)`
+
+Perform a generic HTTP request with any method.
+
+Args:
+    method: HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+    url: The URL to request
+    data: Form data to send
+    json: JSON data to send (sets Content-Type automatically)
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
+
+Returns:
+    Response dict with keys: status, headers, text, json
+
+
+**Parameters:**
+
+- `method` (str, required)
+- `url` (str, required)
+- `data` (Optional, optional, default: `None`)
+- `json` (Optional, optional, default: `None`)
+- `headers` (Optional, optional, default: `None`)
+- `timeout` (float, optional, default: `30.0`)
+
+**Returns:** `Dict`
+
+---
+
+### `http_session_create(timeout=30.0, headers=None)`
+
+Create an HTTP session for reuse with control_with.
+
+Args:
+    timeout: Default request timeout in seconds
+    headers: Default headers for all requests
+
+Returns:
+    HTTPSession object (use with control_with)
+
+
+**Parameters:**
+
+- `timeout` (float, optional, default: `30.0`)
+- `headers` (Optional, optional, default: `None`)
+
+**Returns:** `HTTPSession`
+
+---
+
+### `http_session_get(session, url, headers=None)`
+
+Perform GET request using a session.
+
+Args:
+    session: HTTPSession from http_session_create
+    url: The URL to request
+    headers: Optional additional headers
+
+Returns:
+    Response dict (same as http_get)
+
+
+**Parameters:**
+
+- `session` (HTTPSession, required)
+- `url` (str, required)
+- `headers` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `http_session_post(session, url, data=None, json=None, headers=None)`
+
+Perform POST request using a session.
+
+Args:
+    session: HTTPSession from http_session_create
+    url: The URL to request
+    data: Form data to send
+    json: JSON data to send
+    headers: Optional additional headers
+
+Returns:
+    Response dict (same as http_post)
+
+
+**Parameters:**
+
+- `session` (HTTPSession, required)
+- `url` (str, required)
+- `data` (Optional, optional, default: `None`)
+- `json` (Optional, optional, default: `None`)
+- `headers` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `http_stream_chunks(url, chunk_size=8192, headers=None, timeout=30.0)`
+
+Stream chunks from an HTTP response.
+
+Args:
+    url: The URL to request
+    chunk_size: Size of each chunk in bytes (default: 8192)
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
+
+Yields:
+    Byte chunks from the response
+
+
+**Parameters:**
+
+- `url` (str, required)
+- `chunk_size` (int, optional, default: `8192`)
+- `headers` (Optional, optional, default: `None`)
+- `timeout` (float, optional, default: `30.0`)
+
+**Returns:** `AsyncGenerator`
+
+---
+
+### `http_stream_lines(url, headers=None, timeout=30.0)`
+
+Stream lines from an HTTP response.
+
+Yields each line as it becomes available. Useful for streaming APIs
+like Server-Sent Events or newline-delimited JSON.
+
+Args:
+    url: The URL to request
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
+
+Yields:
+    Each line from the response (stripped of newlines)
+
+
+**Parameters:**
+
+- `url` (str, required)
+- `headers` (Optional, optional, default: `None`)
+- `timeout` (float, optional, default: `30.0`)
+
+**Returns:** `AsyncGenerator`
+
+---
+
+## AI Operations (Pydantic AI)
+
+### `pydantic_ai_create_agent(model, instructions="", system_prompt="")`
+
+Create a pydantic_ai Agent.
+
+Args:
+    model: Model instance (from pydantic_ai_create_vertex_model)
+    instructions: Optional instructions for the agent
+    system_prompt: Optional static system prompt
+
+Returns:
+    Agent instance ready to use
+
+
+**Parameters:**
+
+- `model` (Any, required)
+- `instructions` (str, optional, default: `""`)
+- `system_prompt` (str, optional, default: `""`)
+
+**Returns:** `Any`
+
+---
+
+### `pydantic_ai_create_vertex_model(model_name, project=None, location=None)`
+
+Create a Google Vertex AI model instance.
+
+Args:
+    model_name: Model name (e.g., "gemini-1.5-flash", "gemini-1.5-pro")
+    project: Optional GCP project ID (uses default if not specified)
+    location: Optional region (e.g., "us-central1")
+
+Returns:
+    GoogleModel instance configured for Vertex AI
+
+
+**Parameters:**
+
+- `model_name` (str, required)
+- `project` (Optional, optional, default: `None`)
+- `location` (Optional, optional, default: `None`)
+
+**Returns:** `Any`
+
+---
+
+### `pydantic_ai_run(agent, prompt)`
+
+Run agent asynchronously with a prompt.
+
+Args:
+    agent: Agent instance (from pydantic_ai_create_agent)
+    prompt: User prompt to send to the agent
+
+Returns:
+    String output from the agent
+
+
+**Parameters:**
+
+- `agent` (Any, required)
+- `prompt` (str, required)
+
+**Returns:** `str`
+
+---
+
+### `pydantic_ai_run_sync(agent, prompt)`
+
+Run agent with a prompt (legacy name, actually async).
+
+Args:
+    agent: Agent instance (from pydantic_ai_create_agent)
+    prompt: User prompt to send to the agent
+
+Returns:
+    String output from the agent
+
+
+**Parameters:**
+
+- `agent` (Any, required)
+- `prompt` (str, required)
+
+**Returns:** `str`
+
+---
+
 ## Chat Operations
 
 ### `chat_add_assistant(history, content)`
 
 Add an assistant message to chat history.
-
-Shorthand for chat_add_message(history, "assistant", content).
 
 Args:
     history: The chat history list to modify
@@ -1131,9 +1425,6 @@ Args:
 
 Returns:
     The updated history
-
-Example:
-    chat_add_assistant(history, "The weather is sunny!")
 
 
 **Parameters:**
@@ -1160,10 +1451,6 @@ Returns:
 Raises:
     ValueError: If role is not "user" or "assistant"
 
-Example:
-    chat_add_message(history, "user", "Hello!")
-    chat_add_message(history, "assistant", "Hi there!")
-
 
 **Parameters:**
 
@@ -1179,17 +1466,12 @@ Example:
 
 Add a user message to chat history.
 
-Shorthand for chat_add_message(history, "user", content).
-
 Args:
     history: The chat history list to modify
     content: The user's message
 
 Returns:
     The updated history
-
-Example:
-    chat_add_user(history, "What is the weather today?")
 
 
 **Parameters:**
@@ -1211,10 +1493,6 @@ Args:
 Returns:
     The same list, now empty
 
-Example:
-    chat_clear(history)
-    # history is now []
-
 
 **Returns:** `List`
 
@@ -1225,11 +1503,7 @@ Example:
 Create a new empty chat history.
 
 Returns:
-    Empty list ready to store chat messages.
-
-Example:
-    history = chat_create()
-    # Returns: []
+    Empty list ready to store chat messages
 
 
 **Returns:** `List`
@@ -1238,20 +1512,13 @@ Example:
 
 ### `chat_format_for_display(history)`
 
-Format chat history as a readable string for display.
+Format chat history as a readable string.
 
 Args:
     history: The chat history list
 
 Returns:
-    Formatted string with each message on its own line(s)
-
-Example:
-    Output:
-    User: Hello!
-    Assistant: Hi there! How can I help you today?
-    User: What is 2+2?
-    Assistant: 2+2 equals 4.
+    Formatted string with each message on its own line
 
 
 **Returns:** `str`
@@ -1264,18 +1531,10 @@ Get the last message from chat history.
 
 Args:
     history: The chat history list
-    role: Optional filter - if specified, get last message with this role
+    role: Optional filter - get last message with this role
 
 Returns:
-    The last message dict, or None if history is empty or no matching message
-
-Example:
-    # Get last message of any type
-    last = chat_get_last(history)
-    # Returns: {"role": "assistant", "content": "..."}
-
-    # Get last user message specifically
-    last_user = chat_get_last(history, "user")
+    The last message dict, or None if empty or no match
 
 
 **Parameters:**
@@ -1297,9 +1556,6 @@ Args:
 Returns:
     Number of messages
 
-Example:
-    count = chat_length(history)  # Returns: 5
-
 
 **Returns:** `int`
 
@@ -1309,23 +1565,11 @@ Example:
 
 Convert chat history to a single prompt string for AI.
 
-This formats the conversation history in a way that can be passed
-as context to an AI agent that doesn't natively support chat history.
-
 Args:
     history: The chat history list
 
 Returns:
     A formatted string containing the conversation context
-
-Example:
-    prompt = chat_to_prompt(history)
-    # Returns:
-    # "Previous conversation:
-    # User: Hello!
-    # Assistant: Hi there!
-    #
-    # Continue the conversation."
 
 
 **Returns:** `str`
@@ -1344,21 +1588,12 @@ This opcode:
 5. Returns the response
 
 Args:
-    agent: A pydantic-ai Agent instance (from pydantic_ai_create_agent)
+    agent: A pydantic-ai Agent instance
     history: The chat history list (will be modified)
     user_message: The new user message to send
 
 Returns:
     The assistant's response string
-
-Example:
-    response = chat_with_agent(agent, history, "What is the capital of France?")
-    # history now contains both the user message and assistant response
-    # response = "The capital of France is Paris."
-
-Note:
-    The agent must be created using pydantic_ai_create_agent opcode.
-    This opcode modifies the history in place.
 
 
 **Parameters:**
@@ -1377,29 +1612,15 @@ Note:
 
 Get file content from a repository at a specific ref.
 
-    Args:
-        owner: Repository owner
-        repo: Repository name
-        path: File path relative to repo root
-        ref: Git reference (branch, tag, or commit SHA). Default: "HEAD"
+Args:
+    owner: Repository owner
+    repo: Repository name
+    path: File path relative to repo root
+    ref: Git reference (branch, tag, or commit SHA)
 
-    Returns:
-        File content as a string (UTF-8 decoded)
+Returns:
+    File content as a string (UTF-8 decoded)
 
-    Raises:
-        RuntimeError: If file not found or gh command fails
-
-    Example:
-        content = github_get_file_content("anthropics", "claude-code", "README.md")
-        # Returns: "# Claude Code
-
-This project..."
-
-        # Get file from specific branch
-        content = github_get_file_content(
-            "anthropics", "claude-code", "src/main.py", ref="feature-branch"
-        )
-    
 
 **Parameters:**
 
@@ -1416,22 +1637,14 @@ This project..."
 
 Get the full diff of a PR.
 
-    Args:
-        owner: Repository owner
-        repo: Repository name
-        pr_number: Pull request number
+Args:
+    owner: Repository owner
+    repo: Repository name
+    pr_number: Pull request number
 
-    Returns:
-        The PR diff as a string in unified diff format
+Returns:
+    The PR diff as a string in unified diff format
 
-    Raises:
-        RuntimeError: If gh command fails
-
-    Example:
-        diff = github_get_pr_diff("anthropics", "claude-code", 123)
-        # Returns: "diff --git a/file.py b/file.py
-..."
-    
 
 **Parameters:**
 
@@ -1453,21 +1666,7 @@ Args:
     pr_number: Pull request number
 
 Returns:
-    List of dicts, each containing:
-    - path: File path relative to repo root
-    - additions: Number of lines added
-    - deletions: Number of lines deleted
-    - status: Change status (added, modified, removed, renamed)
-
-Raises:
-    RuntimeError: If gh command fails
-
-Example:
-    files = github_get_pr_files("anthropics", "claude-code", 123)
-    # Returns: [
-    #     {"path": "src/main.py", "additions": 10, "deletions": 2, "status": "modified"},
-    #     {"path": "README.md", "additions": 5, "deletions": 0, "status": "added"}
-    # ]
+    List of dicts with: path, additions, deletions, status
 
 
 **Parameters:**
@@ -1490,29 +1689,7 @@ Args:
     pr_number: Pull request number
 
 Returns:
-    Dict with PR metadata:
-    - title: PR title
-    - body: PR description/body
-    - author: PR author username
-    - state: PR state (OPEN, CLOSED, MERGED)
-    - base_branch: Target branch
-    - head_branch: Source branch
-    - url: PR web URL
-
-Raises:
-    RuntimeError: If gh command fails (e.g., PR not found, auth issues)
-
-Example:
-    pr_info = github_get_pr_info("anthropics", "claude-code", 123)
-    # Returns: {
-    #     "title": "Add new feature",
-    #     "body": "This PR adds...",
-    #     "author": "octocat",
-    #     "state": "OPEN",
-    #     "base_branch": "main",
-    #     "head_branch": "feature/new-thing",
-    #     "url": "https://github.com/anthropics/claude-code/pull/123"
-    # }
+    Dict with: title, body, author, state, base_branch, head_branch, url
 
 
 **Parameters:**
@@ -1534,27 +1711,7 @@ Args:
     repo: Repository name
 
 Returns:
-    Dict with repo metadata:
-    - name: Repository name
-    - full_name: Full name (owner/repo)
-    - description: Repository description
-    - default_branch: Default branch name
-    - url: Repository web URL
-    - is_private: Whether repo is private
-
-Raises:
-    RuntimeError: If gh command fails
-
-Example:
-    repo_info = github_get_repo_info("anthropics", "claude-code")
-    # Returns: {
-    #     "name": "claude-code",
-    #     "full_name": "anthropics/claude-code",
-    #     "description": "Claude Code CLI",
-    #     "default_branch": "main",
-    #     "url": "https://github.com/anthropics/claude-code",
-    #     "is_private": False
-    # }
+    Dict with: name, full_name, description, default_branch, url, is_private
 
 
 **Parameters:**
@@ -1571,13 +1728,7 @@ Example:
 Check if GitHub CLI is available and authenticated.
 
 Returns:
-    True if gh CLI is installed and can make API calls, False otherwise
-
-Example:
-    if github_is_available():
-        pr_info = github_get_pr_info(...)
-    else:
-        print("GitHub CLI not available")
+    True if gh CLI is installed and authenticated
 
 
 **Returns:** `bool`
@@ -1588,36 +1739,13 @@ Example:
 
 Get all comments on a PR.
 
-This includes both review comments (on specific lines) and issue comments
-(general PR discussion).
-
 Args:
     owner: Repository owner
     repo: Repository name
     pr_number: Pull request number
 
 Returns:
-    List of comment dicts, each containing:
-    - id: Comment ID
-    - author: Comment author username
-    - body: Comment text
-    - created_at: ISO timestamp of when comment was created
-    - type: "review" or "issue" indicating comment type
-
-Raises:
-    RuntimeError: If gh command fails
-
-Example:
-    comments = github_list_pr_comments("anthropics", "claude-code", 123)
-    # Returns: [
-    #     {
-    #         "id": "123456",
-    #         "author": "reviewer",
-    #         "body": "Looks good!",
-    #         "created_at": "2024-01-15T10:30:00Z",
-    #         "type": "issue"
-    #     }
-    # ]
+    List of comment dicts with: id, author, body, created_at, type
 
 
 **Parameters:**
@@ -1627,6 +1755,263 @@ Example:
 - `pr_number` (int, required)
 
 **Returns:** `List`
+
+---
+
+## Pygame Operations
+
+### `pygame_create_color(r, g, b)`
+
+Create an RGB color list.
+
+Args:
+    r: Red value (0-255)
+    g: Green value (0-255)
+    b: Blue value (0-255)
+
+Returns:
+    List [r, g, b]
+
+
+**Parameters:**
+
+- `r` (int, required)
+- `g` (int, required)
+- `b` (int, required)
+
+**Returns:** `list`
+
+---
+
+### `pygame_create_window(width, height, title="LexFlow + Pygame")`
+
+Create a pygame window and return the display surface.
+
+Args:
+    width: Window width in pixels
+    height: Window height in pixels
+    title: Window title
+
+Returns:
+    pygame.Surface object representing the display
+
+
+**Parameters:**
+
+- `width` (int, required)
+- `height` (int, required)
+- `title` (str, optional, default: `"LexFlow + Pygame"`)
+
+**Returns:** `Any`
+
+---
+
+### `pygame_delay(milliseconds)`
+
+Async delay in milliseconds.
+
+Args:
+    milliseconds: Delay duration in milliseconds
+
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_draw_circle(screen, x, y, radius, color)`
+
+Draw a filled circle on the screen.
+
+Args:
+    screen: The display surface
+    x: Center X position
+    y: Center Y position
+    radius: Circle radius
+    color: RGB color as [r, g, b]
+
+
+**Parameters:**
+
+- `screen` (Any, required)
+- `x` (int, required)
+- `y` (int, required)
+- `radius` (int, required)
+- `color` (list, required)
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_draw_rect(screen, x, y, width, height, color, filled=True)`
+
+Draw a rectangle on the screen.
+
+Args:
+    screen: The display surface
+    x: X position (left edge)
+    y: Y position (top edge)
+    width: Rectangle width
+    height: Rectangle height
+    color: RGB color as [r, g, b]
+    filled: If True, fill; if False, draw outline only
+
+
+**Parameters:**
+
+- `screen` (Any, required)
+- `x` (int, required)
+- `y` (int, required)
+- `width` (int, required)
+- `height` (int, required)
+- `color` (list, required)
+- `filled` (bool, optional, default: `True`)
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_draw_text(screen, text, x, y, font_size=48, color=None)`
+
+Draw text on the screen.
+
+Args:
+    screen: The display surface
+    text: Text to render
+    x: X position (left edge)
+    y: Y position (top edge)
+    font_size: Font size in pixels (default: 48)
+    color: RGB color as [r, g, b], defaults to white
+
+
+**Parameters:**
+
+- `screen` (Any, required)
+- `text` (str, required)
+- `x` (int, required)
+- `y` (int, required)
+- `font_size` (int, optional, default: `48`)
+- `color` (list, optional, default: `None`)
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_fill_screen(screen, color)`
+
+Fill the entire screen with a color.
+
+Args:
+    screen: The display surface
+    color: RGB color as [r, g, b] where each value is 0-255
+
+
+**Parameters:**
+
+- `screen` (Any, required)
+- `color` (list, required)
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_get_key_pressed(key_name)`
+
+Check if a specific key is currently pressed.
+
+Args:
+    key_name: Key name (e.g., "up", "down", "left", "right", "space")
+
+Returns:
+    True if key is pressed, False otherwise
+
+
+**Returns:** `bool`
+
+---
+
+### `pygame_get_screen_height(screen)`
+
+Get the height of the screen.
+
+Args:
+    screen: The display surface
+
+Returns:
+    Height in pixels
+
+
+**Returns:** `int`
+
+---
+
+### `pygame_get_screen_width(screen)`
+
+Get the width of the screen.
+
+Args:
+    screen: The display surface
+
+Returns:
+    Width in pixels
+
+
+**Returns:** `int`
+
+---
+
+### `pygame_get_ticks()`
+
+Get milliseconds since pygame.init() was called.
+
+Returns:
+    Milliseconds elapsed since pygame initialization
+
+
+**Returns:** `int`
+
+---
+
+### `pygame_init()`
+
+Initialize pygame engine.
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_process_events()`
+
+Process pygame events (keeps window responsive).
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_quit()`
+
+Quit pygame and close all windows.
+
+**Returns:** `NoneType`
+
+---
+
+### `pygame_should_quit()`
+
+Check if user wants to quit (clicked X button).
+
+Returns:
+    True if quit event detected, False otherwise
+
+
+**Returns:** `bool`
+
+---
+
+### `pygame_update_display()`
+
+Update the display to show all drawn elements.
+
+**Returns:** `NoneType`
 
 ---
 
@@ -1641,7 +2026,7 @@ Args:
     timeout: Optional timeout in seconds
 
 Returns:
-    The task's return value (usually None for spawn tasks)
+    The task's return value
 
 Raises:
     asyncio.TimeoutError: If timeout exceeded
@@ -1663,14 +2048,10 @@ Wait for multiple tasks to complete.
 
 Args:
     tasks: List of LexFlowTask handles
-    timeout: Optional timeout in seconds for all tasks combined
+    timeout: Optional timeout in seconds
 
 Returns:
     List of results in the same order as tasks
-
-Raises:
-    asyncio.TimeoutError: If timeout exceeded
-    Exception: If any task raised an exception
 
 
 **Parameters:**
@@ -1690,7 +2071,7 @@ Args:
     task: LexFlowTask handle from control_spawn
 
 Returns:
-    True if cancel was requested (task may still be running briefly)
+    True if cancel was requested
 
 
 **Returns:** `bool`
@@ -1705,7 +2086,7 @@ Args:
     task: LexFlowTask handle from control_spawn
 
 Returns:
-    Exception message as string, or None if task succeeded or not done
+    Exception message as string, or None if succeeded/not done
 
 
 **Returns:** `Optional`
@@ -1769,7 +2150,6 @@ Returns:
 
 Raises:
     InvalidStateError: If task is not done
-    Exception: If the task raised an exception
 
 
 **Returns:** `Any`
@@ -1792,156 +2172,11 @@ Args:
 
 Yield control to other tasks momentarily.
 
-Useful for cooperative multitasking when doing CPU-bound work
-in a background task.
-
-
 **Returns:** `NoneType`
 
 ---
 
 ## Other Operations
-
-### `channel_close(channel)`
-
-Close a channel.
-
-After closing, no more values can be sent.
-
-Args:
-    channel: The channel to close
-
-
-**Returns:** `NoneType`
-
----
-
-### `channel_create(size=0)`
-
-Create a new channel for inter-task communication.
-
-Args:
-    size: Buffer size (0 for unbuffered/synchronous)
-
-Returns:
-    A new Channel object
-
-
-**Returns:** `Channel`
-
----
-
-### `channel_is_closed(channel)`
-
-Check if a channel is closed.
-
-Args:
-    channel: The channel to check
-
-Returns:
-    True if closed
-
-
-**Returns:** `bool`
-
----
-
-### `channel_is_empty(channel)`
-
-Check if a channel buffer is empty.
-
-Args:
-    channel: The channel to check
-
-Returns:
-    True if empty
-
-
-**Returns:** `bool`
-
----
-
-### `channel_len(channel)`
-
-Get the number of items in the channel buffer.
-
-Args:
-    channel: The channel to check
-
-Returns:
-    Number of items in buffer
-
-
-**Returns:** `int`
-
----
-
-### `channel_receive(channel, timeout=None)`
-
-Receive a value from a channel.
-
-Blocks until a value is available.
-
-Args:
-    channel: The channel to receive from
-    timeout: Optional timeout in seconds
-
-Returns:
-    The received value
-
-Raises:
-    asyncio.TimeoutError: If timeout exceeded
-    RuntimeError: If channel is closed and empty
-
-
-**Parameters:**
-
-- `channel` (Channel, required)
-- `timeout` (Optional, optional, default: `None`)
-
-**Returns:** `Any`
-
----
-
-### `channel_send(channel, value)`
-
-Send a value through a channel.
-
-Blocks if the channel buffer is full.
-
-Args:
-    channel: The channel to send to
-    value: The value to send
-
-Raises:
-    RuntimeError: If the channel is closed
-
-
-**Parameters:**
-
-- `channel` (Channel, required)
-- `value` (Any, required)
-
-**Returns:** `NoneType`
-
----
-
-### `channel_try_receive(channel)`
-
-Try to receive a value without blocking.
-
-Args:
-    channel: The channel to receive from
-
-Returns:
-    Dict with keys:
-    - value: The received value (None if nothing received)
-    - ok: True if a value was received, False otherwise
-
-
-**Returns:** `dict`
-
----
 
 ### `clear_line()`
 
@@ -1951,11 +2186,106 @@ Clear the current terminal line.
 
 ---
 
+### `embedding_create(text, project, location="us-central1", model="text-embedding-004")`
+
+Create an embedding vector for a single text.
+
+Args:
+    text: Text to embed
+    project: Google Cloud project ID
+    location: Google Cloud region (default: "us-central1")
+    model: Embedding model name (default: "text-embedding-004")
+
+Returns:
+    List of floats representing the embedding vector
+
+
+**Parameters:**
+
+- `text` (str, required)
+- `project` (str, required)
+- `location` (str, optional, default: `"us-central1"`)
+- `model` (str, optional, default: `"text-embedding-004"`)
+
+**Returns:** `List`
+
+---
+
+### `embedding_create_batch(texts, project, location="us-central1", model="text-embedding-004")`
+
+Create embedding vectors for multiple texts (more efficient).
+
+Args:
+    texts: List of texts to embed
+    project: Google Cloud project ID
+    location: Google Cloud region (default: "us-central1")
+    model: Embedding model name (default: "text-embedding-004")
+
+Returns:
+    List of embedding vectors (each is a list of floats)
+
+
+**Parameters:**
+
+- `texts` (List, required)
+- `project` (str, required)
+- `location` (str, optional, default: `"us-central1"`)
+- `model` (str, optional, default: `"text-embedding-004"`)
+
+**Returns:** `List`
+
+---
+
 ### `noop()`
 
 No operation.
 
 **Returns:** `NoneType`
+
+---
+
+### `pdf_extract_pages(file_path)`
+
+Extract text from a PDF file page by page.
+
+Args:
+    file_path: Path to the PDF file
+
+Returns:
+    List of strings, one per page
+
+
+**Returns:** `List`
+
+---
+
+### `pdf_extract_text(file_path)`
+
+Extract all text from a PDF file.
+
+Args:
+    file_path: Path to the PDF file
+
+Returns:
+    Extracted text from all pages concatenated
+
+
+**Returns:** `str`
+
+---
+
+### `pdf_page_count(file_path)`
+
+Get the number of pages in a PDF file.
+
+Args:
+    file_path: Path to the PDF file
+
+Returns:
+    Number of pages in the PDF
+
+
+**Returns:** `int`
 
 ---
 
@@ -2001,10 +2331,6 @@ Args:
     message: Optional message to show
     width: Bar width in characters (default: 30)
 
-Example:
-    progress_bar(25, 100, "Processing files")
-    # Output: Processing files [███████░░░░░░░░░░░░░░░░░░░░░░░] 25%
-
 
 **Parameters:**
 
@@ -2014,6 +2340,188 @@ Example:
 - `width` (int, optional, default: `30`)
 
 **Returns:** `NoneType`
+
+---
+
+### `qdrant_collection_exists(client, name)`
+
+Check if a Qdrant collection exists.
+
+Args:
+    client: QdrantClient instance
+    name: Collection name to check
+
+Returns:
+    True if collection exists
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `name` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `qdrant_connect(url="http://localhost:6333")`
+
+Create a Qdrant client connection.
+
+Args:
+    url: Qdrant server URL (default: "http://localhost:6333")
+
+Returns:
+    QdrantClient instance
+
+
+**Returns:** `Any`
+
+---
+
+### `qdrant_create_collection(client, name, vector_size=768)`
+
+Create a Qdrant collection if it doesn't exist.
+
+Args:
+    client: QdrantClient instance
+    name: Collection name
+    vector_size: Dimension of embedding vectors (default: 768)
+
+Returns:
+    True if created, False if already existed
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `name` (str, required)
+- `vector_size` (int, optional, default: `768`)
+
+**Returns:** `bool`
+
+---
+
+### `qdrant_delete(client, collection, ids)`
+
+Delete points from a Qdrant collection by IDs.
+
+Args:
+    client: QdrantClient instance
+    collection: Collection name
+    ids: List of point IDs to delete
+
+Returns:
+    True if deletion was successful
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `collection` (str, required)
+- `ids` (List, required)
+
+**Returns:** `bool`
+
+---
+
+### `qdrant_delete_collection(client, name)`
+
+Delete a Qdrant collection.
+
+Args:
+    client: QdrantClient instance
+    name: Collection name to delete
+
+Returns:
+    True if deletion was successful
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `name` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `qdrant_search(client, collection, query_vector, limit=5)`
+
+Search for similar vectors in a Qdrant collection.
+
+Args:
+    client: QdrantClient instance
+    collection: Collection name
+    query_vector: Embedding vector to search for
+    limit: Maximum number of results (default: 5)
+
+Returns:
+    List of dicts with keys: id, score, payload
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `collection` (str, required)
+- `query_vector` (List, required)
+- `limit` (int, optional, default: `5`)
+
+**Returns:** `List`
+
+---
+
+### `qdrant_upsert(client, collection, id, vector, payload=None)`
+
+Insert or update a single point in a Qdrant collection.
+
+Args:
+    client: QdrantClient instance
+    collection: Collection name
+    id: Unique identifier for the point
+    vector: Embedding vector
+    payload: Optional metadata dict
+
+Returns:
+    True if upsert was successful
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `collection` (str, required)
+- `id` (int, required)
+- `vector` (List, required)
+- `payload` (Optional, optional, default: `None`)
+
+**Returns:** `bool`
+
+---
+
+### `qdrant_upsert_batch(client, collection, ids, vectors, payloads=None)`
+
+Insert or update multiple points in a Qdrant collection.
+
+Args:
+    client: QdrantClient instance
+    collection: Collection name
+    ids: List of unique identifiers
+    vectors: List of embedding vectors
+    payloads: Optional list of metadata dicts
+
+Returns:
+    True if upsert was successful
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `collection` (str, required)
+- `ids` (List, required)
+- `vectors` (List, required)
+- `payloads` (Optional, optional, default: `None`)
+
+**Returns:** `bool`
 
 ---
 
@@ -2037,18 +2545,13 @@ Args:
 
 ### `spinner_start(message="Loading")`
 
-Start an animated spinner. Returns spinner object to control it later.
+Start an animated spinner.
 
 Args:
     message: Message to display next to spinner
 
 Returns:
     Spinner object (use with spinner_stop, spinner_update)
-
-Example:
-    spinner = spinner_start("Fetching data")
-    # ... do work ...
-    spinner_stop(spinner, "Data loaded!")
 
 
 **Returns:** `Spinner`
@@ -2061,11 +2564,8 @@ Stop a spinner and show completion message.
 
 Args:
     spinner: Spinner object from spinner_start
-    message: Final message to display (empty = use original message + "done")
+    message: Final message (empty = original message + "done")
     success: True for checkmark, False for X mark
-
-Example:
-    spinner_stop(spinner, "Loaded 42 items", success=True)
 
 
 **Parameters:**
@@ -2096,126 +2596,6 @@ Args:
 
 ---
 
-### `sync_event_clear(event)`
-
-Clear an event (reset to unset state).
-
-Args:
-    event: The event to clear
-
-
-**Returns:** `NoneType`
-
----
-
-### `sync_event_create()`
-
-Create an event for signaling between tasks.
-
-Returns:
-    An asyncio.Event
-
-
-**Returns:** `Event`
-
----
-
-### `sync_event_is_set(event)`
-
-Check if an event is set.
-
-Args:
-    event: The event to check
-
-Returns:
-    True if set
-
-
-**Returns:** `bool`
-
----
-
-### `sync_event_set(event)`
-
-Set an event (signal waiting tasks).
-
-Args:
-    event: The event to set
-
-
-**Returns:** `NoneType`
-
----
-
-### `sync_event_wait(event, timeout=None)`
-
-Wait for an event to be set.
-
-Args:
-    event: The event to wait for
-    timeout: Optional timeout in seconds
-
-Returns:
-    True if event was set, False if timeout
-
-
-**Parameters:**
-
-- `event` (Event, required)
-- `timeout` (Optional, optional, default: `None`)
-
-**Returns:** `bool`
-
----
-
-### `sync_semaphore_acquire(semaphore, timeout=None)`
-
-Acquire a semaphore permit.
-
-Args:
-    semaphore: The semaphore to acquire
-    timeout: Optional timeout in seconds
-
-Returns:
-    True if acquired, False if timeout
-
-
-**Parameters:**
-
-- `semaphore` (Semaphore, required)
-- `timeout` (Optional, optional, default: `None`)
-
-**Returns:** `bool`
-
----
-
-### `sync_semaphore_create(permits=1)`
-
-Create a semaphore for limiting concurrent access.
-
-Args:
-    permits: Number of permits (1 for mutex)
-
-Returns:
-    An asyncio.Semaphore
-
-
-**Returns:** `Semaphore`
-
----
-
-### `sync_semaphore_release(semaphore)`
-
-Release a semaphore permit.
-
-Args:
-    semaphore: The semaphore to release
-
-
-**Returns:** `NoneType`
-
----
-
 ### `text_chunk(text, chunk_size=500, overlap=50)`
 
 Split text into overlapping chunks for embedding.
@@ -2227,11 +2607,6 @@ Args:
 
 Returns:
     List of text chunks
-
-Example:
-    text: "Long document text..."
-    chunk_size: 500
-    overlap: 50
 
 
 **Parameters:**
@@ -2251,15 +2626,10 @@ Split text into chunks by sentence boundaries.
 Args:
     text: Text to split into chunks
     sentences_per_chunk: Number of sentences per chunk (default: 5)
-    overlap: Number of sentences to overlap between chunks (default: 1)
+    overlap: Number of sentences to overlap (default: 1)
 
 Returns:
     List of text chunks split at sentence boundaries
-
-Example:
-    text: "First sentence. Second sentence. Third sentence."
-    sentences_per_chunk: 2
-    overlap: 1
 
 
 **Parameters:**
@@ -2274,4 +2644,4 @@ Example:
 
 ## Summary
 
-**Total opcodes:** 149
+**Total opcodes:** 174

@@ -1,14 +1,14 @@
 """Pygame opcodes for LexFlow - Visual workflow examples.
+
 Installation:
     pip install lexflow[pygame]
-    or:
-    pip install pygame
 """
 
 import asyncio
 import os
 from typing import Any
-from .opcodes import opcode
+
+from .opcodes import opcode, register_category
 
 # Suppress pygame welcome message
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
@@ -21,32 +21,31 @@ except ImportError:
     PYGAME_AVAILABLE = False
 
 
-def _check_availability():
-    """Check if pygame is available and raise helpful error if not."""
-    if not PYGAME_AVAILABLE:
-        raise ImportError(
-            "pygame is not installed. Install it with:\n"
-            "  pip install lexflow[pygame]\n"
-            "or:\n"
-            "  pip install pygame"
-        )
-
-
 def register_pygame_opcodes():
+    """Register pygame opcodes to the default registry."""
     if not PYGAME_AVAILABLE:
         return
 
-    # ============================================================================
-    # Pygame Initialization & Window Management
-    # ============================================================================
+    register_category(
+        id="pygame",
+        label="Pygame Operations",
+        prefix="pygame_",
+        color="#00D86A",
+        icon="🎮",
+        requires="pygame",
+        order=220,
+    )
 
-    @opcode()
+    # =========================================================================
+    # Pygame Initialization & Window Management
+    # =========================================================================
+
+    @opcode(category="pygame")
     async def pygame_init() -> None:
         """Initialize pygame engine."""
-        _check_availability()
         pygame.init()
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_create_window(
         width: int, height: int, title: str = "LexFlow + Pygame"
     ) -> Any:
@@ -60,60 +59,47 @@ def register_pygame_opcodes():
         Returns:
             pygame.Surface object representing the display
         """
-        _check_availability()
         screen = pygame.display.set_mode((int(width), int(height)))
         pygame.display.set_caption(title)
         return screen
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_quit() -> None:
         """Quit pygame and close all windows."""
-        _check_availability()
         pygame.quit()
 
-    # ============================================================================
-    # Event Handling (for workflow-controlled loops)
-    # ============================================================================
+    # =========================================================================
+    # Event Handling
+    # =========================================================================
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_should_quit() -> bool:
         """Check if user wants to quit (clicked X button).
 
         Returns:
-            True if quit event detected, False otherwise.
-
-        Note:
-            Use this in control_while conditions for game loops.
+            True if quit event detected, False otherwise
         """
-        _check_availability()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
         return False
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_process_events() -> None:
-        """Process pygame events (keeps window responsive).
-
-        Call this in your game loop to prevent window freezing.
-        """
-        _check_availability()
+        """Process pygame events (keeps window responsive)."""
         pygame.event.pump()
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_get_key_pressed(key_name: str) -> bool:
         """Check if a specific key is currently pressed.
 
         Args:
-            key_name: Key name (e.g., "up", "down", "left", "right", "space", "w", "a", "s", "d")
+            key_name: Key name (e.g., "up", "down", "left", "right", "space")
 
         Returns:
             True if key is pressed, False otherwise
         """
-        _check_availability()
         keys = pygame.key.get_pressed()
-
-        # Map common key names to pygame constants
         key_map = {
             "up": pygame.K_UP,
             "down": pygame.K_DOWN,
@@ -127,18 +113,16 @@ def register_pygame_opcodes():
             "escape": pygame.K_ESCAPE,
             "return": pygame.K_RETURN,
         }
-
         key_name_lower = key_name.lower()
         if key_name_lower in key_map:
             return bool(keys[key_map[key_name_lower]])
-
         return False
 
-    # ============================================================================
+    # =========================================================================
     # Drawing Operations
-    # ============================================================================
+    # =========================================================================
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_fill_screen(screen: Any, color: list) -> None:
         """Fill the entire screen with a color.
 
@@ -146,11 +130,10 @@ def register_pygame_opcodes():
             screen: The display surface
             color: RGB color as [r, g, b] where each value is 0-255
         """
-        _check_availability()
         r, g, b = int(color[0]), int(color[1]), int(color[2])
         screen.fill((r, g, b))
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_draw_text(
         screen: Any,
         text: str,
@@ -167,18 +150,16 @@ def register_pygame_opcodes():
             x: X position (left edge)
             y: Y position (top edge)
             font_size: Font size in pixels (default: 48)
-            color: RGB color as [r, g, b], defaults to white [255, 255, 255]
+            color: RGB color as [r, g, b], defaults to white
         """
-        _check_availability()
         if color is None:
             color = [255, 255, 255]
-
         r, g, b = int(color[0]), int(color[1]), int(color[2])
         font = pygame.font.Font(None, int(font_size))
         text_surface = font.render(text, True, (r, g, b))
         screen.blit(text_surface, (int(x), int(y)))
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_draw_rect(
         screen: Any,
         x: int,
@@ -197,18 +178,16 @@ def register_pygame_opcodes():
             width: Rectangle width
             height: Rectangle height
             color: RGB color as [r, g, b]
-            filled: If True, fill the rectangle; if False, draw outline only (default: True)
+            filled: If True, fill; if False, draw outline only
         """
-        _check_availability()
         r, g, b = int(color[0]), int(color[1]), int(color[2])
         rect = pygame.Rect(int(x), int(y), int(width), int(height))
-
         if filled:
             pygame.draw.rect(screen, (r, g, b), rect)
         else:
             pygame.draw.rect(screen, (r, g, b), rect, 2)
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_draw_circle(
         screen: Any, x: int, y: int, radius: int, color: list
     ) -> None:
@@ -221,134 +200,41 @@ def register_pygame_opcodes():
             radius: Circle radius
             color: RGB color as [r, g, b]
         """
-        _check_availability()
         r, g, b = int(color[0]), int(color[1]), int(color[2])
         pygame.draw.circle(screen, (r, g, b), (int(x), int(y)), int(radius))
 
-    # ============================================================================
+    # =========================================================================
     # Display & Timing
-    # ============================================================================
+    # =========================================================================
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_update_display() -> None:
         """Update the display to show all drawn elements."""
-        _check_availability()
         pygame.display.flip()
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_delay(milliseconds: int) -> None:
         """Async delay in milliseconds.
-
-        Use this to control frame rate in your game loop.
-        Example: pygame_delay(16) for ~60 FPS
 
         Args:
             milliseconds: Delay duration in milliseconds
         """
         await asyncio.sleep(int(milliseconds) / 1000.0)
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_get_ticks() -> int:
-        """Get the number of milliseconds since pygame.init() was called.
+        """Get milliseconds since pygame.init() was called.
 
         Returns:
             Milliseconds elapsed since pygame initialization
         """
-        _check_availability()
         return pygame.time.get_ticks()
 
-    # ============================================================================
-    # Math Helpers (for animations)
-    # ============================================================================
+    # =========================================================================
+    # Color & Screen Helpers
+    # =========================================================================
 
-    @opcode()
-    async def math_sin(angle: float) -> float:
-        """Calculate sine of an angle (in radians).
-
-        Args:
-            angle: Angle in radians
-
-        Returns:
-            Sine value between -1 and 1
-        """
-        import math
-
-        return math.sin(float(angle))
-
-    @opcode()
-    async def math_cos(angle: float) -> float:
-        """Calculate cosine of an angle (in radians).
-
-        Args:
-            angle: Angle in radians
-
-        Returns:
-            Cosine value between -1 and 1
-        """
-        import math
-
-        return math.cos(float(angle))
-
-    @opcode()
-    async def math_multiply(left: float, right: float) -> float:
-        """Multiply two numbers.
-
-        Args:
-            left: First number
-            right: Second number
-
-        Returns:
-            Product of left * right
-        """
-        return float(left) * float(right)
-
-    @opcode()
-    async def math_add(left: float, right: float) -> float:
-        """Add two numbers (preserving floating point).
-
-        Args:
-            left: First number
-            right: Second number
-
-        Returns:
-            Sum of left + right
-        """
-        return float(left) + float(right)
-
-    @opcode()
-    async def string_length(text: str) -> int:
-        """Get the length of a string.
-
-        Args:
-            text: The string
-
-        Returns:
-            Length of the string
-        """
-        return len(str(text))
-
-    @opcode()
-    async def string_char_at(text: str, index: int) -> str:
-        """Get character at specific index in string.
-
-        Args:
-            text: The string
-            index: Index position (0-based)
-
-        Returns:
-            Character at that position, or empty string if index out of bounds
-        """
-        text_str = str(text)
-        idx = int(index)
-        if 0 <= idx < len(text_str):
-            return text_str[idx]
-        return ""
-
-    # ============================================================================
-    # Color & Math Helpers
-    # ============================================================================
-
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_create_color(r: int, g: int, b: int) -> list:
         """Create an RGB color list.
 
@@ -362,7 +248,7 @@ def register_pygame_opcodes():
         """
         return [int(r), int(g), int(b)]
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_get_screen_width(screen: Any) -> int:
         """Get the width of the screen.
 
@@ -372,10 +258,9 @@ def register_pygame_opcodes():
         Returns:
             Width in pixels
         """
-        _check_availability()
         return screen.get_width()
 
-    @opcode()
+    @opcode(category="pygame")
     async def pygame_get_screen_height(screen: Any) -> int:
         """Get the height of the screen.
 
@@ -385,5 +270,4 @@ def register_pygame_opcodes():
         Returns:
             Height in pixels
         """
-        _check_availability()
         return screen.get_height()

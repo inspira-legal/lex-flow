@@ -2,16 +2,50 @@
 
 This module provides opcodes for working with background tasks spawned
 via control_spawn, as well as channels for inter-task communication.
+No external dependencies - uses standard library only.
 """
 
 import asyncio
 from typing import Any, List, Optional
 
-from .opcodes import default_registry
+from .opcodes import opcode, register_category
 from ..channel import Channel
 
+# Register category at module load time
+register_category(
+    id="task",
+    label="Task Operations",
+    prefix="task_",
+    color="#0EA5E9",
+    icon="⚡",
+    order=270,
+)
 
-@default_registry.register()
+register_category(
+    id="channel",
+    label="Channel Operations",
+    prefix="channel_",
+    color="#14B8A6",
+    icon="📡",
+    order=271,
+)
+
+register_category(
+    id="sync",
+    label="Sync Primitives",
+    prefix="sync_",
+    color="#A855F7",
+    icon="🔒",
+    order=272,
+)
+
+
+# ============================================================================
+# Task Operations
+# ============================================================================
+
+
+@opcode(category="task")
 async def task_is_done(task) -> bool:
     """Check if a background task has completed.
 
@@ -24,7 +58,7 @@ async def task_is_done(task) -> bool:
     return task.done
 
 
-@default_registry.register()
+@opcode(category="task")
 async def task_cancel(task) -> bool:
     """Request cancellation of a background task.
 
@@ -32,7 +66,7 @@ async def task_cancel(task) -> bool:
         task: LexFlowTask handle from control_spawn
 
     Returns:
-        True if cancel was requested (task may still be running briefly)
+        True if cancel was requested
     """
     if not task.done:
         task._task.cancel()
@@ -40,7 +74,7 @@ async def task_cancel(task) -> bool:
     return False
 
 
-@default_registry.register()
+@opcode(category="task")
 async def task_await(task, timeout: Optional[float] = None) -> Any:
     """Wait for a background task to complete and get its result.
 
@@ -49,7 +83,7 @@ async def task_await(task, timeout: Optional[float] = None) -> Any:
         timeout: Optional timeout in seconds
 
     Returns:
-        The task's return value (usually None for spawn tasks)
+        The task's return value
 
     Raises:
         asyncio.TimeoutError: If timeout exceeded
@@ -58,20 +92,16 @@ async def task_await(task, timeout: Optional[float] = None) -> Any:
     return await asyncio.wait_for(task._task, timeout=timeout)
 
 
-@default_registry.register()
+@opcode(category="task")
 async def task_await_all(tasks: List, timeout: Optional[float] = None) -> List[Any]:
     """Wait for multiple tasks to complete.
 
     Args:
         tasks: List of LexFlowTask handles
-        timeout: Optional timeout in seconds for all tasks combined
+        timeout: Optional timeout in seconds
 
     Returns:
         List of results in the same order as tasks
-
-    Raises:
-        asyncio.TimeoutError: If timeout exceeded
-        Exception: If any task raised an exception
     """
 
     async def wait_all():
@@ -80,7 +110,7 @@ async def task_await_all(tasks: List, timeout: Optional[float] = None) -> List[A
     return await asyncio.wait_for(wait_all(), timeout=timeout)
 
 
-@default_registry.register()
+@opcode(category="task")
 async def task_result(task) -> Any:
     """Get the result of a completed task.
 
@@ -92,12 +122,11 @@ async def task_result(task) -> Any:
 
     Raises:
         InvalidStateError: If task is not done
-        Exception: If the task raised an exception
     """
     return task.result()
 
 
-@default_registry.register()
+@opcode(category="task")
 async def task_exception(task) -> Optional[str]:
     """Get the exception message from a failed task.
 
@@ -105,13 +134,13 @@ async def task_exception(task) -> Optional[str]:
         task: LexFlowTask handle from control_spawn
 
     Returns:
-        Exception message as string, or None if task succeeded or not done
+        Exception message as string, or None if succeeded/not done
     """
     exc = task.exception()
     return str(exc) if exc else None
 
 
-@default_registry.register()
+@opcode(category="task")
 async def task_sleep(seconds: float) -> None:
     """Sleep for the specified number of seconds.
 
@@ -121,17 +150,13 @@ async def task_sleep(seconds: float) -> None:
     await asyncio.sleep(seconds)
 
 
-@default_registry.register()
+@opcode(category="task")
 async def task_yield() -> None:
-    """Yield control to other tasks momentarily.
-
-    Useful for cooperative multitasking when doing CPU-bound work
-    in a background task.
-    """
+    """Yield control to other tasks momentarily."""
     await asyncio.sleep(0)
 
 
-@default_registry.register()
+@opcode(category="task")
 async def task_id(task) -> int:
     """Get the ID of a task.
 
@@ -144,7 +169,7 @@ async def task_id(task) -> int:
     return task.id
 
 
-@default_registry.register()
+@opcode(category="task")
 async def task_name(task) -> str:
     """Get the name of a task.
 
@@ -157,10 +182,12 @@ async def task_name(task) -> str:
     return task.name
 
 
-# ============ Channel Operations ============
+# ============================================================================
+# Channel Operations
+# ============================================================================
 
 
-@default_registry.register()
+@opcode(category="channel")
 async def channel_create(size: int = 0) -> Channel:
     """Create a new channel for inter-task communication.
 
@@ -173,7 +200,7 @@ async def channel_create(size: int = 0) -> Channel:
     return Channel(maxsize=size)
 
 
-@default_registry.register()
+@opcode(category="channel")
 async def channel_send(channel: Channel, value: Any) -> None:
     """Send a value through a channel.
 
@@ -189,7 +216,7 @@ async def channel_send(channel: Channel, value: Any) -> None:
     await channel.send(value)
 
 
-@default_registry.register()
+@opcode(category="channel")
 async def channel_receive(channel: Channel, timeout: Optional[float] = None) -> Any:
     """Receive a value from a channel.
 
@@ -209,7 +236,7 @@ async def channel_receive(channel: Channel, timeout: Optional[float] = None) -> 
     return await channel.receive(timeout=timeout)
 
 
-@default_registry.register()
+@opcode(category="channel")
 async def channel_try_receive(channel: Channel) -> dict:
     """Try to receive a value without blocking.
 
@@ -217,19 +244,15 @@ async def channel_try_receive(channel: Channel) -> dict:
         channel: The channel to receive from
 
     Returns:
-        Dict with keys:
-        - value: The received value (None if nothing received)
-        - ok: True if a value was received, False otherwise
+        Dict with keys: value, ok (True if received)
     """
     value, ok = channel.try_receive()
     return {"value": value, "ok": ok}
 
 
-@default_registry.register()
+@opcode(category="channel")
 async def channel_close(channel: Channel) -> None:
     """Close a channel.
-
-    After closing, no more values can be sent.
 
     Args:
         channel: The channel to close
@@ -237,7 +260,7 @@ async def channel_close(channel: Channel) -> None:
     channel.close()
 
 
-@default_registry.register()
+@opcode(category="channel")
 async def channel_len(channel: Channel) -> int:
     """Get the number of items in the channel buffer.
 
@@ -250,7 +273,7 @@ async def channel_len(channel: Channel) -> int:
     return len(channel)
 
 
-@default_registry.register()
+@opcode(category="channel")
 async def channel_is_closed(channel: Channel) -> bool:
     """Check if a channel is closed.
 
@@ -263,7 +286,7 @@ async def channel_is_closed(channel: Channel) -> bool:
     return channel.closed
 
 
-@default_registry.register()
+@opcode(category="channel")
 async def channel_is_empty(channel: Channel) -> bool:
     """Check if a channel buffer is empty.
 
@@ -276,10 +299,12 @@ async def channel_is_empty(channel: Channel) -> bool:
     return channel.empty
 
 
-# ============ Synchronization Primitives ============
+# ============================================================================
+# Synchronization Primitives
+# ============================================================================
 
 
-@default_registry.register()
+@opcode(category="sync")
 async def sync_semaphore_create(permits: int = 1) -> asyncio.Semaphore:
     """Create a semaphore for limiting concurrent access.
 
@@ -292,7 +317,7 @@ async def sync_semaphore_create(permits: int = 1) -> asyncio.Semaphore:
     return asyncio.Semaphore(permits)
 
 
-@default_registry.register()
+@opcode(category="sync")
 async def sync_semaphore_acquire(
     semaphore: asyncio.Semaphore, timeout: Optional[float] = None
 ) -> bool:
@@ -316,7 +341,7 @@ async def sync_semaphore_acquire(
         return True
 
 
-@default_registry.register()
+@opcode(category="sync")
 async def sync_semaphore_release(semaphore: asyncio.Semaphore) -> None:
     """Release a semaphore permit.
 
@@ -326,7 +351,7 @@ async def sync_semaphore_release(semaphore: asyncio.Semaphore) -> None:
     semaphore.release()
 
 
-@default_registry.register()
+@opcode(category="sync")
 async def sync_event_create() -> asyncio.Event:
     """Create an event for signaling between tasks.
 
@@ -336,7 +361,7 @@ async def sync_event_create() -> asyncio.Event:
     return asyncio.Event()
 
 
-@default_registry.register()
+@opcode(category="sync")
 async def sync_event_set(event: asyncio.Event) -> None:
     """Set an event (signal waiting tasks).
 
@@ -346,7 +371,7 @@ async def sync_event_set(event: asyncio.Event) -> None:
     event.set()
 
 
-@default_registry.register()
+@opcode(category="sync")
 async def sync_event_wait(
     event: asyncio.Event, timeout: Optional[float] = None
 ) -> bool:
@@ -370,7 +395,7 @@ async def sync_event_wait(
         return True
 
 
-@default_registry.register()
+@opcode(category="sync")
 async def sync_event_clear(event: asyncio.Event) -> None:
     """Clear an event (reset to unset state).
 
@@ -380,7 +405,7 @@ async def sync_event_clear(event: asyncio.Event) -> None:
     event.clear()
 
 
-@default_registry.register()
+@opcode(category="sync")
 async def sync_event_is_set(event: asyncio.Event) -> bool:
     """Check if an event is set.
 
