@@ -218,10 +218,14 @@ async def get_example(category: str, filename: str):
 
 @router.get("/opcodes")
 async def list_opcodes():
-    """List all available opcodes with their interfaces."""
+    """List all available opcodes with their interfaces and categories."""
     opcodes = []
     for name in default_registry.list_opcodes():
         interface = default_registry.get_interface(name)
+        # Add category from registry
+        cat = default_registry.get_category(name)
+        if cat:
+            interface["category"] = cat.id
         opcodes.append(interface)
     return opcodes
 

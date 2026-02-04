@@ -43,6 +43,7 @@ export interface OpcodeInterface {
   description?: string;
   parameters: OpcodeParameter[];
   return_type?: string;
+  category?: string;
 }
 
 export interface OpcodeParameter {

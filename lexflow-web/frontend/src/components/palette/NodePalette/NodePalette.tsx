@@ -86,15 +86,10 @@ export function NodePalette({ className }: NodePaletteProps) {
     groups["other"] = []
 
     for (const opcode of opcodes) {
-      let matched = false
-      for (const cat of CATEGORIES) {
-        if (opcode.name.startsWith(cat.prefix)) {
-          groups[cat.id].push(opcode)
-          matched = true
-          break
-        }
-      }
-      if (!matched) {
+      // Use explicit category from API if available
+      if (opcode.category && groups[opcode.category]) {
+        groups[opcode.category].push(opcode)
+      } else {
         groups["other"].push(opcode)
       }
     }
