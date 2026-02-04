@@ -8,3 +8,4 @@ __pycache__/
 programs/
 prompts/
 todo/
+lexflow-web/frontend/src/grammar.json
