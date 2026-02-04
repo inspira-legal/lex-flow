@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.3.0 (2026-02-04)
+
+### Chores
+
+- Add CI auto-docs generation and gitignore frontend grammar
+  ([`498f32f`](https://github.com/inspira-legal/lex-flow/commit/498f32fc02de4a442b751a4d46f84886cb68f540))
+
+### Features
+
+- **cli**: Add grammar sync command
+  ([`3e61814`](https://github.com/inspira-legal/lex-flow/commit/3e61814015699476aaac63ad5325c022fcfd8cac))
+
+- **core**: Add self-describing opcode category system
+  ([`11f15bc`](https://github.com/inspira-legal/lex-flow/commit/11f15bc0723ec8bad019ea70d703e164a6c5b3b1))
+
+- **web**: Use explicit category from API for opcode grouping
+  ([`51d6314`](https://github.com/inspira-legal/lex-flow/commit/51d63149e9bf4373603badcb2afb3167420b3f8b))
+
+
 ## v1.2.0 (2026-02-03)
 
 ### Bug Fixes
