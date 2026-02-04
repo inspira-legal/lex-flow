@@ -1,11 +1,11 @@
 # GCS (Google Cloud Storage) Example
 #
 # This workflow demonstrates how to:
-# 1. Create a GCS client
-# 2. Get a bucket reference
-# 3. Check if an object exists
+# 1. Create a GCS client (native async)
+# 2. Check if an object exists
+# 3. Get object metadata
 # 4. Download object content as bytes
-# 5. Get object metadata
+# 5. Close the client
 #
 # Prerequisites:
 # - pip install lexflow[gcs]
@@ -21,12 +21,10 @@ workflows:
       outputs: []
     variables:
       client: null
-      bucket: null
       object_bytes: null
       metadata: null
       exists: false
       # Configure these values for your GCS setup
-      project_id: "your-project-id"
       bucket_name: "your-bucket-name"
       object_name: "path/to/your/file.pdf"
     nodes:
@@ -42,13 +40,11 @@ workflows:
           STRING:
             literal: "=== GCS Download Example ===\n\n"
 
-      # Step 1: Create GCS client
+      # Step 1: Create GCS client (native async with gcloud-aio-storage)
       create_client:
         opcode: gcs_create_client
         isReporter: true
-        inputs:
-          project:
-            variable: "project_id"
+        inputs: {}
 
       store_client:
         opcode: data_set_variable_to
@@ -61,44 +57,20 @@ workflows:
 
       print_client_created:
         opcode: io_print
-        next: store_bucket
+        next: store_exists
         inputs:
           STRING:
-            literal: "1. GCS client created\n"
+            literal: "1. GCS async client created\n"
 
-      # Step 2: Get bucket reference
-      get_bucket:
-        opcode: gcs_get_bucket
+      # Step 2: Check if object exists
+      check_exists:
+        opcode: gcs_object_exists
         isReporter: true
         inputs:
           client:
             variable: "client"
           bucket_name:
             variable: "bucket_name"
-
-      store_bucket:
-        opcode: data_set_variable_to
-        next: print_bucket_obtained
-        inputs:
-          VARIABLE:
-            literal: "bucket"
-          VALUE:
-            node: get_bucket
-
-      print_bucket_obtained:
-        opcode: io_print
-        next: store_exists
-        inputs:
-          STRING:
-            literal: "2. Bucket reference obtained\n"
-
-      # Step 3: Check if object exists
-      check_exists:
-        opcode: gcs_object_exists
-        isReporter: true
-        inputs:
-          bucket:
-            variable: "bucket"
           object_name:
             variable: "object_name"
 
@@ -123,7 +95,7 @@ workflows:
         isReporter: true
         inputs:
           left:
-            literal: "3. Object exists: "
+            literal: "2. Object exists: "
           right:
             node: exists_str
 
@@ -134,13 +106,15 @@ workflows:
           value:
             variable: "exists"
 
-      # Step 4: Get object metadata
+      # Step 3: Get object metadata
       get_metadata:
         opcode: gcs_get_object_metadata
         isReporter: true
         inputs:
-          bucket:
-            variable: "bucket"
+          client:
+            variable: "client"
+          bucket_name:
+            variable: "bucket_name"
           object_name:
             variable: "object_name"
 
@@ -158,15 +132,17 @@ workflows:
         next: store_bytes
         inputs:
           STRING:
-            literal: "\n4. Object metadata retrieved\n"
+            literal: "\n3. Object metadata retrieved\n"
 
-      # Step 5: Download object as bytes
+      # Step 4: Download object as bytes
       download_bytes:
         opcode: gcs_download_object_as_bytes
         isReporter: true
         inputs:
-          bucket:
-            variable: "bucket"
+          client:
+            variable: "client"
+          bucket_name:
+            variable: "bucket_name"
           object_name:
             variable: "object_name"
 
@@ -181,14 +157,22 @@ workflows:
 
       print_downloaded:
         opcode: io_print
-        next: final_message
+        next: close_client
         inputs:
           STRING:
-            literal: "5. Object downloaded as bytes\n"
+            literal: "4. Object downloaded as bytes\n"
+
+      # Step 5: Close client (releases async resources)
+      close_client:
+        opcode: gcs_close_client
+        next: final_message
+        inputs:
+          client:
+            variable: "client"
 
       final_message:
         opcode: io_print
         next: null
         inputs:
           STRING:
-            literal: "\n=== GCS operations completed! ===\n"
+            literal: "\n5. Client closed\n\n=== GCS operations completed! ===\n"

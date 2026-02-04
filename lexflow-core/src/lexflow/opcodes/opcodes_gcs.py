@@ -1,6 +1,7 @@
 """Google Cloud Storage opcodes for LexFlow.
 
-This module provides opcodes for interacting with Google Cloud Storage buckets.
+This module provides opcodes for interacting with Google Cloud Storage buckets
+using native async support via gcloud-aio-storage.
 
 Installation:
     pip install lexflow[gcs]
@@ -14,29 +15,34 @@ Authentication:
 
 from __future__ import annotations
 
-import asyncio
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, TypedDict
 
 if TYPE_CHECKING:
-    from google.cloud.storage import Bucket, Client
+    from gcloud.aio.storage import Storage
+
+
+class GCSObjectMetadata(TypedDict, total=False):
+    """Metadata for a GCS object."""
+
+    name: str
+    bucket: str
+    size: str
+    contentType: str
+    updated: str
+    md5Hash: str
+    generation: str
+    metageneration: str
+    etag: str
+    crc32c: str
+    storageClass: str
+    timeCreated: str
 
 try:
-    from google.cloud import storage
+    from gcloud.aio.storage import Storage
 
     GCS_AVAILABLE = True
 except ImportError:
     GCS_AVAILABLE = False
-
-
-def _check_availability():
-    """Check if google-cloud-storage is available and raise helpful error if not."""
-    if not GCS_AVAILABLE:
-        raise ImportError(
-            "google-cloud-storage is not installed. Install it with:\n"
-            "  pip install lexflow[gcs]\n"
-            "or:\n"
-            "  pip install google-cloud-storage"
-        )
 
 
 def register_gcs_opcodes():
@@ -44,7 +50,7 @@ def register_gcs_opcodes():
     if not GCS_AVAILABLE:
         return
 
-    from .opcodes import default_registry, register_category
+    from .opcodes import opcode, register_category
 
     register_category(
         id="gcs",
@@ -56,221 +62,305 @@ def register_gcs_opcodes():
         order=220,
     )
 
-    @default_registry.register()
-    async def gcs_create_client(project: Optional[str] = None) -> Client:
-        """Create a Google Cloud Storage client.
+    @opcode(category="gcs")
+    async def gcs_create_client(
+        service_file: Optional[str] = None,
+    ) -> Storage:
+        """Create a Google Cloud Storage async client.
 
         Args:
-            project: Optional GCP project ID (uses default if not specified)
+            service_file: Optional path to service account JSON file
 
         Returns:
-            storage.Client instance
+            Storage client instance
 
         Example:
-            project: "my-gcp-project"
+            service_file: "/path/to/service-account.json"
 
         Authentication:
-            Requires Google Cloud authentication via:
-            - gcloud auth application-default login
-            - Or GOOGLE_APPLICATION_CREDENTIALS environment variable
+            Uses Google Cloud authentication in this order:
+            1. service_file parameter (if provided)
+            2. GOOGLE_APPLICATION_CREDENTIALS environment variable
+            3. gcloud auth application-default login
+            4. GCE/GKE metadata server (in cloud environments)
         """
-        _check_availability()
+        return Storage(service_file=service_file)
 
-        def _create():
-            if project:
-                return storage.Client(project=project)
-            return storage.Client()
-
-        return await asyncio.to_thread(_create)
-
-    @default_registry.register()
-    async def gcs_get_bucket(client: Client, bucket_name: str) -> Bucket:
-        """Get a reference to a GCS bucket.
+    @opcode(category="gcs")
+    async def gcs_list_objects(
+        client: Storage,
+        bucket_name: str,
+        prefix: Optional[str] = None,
+        max_results: Optional[int] = None,
+    ) -> list[GCSObjectMetadata]:
+        """List objects in a GCS bucket.
 
         Args:
             client: GCS client instance (from gcs_create_client)
             bucket_name: Name of the bucket
+            prefix: Optional prefix to filter objects
+            max_results: Optional maximum number of results
 
         Returns:
-            storage.Bucket instance
+            List of object metadata dictionaries
 
         Example:
             client: { node: my_client }
-            bucket_name: "my-bucket-name"
+            bucket_name: "my-bucket"
+            prefix: "uploads/"
         """
-        _check_availability()
+        params: dict[str, str | int] = {}
+        if prefix:
+            params["prefix"] = prefix
+        if max_results:
+            params["maxResults"] = max_results
 
-        # bucket() is not a network call, just creates a reference
-        return client.bucket(bucket_name)
+        result = await client.list_objects(bucket_name, params=params)
+        return result.get("items", [])
 
-    @default_registry.register()
-    async def gcs_object_exists(bucket: Bucket, object_name: str) -> bool:
+    @opcode(category="gcs")
+    async def gcs_object_exists(
+        client: Storage,
+        bucket_name: str,
+        object_name: str,
+    ) -> bool:
         """Check if an object exists in a GCS bucket.
 
         Args:
-            bucket: GCS bucket instance (from gcs_get_bucket)
+            client: GCS client instance (from gcs_create_client)
+            bucket_name: Name of the bucket
             object_name: Name/path of the object to check
 
         Returns:
             True if object exists, False otherwise
 
         Example:
-            bucket: { node: my_bucket }
+            client: { node: my_client }
+            bucket_name: "my-bucket"
             object_name: "path/to/file.pdf"
         """
-        _check_availability()
+        try:
+            await client.download_metadata(bucket_name, object_name)
+            return True
+        except Exception:
+            return False
 
-        blob = bucket.blob(object_name)
-        return await asyncio.to_thread(blob.exists)
-
-    @default_registry.register()
-    async def gcs_get_object_metadata(bucket: Bucket, object_name: str) -> dict:
+    @opcode(category="gcs")
+    async def gcs_get_object_metadata(
+        client: Storage,
+        bucket_name: str,
+        object_name: str,
+    ) -> GCSObjectMetadata:
         """Get metadata for an object in GCS.
 
         Args:
-            bucket: GCS bucket instance (from gcs_get_bucket)
+            client: GCS client instance (from gcs_create_client)
+            bucket_name: Name of the bucket
             object_name: Name/path of the object
 
         Returns:
             Dictionary with object metadata including:
             - name: Object name
             - size: Size in bytes
-            - content_type: MIME type
+            - contentType: MIME type
             - updated: Last modification timestamp
-            - md5_hash: MD5 hash of content
+            - md5Hash: MD5 hash of content
 
         Example:
-            bucket: { node: my_bucket }
+            client: { node: my_client }
+            bucket_name: "my-bucket"
             object_name: "path/to/file.pdf"
         """
-        _check_availability()
+        return await client.download_metadata(bucket_name, object_name)
 
-        blob = bucket.blob(object_name)
-        await asyncio.to_thread(blob.reload)
-
-        return {
-            "name": blob.name,
-            "size": blob.size,
-            "content_type": blob.content_type,
-            "updated": blob.updated.isoformat() if blob.updated else None,
-            "md5_hash": blob.md5_hash,
-            "generation": blob.generation,
-            "metageneration": blob.metageneration,
-        }
-
-    @default_registry.register()
-    async def gcs_download_object_as_bytes(bucket: Bucket, object_name: str) -> bytes:
+    @opcode(category="gcs")
+    async def gcs_download_object_as_bytes(
+        client: Storage,
+        bucket_name: str,
+        object_name: str,
+    ) -> bytes:
         """Download an object from GCS as bytes.
 
         Args:
-            bucket: GCS bucket instance (from gcs_get_bucket)
+            client: GCS client instance (from gcs_create_client)
+            bucket_name: Name of the bucket
             object_name: Name/path of the object in the bucket
 
         Returns:
             Object content as bytes
 
         Example:
-            bucket: { node: my_bucket }
+            client: { node: my_client }
+            bucket_name: "my-bucket"
             object_name: "path/to/file.pdf"
         """
-        _check_availability()
+        return await client.download(bucket_name, object_name)
 
-        blob = bucket.blob(object_name)
-        return await asyncio.to_thread(blob.download_as_bytes)
+    @opcode(category="gcs")
+    async def gcs_download_object_as_string(
+        client: Storage,
+        bucket_name: str,
+        object_name: str,
+        encoding: str = "utf-8",
+    ) -> str:
+        """Download an object from GCS as a string.
 
-    @default_registry.register()
+        Args:
+            client: GCS client instance (from gcs_create_client)
+            bucket_name: Name of the bucket
+            object_name: Name/path of the object in the bucket
+            encoding: Text encoding (default: utf-8)
+
+        Returns:
+            Object content as string
+
+        Example:
+            client: { node: my_client }
+            bucket_name: "my-bucket"
+            object_name: "path/to/file.txt"
+        """
+        data = await client.download(bucket_name, object_name)
+        return data.decode(encoding)
+
+    @opcode(category="gcs")
     async def gcs_upload_object_from_bytes(
-        bucket: Bucket,
+        client: Storage,
+        bucket_name: str,
         object_name: str,
         data: bytes,
         content_type: Optional[str] = None,
-    ) -> dict:
+    ) -> GCSObjectMetadata:
         """Upload bytes to an object in GCS.
 
         Args:
-            bucket: GCS bucket instance (from gcs_get_bucket)
+            client: GCS client instance (from gcs_create_client)
+            bucket_name: Name of the bucket
             object_name: Name/path for the object in the bucket
             data: Bytes content to upload
             content_type: Optional MIME type (e.g., "application/pdf")
 
         Returns:
-            Dictionary with upload metadata including name, size, content_type
+            Dictionary with upload metadata
 
         Example:
-            bucket: { node: my_bucket }
+            client: { node: my_client }
+            bucket_name: "my-bucket"
             object_name: "uploads/document.pdf"
             data: { variable: pdf_bytes }
             content_type: "application/pdf"
         """
-        _check_availability()
+        return await client.upload(
+            bucket_name,
+            object_name,
+            data,
+            content_type=content_type,
+        )
 
-        blob = bucket.blob(object_name)
-        await asyncio.to_thread(blob.upload_from_string, data, content_type=content_type)
-
-        # Reload to get updated metadata
-        await asyncio.to_thread(blob.reload)
-
-        return {
-            "name": blob.name,
-            "size": blob.size,
-            "content_type": blob.content_type,
-        }
-
-    @default_registry.register()
+    @opcode(category="gcs")
     async def gcs_upload_object_from_string(
-        bucket: Bucket,
+        client: Storage,
+        bucket_name: str,
         object_name: str,
         data: str,
-        content_type: Optional[str] = "text/plain",
-    ) -> dict:
+        content_type: str = "text/plain",
+        encoding: str = "utf-8",
+    ) -> GCSObjectMetadata:
         """Upload a string to an object in GCS.
 
         Args:
-            bucket: GCS bucket instance (from gcs_get_bucket)
+            client: GCS client instance (from gcs_create_client)
+            bucket_name: Name of the bucket
             object_name: Name/path for the object in the bucket
             data: String content to upload
-            content_type: Optional MIME type (defaults to "text/plain")
+            content_type: MIME type (default: "text/plain")
+            encoding: Text encoding (default: utf-8)
 
         Returns:
-            Dictionary with upload metadata including name, size, content_type
+            Dictionary with upload metadata
 
         Example:
-            bucket: { node: my_bucket }
+            client: { node: my_client }
+            bucket_name: "my-bucket"
             object_name: "logs/output.txt"
             data: "Hello, World!"
-            content_type: "text/plain"
         """
-        _check_availability()
+        return await client.upload(
+            bucket_name,
+            object_name,
+            data.encode(encoding),
+            content_type=content_type,
+        )
 
-        blob = bucket.blob(object_name)
-        await asyncio.to_thread(blob.upload_from_string, data, content_type=content_type)
-
-        # Reload to get updated metadata
-        await asyncio.to_thread(blob.reload)
-
-        return {
-            "name": blob.name,
-            "size": blob.size,
-            "content_type": blob.content_type,
-        }
-
-    @default_registry.register()
-    async def gcs_delete_object(bucket: Bucket, object_name: str) -> bool:
+    @opcode(category="gcs")
+    async def gcs_delete_object(
+        client: Storage,
+        bucket_name: str,
+        object_name: str,
+    ) -> bool:
         """Delete an object from GCS.
 
         Args:
-            bucket: GCS bucket instance (from gcs_get_bucket)
+            client: GCS client instance (from gcs_create_client)
+            bucket_name: Name of the bucket
             object_name: Name/path of the object to delete
 
         Returns:
             True if deletion was successful
 
         Example:
-            bucket: { node: my_bucket }
+            client: { node: my_client }
+            bucket_name: "my-bucket"
             object_name: "path/to/file.pdf"
         """
-        _check_availability()
+        await client.delete(bucket_name, object_name)
+        return True
 
-        blob = bucket.blob(object_name)
-        await asyncio.to_thread(blob.delete)
+    @opcode(category="gcs")
+    async def gcs_copy_object(
+        client: Storage,
+        source_bucket: str,
+        source_object: str,
+        dest_bucket: str,
+        dest_object: str,
+    ) -> GCSObjectMetadata:
+        """Copy an object within or between GCS buckets.
+
+        Args:
+            client: GCS client instance (from gcs_create_client)
+            source_bucket: Source bucket name
+            source_object: Source object name/path
+            dest_bucket: Destination bucket name
+            dest_object: Destination object name/path
+
+        Returns:
+            Dictionary with copy operation metadata
+
+        Example:
+            client: { node: my_client }
+            source_bucket: "source-bucket"
+            source_object: "path/to/file.pdf"
+            dest_bucket: "dest-bucket"
+            dest_object: "backup/file.pdf"
+        """
+        return await client.copy(
+            source_bucket,
+            source_object,
+            dest_bucket,
+            new_name=dest_object,
+        )
+
+    @opcode(category="gcs")
+    async def gcs_close_client(client: Storage) -> bool:
+        """Close the GCS client and release resources.
+
+        Args:
+            client: GCS client instance to close
+
+        Returns:
+            True when closed successfully
+
+        Example:
+            client: { node: my_client }
+        """
+        await client.close()
         return True

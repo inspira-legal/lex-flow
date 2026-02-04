@@ -18,7 +18,7 @@ dependencies = [
 [project.optional-dependencies]
 ai = ["pydantic-ai-slim[google]"]
 file = ["pymupdf"]
-gcs = ["google-cloud-storage"]
+gcs = ["gcloud-aio-storage"]
 dev = ["pytest", "pytest-asyncio"]
 
 [tool.hatch.build.targets.wheel]
