@@ -6,29 +6,34 @@ Quick reference for all available opcodes in LexFlow.
 
 ## Table of Contents
 
-- [I/O Operations](#i/o-operations)
-- [Operators](#operators)
-- [Math Operations](#math-operations)
-- [String Operations](#string-operations)
-- [List Operations](#list-operations)
-- [Dictionary Operations](#dictionary-operations)
-- [Object Operations](#object-operations)
-- [Type Conversions](#type-conversions)
-- [Exception Operations](#exception-operations)
-- [Assertion Operations](#assertion-operations)
-- [Workflow Operations](#workflow-operations)
-- [Data Operations](#data-operations)
-- [Control Flow](#control-flow)
-- [Async Operations](#async-operations)
-- [HTTP Operations](#http-operations)
-- [AI Operations (Pydantic AI)](#ai-operations-pydantic-ai)
-- [Chat Operations](#chat-operations)
-- [GitHub Operations](#github-operations)
-- [Pygame Operations](#pygame-operations)
-- [Task Operations](#task-operations)
-- [Other Operations](#other-operations)
+- [📤 I/O Operations](#i/o-operations)
+- [⚡ Operators](#operators)
+- [🔢 Math Operations](#math-operations)
+- [📝 String Operations](#string-operations)
+- [📋 List Operations](#list-operations)
+- [📖 Dictionary Operations](#dictionary-operations)
+- [📦 Object Operations](#object-operations)
+- [🔄 Type Conversions](#type-conversions)
+- [⚠️ Exception Operations](#exception-operations)
+- [✓ Assertion Operations](#assertion-operations)
+- [🔗 Workflow Operations](#workflow-operations)
+- [📦 Data Operations](#data-operations)
+- [↻ Control Flow](#control-flow)
+- [⏱ Async Operations](#async-operations)
+- [🤖 AI Operations (Pydantic AI)](#ai-operations-pydantic-ai) *(requires `lexflow[ai]`)*
+- [🌐 HTTP Operations](#http-operations) *(requires `lexflow[http]`)*
+- [📄 HTML Operations](#html-operations) *(requires `lexflow[http]`)*
+- [📋 JSON Operations](#json-operations)
+- [🎮 Pygame Operations](#pygame-operations) *(requires `lexflow[pygame]`)*
+- [🔍 RAG Operations](#rag-operations) *(requires `lexflow[rag]`)*
+- [💬 Chat Operations](#chat-operations)
+- [💻 CLI Operations](#cli-operations)
+- [🐙 GitHub Operations](#github-operations)
+- [⚡ Task Operations](#task-operations)
+- [📡 Channel Operations](#channel-operations)
+- [🔒 Sync Primitives](#sync-primitives)
 
-## I/O Operations
+## 📤 I/O Operations
 
 ### `io_input(prompt="")`
 
@@ -46,7 +51,7 @@ Print values to stdout.
 
 ---
 
-## Operators
+## ⚡ Operators
 
 ### `operator_add(left, right)`
 
@@ -225,7 +230,7 @@ Subtract right from left.
 
 ---
 
-## Math Operations
+## 🔢 Math Operations
 
 ### `math_abs(value)`
 
@@ -285,7 +290,7 @@ Square root.
 
 ---
 
-## String Operations
+## 📝 String Operations
 
 ### `string_contains(text, substring)`
 
@@ -431,7 +436,7 @@ Convert to uppercase.
 
 ---
 
-## List Operations
+## 📋 List Operations
 
 ### `list_append(items, value)`
 
@@ -494,7 +499,7 @@ Create a range as list.
 
 ---
 
-## Dictionary Operations
+## 📖 Dictionary Operations
 
 ### `dict_clear(d)`
 
@@ -655,7 +660,7 @@ Get list of all values.
 
 ---
 
-## Object Operations
+## 📦 Object Operations
 
 ### `object_create()`
 
@@ -743,7 +748,7 @@ Convert object to dictionary.
 
 ---
 
-## Type Conversions
+## 🔄 Type Conversions
 
 ### `bool(value)`
 
@@ -793,7 +798,7 @@ Convert to string.
 
 ---
 
-## Exception Operations
+## ⚠️ Exception Operations
 
 ### `throw(message)`
 
@@ -827,7 +832,7 @@ Throw a ValueError.
 
 ---
 
-## Assertion Operations
+## ✓ Assertion Operations
 
 ### `assert_equals(left, right, message="Values not equal")`
 
@@ -856,7 +861,15 @@ Assert condition is true, throw AssertionError otherwise.
 
 ---
 
-## Workflow Operations
+## 🔗 Workflow Operations
+
+### `noop()`
+
+No operation.
+
+**Returns:** `NoneType`
+
+---
 
 ### `workflow_call(workflow, *args)`
 
@@ -887,7 +900,7 @@ Workflow entry point marker (no-op).
 
 ---
 
-## Data Operations
+## 📦 Data Operations
 
 ### `data_get_variable(var_name)`
 
@@ -910,7 +923,7 @@ Set variable to a value.
 
 ---
 
-## Control Flow
+## ↻ Control Flow
 
 ### `control_async_foreach(var, iterable, body)`
 
@@ -1053,7 +1066,7 @@ Execute body with resource as async context manager, binding to var.
 
 ---
 
-## Async Operations
+## ⏱ Async Operations
 
 ### `async_from_list(items, delay=0)`
 
@@ -1120,7 +1133,101 @@ Execute body with timeout, optionally running on_timeout if exceeded.
 
 ---
 
-## HTTP Operations
+## 🤖 AI Operations (Pydantic AI)
+
+> **Requires:** `pip install lexflow[ai]`
+
+### `pydantic_ai_create_agent(model, instructions="", system_prompt="")`
+
+Create a pydantic_ai Agent.
+
+Args:
+    model: Model instance (from pydantic_ai_create_vertex_model)
+    instructions: Optional instructions for the agent
+    system_prompt: Optional static system prompt
+
+Returns:
+    Agent instance ready to use
+
+
+**Parameters:**
+
+- `model` (Any, required)
+- `instructions` (str, optional, default: `""`)
+- `system_prompt` (str, optional, default: `""`)
+
+**Returns:** `Any`
+
+---
+
+### `pydantic_ai_create_vertex_model(model_name, project=None, location=None)`
+
+Create a Google Vertex AI model instance.
+
+Args:
+    model_name: Model name (e.g., "gemini-1.5-flash", "gemini-1.5-pro")
+    project: Optional GCP project ID (uses default if not specified)
+    location: Optional region (e.g., "us-central1")
+
+Returns:
+    GoogleModel instance configured for Vertex AI
+
+
+**Parameters:**
+
+- `model_name` (str, required)
+- `project` (Optional, optional, default: `None`)
+- `location` (Optional, optional, default: `None`)
+
+**Returns:** `Any`
+
+---
+
+### `pydantic_ai_run(agent, prompt)`
+
+Run agent asynchronously with a prompt.
+
+Args:
+    agent: Agent instance (from pydantic_ai_create_agent)
+    prompt: User prompt to send to the agent
+
+Returns:
+    String output from the agent
+
+
+**Parameters:**
+
+- `agent` (Any, required)
+- `prompt` (str, required)
+
+**Returns:** `str`
+
+---
+
+### `pydantic_ai_run_sync(agent, prompt)`
+
+Run agent with a prompt (legacy name, actually async).
+
+Args:
+    agent: Agent instance (from pydantic_ai_create_agent)
+    prompt: User prompt to send to the agent
+
+Returns:
+    String output from the agent
+
+
+**Parameters:**
+
+- `agent` (Any, required)
+- `prompt` (str, required)
+
+**Returns:** `str`
+
+---
+
+## 🌐 HTTP Operations
+
+> **Requires:** `pip install lexflow[http]`
 
 ### `http_get(url, headers=None, timeout=30.0)`
 
@@ -1323,442 +1430,158 @@ Yields:
 
 ---
 
-## AI Operations (Pydantic AI)
+## 📄 HTML Operations
 
-### `pydantic_ai_create_agent(model, instructions="", system_prompt="")`
+> **Requires:** `pip install lexflow[http]`
 
-Create a pydantic_ai Agent.
+### `html_get_attr(element, attr, default=None)`
+
+Get an attribute value from an HTML element.
 
 Args:
-    model: Model instance (from pydantic_ai_create_vertex_model)
-    instructions: Optional instructions for the agent
-    system_prompt: Optional static system prompt
+    element: BeautifulSoup element
+    attr: Attribute name (e.g., "href", "class", "id")
+    default: Value to return if attribute not found
 
 Returns:
-    Agent instance ready to use
+    Attribute value as string, or default if not found
 
 
 **Parameters:**
 
-- `model` (Any, required)
-- `instructions` (str, optional, default: `""`)
-- `system_prompt` (str, optional, default: `""`)
-
-**Returns:** `Any`
-
----
-
-### `pydantic_ai_create_vertex_model(model_name, project=None, location=None)`
-
-Create a Google Vertex AI model instance.
-
-Args:
-    model_name: Model name (e.g., "gemini-1.5-flash", "gemini-1.5-pro")
-    project: Optional GCP project ID (uses default if not specified)
-    location: Optional region (e.g., "us-central1")
-
-Returns:
-    GoogleModel instance configured for Vertex AI
-
-
-**Parameters:**
-
-- `model_name` (str, required)
-- `project` (Optional, optional, default: `None`)
-- `location` (Optional, optional, default: `None`)
-
-**Returns:** `Any`
-
----
-
-### `pydantic_ai_run(agent, prompt)`
-
-Run agent asynchronously with a prompt.
-
-Args:
-    agent: Agent instance (from pydantic_ai_create_agent)
-    prompt: User prompt to send to the agent
-
-Returns:
-    String output from the agent
-
-
-**Parameters:**
-
-- `agent` (Any, required)
-- `prompt` (str, required)
-
-**Returns:** `str`
-
----
-
-### `pydantic_ai_run_sync(agent, prompt)`
-
-Run agent with a prompt (legacy name, actually async).
-
-Args:
-    agent: Agent instance (from pydantic_ai_create_agent)
-    prompt: User prompt to send to the agent
-
-Returns:
-    String output from the agent
-
-
-**Parameters:**
-
-- `agent` (Any, required)
-- `prompt` (str, required)
-
-**Returns:** `str`
-
----
-
-## Chat Operations
-
-### `chat_add_assistant(history, content)`
-
-Add an assistant message to chat history.
-
-Args:
-    history: The chat history list to modify
-    content: The assistant's response
-
-Returns:
-    The updated history
-
-
-**Parameters:**
-
-- `history` (List, required)
-- `content` (str, required)
-
-**Returns:** `List`
-
----
-
-### `chat_add_message(history, role, content)`
-
-Add a message to chat history.
-
-Args:
-    history: The chat history list to modify
-    role: Message role - "user" or "assistant"
-    content: The message content
-
-Returns:
-    The updated history (same list, modified in place)
-
-Raises:
-    ValueError: If role is not "user" or "assistant"
-
-
-**Parameters:**
-
-- `history` (List, required)
-- `role` (str, required)
-- `content` (str, required)
-
-**Returns:** `List`
-
----
-
-### `chat_add_user(history, content)`
-
-Add a user message to chat history.
-
-Args:
-    history: The chat history list to modify
-    content: The user's message
-
-Returns:
-    The updated history
-
-
-**Parameters:**
-
-- `history` (List, required)
-- `content` (str, required)
-
-**Returns:** `List`
-
----
-
-### `chat_clear(history)`
-
-Clear all messages from chat history.
-
-Args:
-    history: The chat history list to clear
-
-Returns:
-    The same list, now empty
-
-
-**Returns:** `List`
-
----
-
-### `chat_create()`
-
-Create a new empty chat history.
-
-Returns:
-    Empty list ready to store chat messages
-
-
-**Returns:** `List`
-
----
-
-### `chat_format_for_display(history)`
-
-Format chat history as a readable string.
-
-Args:
-    history: The chat history list
-
-Returns:
-    Formatted string with each message on its own line
-
-
-**Returns:** `str`
-
----
-
-### `chat_get_last(history, role=None)`
-
-Get the last message from chat history.
-
-Args:
-    history: The chat history list
-    role: Optional filter - get last message with this role
-
-Returns:
-    The last message dict, or None if empty or no match
-
-
-**Parameters:**
-
-- `history` (List, required)
-- `role` (Optional, optional, default: `None`)
+- `element` (Any, required)
+- `attr` (str, required)
+- `default` (Optional, optional, default: `None`)
 
 **Returns:** `Optional`
 
 ---
 
-### `chat_length(history)`
+### `html_get_text(element, strip=True)`
 
-Get the number of messages in chat history.
-
-Args:
-    history: The chat history list
-
-Returns:
-    Number of messages
-
-
-**Returns:** `int`
-
----
-
-### `chat_to_prompt(history)`
-
-Convert chat history to a single prompt string for AI.
+Get the text content from an HTML element.
 
 Args:
-    history: The chat history list
+    element: BeautifulSoup element
+    strip: Whether to strip whitespace (default: True)
 
 Returns:
-    A formatted string containing the conversation context
+    Text content of the element
 
+
+**Parameters:**
+
+- `element` (Any, required)
+- `strip` (bool, optional, default: `True`)
 
 **Returns:** `str`
 
 ---
 
-### `chat_with_agent(agent, history, user_message)`
+### `html_parse(html_text)`
 
-Send a message to an AI agent with conversation history context.
-
-This opcode:
-1. Adds the user message to history
-2. Builds a context-aware prompt from history
-3. Sends to the agent
-4. Adds the response to history
-5. Returns the response
+Parse an HTML string into a BeautifulSoup object.
 
 Args:
-    agent: A pydantic-ai Agent instance
-    history: The chat history list (will be modified)
-    user_message: The new user message to send
+    html_text: HTML content as a string
 
 Returns:
-    The assistant's response string
+    BeautifulSoup object for use with html_select* opcodes
 
 
-**Parameters:**
-
-- `agent` (Any, required)
-- `history` (List, required)
-- `user_message` (str, required)
-
-**Returns:** `str`
+**Returns:** `Any`
 
 ---
 
-## GitHub Operations
+### `html_select(soup, selector)`
 
-### `github_get_file_content(owner, repo, path, ref="HEAD")`
-
-Get file content from a repository at a specific ref.
+Select elements matching a CSS selector.
 
 Args:
-    owner: Repository owner
-    repo: Repository name
-    path: File path relative to repo root
-    ref: Git reference (branch, tag, or commit SHA)
+    soup: BeautifulSoup object or element (from html_parse)
+    selector: CSS selector string
 
 Returns:
-    File content as a string (UTF-8 decoded)
+    List of matching elements (may be empty)
 
 
 **Parameters:**
 
-- `owner` (str, required)
-- `repo` (str, required)
-- `path` (str, required)
-- `ref` (str, optional, default: `"HEAD"`)
-
-**Returns:** `str`
-
----
-
-### `github_get_pr_diff(owner, repo, pr_number)`
-
-Get the full diff of a PR.
-
-Args:
-    owner: Repository owner
-    repo: Repository name
-    pr_number: Pull request number
-
-Returns:
-    The PR diff as a string in unified diff format
-
-
-**Parameters:**
-
-- `owner` (str, required)
-- `repo` (str, required)
-- `pr_number` (int, required)
-
-**Returns:** `str`
-
----
-
-### `github_get_pr_files(owner, repo, pr_number)`
-
-Get list of files changed in a PR.
-
-Args:
-    owner: Repository owner
-    repo: Repository name
-    pr_number: Pull request number
-
-Returns:
-    List of dicts with: path, additions, deletions, status
-
-
-**Parameters:**
-
-- `owner` (str, required)
-- `repo` (str, required)
-- `pr_number` (int, required)
+- `soup` (Any, required)
+- `selector` (str, required)
 
 **Returns:** `List`
 
 ---
 
-### `github_get_pr_info(owner, repo, pr_number)`
+### `html_select_one(soup, selector)`
 
-Get PR metadata from GitHub.
+Select the first element matching a CSS selector.
 
 Args:
-    owner: Repository owner (e.g., "anthropics")
-    repo: Repository name (e.g., "lex-flow")
-    pr_number: Pull request number
+    soup: BeautifulSoup object or element (from html_parse)
+    selector: CSS selector string
 
 Returns:
-    Dict with: title, body, author, state, base_branch, head_branch, url
+    First matching element, or None if no match
 
 
 **Parameters:**
 
-- `owner` (str, required)
-- `repo` (str, required)
-- `pr_number` (int, required)
+- `soup` (Any, required)
+- `selector` (str, required)
 
-**Returns:** `Dict`
+**Returns:** `Optional`
 
 ---
 
-### `github_get_repo_info(owner, repo)`
+## 📋 JSON Operations
 
-Get repository metadata.
+### `json_parse(text)`
+
+Parse a JSON string into a Python object.
 
 Args:
-    owner: Repository owner
-    repo: Repository name
+    text: JSON string to parse
 
 Returns:
-    Dict with: name, full_name, description, default_branch, url, is_private
+    Parsed Python object (dict, list, str, int, float, bool, or None)
+
+Raises:
+    ValueError: If the string is not valid JSON
+
+
+**Returns:** `Any`
+
+---
+
+### `json_stringify(obj, indent=None)`
+
+Convert a Python object to a JSON string.
+
+Args:
+    obj: Python object to serialize
+    indent: Number of spaces for indentation (None for compact)
+
+Returns:
+    JSON string representation
+
+Raises:
+    TypeError: If the object is not JSON serializable
 
 
 **Parameters:**
 
-- `owner` (str, required)
-- `repo` (str, required)
+- `obj` (Any, required)
+- `indent` (Optional, optional, default: `None`)
 
-**Returns:** `Dict`
-
----
-
-### `github_is_available()`
-
-Check if GitHub CLI is available and authenticated.
-
-Returns:
-    True if gh CLI is installed and authenticated
-
-
-**Returns:** `bool`
+**Returns:** `str`
 
 ---
 
-### `github_list_pr_comments(owner, repo, pr_number)`
+## 🎮 Pygame Operations
 
-Get all comments on a PR.
-
-Args:
-    owner: Repository owner
-    repo: Repository name
-    pr_number: Pull request number
-
-Returns:
-    List of comment dicts with: id, author, body, created_at, type
-
-
-**Parameters:**
-
-- `owner` (str, required)
-- `repo` (str, required)
-- `pr_number` (int, required)
-
-**Returns:** `List`
-
----
-
-## Pygame Operations
+> **Requires:** `pip install lexflow[pygame]`
 
 ### `pygame_create_color(r, g, b)`
 
@@ -2015,176 +1838,9 @@ Update the display to show all drawn elements.
 
 ---
 
-## Task Operations
+## 🔍 RAG Operations
 
-### `task_await(task, timeout=None)`
-
-Wait for a background task to complete and get its result.
-
-Args:
-    task: LexFlowTask handle from control_spawn
-    timeout: Optional timeout in seconds
-
-Returns:
-    The task's return value
-
-Raises:
-    asyncio.TimeoutError: If timeout exceeded
-    Exception: If the task raised an exception
-
-
-**Parameters:**
-
-- `task` (Any, required)
-- `timeout` (Optional, optional, default: `None`)
-
-**Returns:** `Any`
-
----
-
-### `task_await_all(tasks, timeout=None)`
-
-Wait for multiple tasks to complete.
-
-Args:
-    tasks: List of LexFlowTask handles
-    timeout: Optional timeout in seconds
-
-Returns:
-    List of results in the same order as tasks
-
-
-**Parameters:**
-
-- `tasks` (List, required)
-- `timeout` (Optional, optional, default: `None`)
-
-**Returns:** `List`
-
----
-
-### `task_cancel(task)`
-
-Request cancellation of a background task.
-
-Args:
-    task: LexFlowTask handle from control_spawn
-
-Returns:
-    True if cancel was requested
-
-
-**Returns:** `bool`
-
----
-
-### `task_exception(task)`
-
-Get the exception message from a failed task.
-
-Args:
-    task: LexFlowTask handle from control_spawn
-
-Returns:
-    Exception message as string, or None if succeeded/not done
-
-
-**Returns:** `Optional`
-
----
-
-### `task_id(task)`
-
-Get the ID of a task.
-
-Args:
-    task: LexFlowTask handle from control_spawn
-
-Returns:
-    The task's unique ID
-
-
-**Returns:** `int`
-
----
-
-### `task_is_done(task)`
-
-Check if a background task has completed.
-
-Args:
-    task: LexFlowTask handle from control_spawn
-
-Returns:
-    True if task is done (completed, cancelled, or failed)
-
-
-**Returns:** `bool`
-
----
-
-### `task_name(task)`
-
-Get the name of a task.
-
-Args:
-    task: LexFlowTask handle from control_spawn
-
-Returns:
-    The task's name
-
-
-**Returns:** `str`
-
----
-
-### `task_result(task)`
-
-Get the result of a completed task.
-
-Args:
-    task: LexFlowTask handle from control_spawn
-
-Returns:
-    The task's return value
-
-Raises:
-    InvalidStateError: If task is not done
-
-
-**Returns:** `Any`
-
----
-
-### `task_sleep(seconds)`
-
-Sleep for the specified number of seconds.
-
-Args:
-    seconds: Duration to sleep
-
-
-**Returns:** `NoneType`
-
----
-
-### `task_yield()`
-
-Yield control to other tasks momentarily.
-
-**Returns:** `NoneType`
-
----
-
-## Other Operations
-
-### `clear_line()`
-
-Clear the current terminal line.
-
-**Returns:** `NoneType`
-
----
+> **Requires:** `pip install lexflow[rag]`
 
 ### `embedding_create(text, project, location="us-central1", model="text-embedding-004")`
 
@@ -2236,14 +1892,6 @@ Returns:
 
 ---
 
-### `noop()`
-
-No operation.
-
-**Returns:** `NoneType`
-
----
-
 ### `pdf_extract_pages(file_path)`
 
 Extract text from a PDF file page by page.
@@ -2286,60 +1934,6 @@ Returns:
 
 
 **Returns:** `int`
-
----
-
-### `print_error(message)`
-
-Print an error message with red X.
-
-**Returns:** `NoneType`
-
----
-
-### `print_info(message)`
-
-Print an info message with blue indicator.
-
-**Returns:** `NoneType`
-
----
-
-### `print_success(message)`
-
-Print a success message with green checkmark.
-
-**Returns:** `NoneType`
-
----
-
-### `print_warning(message)`
-
-Print a warning message with yellow indicator.
-
-**Returns:** `NoneType`
-
----
-
-### `progress_bar(current, total, message="", width=30)`
-
-Display/update a progress bar.
-
-Args:
-    current: Current progress value
-    total: Total/max value
-    message: Optional message to show
-    width: Bar width in characters (default: 30)
-
-
-**Parameters:**
-
-- `current` (int, required)
-- `total` (int, required)
-- `message` (str, optional, default: `""`)
-- `width` (int, optional, default: `30`)
-
-**Returns:** `NoneType`
 
 ---
 
@@ -2525,6 +2119,309 @@ Returns:
 
 ---
 
+### `text_chunk(text, chunk_size=500, overlap=50)`
+
+Split text into overlapping chunks for embedding.
+
+Args:
+    text: Text to split into chunks
+    chunk_size: Maximum characters per chunk (default: 500)
+    overlap: Characters to overlap between chunks (default: 50)
+
+Returns:
+    List of text chunks
+
+
+**Parameters:**
+
+- `text` (str, required)
+- `chunk_size` (int, optional, default: `500`)
+- `overlap` (int, optional, default: `50`)
+
+**Returns:** `List`
+
+---
+
+### `text_chunk_by_sentences(text, sentences_per_chunk=5, overlap=1)`
+
+Split text into chunks by sentence boundaries.
+
+Args:
+    text: Text to split into chunks
+    sentences_per_chunk: Number of sentences per chunk (default: 5)
+    overlap: Number of sentences to overlap (default: 1)
+
+Returns:
+    List of text chunks split at sentence boundaries
+
+
+**Parameters:**
+
+- `text` (str, required)
+- `sentences_per_chunk` (int, optional, default: `5`)
+- `overlap` (int, optional, default: `1`)
+
+**Returns:** `List`
+
+---
+
+## 💬 Chat Operations
+
+### `chat_add_assistant(history, content)`
+
+Add an assistant message to chat history.
+
+Args:
+    history: The chat history list to modify
+    content: The assistant's response
+
+Returns:
+    The updated history
+
+
+**Parameters:**
+
+- `history` (List, required)
+- `content` (str, required)
+
+**Returns:** `List`
+
+---
+
+### `chat_add_message(history, role, content)`
+
+Add a message to chat history.
+
+Args:
+    history: The chat history list to modify
+    role: Message role - "user" or "assistant"
+    content: The message content
+
+Returns:
+    The updated history (same list, modified in place)
+
+Raises:
+    ValueError: If role is not "user" or "assistant"
+
+
+**Parameters:**
+
+- `history` (List, required)
+- `role` (str, required)
+- `content` (str, required)
+
+**Returns:** `List`
+
+---
+
+### `chat_add_user(history, content)`
+
+Add a user message to chat history.
+
+Args:
+    history: The chat history list to modify
+    content: The user's message
+
+Returns:
+    The updated history
+
+
+**Parameters:**
+
+- `history` (List, required)
+- `content` (str, required)
+
+**Returns:** `List`
+
+---
+
+### `chat_clear(history)`
+
+Clear all messages from chat history.
+
+Args:
+    history: The chat history list to clear
+
+Returns:
+    The same list, now empty
+
+
+**Returns:** `List`
+
+---
+
+### `chat_create()`
+
+Create a new empty chat history.
+
+Returns:
+    Empty list ready to store chat messages
+
+
+**Returns:** `List`
+
+---
+
+### `chat_format_for_display(history)`
+
+Format chat history as a readable string.
+
+Args:
+    history: The chat history list
+
+Returns:
+    Formatted string with each message on its own line
+
+
+**Returns:** `str`
+
+---
+
+### `chat_get_last(history, role=None)`
+
+Get the last message from chat history.
+
+Args:
+    history: The chat history list
+    role: Optional filter - get last message with this role
+
+Returns:
+    The last message dict, or None if empty or no match
+
+
+**Parameters:**
+
+- `history` (List, required)
+- `role` (Optional, optional, default: `None`)
+
+**Returns:** `Optional`
+
+---
+
+### `chat_length(history)`
+
+Get the number of messages in chat history.
+
+Args:
+    history: The chat history list
+
+Returns:
+    Number of messages
+
+
+**Returns:** `int`
+
+---
+
+### `chat_to_prompt(history)`
+
+Convert chat history to a single prompt string for AI.
+
+Args:
+    history: The chat history list
+
+Returns:
+    A formatted string containing the conversation context
+
+
+**Returns:** `str`
+
+---
+
+### `chat_with_agent(agent, history, user_message)`
+
+Send a message to an AI agent with conversation history context.
+
+This opcode:
+1. Adds the user message to history
+2. Builds a context-aware prompt from history
+3. Sends to the agent
+4. Adds the response to history
+5. Returns the response
+
+Args:
+    agent: A pydantic-ai Agent instance
+    history: The chat history list (will be modified)
+    user_message: The new user message to send
+
+Returns:
+    The assistant's response string
+
+
+**Parameters:**
+
+- `agent` (Any, required)
+- `history` (List, required)
+- `user_message` (str, required)
+
+**Returns:** `str`
+
+---
+
+## 💻 CLI Operations
+
+### `clear_line()`
+
+Clear the current terminal line.
+
+**Returns:** `NoneType`
+
+---
+
+### `print_error(message)`
+
+Print an error message with red X.
+
+**Returns:** `NoneType`
+
+---
+
+### `print_info(message)`
+
+Print an info message with blue indicator.
+
+**Returns:** `NoneType`
+
+---
+
+### `print_success(message)`
+
+Print a success message with green checkmark.
+
+**Returns:** `NoneType`
+
+---
+
+### `print_warning(message)`
+
+Print a warning message with yellow indicator.
+
+**Returns:** `NoneType`
+
+---
+
+### `progress_bar(current, total, message="", width=30)`
+
+Display/update a progress bar.
+
+Args:
+    current: Current progress value
+    total: Total/max value
+    message: Optional message to show
+    width: Bar width in characters (default: 30)
+
+
+**Parameters:**
+
+- `current` (int, required)
+- `total` (int, required)
+- `message` (str, optional, default: `""`)
+- `width` (int, optional, default: `30`)
+
+**Returns:** `NoneType`
+
+---
+
 ### `spinner_fail(spinner, message="Failed")`
 
 Stop a spinner with failure indicator.
@@ -2596,52 +2493,611 @@ Args:
 
 ---
 
-### `text_chunk(text, chunk_size=500, overlap=50)`
+## 🐙 GitHub Operations
 
-Split text into overlapping chunks for embedding.
+### `github_get_file_content(owner, repo, path, ref="HEAD")`
+
+Get file content from a repository at a specific ref.
 
 Args:
-    text: Text to split into chunks
-    chunk_size: Maximum characters per chunk (default: 500)
-    overlap: Characters to overlap between chunks (default: 50)
+    owner: Repository owner
+    repo: Repository name
+    path: File path relative to repo root
+    ref: Git reference (branch, tag, or commit SHA)
 
 Returns:
-    List of text chunks
+    File content as a string (UTF-8 decoded)
 
 
 **Parameters:**
 
-- `text` (str, required)
-- `chunk_size` (int, optional, default: `500`)
-- `overlap` (int, optional, default: `50`)
+- `owner` (str, required)
+- `repo` (str, required)
+- `path` (str, required)
+- `ref` (str, optional, default: `"HEAD"`)
+
+**Returns:** `str`
+
+---
+
+### `github_get_pr_diff(owner, repo, pr_number)`
+
+Get the full diff of a PR.
+
+Args:
+    owner: Repository owner
+    repo: Repository name
+    pr_number: Pull request number
+
+Returns:
+    The PR diff as a string in unified diff format
+
+
+**Parameters:**
+
+- `owner` (str, required)
+- `repo` (str, required)
+- `pr_number` (int, required)
+
+**Returns:** `str`
+
+---
+
+### `github_get_pr_files(owner, repo, pr_number)`
+
+Get list of files changed in a PR.
+
+Args:
+    owner: Repository owner
+    repo: Repository name
+    pr_number: Pull request number
+
+Returns:
+    List of dicts with: path, additions, deletions, status
+
+
+**Parameters:**
+
+- `owner` (str, required)
+- `repo` (str, required)
+- `pr_number` (int, required)
 
 **Returns:** `List`
 
 ---
 
-### `text_chunk_by_sentences(text, sentences_per_chunk=5, overlap=1)`
+### `github_get_pr_info(owner, repo, pr_number)`
 
-Split text into chunks by sentence boundaries.
+Get PR metadata from GitHub.
 
 Args:
-    text: Text to split into chunks
-    sentences_per_chunk: Number of sentences per chunk (default: 5)
-    overlap: Number of sentences to overlap (default: 1)
+    owner: Repository owner (e.g., "anthropics")
+    repo: Repository name (e.g., "lex-flow")
+    pr_number: Pull request number
 
 Returns:
-    List of text chunks split at sentence boundaries
+    Dict with: title, body, author, state, base_branch, head_branch, url
 
 
 **Parameters:**
 
-- `text` (str, required)
-- `sentences_per_chunk` (int, optional, default: `5`)
-- `overlap` (int, optional, default: `1`)
+- `owner` (str, required)
+- `repo` (str, required)
+- `pr_number` (int, required)
+
+**Returns:** `Dict`
+
+---
+
+### `github_get_repo_info(owner, repo)`
+
+Get repository metadata.
+
+Args:
+    owner: Repository owner
+    repo: Repository name
+
+Returns:
+    Dict with: name, full_name, description, default_branch, url, is_private
+
+
+**Parameters:**
+
+- `owner` (str, required)
+- `repo` (str, required)
+
+**Returns:** `Dict`
+
+---
+
+### `github_is_available()`
+
+Check if GitHub CLI is available and authenticated.
+
+Returns:
+    True if gh CLI is installed and authenticated
+
+
+**Returns:** `bool`
+
+---
+
+### `github_list_pr_comments(owner, repo, pr_number)`
+
+Get all comments on a PR.
+
+Args:
+    owner: Repository owner
+    repo: Repository name
+    pr_number: Pull request number
+
+Returns:
+    List of comment dicts with: id, author, body, created_at, type
+
+
+**Parameters:**
+
+- `owner` (str, required)
+- `repo` (str, required)
+- `pr_number` (int, required)
 
 **Returns:** `List`
+
+---
+
+## ⚡ Task Operations
+
+### `task_await(task, timeout=None)`
+
+Wait for a background task to complete and get its result.
+
+Args:
+    task: LexFlowTask handle from control_spawn
+    timeout: Optional timeout in seconds
+
+Returns:
+    The task's return value
+
+Raises:
+    asyncio.TimeoutError: If timeout exceeded
+    Exception: If the task raised an exception
+
+
+**Parameters:**
+
+- `task` (Any, required)
+- `timeout` (Optional, optional, default: `None`)
+
+**Returns:** `Any`
+
+---
+
+### `task_await_all(tasks, timeout=None)`
+
+Wait for multiple tasks to complete.
+
+Args:
+    tasks: List of LexFlowTask handles
+    timeout: Optional timeout in seconds
+
+Returns:
+    List of results in the same order as tasks
+
+
+**Parameters:**
+
+- `tasks` (List, required)
+- `timeout` (Optional, optional, default: `None`)
+
+**Returns:** `List`
+
+---
+
+### `task_cancel(task)`
+
+Request cancellation of a background task.
+
+Args:
+    task: LexFlowTask handle from control_spawn
+
+Returns:
+    True if cancel was requested
+
+
+**Returns:** `bool`
+
+---
+
+### `task_exception(task)`
+
+Get the exception message from a failed task.
+
+Args:
+    task: LexFlowTask handle from control_spawn
+
+Returns:
+    Exception message as string, or None if succeeded/not done
+
+
+**Returns:** `Optional`
+
+---
+
+### `task_id(task)`
+
+Get the ID of a task.
+
+Args:
+    task: LexFlowTask handle from control_spawn
+
+Returns:
+    The task's unique ID
+
+
+**Returns:** `int`
+
+---
+
+### `task_is_done(task)`
+
+Check if a background task has completed.
+
+Args:
+    task: LexFlowTask handle from control_spawn
+
+Returns:
+    True if task is done (completed, cancelled, or failed)
+
+
+**Returns:** `bool`
+
+---
+
+### `task_name(task)`
+
+Get the name of a task.
+
+Args:
+    task: LexFlowTask handle from control_spawn
+
+Returns:
+    The task's name
+
+
+**Returns:** `str`
+
+---
+
+### `task_result(task)`
+
+Get the result of a completed task.
+
+Args:
+    task: LexFlowTask handle from control_spawn
+
+Returns:
+    The task's return value
+
+Raises:
+    InvalidStateError: If task is not done
+
+
+**Returns:** `Any`
+
+---
+
+### `task_sleep(seconds)`
+
+Sleep for the specified number of seconds.
+
+Args:
+    seconds: Duration to sleep
+
+
+**Returns:** `NoneType`
+
+---
+
+### `task_yield()`
+
+Yield control to other tasks momentarily.
+
+**Returns:** `NoneType`
+
+---
+
+## 📡 Channel Operations
+
+### `channel_close(channel)`
+
+Close a channel.
+
+Args:
+    channel: The channel to close
+
+
+**Returns:** `NoneType`
+
+---
+
+### `channel_create(size=0)`
+
+Create a new channel for inter-task communication.
+
+Args:
+    size: Buffer size (0 for unbuffered/synchronous)
+
+Returns:
+    A new Channel object
+
+
+**Returns:** `Channel`
+
+---
+
+### `channel_is_closed(channel)`
+
+Check if a channel is closed.
+
+Args:
+    channel: The channel to check
+
+Returns:
+    True if closed
+
+
+**Returns:** `bool`
+
+---
+
+### `channel_is_empty(channel)`
+
+Check if a channel buffer is empty.
+
+Args:
+    channel: The channel to check
+
+Returns:
+    True if empty
+
+
+**Returns:** `bool`
+
+---
+
+### `channel_len(channel)`
+
+Get the number of items in the channel buffer.
+
+Args:
+    channel: The channel to check
+
+Returns:
+    Number of items in buffer
+
+
+**Returns:** `int`
+
+---
+
+### `channel_receive(channel, timeout=None)`
+
+Receive a value from a channel.
+
+Blocks until a value is available.
+
+Args:
+    channel: The channel to receive from
+    timeout: Optional timeout in seconds
+
+Returns:
+    The received value
+
+Raises:
+    asyncio.TimeoutError: If timeout exceeded
+    RuntimeError: If channel is closed and empty
+
+
+**Parameters:**
+
+- `channel` (Channel, required)
+- `timeout` (Optional, optional, default: `None`)
+
+**Returns:** `Any`
+
+---
+
+### `channel_send(channel, value)`
+
+Send a value through a channel.
+
+Blocks if the channel buffer is full.
+
+Args:
+    channel: The channel to send to
+    value: The value to send
+
+Raises:
+    RuntimeError: If the channel is closed
+
+
+**Parameters:**
+
+- `channel` (Channel, required)
+- `value` (Any, required)
+
+**Returns:** `NoneType`
+
+---
+
+### `channel_try_receive(channel)`
+
+Try to receive a value without blocking.
+
+Args:
+    channel: The channel to receive from
+
+Returns:
+    Dict with keys: value, ok (True if received)
+
+
+**Returns:** `dict`
+
+---
+
+## 🔒 Sync Primitives
+
+### `sync_event_clear(event)`
+
+Clear an event (reset to unset state).
+
+Args:
+    event: The event to clear
+
+
+**Returns:** `NoneType`
+
+---
+
+### `sync_event_create()`
+
+Create an event for signaling between tasks.
+
+Returns:
+    An asyncio.Event
+
+
+**Returns:** `Event`
+
+---
+
+### `sync_event_is_set(event)`
+
+Check if an event is set.
+
+Args:
+    event: The event to check
+
+Returns:
+    True if set
+
+
+**Returns:** `bool`
+
+---
+
+### `sync_event_set(event)`
+
+Set an event (signal waiting tasks).
+
+Args:
+    event: The event to set
+
+
+**Returns:** `NoneType`
+
+---
+
+### `sync_event_wait(event, timeout=None)`
+
+Wait for an event to be set.
+
+Args:
+    event: The event to wait for
+    timeout: Optional timeout in seconds
+
+Returns:
+    True if event was set, False if timeout
+
+
+**Parameters:**
+
+- `event` (Event, required)
+- `timeout` (Optional, optional, default: `None`)
+
+**Returns:** `bool`
+
+---
+
+### `sync_semaphore_acquire(semaphore, timeout=None)`
+
+Acquire a semaphore permit.
+
+Args:
+    semaphore: The semaphore to acquire
+    timeout: Optional timeout in seconds
+
+Returns:
+    True if acquired, False if timeout
+
+
+**Parameters:**
+
+- `semaphore` (Semaphore, required)
+- `timeout` (Optional, optional, default: `None`)
+
+**Returns:** `bool`
+
+---
+
+### `sync_semaphore_create(permits=1)`
+
+Create a semaphore for limiting concurrent access.
+
+Args:
+    permits: Number of permits (1 for mutex)
+
+Returns:
+    An asyncio.Semaphore
+
+
+**Returns:** `Semaphore`
+
+---
+
+### `sync_semaphore_release(semaphore)`
+
+Release a semaphore permit.
+
+Args:
+    semaphore: The semaphore to release
+
+
+**Returns:** `NoneType`
 
 ---
 
 ## Summary
 
-**Total opcodes:** 174
+**Total opcodes:** 197
+
+### Categories
+
+| Category | Opcodes | Requires |
+|:---------|--------:|:---------|
+| 📤 I/O Operations | 2 | - |
+| ⚡ Operators | 14 | - |
+| 🔢 Math Operations | 6 | - |
+| 📝 String Operations | 12 | - |
+| 📋 List Operations | 5 | - |
+| 📖 Dictionary Operations | 15 | - |
+| 📦 Object Operations | 8 | - |
+| 🔄 Type Conversions | 6 | - |
+| ⚠️ Exception Operations | 4 | - |
+| ✓ Assertion Operations | 2 | - |
+| 🔗 Workflow Operations | 4 | - |
+| 📦 Data Operations | 2 | - |
+| ↻ Control Flow | 11 | - |
+| ⏱ Async Operations | 3 | - |
+| 🤖 AI Operations (Pydantic AI) | 4 | `lexflow[ai]` |
+| 🌐 HTTP Operations | 8 | `lexflow[http]` |
+| 📄 HTML Operations | 5 | `lexflow[http]` |
+| 📋 JSON Operations | 2 | - |
+| 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
+| 🔍 RAG Operations | 15 | `lexflow[rag]` |
+| 💬 Chat Operations | 10 | - |
+| 💻 CLI Operations | 10 | - |
+| 🐙 GitHub Operations | 7 | - |
+| ⚡ Task Operations | 10 | - |
+| 📡 Channel Operations | 8 | - |
+| 🔒 Sync Primitives | 8 | - |
