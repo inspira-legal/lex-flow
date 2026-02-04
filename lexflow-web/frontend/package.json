@@ -28,7 +28,7 @@
     "build": "tsc -b && vite build",
     "build:lib": "BUILD_LIB=true vite build && tsc --project tsconfig.lib.json",
     "build:umd": "BUILD_LIB=true BUILD_UMD=true vite build",
-    "build:all": "npm run build:lib && npm run build:umd",
+    "build:all": "npm run copy-grammar && npm run build:lib && npm run build:umd",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
