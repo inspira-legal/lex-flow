@@ -37,6 +37,44 @@ def handle_docs_command(args) -> int:
     return 0
 
 
+def handle_grammar_command(args) -> int:
+    """Handle the 'grammar' subcommand."""
+    from lexflow_cli.docs import sync_grammar_categories
+
+    if args.grammar_command == "sync":
+        grammar_path = Path(args.path) if args.path else None
+        dry_run = args.dry_run
+
+        try:
+            result = sync_grammar_categories(grammar_path, dry_run=dry_run)
+
+            if dry_run:
+                print("Dry run - no changes written")
+                print()
+
+            if result["added"]:
+                print(f"Added categories: {', '.join(result['added'])}")
+            if result["updated"]:
+                print(f"Updated categories: {', '.join(result['updated'])}")
+            if result["unchanged"]:
+                print(f"Unchanged categories: {len(result['unchanged'])}")
+
+            if not dry_run and (result["added"] or result["updated"]):
+                print()
+                print("✓ grammar.json updated successfully")
+
+            return 0
+
+        except FileNotFoundError as e:
+            print_error(str(e))
+            return 1
+        except Exception as e:
+            print_error(f"Error syncing grammar: {e}")
+            return 1
+
+    return 0
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create argument parser with subcommands."""
     parser = argparse.ArgumentParser(
@@ -102,6 +140,38 @@ Examples:
         "--grammar",
         action="store_true",
         help="Generate grammar reference (control flow constructs) instead of opcode reference",
+    )
+
+    # 'grammar' subcommand
+    grammar_parser = subparsers.add_parser(
+        "grammar",
+        help="Grammar management commands",
+    )
+    grammar_subparsers = grammar_parser.add_subparsers(
+        dest="grammar_command", help="Grammar commands"
+    )
+
+    # 'grammar sync' subcommand
+    grammar_sync_parser = grammar_subparsers.add_parser(
+        "sync",
+        help="Sync opcode categories to grammar.json",
+        epilog="""
+Examples:
+  lexflow grammar sync                      # Sync categories to grammar.json
+  lexflow grammar sync --dry-run            # Show what would change
+  lexflow grammar sync --path custom.json   # Use custom grammar file
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    grammar_sync_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would change without writing",
+    )
+    grammar_sync_parser.add_argument(
+        "--path",
+        metavar="FILE",
+        help="Path to grammar.json (default: auto-detect)",
     )
 
     return parser
@@ -395,7 +465,13 @@ async def main():
 
     # Handle legacy syntax: lexflow file.yaml (without 'run' subcommand)
     # Check if first argument looks like a file (not a subcommand)
-    if len(sys.argv) > 1 and sys.argv[1] not in ("run", "docs", "-h", "--help"):
+    if len(sys.argv) > 1 and sys.argv[1] not in (
+        "run",
+        "docs",
+        "grammar",
+        "-h",
+        "--help",
+    ):
         # Insert 'run' as the subcommand for backward compatibility
         sys.argv.insert(1, "run")
 
@@ -409,6 +485,12 @@ async def main():
         else:
             # Show docs help if no subcommand
             arg_parser.parse_args(["docs", "-h"])
+    elif args.command == "grammar":
+        if args.grammar_command == "sync":
+            sys.exit(handle_grammar_command(args))
+        else:
+            # Show grammar help if no subcommand
+            arg_parser.parse_args(["grammar", "-h"])
     else:
         arg_parser.print_help()
         sys.exit(0)

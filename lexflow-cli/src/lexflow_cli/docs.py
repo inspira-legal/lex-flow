@@ -1,6 +1,8 @@
 """Documentation generation from code introspection."""
 
 import inspect
+import json
+from pathlib import Path
 from typing import Any
 
 from lexflow.opcodes import default_registry
@@ -11,69 +13,6 @@ def _get_control_flow_opcodes() -> dict[str, str]:
     """Get control flow opcodes from grammar schema."""
     grammar = get_grammar()
     return {c["opcode"]: c["description"] for c in grammar["constructs"]}
-
-
-# Category order and display names
-CATEGORY_ORDER = [
-    ("io", "I/O Operations"),
-    ("operator", "Operators"),
-    ("math", "Math Operations"),
-    ("string", "String Operations"),
-    ("list", "List Operations"),
-    ("dict", "Dictionary Operations"),
-    ("object", "Object Operations"),
-    ("type", "Type Conversions"),
-    ("throw", "Exception Operations"),
-    ("assert", "Assertion Operations"),
-    ("workflow", "Workflow Operations"),
-    ("data", "Data Operations"),
-    ("control", "Control Flow"),
-    ("async", "Async Operations"),
-    ("http", "HTTP Operations"),
-    ("pydantic_ai", "AI Operations (Pydantic AI)"),
-    ("chat", "Chat Operations"),
-    ("cli", "CLI Operations"),
-    ("github", "GitHub Operations"),
-    ("rag", "RAG Operations"),
-    ("pygame", "Pygame Operations"),
-    ("task", "Task Operations"),
-    ("other", "Other Operations"),
-]
-
-
-def _get_category(name: str) -> str:
-    """Determine category from opcode name prefix."""
-    # Type conversions are special - they don't have a prefix
-    if name in ("str", "int", "float", "bool", "len", "range"):
-        return "type"
-
-    # Try grammar categories first
-    grammar = get_grammar()
-    for category in grammar["categories"]:
-        if name.startswith(category["prefix"]):
-            return category["id"]
-
-    # Fallback prefixes not in grammar
-    fallback_prefixes = [
-        "object_",
-        "throw_",
-        "throw",
-        "assert_",
-        "http_",
-        "pydantic_ai_",
-        "chat_",
-        "cli_",
-        "github_",
-        "rag_",
-        "pygame_",
-        "task_",
-    ]
-
-    for prefix in fallback_prefixes:
-        if name.startswith(prefix):
-            return prefix.rstrip("_")
-
-    return "other"
 
 
 def _format_type(type_hint: Any) -> str:
@@ -107,7 +46,6 @@ def get_opcode_metadata(name: str) -> dict:
     if "error" in interface:
         return None
 
-    # Check if it uses *args
     sig = default_registry.signatures.get(name)
     is_varargs = False
     if sig:
@@ -115,13 +53,17 @@ def get_opcode_metadata(name: str) -> dict:
         if params and params[-1].kind == inspect.Parameter.VAR_POSITIONAL:
             is_varargs = True
 
+    # Get category from registry
+    cat = default_registry.get_category(name)
+    category_id = cat.id if cat else "other"
+
     return {
         "name": name,
         "parameters": interface.get("parameters", []),
         "return_type": interface.get("return_type", "Any"),
         "doc": interface.get("doc", ""),
         "is_varargs": is_varargs,
-        "category": _get_category(name),
+        "category": category_id,
     }
 
 
@@ -138,36 +80,47 @@ def generate_opcode_reference() -> str:
     lines.append("")
 
     # Group opcodes by category
-    categories: dict[str, list] = {}
+    categories_data: dict[str, list] = {}
     for name in default_registry.list_opcodes():
         meta = get_opcode_metadata(name)
         if meta:
             cat = meta["category"]
-            if cat not in categories:
-                categories[cat] = []
-            categories[cat].append(meta)
+            if cat not in categories_data:
+                categories_data[cat] = []
+            categories_data[cat].append(meta)
+
+    # Get categories from registry (sorted by order)
+    registry_categories = default_registry.list_categories()
 
     # Generate table of contents
     lines.append("## Table of Contents")
     lines.append("")
-    for cat_key, cat_name in CATEGORY_ORDER:
-        if cat_key in categories:
+    for cat in registry_categories:
+        if cat.id in categories_data:
             anchor = (
-                cat_name.lower().replace(" ", "-").replace("(", "").replace(")", "")
+                cat.label.lower().replace(" ", "-").replace("(", "").replace(")", "")
             )
-            lines.append(f"- [{cat_name}](#{anchor})")
+            requires_note = (
+                f" *(requires `lexflow[{cat.requires}]`)*" if cat.requires else ""
+            )
+            lines.append(f"- [{cat.icon} {cat.label}](#{anchor}){requires_note}")
     lines.append("")
 
     # Generate sections
     total_count = 0
-    for cat_key, cat_name in CATEGORY_ORDER:
-        if cat_key not in categories:
+    for cat in registry_categories:
+        if cat.id not in categories_data:
             continue
 
-        lines.append(f"## {cat_name}")
+        # Section header with optional requires note
+        requires_note = ""
+        if cat.requires:
+            requires_note = f"\n\n> **Requires:** `pip install lexflow[{cat.requires}]`"
+
+        lines.append(f"## {cat.icon} {cat.label}{requires_note}")
         lines.append("")
 
-        opcodes = sorted(categories[cat_key], key=lambda x: x["name"])
+        opcodes = sorted(categories_data[cat.id], key=lambda x: x["name"])
         total_count += len(opcodes)
 
         for op in opcodes:
@@ -205,6 +158,18 @@ def generate_opcode_reference() -> str:
     lines.append("## Summary")
     lines.append("")
     lines.append(f"**Total opcodes:** {total_count}")
+    lines.append("")
+
+    # Categories summary
+    lines.append("### Categories")
+    lines.append("")
+    lines.append("| Category | Opcodes | Requires |")
+    lines.append("|:---------|--------:|:---------|")
+    for cat in registry_categories:
+        if cat.id in categories_data:
+            count = len(categories_data[cat.id])
+            requires = f"`lexflow[{cat.requires}]`" if cat.requires else "-"
+            lines.append(f"| {cat.icon} {cat.label} | {count} | {requires} |")
     lines.append("")
 
     return "\n".join(lines)
@@ -257,7 +222,6 @@ def generate_grammar_reference() -> str:
     control_flow = []
     data_ops = []
     workflow_ops = []
-    other_ops = []
 
     for construct in grammar["constructs"]:
         cat = construct.get("category", "other")
@@ -267,8 +231,6 @@ def generate_grammar_reference() -> str:
             data_ops.append(construct)
         elif cat == "workflow":
             workflow_ops.append(construct)
-        else:
-            other_ops.append(construct)
 
     # Control Flow Constructs
     lines.append("## Control Flow Constructs")
@@ -394,3 +356,66 @@ def _format_construct(construct: dict) -> list[str]:
     lines.append("")
 
     return lines
+
+
+def sync_grammar_categories(grammar_path: Path = None, dry_run: bool = False) -> dict:
+    """Sync categories from opcode registry to grammar.json.
+
+    Args:
+        grammar_path: Path to grammar.json (default: auto-detect)
+        dry_run: If True, don't write changes, just return what would change
+
+    Returns:
+        Dict with 'added', 'updated', 'unchanged' lists of category IDs
+    """
+    # Find grammar.json
+    if grammar_path is None:
+        # Try to find it relative to lexflow package
+        import lexflow
+
+        pkg_path = Path(lexflow.__file__).parent
+        grammar_path = pkg_path / "grammar.json"
+
+    if not grammar_path.exists():
+        raise FileNotFoundError(f"grammar.json not found at {grammar_path}")
+
+    # Load current grammar
+    with open(grammar_path, "r") as f:
+        grammar = json.load(f)
+
+    # Get current categories from grammar
+    grammar_cats = {c["id"]: c for c in grammar.get("categories", [])}
+
+    # Get categories from registry
+    registry_cats = default_registry.list_categories()
+
+    # Track changes
+    result = {"added": [], "updated": [], "unchanged": []}
+
+    # Build new categories list
+    new_categories = []
+    for cat in registry_cats:
+        cat_dict = cat.to_dict()
+
+        if cat.id in grammar_cats:
+            # Check if different
+            existing = grammar_cats[cat.id]
+            if cat_dict != existing:
+                result["updated"].append(cat.id)
+            else:
+                result["unchanged"].append(cat.id)
+        else:
+            result["added"].append(cat.id)
+
+        new_categories.append(cat_dict)
+
+    # Update grammar
+    grammar["categories"] = new_categories
+
+    # Write back if not dry run
+    if not dry_run:
+        with open(grammar_path, "w") as f:
+            json.dump(grammar, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+
+    return result
