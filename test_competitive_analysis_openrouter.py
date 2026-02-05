@@ -33,7 +33,7 @@ async def main():
     inputs = {
         "company_name": "Anthropic",
         "competitor_name": "OpenAI",
-        "api_key": "your-openrouter-key"
+        "api_key": os.environ.get("OPENROUTER_API_KEY", "your-openrouter-key")
     }
 
     # Handle placeholder API key

@@ -204,81 +204,13 @@ workflows:
       # 3. Build Research Prompt (with variable substitution)
       # ---------------------------------------------------------
       build_research_prompt:
-        opcode: operator_add
-        next: build_research_prompt_2
-        inputs:
-          left: {literal: "You are a competitive intelligence analyst conducting REAL-TIME research on recent activities.\n\n**IMPORTANT**: Focus ONLY on information from the last 30 days (or most recent available).\n\n**Company Context (Client)**: "}
-          right: {variable: "company_name"}
-
-      build_research_prompt_2:
-        opcode: operator_add
-        next: build_research_prompt_3
-        inputs:
-          left: {node: build_research_prompt}
-          right: {literal: "\n**Competitor to Research**: "}
-
-      build_research_prompt_3:
-        opcode: operator_add
-        next: build_research_prompt_4
-        inputs:
-          left: {node: build_research_prompt_2}
-          right: {variable: "competitor_name"}
-
-      build_research_prompt_4:
-        opcode: operator_add
-        next: save_research_prompt
-        inputs:
-          left: {node: build_research_prompt_3}
-          right: {literal: "\n\n**Your Task**:\nSearch and analyze RECENT activities about "}
-
-      save_research_prompt:
-        opcode: data_set_variable_to
-        next: build_research_prompt_5
-        inputs:
-          VARIABLE: {literal: "research_full_prompt"}
-          VALUE: {node: build_research_prompt_4}
-
-      build_research_prompt_5:
-        opcode: operator_add
-        next: build_research_prompt_6
-        inputs:
-          left: {variable: "research_full_prompt"}
-          right: {variable: "competitor_name"}
-
-      build_research_prompt_6:
-        opcode: operator_add
-        next: update_research_prompt
-        inputs:
-          left: {node: build_research_prompt_5}
-          right: {literal: " that could impact "}
-
-      update_research_prompt:
-        opcode: data_set_variable_to
-        next: build_research_prompt_7
-        inputs:
-          VARIABLE: {literal: "research_full_prompt"}
-          VALUE: {node: build_research_prompt_6}
-
-      build_research_prompt_7:
-        opcode: operator_add
-        next: build_research_prompt_final
-        inputs:
-          left: {variable: "research_full_prompt"}
-          right: {variable: "company_name"}
-
-      build_research_prompt_final:
-        opcode: operator_add
-        next: save_final_research_prompt
-        inputs:
-          left: {node: build_research_prompt_7}
-          right: {literal: "'s business.\n\n**Focus Areas** (prioritize most recent):\n1. 📱 **Social Media Activity** (Twitter/X, LinkedIn posts from last 30 days)\n2. 👔 **New Hires & Team Changes** (LinkedIn job postings, announcements)\n3. 📰 **News & Press Releases** (last 30 days)\n4. 📝 **Blog Posts & Articles** (company blog, industry publications)\n5. 💰 **Funding Announcements** (investments, acquisitions)\n6. 🚀 **Product Launches** (new features, updates)\n7. 🤝 **Partnerships & Integrations**\n8. 📊 **Market Positioning** (pricing changes, new segments)\n\n**Output Format**:\nFor each finding, include:\n- Date (when available)\n- Source (LinkedIn, Twitter, news site, etc.)\n- Brief description\n- Potential impact\n\nIf no recent information is found, explicitly state: \"No significant recent activity found in the last 30 days.\""}
-
-      save_final_research_prompt:
-        opcode: data_set_variable_to
+        opcode: string_replace
         next: create_research_message
         inputs:
-          VARIABLE: {literal: "research_full_prompt"}
-          VALUE: {node: build_research_prompt_final}
+          template: {variable: "research_prompt_template"}
+          replace:
+            company_name: {variable: "company_name"}
+            competitor_name: {variable: "competitor_name"}
 
       # ---------------------------------------------------------
       # 4. Create Research Request (Perplexity)
@@ -290,7 +222,7 @@ workflows:
           key1: {literal: "role"}
           val1: {literal: "user"}
           key2: {literal: "content"}
-          val2: {variable: "research_full_prompt"}
+          val2: {node: build_research_prompt}
 
       create_research_messages_list:
         opcode: list_create

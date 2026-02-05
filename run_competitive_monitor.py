@@ -29,11 +29,12 @@ Examples:
     python3 run_competitive_monitor.py -c "Anthropic" -x "OpenAI" -v
 """
 
-import asyncio
-import argparse
 import sys
+import argparse
+import asyncio
+import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 # Add lexflow to path
 sys.path.insert(0, str(Path(__file__).parent / "lexflow-core" / "src"))
@@ -42,8 +43,8 @@ from lexflow import Parser, Engine
 
 
 # Default API keys (to be provided via command line or environment)
-DEFAULT_PERPLEXITY_KEY = None
-DEFAULT_OPENROUTER_KEY = None
+DEFAULT_PERPLEXITY_KEY = os.environ.get("PERPLEXITY_API_KEY")
+DEFAULT_OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -139,7 +140,7 @@ async def run_monitoring(
     perplexity_model: str = "sonar",
     openrouter_model: str = "google/gemini-2.5-flash-lite",
     verbose: bool = False
-) -> dict:
+) -> Any:
     """
     Execute real-time competitive monitoring.
 

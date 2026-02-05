@@ -47,6 +47,26 @@ workflows:
         2. Focus on: Product launches, Mergers, Leadership changes, Financials, Legal issues, Tech advancements, Marketing, Expansion.
         3. Analyze trends and implications for the client company.
         4. Provide actionable insights.
+      
+      # Templates for safer prompt construction
+      research_prompt_template: |
+        You are an advanced AI research assistant specialized in conducting deep research on the latest news about competitors that may impact a company's business. Your task is to gather and analyze recent, relevant information **ONLY about the specified competitor and provide insights on how this might affect {company_name}.**
+
+        <competitor_name>
+        {competitor_name}
+        </competitor_name>
+        
+        This is the name of the competitor you must exclusively focus your research on.
+
+        IMPORTANT INSTRUCTIONS:
+        - Focus EXCLUSIVELY on researching and analyzing the competitor specified. Do NOT analyze your client {company_name}.
+        - Based on your knowledge, provide analysis of the competitor's recent activities.
+
+        Follow these steps:
+        1. Analyze recent news, product launches, and market positioning related ONLY to the competitor.
+        2. Focus on: Product launches, Mergers, Leadership changes, Financials, Legal issues, Tech advancements, Marketing, Expansion.
+        3. Analyze trends and implications for the client company {company_name}.
+        4. Provide actionable insights.
 
       research_full_prompt: ""
       research_messages: []
@@ -141,39 +161,13 @@ workflows:
       # 2. Build Research Prompt
       # ---------------------------------------------------------
       build_research_prompt:
-        opcode: operator_add
-        next: build_research_prompt_2
-        inputs:
-          left: {variable: "research_prompt_part1"}
-          right: {variable: "company_name"}
-
-      build_research_prompt_2:
-        opcode: operator_add
-        next: build_research_prompt_3
-        inputs:
-          left: {node: build_research_prompt}
-          right: {variable: "research_prompt_part2"}
-
-      build_research_prompt_3:
-        opcode: operator_add
-        next: build_research_prompt_4
-        inputs:
-          left: {node: build_research_prompt_2}
-          right: {variable: "competitor_name"}
-
-      build_research_prompt_4:
-        opcode: operator_add
-        next: save_research_prompt
-        inputs:
-          left: {node: build_research_prompt_3}
-          right: {variable: "research_prompt_part3"}
-
-      save_research_prompt:
-        opcode: data_set_variable_to
+        opcode: string_replace
         next: create_research_message
         inputs:
-          VARIABLE: {literal: "research_full_prompt"}
-          VALUE: {node: build_research_prompt_4}
+          template: {variable: "research_prompt_template"}
+          replace:
+            company_name: {variable: "company_name"}
+            competitor_name: {variable: "competitor_name"}
 
       # ---------------------------------------------------------
       # 3. Create Research Request Body
@@ -185,7 +179,7 @@ workflows:
           key1: {literal: "role"}
           val1: {literal: "user"}
           key2: {literal: "content"}
-          val2: {variable: "research_full_prompt"}
+          val2: {node: build_research_prompt}
 
       create_research_messages_list:
         opcode: list_create

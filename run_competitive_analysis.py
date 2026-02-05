@@ -22,8 +22,9 @@ Examples:
 import asyncio
 import argparse
 import sys
+import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 # Add lexflow to path
 sys.path.insert(0, str(Path(__file__).parent / "lexflow-core" / "src"))
@@ -112,7 +113,7 @@ async def run_analysis(
     research_model: Optional[str] = None,
     formatter_model: Optional[str] = None,
     verbose: bool = False
-) -> dict:
+) -> Any:
     """
     Execute competitive analysis workflow.
 
@@ -148,12 +149,21 @@ async def run_analysis(
         "competitor_name": competitor_name
     }
 
-    # Add optional overrides
+    # Add API key, prioritizing command line, then environment variable
     if api_key:
         inputs["api_key"] = api_key
         if verbose:
-            print("🔑 Using custom API key")
+            print("🔑 Using API key from command line argument")
+    else:
+        env_api_key = os.environ.get("OPENROUTER_API_KEY")
+        if env_api_key:
+            inputs["api_key"] = env_api_key
+            if verbose:
+                print("🔑 Using API key from OPENROUTER_API_KEY environment variable")
+        elif verbose:
+            print("⚠️ No API key provided via command line or environment variable. Workflow might use its own default or fail.")
 
+    # Add optional model overrides
     if research_model:
         inputs["research_model"] = research_model
         if verbose:
