@@ -2,6 +2,46 @@
 
 <!-- version list -->
 
+## v1.4.0 (2026-02-05)
+
+### Bug Fixes
+
+- **gcs**: Use asyncio.to_thread for non-blocking I/O operations
+  ([`60c040f`](https://github.com/inspira-legal/lex-flow/commit/60c040f2dcd53cc74c99d77b517b45def5ac3528))
+
+### Chores
+
+- **cli**: Release 1.2.0
+  ([`6e5c163`](https://github.com/inspira-legal/lex-flow/commit/6e5c1630da77dacd6c1b08006d1862118dd4d4ee))
+
+- **web**: Build frontend library [skip ci]
+  ([`a559d9a`](https://github.com/inspira-legal/lex-flow/commit/a559d9ae8ad81fefc301d16df8dcca23b0bc7afa))
+
+- **web**: Release 1.7.0
+  ([`e48215a`](https://github.com/inspira-legal/lex-flow/commit/e48215a01541a4020538eba74a264d2f314d5c34))
+
+- **web**: Remove grammar.json from tracking, copy from core at build time
+  ([`0014e93`](https://github.com/inspira-legal/lex-flow/commit/0014e937a2fff95d71a5912fb7d98b51f2d8978c))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`2f5dd59`](https://github.com/inspira-legal/lex-flow/commit/2f5dd5937e5ecec7edd3ab20912bd8b2deb1e83f))
+
+### Features
+
+- **core**: Add Google Cloud Storage integration
+  ([`f3253da`](https://github.com/inspira-legal/lex-flow/commit/f3253da57f396bfd22c75b4016049aad36ac833d))
+
+- **rag**: Add GCS ingestion workflow and RAG improvements
+  ([`a1428a0`](https://github.com/inspira-legal/lex-flow/commit/a1428a09e48779d07ad86a6d466bc46184ddc0b1))
+
+### Refactoring
+
+- **gcs**: Address PR review comments
+  ([`a0e3cca`](https://github.com/inspira-legal/lex-flow/commit/a0e3ccac78edd17f14b0ee5b09e480d27438ead8))
+
+
 ## v1.3.0 (2026-02-04)
 
 ### Chores
