@@ -15,6 +15,7 @@
 #   --input collection=documents    Qdrant collection name (default: documents)
 #   --input num_results=3           Number of context chunks (default: 3)
 #   --input location=us-central1    GCP region (default: us-central1)
+#   --input rerank=false            Disable BM25 reranking (default: true)
 #
 # Requirements:
 #   pip install lexflow[rag,ai]
@@ -24,7 +25,7 @@
 workflows:
   - name: main
     interface:
-      inputs: [question, project, collection, num_results, location]
+      inputs: [question, project, collection, num_results, location, rerank]
       outputs: []
     variables:
       # Input parameters
@@ -33,6 +34,7 @@ workflows:
       collection: "documents"
       num_results: 3
       location: "us-central1"
+      rerank: true
       # Qdrant client
       qdrant_client: null
       # Search results
@@ -131,6 +133,8 @@ workflows:
             variable: project
           location:
             variable: location
+          model:
+            literal: "text-multilingual-embedding-002"
 
       store_question_embedding:
         opcode: data_set_variable_to
@@ -157,12 +161,43 @@ workflows:
 
       store_search_results:
         opcode: data_set_variable_to
-        next: store_results_count
+        next: check_rerank
         inputs:
           VARIABLE:
             literal: "search_results"
           VALUE:
             node: search_qdrant
+
+      # Conditionally apply BM25 reranking
+      check_rerank:
+        opcode: control_if
+        next: store_results_count
+        inputs:
+          CONDITION:
+            variable: rerank
+          THEN:
+            branch: rerank_results
+
+      # BM25 rerank search results
+      do_rerank:
+        opcode: bm25_rerank
+        isReporter: true
+        inputs:
+          query:
+            variable: question
+          results:
+            variable: search_results
+          top_k:
+            variable: num_results
+
+      rerank_results:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "search_results"
+          VALUE:
+            node: do_rerank
 
       # Get results count
       get_results_count:

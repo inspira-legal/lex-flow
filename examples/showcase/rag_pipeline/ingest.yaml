@@ -463,6 +463,8 @@ workflows:
         inputs:
           texts:
             variable: chunks
+          model:
+            literal: "text-multilingual-embedding-002"
           project:
             variable: project
           location:

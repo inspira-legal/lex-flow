@@ -38,7 +38,6 @@ workflows:
       qdrant_url: "http://localhost:6333"
       # State variables
       gcs_client: null
-      gcs_bucket: null
       pdf_bytes: null
       qdrant_client: null
       pdf_pages: []
@@ -273,14 +272,12 @@ workflows:
         next: create_gcs_client
         inputs:
           STRING:
-            literal: "[1/7] Creating GCS client... "
+            literal: "[1/6] Creating GCS client... "
 
       do_create_gcs_client:
         opcode: gcs_create_client
         isReporter: true
-        inputs:
-          project:
-            variable: project
+        inputs: {}
 
       create_gcs_client:
         opcode: data_set_variable_to
@@ -299,32 +296,34 @@ workflows:
             literal: "Done\n"
 
       # ========================================================================
-      # STEP 2: Get GCS Bucket
+      # STEP 2: Download PDF from GCS
       # ========================================================================
       print_step2:
         opcode: io_print
-        next: get_bucket
+        next: download_pdf
         inputs:
           STRING:
-            literal: "[2/7] Getting bucket reference... "
+            literal: "[2/6] Downloading PDF from GCS... "
 
-      do_get_bucket:
-        opcode: gcs_get_bucket
+      do_download_pdf:
+        opcode: gcs_download_object_as_bytes
         isReporter: true
         inputs:
           client:
             variable: gcs_client
           bucket_name:
             variable: bucket
+          object_name:
+            variable: object_name
 
-      get_bucket:
+      download_pdf:
         opcode: data_set_variable_to
         next: print_step2_done
         inputs:
           VARIABLE:
-            literal: "gcs_bucket"
+            literal: "pdf_bytes"
           VALUE:
-            node: do_get_bucket
+            node: do_download_pdf
 
       print_step2_done:
         opcode: io_print
@@ -334,49 +333,14 @@ workflows:
             literal: "Done\n"
 
       # ========================================================================
-      # STEP 3: Download PDF from GCS
+      # STEP 3: Connect to Qdrant
       # ========================================================================
       print_step3:
-        opcode: io_print
-        next: download_pdf
-        inputs:
-          STRING:
-            literal: "[3/7] Downloading PDF from GCS... "
-
-      do_download_pdf:
-        opcode: gcs_download_object_as_bytes
-        isReporter: true
-        inputs:
-          bucket:
-            variable: gcs_bucket
-          object_name:
-            variable: object_name
-
-      download_pdf:
-        opcode: data_set_variable_to
-        next: print_step3_done
-        inputs:
-          VARIABLE:
-            literal: "pdf_bytes"
-          VALUE:
-            node: do_download_pdf
-
-      print_step3_done:
-        opcode: io_print
-        next: print_step4
-        inputs:
-          STRING:
-            literal: "Done\n"
-
-      # ========================================================================
-      # STEP 4: Connect to Qdrant
-      # ========================================================================
-      print_step4:
         opcode: io_print
         next: connect_qdrant
         inputs:
           STRING:
-            literal: "[4/7] Connecting to Qdrant... "
+            literal: "[3/6] Connecting to Qdrant... "
 
       do_connect_qdrant:
         opcode: qdrant_connect
@@ -387,29 +351,29 @@ workflows:
 
       connect_qdrant:
         opcode: data_set_variable_to
-        next: print_step4_done
+        next: print_step3_done
         inputs:
           VARIABLE:
             literal: "qdrant_client"
           VALUE:
             node: do_connect_qdrant
 
-      print_step4_done:
+      print_step3_done:
         opcode: io_print
-        next: print_step5
+        next: print_step4
         inputs:
           STRING:
             literal: "Done\n"
 
       # ========================================================================
-      # STEP 5: Create Collection (if not exists)
+      # STEP 4: Create Collection (if not exists)
       # ========================================================================
-      print_step5:
+      print_step4:
         opcode: io_print
         next: create_collection
         inputs:
           STRING:
-            literal: "[5/7] Creating collection (if needed)... "
+            literal: "[4/6] Creating collection (if needed)... "
 
       do_create_collection:
         opcode: qdrant_create_collection
@@ -424,7 +388,7 @@ workflows:
 
       create_collection:
         opcode: control_if_else
-        next: print_step6
+        next: print_step5
         inputs:
           CONDITION:
             node: do_create_collection
@@ -448,14 +412,14 @@ workflows:
             literal: "Already exists\n"
 
       # ========================================================================
-      # STEP 6: Extract text from PDF bytes (per page)
+      # STEP 5: Extract text from PDF bytes (per page)
       # ========================================================================
-      print_step6:
+      print_step5:
         opcode: io_print
         next: extract_pdf
         inputs:
           STRING:
-            literal: "[6/7] Extracting text from PDF... "
+            literal: "[5/6] Extracting text from PDF... "
 
       do_extract_pdf:
         opcode: pdf_extract_pages_from_bytes
@@ -466,7 +430,7 @@ workflows:
 
       extract_pdf:
         opcode: data_set_variable_to
-        next: print_step6_done
+        next: print_step5_done
         inputs:
           VARIABLE:
             literal: "pdf_pages"
@@ -487,7 +451,7 @@ workflows:
           value:
             node: page_count
 
-      step6_done_msg:
+      step5_done_msg:
         opcode: operator_add
         isReporter: true
         inputs:
@@ -496,15 +460,15 @@ workflows:
           right:
             literal: " pages extracted\n"
 
-      print_step6_done:
+      print_step5_done:
         opcode: io_print
         next: chunk_text
         inputs:
           STRING:
-            node: step6_done_msg
+            node: step5_done_msg
 
       # ========================================================================
-      # STEP 7: Chunk, embed, and upsert
+      # STEP 6: Chunk, embed, and upsert
       # ========================================================================
       do_chunk_pages:
         opcode: text_chunk_pages_smart
@@ -642,21 +606,21 @@ workflows:
 
       reset_payloads:
         opcode: data_set_variable_to
-        next: print_step7
+        next: print_step6
         inputs:
           VARIABLE:
             literal: "payloads"
           VALUE:
             literal: []
 
-      # Print step 7 message and continue to build loop
+      # Print step 6 message and continue to build loop
       # NOTE: This is a STATEMENT node (not a reporter) - it has next pointer and no isReporter
-      print_step7:
+      print_step6:
         opcode: io_print
         next: build_loop
         inputs:
           STRING:
-            literal: "[7/7] Chunking, embedding, and upserting... "
+            literal: "[6/6] Chunking, embedding, and upserting... "
 
       build_loop:
         opcode: control_foreach
@@ -1001,5 +965,3 @@ workflows:
         inputs:
           STRING:
             literal: "================================================================================\n\n"
-      reranked_results: []
-          left:
