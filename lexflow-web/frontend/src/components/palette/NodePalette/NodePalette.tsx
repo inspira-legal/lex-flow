@@ -300,7 +300,7 @@ function OpcodeItem({ opcode }: { opcode: OpcodeInterface }) {
 
   const displayName = opcode.name
     .replace(
-      /^(control_|data_|io_|operator_|list_|dict_|string_|math_|workflow_)/,
+      /^(control_|data_|io_|operator_|list_|dict_|string_|math_|workflow_|async_|pubsub_)/,
       ""
     )
     .split("_")
