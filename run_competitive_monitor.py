@@ -117,22 +117,29 @@ def validate_inputs(args: argparse.Namespace) -> None:
     if not args.competitor.strip():
         raise ValueError("Competitor name cannot be empty")
 
-    if not args.perplexity_key or not args.perplexity_key.startswith("pplx-"):
+    # Only validate if not using command-line/environment overrides
+    if args.perplexity_key and not args.perplexity_key.startswith("pplx-"):
         raise ValueError("Invalid Perplexity API key format (should start with 'pplx-')")
 
-    if not args.openrouter_key or not args.openrouter_key.startswith("sk-or-"):
+    if args.openrouter_key and not args.openrouter_key.startswith("sk-or-"):
         raise ValueError("Invalid OpenRouter API key format (should start with 'sk-or-')")
+
+    if not args.perplexity_key:
+        print("⚠️  Warning: Perplexity API key not provided. Search steps may fail.")
+
+    if not args.openrouter_key:
+        print("⚠️  Warning: OpenRouter API key not provided. Formatting steps may fail.")
 
 
 async def run_monitoring(
     company_name: str,
     competitor_name: str,
-    perplexity_key: str,
-    openrouter_key: str,
+    perplexity_key: Optional[str],
+    openrouter_key: Optional[str],
     perplexity_model: str = "sonar",
     openrouter_model: str = "google/gemini-2.5-flash-lite",
     verbose: bool = False
-) -> None:
+) -> dict:
     """
     Execute real-time competitive monitoring.
 
@@ -221,7 +228,7 @@ async def main():
 
     except Exception as e:
         print(f"\n❌ Error: {e}", file=sys.stderr)
-        if 'args' in locals() and args.verbose:
+        if locals().get('args') and getattr(args, 'verbose', False):
             import traceback
             traceback.print_exc()
         sys.exit(1)

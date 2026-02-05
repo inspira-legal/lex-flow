@@ -423,10 +423,16 @@ workflows:
 
       print_report:
         opcode: io_print
-        next: null
+        next: set_final_report
         inputs:
           SEP: {literal: "\n========================================\n"}
           TITLE: {literal: "COMPETITIVE ANALYSIS REPORT\n"}
           SEP2: {literal: "========================================\n\n"}
           REPORT: {node: get_formatter_text}
           FOOTER: {literal: "\n\n========================================\n"}
+
+      set_final_report:
+        opcode: workflow_end
+        next: null
+        inputs:
+          final_report: {node: get_formatter_text}

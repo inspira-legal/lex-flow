@@ -150,6 +150,12 @@ workflows:
 
       print_report:
         opcode: io_print
-        next: null
+        next: set_final_report
         inputs:
           REPORT: {node: get_oa_text}
+
+      set_final_report:
+        opcode: workflow_end
+        next: null
+        inputs:
+          final_report: {node: get_oa_text}

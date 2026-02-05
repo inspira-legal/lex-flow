@@ -112,7 +112,7 @@ async def run_analysis(
     research_model: Optional[str] = None,
     formatter_model: Optional[str] = None,
     verbose: bool = False
-) -> None:
+) -> dict:
     """
     Execute competitive analysis workflow.
 
@@ -210,7 +210,7 @@ async def main():
 
     except Exception as e:
         print(f"\n❌ Error: {e}", file=sys.stderr)
-        if args.verbose if 'args' in locals() else False:
+        if locals().get('args') and getattr(args, 'verbose', False):
             import traceback
             traceback.print_exc()
         sys.exit(1)

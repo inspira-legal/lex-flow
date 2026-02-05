@@ -52,7 +52,7 @@ workflows:
         **Search Strategy**:
         - Use site:linkedin.com for hiring and company updates
         - Use site:twitter.com OR site:x.com for social mentions
-        - Search for "{competitor_name} news 2025"
+        - Search for "{competitor_name} news"
         - Look for "{competitor_name} linkedin hiring"
         - Check "{competitor_name} funding announcement"
 
@@ -538,10 +538,16 @@ workflows:
 
       print_report:
         opcode: io_print
-        next: null
+        next: set_final_report
         inputs:
           HEADER: {literal: "\n========================================\n"}
           TITLE: {literal: "📊 COMPETITIVE INTELLIGENCE REPORT\n"}
           HEADER2: {literal: "========================================\n\n"}
           REPORT: {node: get_formatter_content}
           FOOTER: {literal: "\n\n========================================\n✅ Real-time competitive monitoring complete\n"}
+
+      set_final_report:
+        opcode: workflow_end
+        next: null
+        inputs:
+          final_report: {node: get_formatter_content}

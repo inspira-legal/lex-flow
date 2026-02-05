@@ -37,7 +37,13 @@ async def main():
     )
 
     print("\n✅ Workflow completed!")
-    print(f"\nResult: {result}")
+    
+    # Assertions
+    assert result is not None, "Workflow should return a result"
+    assert "final_report" in result, "Result should contain 'final_report'"
+    assert len(result["final_report"]) > 0, "'final_report' should not be empty"
+    
+    print("✓ All assertions passed!")
     return result
 
 
