@@ -719,6 +719,21 @@ wheels = [
 ]
 
 [[package]]
+name = "gcloud-aio-storage"
+version = "9.6.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiofiles" },
+    { name = "gcloud-aio-auth" },
+    { name = "pyasn1-modules" },
+    { name = "rsa" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/06/c4/fb8b9d2289b8b8758c91c2eb0a860d8fcd2e04c5e91e4708eec8a0d720a4/gcloud_aio_storage-9.6.1.tar.gz", hash = "sha256:e3e621ab5e870d29384a0a7935ac68af12dd19caf93f1c91b0bc70f939333bfb", size = 14617, upload-time = "2025-11-07T19:01:19.338Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/d3/9f7ef4954fc705df86e156d632b044001e70d5be4626ad2c4d1903e8fcf5/gcloud_aio_storage-9.6.1-py3-none-any.whl", hash = "sha256:6881f573df586821dfd456f7ded3d94f326a82197adca15d52acc789c3621df3", size = 17412, upload-time = "2025-11-07T19:01:18.218Z" },
+]
+
+[[package]]
 name = "genai-prices"
 version = "0.0.25"
 source = { registry = "https://pypi.org/simple" }
@@ -1222,6 +1237,7 @@ all = [
     { name = "beautifulsoup4" },
     { name = "fastapi" },
     { name = "gcloud-aio-pubsub" },
+    { name = "gcloud-aio-storage" },
     { name = "google-cloud-aiplatform" },
     { name = "pydantic-ai-slim", extra = ["google"] },
     { name = "pygame" },
@@ -1236,6 +1252,9 @@ dev = [
 ]
 file = [
     { name = "pymupdf" },
+]
+gcs = [
+    { name = "gcloud-aio-storage" },
 ]
 http = [
     { name = "aiohttp" },
@@ -1270,8 +1289,9 @@ requires-dist = [
     { name = "beautifulsoup4", marker = "extra == 'http'" },
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.100.0" },
     { name = "gcloud-aio-pubsub", marker = "extra == 'pubsub'" },
+    { name = "gcloud-aio-storage", marker = "extra == 'gcs'" },
     { name = "google-cloud-aiplatform", marker = "extra == 'rag'" },
-    { name = "lexflow", extras = ["ai", "pygame", "file", "http", "web", "rag", "pubsub"], marker = "extra == 'all'" },
+    { name = "lexflow", extras = ["ai", "pygame", "file", "http", "web", "rag", "gcs", "pubsub"], marker = "extra == 'all'" },
     { name = "pydantic" },
     { name = "pydantic-ai-slim", extras = ["google"], marker = "extra == 'ai'" },
     { name = "pygame", marker = "extra == 'pygame'", specifier = ">=2.6.1" },
@@ -1284,7 +1304,7 @@ requires-dist = [
     { name = "rich" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'web'", specifier = ">=0.23.0" },
 ]
-provides-extras = ["ai", "pygame", "file", "http", "pubsub", "rag", "web", "dev", "all"]
+provides-extras = ["ai", "pygame", "file", "http", "gcs", "pubsub", "rag", "web", "dev", "all"]
 
 [package.metadata.requires-dev]
 dev = [
