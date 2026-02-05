@@ -92,7 +92,7 @@ workflows:
         3. Key Findings (top 3-5 insights)
         4. Recommended Actions (3-5 specific steps)
 
-      formatter_user_prompt_prefix: |
+      formatter_user_prompt_template: |
         Format the following competitive intelligence research into a professional business report.
 
         Focus on:
@@ -101,6 +101,7 @@ workflows:
         - Actionable insights
 
         Raw Research Data:
+        {research_content}
 
       formatter_full_user_prompt: ""
       formatter_messages: []
@@ -340,19 +341,15 @@ workflows:
       # ---------------------------------------------------------
       # 7. Build Formatter Prompt
       # ---------------------------------------------------------
+      # SECURITY: Using string_replace to mitigate indirect prompt injection
+      # from the research data.
       build_formatter_prompt:
-        opcode: operator_add
-        next: save_formatter_prompt
-        inputs:
-          left: {variable: "formatter_user_prompt_prefix"}
-          right: {variable: "research_content"}
-
-      save_formatter_prompt:
-        opcode: data_set_variable_to
+        opcode: string_replace
         next: create_formatter_system_msg
         inputs:
-          VARIABLE: {literal: "formatter_full_user_prompt"}
-          VALUE: {node: build_formatter_prompt}
+          template: {variable: "formatter_user_prompt_template"}
+          replace:
+            research_content: {variable: "research_content"}
 
       # ---------------------------------------------------------
       # 8. Create Formatter Request (OpenRouter)
@@ -373,7 +370,7 @@ workflows:
           key1: {literal: "role"}
           val1: {literal: "user"}
           key2: {literal: "content"}
-          val2: {variable: "formatter_full_user_prompt"}
+          val2: {node: build_formatter_prompt}
 
       create_formatter_messages_list:
         opcode: list_create

@@ -96,7 +96,10 @@ workflows:
           </Context>
         </Agent>
 
-      formatter_user_prompt_prefix: "ANALYSE THIS TEXT AND FORMAT IT:\n\n"
+      formatter_user_prompt_template: |
+        ANALYSE THIS TEXT AND FORMAT IT:
+
+        {research_content}
       formatter_full_user_prompt: ""
       formatter_messages: []
       formatter_body: {}
@@ -289,19 +292,14 @@ workflows:
       # ---------------------------------------------------------
       # 6. Build Formatter Request Body
       # ---------------------------------------------------------
+      # SECURITY: Using string_replace to mitigate indirect prompt injection
       build_formatter_user_prompt:
-        opcode: operator_add
-        next: save_formatter_user_prompt
-        inputs:
-          left: {variable: "formatter_user_prompt_prefix"}
-          right: {variable: "research_content"}
-
-      save_formatter_user_prompt:
-        opcode: data_set_variable_to
+        opcode: string_replace
         next: create_formatter_sys_msg
         inputs:
-          VARIABLE: {literal: "formatter_full_user_prompt"}
-          VALUE: {node: build_formatter_user_prompt}
+          template: {variable: "formatter_user_prompt_template"}
+          replace:
+            research_content: {variable: "research_content"}
 
       # Messages
       create_formatter_sys_msg:
@@ -320,7 +318,7 @@ workflows:
           key1: {literal: "role"}
           val1: {literal: "user"}
           key2: {literal: "content"}
-          val2: {variable: "formatter_full_user_prompt"}
+          val2: {node: build_formatter_user_prompt}
 
       create_formatter_msgs_list:
         opcode: list_create
