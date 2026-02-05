@@ -1842,6 +1842,36 @@ Update the display to show all drawn elements.
 
 > **Requires:** `pip install lexflow[rag]`
 
+### `bm25_rerank(query, results, top_k=10, text_field="text", alpha=0.5)`
+
+Rerank search results using BM25 combined with semantic scores.
+
+Combines the original semantic similarity score with BM25 keyword matching
+for improved retrieval quality (hybrid search).
+
+Args:
+    query: The search query
+    results: List of search results with 'payload' containing text and 'score'
+    top_k: Number of results to return (default: 10)
+    text_field: Field name in payload containing text (default: "text")
+    alpha: Weight for semantic score vs BM25 (0=BM25 only, 1=semantic only)
+
+Returns:
+    Reranked results with updated 'score' and 'bm25_score' added
+
+
+**Parameters:**
+
+- `query` (str, required)
+- `results` (List, required)
+- `top_k` (int, optional, default: `10`)
+- `text_field` (str, optional, default: `"text"`)
+- `alpha` (float, optional, default: `0.5`)
+
+**Returns:** `List`
+
+---
+
 ### `embedding_create(text, project, location="us-central1", model="text-embedding-004")`
 
 Create an embedding vector for a single text.
@@ -1907,12 +1937,45 @@ Returns:
 
 ---
 
+### `pdf_extract_pages_from_bytes(data)`
+
+Extract text from PDF bytes page by page.
+
+Args:
+    data: PDF content as bytes
+
+Returns:
+    List of strings, one per page
+
+
+**Returns:** `List`
+
+---
+
 ### `pdf_extract_text(file_path)`
 
 Extract all text from a PDF file.
 
 Args:
     file_path: Path to the PDF file
+
+Returns:
+    Extracted text from all pages concatenated
+
+
+**Returns:** `str`
+
+---
+
+### `pdf_extract_text_from_bytes(data)`
+
+Extract all text from PDF bytes.
+
+Useful for processing PDFs downloaded from GCS or other sources
+without writing to disk.
+
+Args:
+    data: PDF content as bytes
 
 Returns:
     Extracted text from all pages concatenated
@@ -1996,14 +2059,14 @@ Returns:
 
 ---
 
-### `qdrant_delete(client, collection, ids)`
+### `qdrant_delete(client, collection, point_ids)`
 
 Delete points from a Qdrant collection by IDs.
 
 Args:
     client: QdrantClient instance
     collection: Collection name
-    ids: List of point IDs to delete
+    point_ids: List of point IDs to delete
 
 Returns:
     True if deletion was successful
@@ -2013,7 +2076,7 @@ Returns:
 
 - `client` (Any, required)
 - `collection` (str, required)
-- `ids` (List, required)
+- `point_ids` (List, required)
 
 **Returns:** `bool`
 
@@ -2065,14 +2128,14 @@ Returns:
 
 ---
 
-### `qdrant_upsert(client, collection, id, vector, payload=None)`
+### `qdrant_upsert(client, collection, point_id, vector, payload=None)`
 
 Insert or update a single point in a Qdrant collection.
 
 Args:
     client: QdrantClient instance
     collection: Collection name
-    id: Unique identifier for the point
+    point_id: Unique identifier for the point
     vector: Embedding vector
     payload: Optional metadata dict
 
@@ -2084,7 +2147,7 @@ Returns:
 
 - `client` (Any, required)
 - `collection` (str, required)
-- `id` (int, required)
+- `point_id` (int, required)
 - `vector` (List, required)
 - `payload` (Optional, optional, default: `None`)
 
@@ -2092,14 +2155,14 @@ Returns:
 
 ---
 
-### `qdrant_upsert_batch(client, collection, ids, vectors, payloads=None)`
+### `qdrant_upsert_batch(client, collection, point_ids, vectors, payloads=None)`
 
 Insert or update multiple points in a Qdrant collection.
 
 Args:
     client: QdrantClient instance
     collection: Collection name
-    ids: List of unique identifiers
+    point_ids: List of unique identifiers
     vectors: List of embedding vectors
     payloads: Optional list of metadata dicts
 
@@ -2111,7 +2174,7 @@ Returns:
 
 - `client` (Any, required)
 - `collection` (str, required)
-- `ids` (List, required)
+- `point_ids` (List, required)
 - `vectors` (List, required)
 - `payloads` (Optional, optional, default: `None`)
 
@@ -2160,6 +2223,59 @@ Returns:
 - `text` (str, required)
 - `sentences_per_chunk` (int, optional, default: `5`)
 - `overlap` (int, optional, default: `1`)
+
+**Returns:** `List`
+
+---
+
+### `text_chunk_pages(pages, chunk_size=500, overlap=50)`
+
+Split pages into chunks with page and line metadata.
+
+Chunks text while tracking which page(s) and line(s) each chunk spans.
+
+Args:
+    pages: List of page texts (from pdf_extract_pages)
+    chunk_size: Maximum characters per chunk (default: 500)
+    overlap: Characters to overlap between chunks (default: 50)
+
+Returns:
+    List of dicts with keys: text, page_start, page_end, line_start, line_end
+
+
+**Parameters:**
+
+- `pages` (List, required)
+- `chunk_size` (int, optional, default: `500`)
+- `overlap` (int, optional, default: `50`)
+
+**Returns:** `List`
+
+---
+
+### `text_chunk_pages_smart(pages, chunk_size=1000, overlap=200, min_chunk_size=100)`
+
+Split pages into chunks at sentence boundaries with page/line metadata.
+
+Like text_chunk_pages but tries to break at sentence endings (., !, ?)
+for better semantic coherence.
+
+Args:
+    pages: List of page texts (from pdf_extract_pages)
+    chunk_size: Target characters per chunk (default: 1000)
+    overlap: Target overlap between chunks (default: 200)
+    min_chunk_size: Minimum chunk size before forcing a break (default: 100)
+
+Returns:
+    List of dicts with keys: text, page_start, page_end, line_start, line_end
+
+
+**Parameters:**
+
+- `pages` (List, required)
+- `chunk_size` (int, optional, default: `1000`)
+- `overlap` (int, optional, default: `200`)
+- `min_chunk_size` (int, optional, default: `100`)
 
 **Returns:** `List`
 
@@ -3069,7 +3185,7 @@ Args:
 
 ## Summary
 
-**Total opcodes:** 197
+**Total opcodes:** 202
 
 ### Categories
 
@@ -3094,7 +3210,7 @@ Args:
 | 📄 HTML Operations | 5 | `lexflow[http]` |
 | 📋 JSON Operations | 2 | - |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
-| 🔍 RAG Operations | 15 | `lexflow[rag]` |
+| 🔍 RAG Operations | 20 | `lexflow[rag]` |
 | 💬 Chat Operations | 10 | - |
 | 💻 CLI Operations | 10 | - |
 | 🐙 GitHub Operations | 7 | - |

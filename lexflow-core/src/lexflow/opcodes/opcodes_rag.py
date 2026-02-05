@@ -136,6 +136,271 @@ def register_rag_opcodes():
 
         return chunks
 
+    @opcode(category="rag")
+    async def text_chunk_pages(
+        pages: List[str], chunk_size: int = 500, overlap: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Split pages into chunks with page and line metadata.
+
+        Chunks text while tracking which page(s) and line(s) each chunk spans.
+
+        Args:
+            pages: List of page texts (from pdf_extract_pages)
+            chunk_size: Maximum characters per chunk (default: 500)
+            overlap: Characters to overlap between chunks (default: 50)
+
+        Returns:
+            List of dicts with keys: text, page_start, page_end, line_start, line_end
+        """
+        if not pages:
+            return []
+        if chunk_size <= 0:
+            raise ValueError("chunk_size must be positive")
+        if overlap < 0:
+            raise ValueError("overlap cannot be negative")
+        if overlap >= chunk_size:
+            raise ValueError("overlap must be less than chunk_size")
+
+        char_positions: List[tuple] = []
+        full_text_parts = []
+
+        for page_num, page_text in enumerate(pages, start=1):
+            if not page_text:
+                continue
+            lines = page_text.split("\n")
+            for line_num, line in enumerate(lines, start=1):
+                for char in line:
+                    char_positions.append((page_num, line_num))
+                    full_text_parts.append(char)
+                if line_num < len(lines):
+                    char_positions.append((page_num, line_num))
+                    full_text_parts.append("\n")
+            if page_num < len(pages):
+                char_positions.append((page_num, line_num if lines else 1))
+                full_text_parts.append("\n")
+
+        full_text = "".join(full_text_parts)
+        if not full_text:
+            return []
+
+        chunks = []
+        start = 0
+        text_len = len(full_text)
+
+        while start < text_len:
+            end = min(start + chunk_size, text_len)
+            chunk_text = full_text[start:end]
+
+            start_pos = char_positions[start] if start < len(char_positions) else (1, 1)
+            end_pos = (
+                char_positions[end - 1]
+                if end - 1 < len(char_positions)
+                else char_positions[-1]
+            )
+
+            chunks.append(
+                {
+                    "text": chunk_text,
+                    "page_start": start_pos[0],
+                    "page_end": end_pos[0],
+                    "line_start": start_pos[1],
+                    "line_end": end_pos[1],
+                }
+            )
+
+            if end >= text_len:
+                break
+            start = end - overlap
+
+        return chunks
+
+    @opcode(category="rag")
+    async def text_chunk_pages_smart(
+        pages: List[str],
+        chunk_size: int = 1000,
+        overlap: int = 200,
+        min_chunk_size: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """Split pages into chunks at sentence boundaries with page/line metadata.
+
+        Like text_chunk_pages but tries to break at sentence endings (., !, ?)
+        for better semantic coherence.
+
+        Args:
+            pages: List of page texts (from pdf_extract_pages)
+            chunk_size: Target characters per chunk (default: 1000)
+            overlap: Target overlap between chunks (default: 200)
+            min_chunk_size: Minimum chunk size before forcing a break (default: 100)
+
+        Returns:
+            List of dicts with keys: text, page_start, page_end, line_start, line_end
+        """
+        if not pages:
+            return []
+        if chunk_size <= 0:
+            raise ValueError("chunk_size must be positive")
+        if overlap < 0:
+            raise ValueError("overlap cannot be negative")
+        if overlap >= chunk_size:
+            raise ValueError("overlap must be less than chunk_size")
+
+        char_positions: List[tuple] = []
+        full_text_parts = []
+
+        for page_num, page_text in enumerate(pages, start=1):
+            if not page_text:
+                continue
+            lines = page_text.split("\n")
+            for line_num, line in enumerate(lines, start=1):
+                for char in line:
+                    char_positions.append((page_num, line_num))
+                    full_text_parts.append(char)
+                if line_num < len(lines):
+                    char_positions.append((page_num, line_num))
+                    full_text_parts.append("\n")
+            if page_num < len(pages):
+                char_positions.append((page_num, line_num if lines else 1))
+                full_text_parts.append("\n")
+
+        full_text = "".join(full_text_parts)
+        if not full_text:
+            return []
+
+        def find_break_point(text: str, target: int, min_pos: int) -> int:
+            if target >= len(text):
+                return len(text)
+            window_start = max(min_pos, target - 100)
+            window_end = min(len(text), target + 100)
+            window = text[window_start:window_end]
+
+            best_break = -1
+            for i, char in enumerate(window):
+                abs_pos = window_start + i
+                if abs_pos > target + 50:
+                    break
+                if char in ".!?" and abs_pos >= min_pos:
+                    if abs_pos + 1 < len(text) and text[abs_pos + 1] in " \n":
+                        best_break = abs_pos + 1
+
+            if best_break > min_pos:
+                return best_break
+
+            for i in range(target, max(min_pos, target - 50), -1):
+                if text[i] in " \n":
+                    return i + 1
+
+            return target
+
+        chunks = []
+        start = 0
+        text_len = len(full_text)
+
+        while start < text_len:
+            target_end = start + chunk_size
+            end = find_break_point(full_text, target_end, start + min_chunk_size)
+            chunk_text = full_text[start:end].strip()
+
+            if chunk_text:
+                start_pos = (
+                    char_positions[start] if start < len(char_positions) else (1, 1)
+                )
+                end_idx = min(end - 1, len(char_positions) - 1)
+                end_pos = char_positions[end_idx] if end_idx >= 0 else (1, 1)
+
+                chunks.append(
+                    {
+                        "text": chunk_text,
+                        "page_start": start_pos[0],
+                        "page_end": end_pos[0],
+                        "line_start": start_pos[1],
+                        "line_end": end_pos[1],
+                    }
+                )
+
+            if end >= text_len:
+                break
+
+            overlap_start = max(start, end - overlap)
+            start = find_break_point(full_text, overlap_start, overlap_start)
+
+        return chunks
+
+    @opcode(category="rag")
+    async def bm25_rerank(
+        query: str,
+        results: List[Dict[str, Any]],
+        top_k: int = 10,
+        text_field: str = "text",
+        alpha: float = 0.5,
+    ) -> List[Dict[str, Any]]:
+        """Rerank search results using BM25 combined with semantic scores.
+
+        Combines the original semantic similarity score with BM25 keyword matching
+        for improved retrieval quality (hybrid search).
+
+        Args:
+            query: The search query
+            results: List of search results with 'payload' containing text and 'score'
+            top_k: Number of results to return (default: 10)
+            text_field: Field name in payload containing text (default: "text")
+            alpha: Weight for semantic score vs BM25 (0=BM25 only, 1=semantic only)
+
+        Returns:
+            Reranked results with updated 'score' and 'bm25_score' added
+        """
+        import bm25s
+
+        if not results:
+            return []
+
+        texts = []
+        for r in results:
+            text = r.get(text_field, "")
+            if not text:
+                payload = r.get("payload", {})
+                text = payload.get(text_field, "")
+            texts.append(text or "")
+
+        if not any(texts):
+            return results[:top_k]
+
+        corpus_tokens = bm25s.tokenize(texts, stopwords=None)
+        query_tokens = bm25s.tokenize([query], stopwords=None)
+
+        if not any(len(t) > 0 for t in corpus_tokens):
+            return results[:top_k]
+
+        retriever = bm25s.BM25()
+        retriever.index(corpus_tokens)
+
+        doc_indices, bm25_scores = retriever.retrieve(query_tokens, k=len(texts))
+        doc_indices = doc_indices[0]
+        bm25_scores = bm25_scores[0]
+
+        idx_to_bm25 = {
+            int(idx): float(score) for idx, score in zip(doc_indices, bm25_scores)
+        }
+
+        max_bm25 = max(bm25_scores) if len(bm25_scores) > 0 else 1.0
+        max_bm25 = max_bm25 if max_bm25 > 0 else 1.0
+
+        reranked = []
+        for i, r in enumerate(results):
+            original_score = r.get("score", 0)
+            bm25_score = idx_to_bm25.get(i, 0.0)
+            bm25_norm = bm25_score / max_bm25
+
+            combined_score = alpha * original_score + (1 - alpha) * bm25_norm
+
+            new_result = dict(r)
+            new_result["score"] = combined_score
+            new_result["semantic_score"] = original_score
+            new_result["bm25_score"] = bm25_score
+            reranked.append(new_result)
+
+        reranked.sort(key=lambda x: x["score"], reverse=True)
+        return reranked[:top_k]
+
     # =========================================================================
     # PDF Operations (require pypdf)
     # =========================================================================
@@ -171,6 +436,48 @@ def register_rag_opcodes():
                 List of strings, one per page
             """
             reader = PdfReader(file_path)
+            pages = []
+            for page in reader.pages:
+                page_text = page.extract_text()
+                pages.append(page_text if page_text else "")
+            return pages
+
+        @opcode(category="rag")
+        async def pdf_extract_text_from_bytes(data: bytes) -> str:
+            """Extract all text from PDF bytes.
+
+            Useful for processing PDFs downloaded from GCS or other sources
+            without writing to disk.
+
+            Args:
+                data: PDF content as bytes
+
+            Returns:
+                Extracted text from all pages concatenated
+            """
+            import io
+
+            reader = PdfReader(io.BytesIO(data))
+            text_parts = []
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text_parts.append(page_text)
+            return "\n\n".join(text_parts)
+
+        @opcode(category="rag")
+        async def pdf_extract_pages_from_bytes(data: bytes) -> List[str]:
+            """Extract text from PDF bytes page by page.
+
+            Args:
+                data: PDF content as bytes
+
+            Returns:
+                List of strings, one per page
+            """
+            import io
+
+            reader = PdfReader(io.BytesIO(data))
             pages = []
             for page in reader.pages:
                 page_text = page.extract_text()
@@ -329,7 +636,7 @@ def register_rag_opcodes():
         async def qdrant_upsert(
             client: Any,
             collection: str,
-            id: int,
+            point_id: int,
             vector: List[float],
             payload: Optional[Dict[str, Any]] = None,
         ) -> bool:
@@ -338,14 +645,14 @@ def register_rag_opcodes():
             Args:
                 client: QdrantClient instance
                 collection: Collection name
-                id: Unique identifier for the point
+                point_id: Unique identifier for the point
                 vector: Embedding vector
                 payload: Optional metadata dict
 
             Returns:
                 True if upsert was successful
             """
-            point = PointStruct(id=id, vector=vector, payload=payload or {})
+            point = PointStruct(id=point_id, vector=vector, payload=payload or {})
             client.upsert(collection_name=collection, points=[point])
             return True
 
@@ -353,7 +660,7 @@ def register_rag_opcodes():
         async def qdrant_upsert_batch(
             client: Any,
             collection: str,
-            ids: List[int],
+            point_ids: List[int],
             vectors: List[List[float]],
             payloads: Optional[List[Dict[str, Any]]] = None,
         ) -> bool:
@@ -362,23 +669,23 @@ def register_rag_opcodes():
             Args:
                 client: QdrantClient instance
                 collection: Collection name
-                ids: List of unique identifiers
+                point_ids: List of unique identifiers
                 vectors: List of embedding vectors
                 payloads: Optional list of metadata dicts
 
             Returns:
                 True if upsert was successful
             """
-            if len(ids) != len(vectors):
-                raise ValueError("ids and vectors must have the same length")
-            if payloads and len(payloads) != len(ids):
-                raise ValueError("payloads must have the same length as ids")
+            if len(point_ids) != len(vectors):
+                raise ValueError("point_ids and vectors must have the same length")
+            if payloads and len(payloads) != len(point_ids):
+                raise ValueError("payloads must have the same length as point_ids")
 
             points = [
                 PointStruct(
-                    id=id, vector=vector, payload=payloads[i] if payloads else {}
+                    id=pid, vector=vector, payload=payloads[i] if payloads else {}
                 )
-                for i, (id, vector) in enumerate(zip(ids, vectors))
+                for i, (pid, vector) in enumerate(zip(point_ids, vectors))
             ]
             client.upsert(collection_name=collection, points=points)
             return True
@@ -408,13 +715,15 @@ def register_rag_opcodes():
             ]
 
         @opcode(category="rag")
-        async def qdrant_delete(client: Any, collection: str, ids: List[int]) -> bool:
+        async def qdrant_delete(
+            client: Any, collection: str, point_ids: List[int]
+        ) -> bool:
             """Delete points from a Qdrant collection by IDs.
 
             Args:
                 client: QdrantClient instance
                 collection: Collection name
-                ids: List of point IDs to delete
+                point_ids: List of point IDs to delete
 
             Returns:
                 True if deletion was successful
@@ -422,6 +731,7 @@ def register_rag_opcodes():
             from qdrant_client.models import PointIdsList
 
             client.delete(
-                collection_name=collection, points_selector=PointIdsList(points=ids)
+                collection_name=collection,
+                points_selector=PointIdsList(points=point_ids),
             )
             return True
