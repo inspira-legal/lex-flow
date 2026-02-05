@@ -37,6 +37,7 @@ class GCSObjectMetadata(TypedDict, total=False):
     storageClass: str
     timeCreated: str
 
+
 try:
     from gcloud.aio.storage import Storage
 
