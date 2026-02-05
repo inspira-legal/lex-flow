@@ -19,6 +19,7 @@ dependencies = [
 ai = ["pydantic-ai-slim[google]"]
 file = ["pymupdf"]
 gcs = ["gcloud-aio-storage"]
+sheets = ["google-auth", "google-auth-oauthlib", "google-api-python-client"]
 dev = ["pytest", "pytest-asyncio"]
 
 [tool.hatch.build.targets.wheel]
