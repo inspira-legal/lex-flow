@@ -29,10 +29,11 @@ ai = ["pydantic-ai-slim[google]"]
 pygame = ["pygame>=2.6.1"]
 file = ["pymupdf"]
 http = ["aiohttp", "beautifulsoup4"]
+pubsub = ["gcloud-aio-pubsub"]
 rag = ["pypdf", "google-cloud-aiplatform", "qdrant-client"]
 web = ["fastapi>=0.100.0", "uvicorn[standard]>=0.23.0"]
 dev = ["pytest", "pytest-asyncio"]
-all = ["lexflow[ai,pygame,file,http,web,rag]"]
+all = ["lexflow[ai,pygame,file,http,web,rag,pubsub]"]
 
 [project.scripts]
 lexflow = "lexflow_cli.main:cli_main"

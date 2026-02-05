@@ -1,0 +1,212 @@
+# Local Pub/Sub Streaming Consumer (Emulator)
+#
+# This workflow uses async generators to stream messages from the emulator.
+# Uses exponential backoff when no messages are available to reduce polling overhead.
+#
+# Usage:
+# export PUBSUB_EMULATOR_HOST=localhost:8085
+# lexflow examples/integrations/pubsub/emulator/streaming_consumer.yaml
+
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      msg: null
+      message_count: 0
+      subscriber: null
+      # Emulator configuration
+      project_id: "test-project"
+      subscription_id: "test-subscription"
+    nodes:
+      start:
+        opcode: workflow_start
+        next: intro
+        inputs: {}
+
+      intro:
+        opcode: io_print
+        next: print_waiting
+        inputs:
+          STRING:
+            literal: "=== Streaming Consumer (Emulator) ===\n\n"
+
+      print_waiting:
+        opcode: io_print
+        next: store_subscriber
+        inputs:
+          STRING:
+            literal: "Waiting for messages (max: 50)...\n\n"
+
+      # Create subscriber for ack operations
+      create_subscriber:
+        opcode: pubsub_create_subscriber
+        isReporter: true
+        inputs: {}
+
+      store_subscriber:
+        opcode: data_set_variable_to
+        next: process_messages
+        inputs:
+          VARIABLE:
+            literal: "subscriber"
+          VALUE:
+            node: create_subscriber
+
+      # Subscribe and process messages with streaming
+      # Uses exponential backoff: starts at 0.1s, doubles up to 2s when idle
+      subscribe_stream:
+        opcode: pubsub_subscribe_stream
+        isReporter: true
+        inputs:
+          subscriber:
+            variable: "subscriber"
+          project_id:
+            variable: "project_id"
+          subscription_id:
+            variable: "subscription_id"
+          timeout:
+            literal: null
+          max_messages:
+            literal: 50
+          batch_size:
+            literal: 10
+          min_poll_interval:
+            literal: 0.1
+          max_poll_interval:
+            literal: 2.0
+
+      process_messages:
+        opcode: control_async_foreach
+        next: done
+        inputs:
+          VAR:
+            literal: "msg"
+          ITERABLE:
+            node: subscribe_stream
+          BODY:
+            branch: increment_count
+
+      # Process each message
+      increment_count:
+        opcode: data_set_variable_to
+        next: print_received
+        inputs:
+          VARIABLE:
+            literal: "message_count"
+          VALUE:
+            node: new_count
+
+      new_count:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: "message_count"
+          right:
+            literal: 1
+
+      print_received:
+        opcode: io_print
+        next: print_msg_id
+        inputs:
+          STRING:
+            literal: "--- Message Received ---\nID: "
+
+      print_msg_id:
+        opcode: io_print
+        next: print_data_label
+        inputs:
+          STRING:
+            node: get_msg_id
+
+      get_msg_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: "msg"
+          key:
+            literal: "message_id"
+
+      print_data_label:
+        opcode: io_print
+        next: print_data
+        inputs:
+          STRING:
+            literal: "\nData: "
+
+      print_data:
+        opcode: io_print
+        next: ack_message
+        inputs:
+          STRING:
+            node: get_msg_data
+
+      get_msg_data:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: "msg"
+          key:
+            literal: "data"
+
+      # Acknowledge the message
+      ack_message:
+        opcode: pubsub_ack_message
+        next: print_acked
+        inputs:
+          subscriber:
+            variable: "subscriber"
+          project_id:
+            variable: "project_id"
+          subscription_id:
+            variable: "subscription_id"
+          message:
+            variable: "msg"
+
+      print_acked:
+        opcode: io_print
+        inputs:
+          STRING:
+            literal: "\n[ACK]\n\n"
+
+      # Done
+      done:
+        opcode: io_print
+        next: close_subscriber
+        inputs:
+          STRING:
+            literal: "\n=== Streaming Complete ===\n"
+
+      # Close subscriber client
+      close_subscriber:
+        opcode: pubsub_close_subscriber
+        next: print_total
+        inputs:
+          subscriber:
+            variable: "subscriber"
+
+      print_total:
+        opcode: io_print
+        inputs:
+          STRING:
+            node: format_total
+
+      format_total:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Total messages: "
+          right:
+            node: total_str
+
+      total_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: "message_count"
