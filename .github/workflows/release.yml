@@ -65,7 +65,7 @@ jobs:
 
       - name: Bump version and push (via SSH deploy key)
         working-directory: lexflow-core
-        run: semantic-release version
+        run: semantic-release version --no-vcs-release
 
       - name: Create GitHub release
         working-directory: lexflow-core
@@ -146,7 +146,7 @@ jobs:
 
       - name: Bump version and push (via SSH deploy key)
         working-directory: lexflow-cli
-        run: semantic-release version
+        run: semantic-release version --no-vcs-release
 
       - name: Create GitHub release
         working-directory: lexflow-cli
@@ -201,7 +201,7 @@ jobs:
 
       - name: Bump version and push (via SSH deploy key)
         working-directory: lexflow-web
-        run: semantic-release version
+        run: semantic-release version --no-vcs-release
 
       - name: Create GitHub release
         working-directory: lexflow-web
