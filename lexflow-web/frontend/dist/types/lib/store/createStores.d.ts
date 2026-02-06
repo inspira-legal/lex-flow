@@ -1,4 +1,4 @@
-import type { WorkflowTree, ExampleInfo, OpcodeInterface } from "../../api/types";
+import type { WorkflowTree, ExampleInfo, OpcodeInterface, DetailedInput } from "../../api/types";
 import type { LayoutWorkflowGroup } from "../../services/layout/LayoutService";
 import type { FormattedValue } from "../../api/types";
 export interface SlotPosition {
@@ -109,7 +109,7 @@ export interface EditorStoreState {
     convertOrphanToReporter: (orphanNodeId: string, targetNodeId: string, inputKey: string) => boolean;
     updateReporterInput: (reporterNodeId: string, inputKey: string, newValue: string) => boolean;
     deleteReporter: (parentNodeId: string, inputPath: string[]) => boolean;
-    updateWorkflowInterface: (workflowName: string, inputs: string[], outputs: string[]) => boolean;
+    updateWorkflowInterface: (workflowName: string, inputs: DetailedInput[], outputs: string[]) => boolean;
     addVariable: (workflowName: string, name: string, defaultValue: unknown) => boolean;
     updateVariable: (workflowName: string, oldName: string, newName: string, newValue: unknown) => boolean;
     deleteVariable: (workflowName: string, name: string) => boolean;

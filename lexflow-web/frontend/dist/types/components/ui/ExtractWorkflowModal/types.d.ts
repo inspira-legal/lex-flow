@@ -1,3 +1,4 @@
+import type { DetailedInput } from "@/api/types";
 export interface ExtractWorkflowModalProps {
     isOpen: boolean;
     existingWorkflowNames: string[];
@@ -9,7 +10,7 @@ export interface ExtractWorkflowModalProps {
 }
 export interface ExtractWorkflowData {
     name: string;
-    inputs: string[];
+    inputs: DetailedInput[];
     outputs: string[];
     variables: Record<string, unknown>;
 }

@@ -1,4 +1,4 @@
-import type { WorkflowTree, ExampleInfo, OpcodeInterface } from "../api/types";
+import type { WorkflowTree, ExampleInfo, OpcodeInterface, DetailedInput } from "../api/types";
 interface WorkflowState {
     source: string;
     setSource: (source: string, addToHistory?: boolean) => void;
@@ -26,7 +26,7 @@ interface WorkflowState {
     convertOrphanToReporter: (orphanNodeId: string, targetNodeId: string, inputKey: string) => boolean;
     updateReporterInput: (reporterNodeId: string, inputKey: string, newValue: string) => boolean;
     deleteReporter: (parentNodeId: string, inputPath: string[]) => boolean;
-    updateWorkflowInterface: (workflowName: string, inputs: string[], outputs: string[]) => boolean;
+    updateWorkflowInterface: (workflowName: string, inputs: DetailedInput[], outputs: string[]) => boolean;
     addVariable: (workflowName: string, name: string, defaultValue: unknown) => boolean;
     updateVariable: (workflowName: string, oldName: string, newName: string, newValue: unknown) => boolean;
     deleteVariable: (workflowName: string, name: string) => boolean;
@@ -34,9 +34,9 @@ interface WorkflowState {
     removeDynamicBranch: (nodeId: string, branchName: string) => boolean;
     addDynamicInput: (nodeId: string, inputPrefix: string) => boolean;
     removeDynamicInput: (nodeId: string, inputName: string) => boolean;
-    addWorkflow: (name: string, inputs?: string[], outputs?: string[], variables?: Record<string, unknown>) => boolean;
+    addWorkflow: (name: string, inputs?: DetailedInput[], outputs?: string[], variables?: Record<string, unknown>) => boolean;
     deleteWorkflow: (name: string) => boolean;
-    extractToWorkflow: (nodeIds: string[], sourceWorkflowName: string, newWorkflowName: string, inputs: string[], outputs: string[], variables: Record<string, unknown>) => {
+    extractToWorkflow: (nodeIds: string[], sourceWorkflowName: string, newWorkflowName: string, inputs: DetailedInput[], outputs: string[], variables: Record<string, unknown>) => {
         success: boolean;
         errors: string[];
     };
