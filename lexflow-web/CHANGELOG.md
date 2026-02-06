@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.9.1 (2026-02-06)
+
+### Bug Fixes
+
+- **web**: Add --no-vcs-release to version step, let publish create GitHub release
+  ([`6f0581e`](https://github.com/inspira-legal/lex-flow/commit/6f0581ed3e0f1756101aae596bfc04e8093b308a))
+
+
 ## v1.9.0 (2026-02-06)
 
 ### Bug Fixes
