@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v1.9.0 (2026-02-06)
+
+### Bug Fixes
+
+- **ci**: Use SSH deploy key for semantic-release push instead of GITHUB_TOKEN
+  ([`d5491b9`](https://github.com/inspira-legal/lex-flow/commit/d5491b92b2f2c7333efa8a908be63387511ab1dd))
+
+- **rag**: Fix RAG pipeline workflows and add BM25 reranking
+  ([`4ae28fa`](https://github.com/inspira-legal/lex-flow/commit/4ae28fa73fb14457b9c1d12847287ba26c5e02f4))
+
+### Chores
+
+- **web**: Build frontend library [skip ci]
+  ([`35a1ad9`](https://github.com/inspira-legal/lex-flow/commit/35a1ad9f35fbe960317ea0e7632b1bdc0a12b2b1))
+
+### Features
+
+- **web**: Add detailed interface inputs support (name, type, required)
+  ([`d360a6e`](https://github.com/inspira-legal/lex-flow/commit/d360a6e80085a44fa16e8a987bf504b9f354d651))
+
+- **web**: Trigerring new release updated editor
+  ([`72152b8`](https://github.com/inspira-legal/lex-flow/commit/72152b875b6109f549c5da7b84361b29302fb118))
+
+
 ## v1.8.0 (2026-02-05)
 
 ### Bug Fixes
