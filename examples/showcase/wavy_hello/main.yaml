@@ -1,0 +1,135 @@
+# Wavy Hello HTML Generator
+#
+# Receives a "name" input and builds a complete, self-contained HTML page
+# that displays "Hello {name}" with a wavy CSS animation where each letter
+# bobs up and down with staggered timing.
+#
+# Usage:
+#   lexflow examples/showcase/wavy_hello/main.yaml \
+#     --include examples/showcase/wavy_hello/helpers.yaml \
+#     --input name=World \
+#     --output-file hello.html
+#
+# The workflow returns the full HTML string as its result.
+
+workflows:
+  - name: main
+    interface:
+      inputs: ["name"]
+      outputs: []
+    variables:
+      name: "World"
+      greeting: ""
+      spans_html: ""
+      html_result: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: build_greeting
+        inputs: {}
+
+      # Build the greeting text: "Hello {name}"
+      greeting_text:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Hello "
+          right:
+            variable: name
+
+      build_greeting:
+        opcode: data_set_variable_to
+        next: call_build_spans
+        inputs:
+          VARIABLE:
+            literal: "greeting"
+          VALUE:
+            node: greeting_text
+
+      # Call helper to convert greeting into animated <span> elements
+      generate_spans:
+        opcode: workflow_call
+        isReporter: true
+        inputs:
+          WORKFLOW:
+            literal: build_wavy_spans
+          ARG1:
+            variable: greeting
+
+      call_build_spans:
+        opcode: data_set_variable_to
+        next: assemble_html
+        inputs:
+          VARIABLE:
+            literal: "spans_html"
+          VALUE:
+            node: generate_spans
+
+      # Assemble the complete HTML document
+      # The CSS defines:
+      #   - Dark background with centered layout
+      #   - @keyframes wave: translateY bounce for the wavy motion
+      #   - Each span is inline-block so translateY works per-character
+      #   - Gradient text using background-clip
+      #   - Smooth infinite animation
+
+      html_head:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>Hello "
+          right:
+            node: html_head_close
+
+      html_head_close:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: name
+          right:
+            literal: "</title>\n<style>\n  * {\n    margin: 0;\n    padding: 0;\n    box-sizing: border-box;\n  }\n\n  body {\n    display: flex;\n    justify-content: center;\n    align-items: center;\n    min-height: 100vh;\n    background: #0f0f1a;\n    overflow: hidden;\n  }\n\n  .container {\n    text-align: center;\n    position: relative;\n  }\n\n  .wavy-text {\n    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;\n    font-size: clamp(3rem, 8vw, 7rem);\n    font-weight: 800;\n    letter-spacing: 0.02em;\n    line-height: 1.4;\n    user-select: none;\n  }\n\n  .wavy-text span {\n    display: inline-block;\n    background: linear-gradient(135deg, #f093fb 0%, #f5576c 25%, #ffd86f 50%, #43e97b 75%, #38f9d7 100%);\n    background-size: 200% 200%;\n    -webkit-background-clip: text;\n    background-clip: text;\n    -webkit-text-fill-color: transparent;\n    animation:\n      wave 1.2s ease-in-out infinite,\n      gradient 4s ease infinite;\n    will-change: transform;\n  }\n\n  @keyframes wave {\n    0%, 100% {\n      transform: translateY(0);\n    }\n    25% {\n      transform: translateY(-18px);\n    }\n    75% {\n      transform: translateY(6px);\n    }\n  }\n\n  @keyframes gradient {\n    0%, 100% {\n      background-position: 0% 50%;\n    }\n    50% {\n      background-position: 100% 50%;\n    }\n  }\n\n  .glow {\n    position: absolute;\n    top: 50%;\n    left: 50%;\n    transform: translate(-50%, -50%);\n    width: 120%;\n    height: 120%;\n    background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.15) 0%, transparent 70%);\n    pointer-events: none;\n    z-index: -1;\n  }\n\n  .subtitle {\n    margin-top: 1.5rem;\n    font-family: 'Segoe UI', system-ui, sans-serif;\n    font-size: clamp(0.9rem, 2vw, 1.2rem);\n    color: rgba(255, 255, 255, 0.35);\n    letter-spacing: 0.3em;\n    text-transform: uppercase;\n    animation: fadeIn 2s ease-in-out;\n  }\n\n  @keyframes fadeIn {\n    from { opacity: 0; transform: translateY(10px); }\n    to { opacity: 1; transform: translateY(0); }\n  }\n</style>\n</head>\n<body>\n<div class=\"container\">\n  <div class=\"glow\"></div>\n  <div class=\"wavy-text\">\n"
+
+      html_body_close:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: spans_html
+          right:
+            literal: "\n  </div>\n  <div class=\"subtitle\">crafted with lexflow</div>\n</div>\n</body>\n</html>\n"
+
+      full_html:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: html_head
+          right:
+            node: html_body_close
+
+      assemble_html:
+        opcode: data_set_variable_to
+        next: print_result
+        inputs:
+          VARIABLE:
+            literal: "html_result"
+          VALUE:
+            node: full_html
+
+      # Print the HTML so it can be captured with --output-file
+      print_result:
+        opcode: io_print
+        next: return_result
+        inputs:
+          STRING:
+            variable: html_result
+
+      # Also return it as the workflow result
+      return_result:
+        opcode: workflow_return
+        inputs:
+          VALUE:
+            variable: html_result

@@ -1,0 +1,173 @@
+# Long-Running Echo Server
+#
+# Demonstrates a persistent workflow that receives HTTP connections
+# from the platform and responds to each one.
+#
+# This workflow is designed to run as a LONG_RUNNING deployment in
+# the LexFlow platform. The platform injects a `_connections` channel
+# as a workflow input. Each item received from the channel is a dict
+# containing:
+#
+#   - id:           Connection ID (string)
+#   - type:         Connection type ("http", "websocket", "sse")
+#   - method:       HTTP method ("GET", "POST", etc.)
+#   - path:         Request path
+#   - headers:      Request headers (dict)
+#   - query_params: Query parameters (dict)
+#   - body:         Request body (dict or null)
+#   - _response:    A lexflow Channel(maxsize=1) for sending the response
+#   - _connection:  The raw Connection object (for WebSocket/SSE use)
+#
+# For HTTP connections the workflow sends its response via
+# `channel_send` on the `_response` channel. The platform awaits this
+# response and returns it as a JSON HTTP response.
+#
+# Usage:
+#   1. Create a LONG_RUNNING deployment pointing to this workflow
+#   2. POST /api/serve/{workspace}/{deployment} with JSON body
+#   3. The workflow echoes back the body along with request metadata
+#
+# Run locally (standalone, without the platform):
+#   lexflow examples/web/long_running_echo_server.yaml
+
+workflows:
+  - name: main
+    interface:
+      inputs: [_connections]
+      outputs: []
+    variables:
+      running: true
+      conn: null
+      body: null
+      method: null
+      path: null
+      response_ch: null
+
+    nodes:
+      start:
+        opcode: workflow_start
+        next: connection_loop
+        inputs: {}
+
+      # ── Main loop: receive connections until the channel closes ──
+      connection_loop:
+        opcode: control_while
+        next: end
+        inputs:
+          CONDITION: { variable: running }
+          BODY: { branch: receive_conn }
+
+      # ── Receive a connection dict from the channel ──
+      receive_conn:
+        opcode: data_set_variable_to
+        next: extract_body
+        inputs:
+          VARIABLE: { literal: "conn" }
+          VALUE: { node: do_recv }
+
+      do_recv:
+        opcode: channel_receive
+        inputs:
+          CHANNEL: { variable: _connections }
+
+      # ── Extract fields from the connection dict ──
+      extract_body:
+        opcode: data_set_variable_to
+        next: extract_method
+        inputs:
+          VARIABLE: { literal: "body" }
+          VALUE: { node: get_body }
+
+      get_body:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: { variable: conn }
+          key: { literal: "body" }
+
+      extract_method:
+        opcode: data_set_variable_to
+        next: extract_path
+        inputs:
+          VARIABLE: { literal: "method" }
+          VALUE: { node: get_method }
+
+      get_method:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: { variable: conn }
+          key: { literal: "method" }
+
+      extract_path:
+        opcode: data_set_variable_to
+        next: extract_response_ch
+        inputs:
+          VARIABLE: { literal: "path" }
+          VALUE: { node: get_path }
+
+      get_path:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: { variable: conn }
+          key: { literal: "path" }
+
+      extract_response_ch:
+        opcode: data_set_variable_to
+        next: send_response
+        inputs:
+          VARIABLE: { literal: "response_ch" }
+          VALUE: { node: get_response_ch }
+
+      get_response_ch:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: { variable: conn }
+          key: { literal: "_response" }
+
+      # ── Build and send the response ──
+      send_response:
+        opcode: channel_send
+        next: null
+        inputs:
+          CHANNEL: { variable: response_ch }
+          VALUE: { node: build_response }
+
+      # Build response dict: {"echo": body, "method": method, "path": path}
+      build_response:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d: { node: response_with_method }
+          key: { literal: "path" }
+          value: { variable: path }
+
+      response_with_method:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d: { node: response_with_echo }
+          key: { literal: "method" }
+          value: { variable: method }
+
+      response_with_echo:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d: { node: response_base }
+          key: { literal: "echo" }
+          value: { variable: body }
+
+      response_base:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      # ── End (reached when _connections channel is closed) ──
+      end:
+        opcode: workflow_return
+        next: null
+        inputs:
+          VALUE: { literal: "server stopped" }
