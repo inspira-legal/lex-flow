@@ -460,6 +460,154 @@ store_response:
 7. **Always Include workflow_start**: Every workflow must begin with a `workflow_start` node
 8. **Avoid Double-Execution**: Never make side-effect nodes both statements AND reporters
 
+## Long-Running Deployment Workflows (lexflow-automações)
+
+When the user says the workflow will be deployed as a **long-running deployment** on the lexflow-automações platform, follow these additional patterns. The platform supports two deployment modes:
+
+### Server Mode — Receiving HTTP/WS/SSE Connections
+
+Server-mode workflows declare `_connections` as an input. The platform injects a LexFlow Channel that delivers incoming HTTP, WebSocket, and SSE connections as dicts.
+
+```yaml
+workflows:
+  - name: main
+    interface:
+      inputs: ["_connections", "_shutdown"]
+      outputs: []
+    variables:
+      _connections: null
+      _shutdown: null
+      conn: null
+    nodes:
+      start:
+        opcode: workflow_start
+        next: accept_loop
+        inputs: {}
+
+      # Main server loop — receive connections until shutdown
+      accept_loop:
+        opcode: control_while
+        next: done
+        inputs:
+          CONDITION:
+            node: not_shutdown
+          BODY:
+            branch: receive_conn
+
+      not_shutdown:
+        opcode: operator_not
+        isReporter: true
+        inputs:
+          OPERAND:
+            node: check_shutdown
+
+      check_shutdown:
+        opcode: sync_event_is_set
+        isReporter: true
+        inputs:
+          event:
+            variable: "_shutdown"
+
+      # Receive next connection from the channel
+      get_conn:
+        opcode: channel_receive
+        isReporter: true
+        inputs:
+          channel:
+            variable: "_connections"
+          timeout:
+            literal: 1.0
+
+      receive_conn:
+        opcode: data_set_variable_to
+        next: handle_conn
+        inputs:
+          VARIABLE:
+            literal: "conn"
+          VALUE:
+            node: get_conn
+
+      handle_conn:
+        # ... process the connection dict ...
+        # conn has keys: id, type, method, path, headers, query_params, body
+        # Use dict_get to access fields
+        # Send response via: channel_send(dict_get(conn, "_response"), result)
+```
+
+**Connection dict keys:**
+- `id` — Unique connection ID
+- `type` — `"http"`, `"websocket"`, or `"sse"`
+- `method` — HTTP method (e.g. `"POST"`)
+- `path`, `headers`, `query_params`, `body` — Request data
+- `_response` — Channel to send the response back through (use `channel_send`)
+- `_connection` — Connection object for WS/SSE (use with `send`/`receive`/`close`)
+
+### Daemon Mode — Autonomous Background Processing
+
+Daemon-mode workflows do NOT declare `_connections`. They run autonomously (e.g. Pub/Sub consumers, queue processors, scheduled pollers). They receive `_shutdown` for graceful teardown and deployment `config` values as inputs.
+
+```yaml
+workflows:
+  - name: main
+    interface:
+      inputs: ["_shutdown", "project_id", "subscription_id"]
+      outputs: []
+    variables:
+      _shutdown: null
+      project_id: "my-project"
+      subscription_id: "my-subscription"
+      subscriber: null
+      msg: null
+    nodes:
+      start:
+        opcode: workflow_start
+        next: safe_run
+        inputs: {}
+
+      # Always wrap resource-heavy work in try/finally for cleanup
+      safe_run:
+        opcode: control_try
+        inputs:
+          TRY:
+            branch: store_subscriber
+          FINALLY:
+            branch: cleanup
+
+      create_subscriber:
+        opcode: pubsub_create_subscriber
+        isReporter: true
+        inputs: {}
+
+      store_subscriber:
+        opcode: data_set_variable_to
+        next: process_messages
+        inputs:
+          VARIABLE:
+            literal: "subscriber"
+          VALUE:
+            node: create_subscriber
+
+      # ... streaming loop using control_async_foreach ...
+
+      cleanup:
+        opcode: pubsub_close_subscriber
+        inputs:
+          subscriber:
+            variable: "subscriber"
+```
+
+### Key Rules for Long-Running Workflows
+
+1. **Declare `_shutdown` in inputs** — The platform sets this `asyncio.Event` on stop. Check it in loops or use `sync_event_wait` with a timeout to allow graceful exit.
+
+2. **Use `try/finally` for resource cleanup** — Always wrap the main body in `control_try` with a `FINALLY` branch that closes clients, connections, and other resources.
+
+3. **Config values become inputs** — The deployment's `config` dict (set at deploy time) is injected as workflow inputs. Declare them in `interface.inputs` so the same workflow can be deployed multiple times with different configurations (e.g. different Pub/Sub subscriptions).
+
+4. **Server-mode requires `_connections`** — Only declare it if the workflow needs to receive HTTP/WS/SSE connections. Omitting it makes the workflow run in daemon mode.
+
+5. **Timeout channel receives** — In server mode, use `channel_receive` with a timeout so the loop can check `_shutdown` periodically instead of blocking forever.
+
 ## Output Format
 
 When creating workflows, you will:
