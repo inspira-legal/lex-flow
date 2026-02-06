@@ -58,15 +58,20 @@ jobs:
       - name: Install dependencies
         run: pip install python-semantic-release
 
-      - name: Release lexflow-core
-        working-directory: lexflow-core
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          semantic-release version
-          semantic-release publish
+
+      - name: Bump version and push (via SSH deploy key)
+        working-directory: lexflow-core
+        run: semantic-release version
+
+      - name: Create GitHub release
+        working-directory: lexflow-core
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: semantic-release publish
 
   update-docs:
     needs: [detect-changes, release-core]
@@ -134,15 +139,20 @@ jobs:
       - name: Pull latest changes
         run: git pull origin main
 
-      - name: Release lexflow-cli
-        working-directory: lexflow-cli
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          semantic-release version
-          semantic-release publish
+
+      - name: Bump version and push (via SSH deploy key)
+        working-directory: lexflow-cli
+        run: semantic-release version
+
+      - name: Create GitHub release
+        working-directory: lexflow-cli
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: semantic-release publish
 
   release-web:
     needs: [detect-changes, release-core, update-docs, release-cli]
@@ -189,10 +199,12 @@ jobs:
           git diff --staged --quiet || git commit -m "chore(web): build frontend library [skip ci]"
           git push origin main
 
-      - name: Release lexflow-web
+      - name: Bump version and push (via SSH deploy key)
+        working-directory: lexflow-web
+        run: semantic-release version
+
+      - name: Create GitHub release
         working-directory: lexflow-web
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          semantic-release version
-          semantic-release publish
+        run: semantic-release publish
