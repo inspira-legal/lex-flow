@@ -10,22 +10,26 @@ import type {
   LoopConfig,
   NodeType,
   WorkflowInterface,
+  DetailedInput,
 } from "../api/types";
+import { normalizeInput } from "../api/types";
 import { getConstruct, getGrammar } from "./grammar";
 import type { Construct } from "../types/grammar";
+
+type RawInput = string | DetailedInput;
 
 interface WorkflowData {
   workflows?: WorkflowDefinition[];
   nodes?: Record<string, NodeDefinition>;
   name?: string;
-  interface?: { inputs?: string[]; outputs?: string[] };
+  interface?: { inputs?: RawInput[]; outputs?: string[] };
   variables?: Record<string, unknown>;
 }
 
 interface WorkflowDefinition {
   name?: string;
   nodes?: Record<string, NodeDefinition>;
-  interface?: { inputs?: string[]; outputs?: string[] };
+  interface?: { inputs?: RawInput[]; outputs?: string[] };
   variables?: Record<string, unknown>;
 }
 
@@ -70,7 +74,10 @@ export function workflowToTree(
 
   // Build tree for all workflows
   const workflowTrees: WorkflowNode[] = [];
-  let mainInterface: WorkflowInterface = { inputs: [], outputs: [] };
+  let mainInterface: WorkflowInterface = {
+    inputs: [] as DetailedInput[],
+    outputs: [],
+  };
 
   for (const w of workflows) {
     const tree = buildWorkflowTree(w);
@@ -91,11 +98,12 @@ function buildWorkflowTree(workflow: WorkflowDefinition): WorkflowNode {
   const nodes = workflow.nodes || {};
   const iface = workflow.interface || {};
 
+  const rawInputs = iface.inputs || [];
   const tree: WorkflowNode = {
     type: "workflow",
     name: workflow.name || "main",
     interface: {
-      inputs: iface.inputs || [],
+      inputs: rawInputs.map(normalizeInput),
       outputs: iface.outputs || [],
     },
     variables: workflow.variables || {},
@@ -215,7 +223,12 @@ function nodeToTree(
     treeNode.config = extractConfig(opcode, inputs, allNodes, construct);
 
     // Grammar-driven branch extraction
-    treeNode.children = extractBranches(inputs, allNodes, allVisited, construct);
+    treeNode.children = extractBranches(
+      inputs,
+      allNodes,
+      allVisited,
+      construct,
+    );
   }
 
   return treeNode;
@@ -254,7 +267,15 @@ function extractConfig(
   }
 
   // Legacy support: ensure var is set for loops
-  if (["control_for", "control_foreach", "control_spawn", "control_async_foreach", "control_with"].includes(opcode)) {
+  if (
+    [
+      "control_for",
+      "control_foreach",
+      "control_spawn",
+      "control_async_foreach",
+      "control_with",
+    ].includes(opcode)
+  ) {
     if (!config.var) {
       config.var = getRawValue(inputs["VAR"] ?? inputs["var"] ?? "i") as string;
     }
@@ -283,13 +304,18 @@ function extractBranches(
 
   // Standard branch extraction from grammar
   for (const branchDef of construct.branches) {
-    const branchInput = getInputValue(inputs, branchDef.name) as InputValue | undefined;
-    const branchId = typeof branchInput === "object" && branchInput !== null
-      ? branchInput.branch
-      : undefined;
+    const branchInput = getInputValue(inputs, branchDef.name) as
+      | InputValue
+      | undefined;
+    const branchId =
+      typeof branchInput === "object" && branchInput !== null
+        ? branchInput.branch
+        : undefined;
 
     if (branchId) {
-      branches.push(buildBranch(branchDef.name, branchId, allNodes, allVisited));
+      branches.push(
+        buildBranch(branchDef.name, branchId, allNodes, allVisited),
+      );
     } else if (branchInput !== undefined) {
       // Empty branch slot (branch: null) - include as empty branch
       branches.push({ type: "branch", name: branchDef.name, children: [] });
@@ -330,10 +356,13 @@ function extractDynamicBranches(
 
   // Extract static branches first (e.g., TRY, FINALLY)
   for (const branchName of staticBranchNames) {
-    const branchInput = getInputValue(inputs, branchName) as InputValue | undefined;
-    const branchId = typeof branchInput === "object" && branchInput !== null
-      ? branchInput.branch
-      : undefined;
+    const branchInput = getInputValue(inputs, branchName) as
+      | InputValue
+      | undefined;
+    const branchId =
+      typeof branchInput === "object" && branchInput !== null
+        ? branchInput.branch
+        : undefined;
 
     if (branchId) {
       branches.push(buildBranch(branchName, branchId, allNodes, allVisited));
@@ -346,19 +375,28 @@ function extractDynamicBranches(
   // Extract dynamic branches by pattern
   for (const prefix of dynamicPrefixes) {
     // Check for list format (HANDLERS, BRANCHES)
-    const listKey = prefix === "CATCH" ? "HANDLERS" : prefix === "BRANCH" ? "BRANCHES" : null;
-    const listInput = listKey ? (inputs[listKey] ?? inputs[listKey.toLowerCase()]) : null;
+    const listKey =
+      prefix === "CATCH" ? "HANDLERS" : prefix === "BRANCH" ? "BRANCHES" : null;
+    const listInput = listKey
+      ? (inputs[listKey] ?? inputs[listKey.toLowerCase()])
+      : null;
 
     if (Array.isArray(listInput) && listInput.length > 0) {
       // List format
       listInput.forEach((item, i) => {
         if (typeof item === "object" && item !== null) {
           const handler = item as CatchHandler;
-          const branchId = handler.branch ?? (handler.body as InputValue | undefined)?.branch;
+          const branchId =
+            handler.branch ?? (handler.body as InputValue | undefined)?.branch;
           const branchName = `${prefix}${i + 1}`;
 
           if (branchId) {
-            const branch = buildBranch(branchName, branchId, allNodes, allVisited);
+            const branch = buildBranch(
+              branchName,
+              branchId,
+              allNodes,
+              allVisited,
+            );
             if (prefix === "CATCH") {
               branch.exception_type = handler.exception_type || "Exception";
               branch.var_name = handler.var_name ?? handler.var;
@@ -366,9 +404,14 @@ function extractDynamicBranches(
             branches.push(branch);
           } else {
             // Empty branch slot - include so UI can show the slot
-            const emptyBranch: BranchNode = { type: "branch", name: branchName, children: [] };
+            const emptyBranch: BranchNode = {
+              type: "branch",
+              name: branchName,
+              children: [],
+            };
             if (prefix === "CATCH") {
-              emptyBranch.exception_type = handler.exception_type || "Exception";
+              emptyBranch.exception_type =
+                handler.exception_type || "Exception";
               emptyBranch.var_name = handler.var_name ?? handler.var;
             }
             branches.push(emptyBranch);
@@ -386,9 +429,10 @@ function extractDynamicBranches(
         if (typeof branchInput === "object" && branchInput !== null) {
           const handler = branchInput as CatchHandler;
           // Try different branch reference formats
-          const branchId = handler.branch
-            ?? (handler.body as InputValue | undefined)?.branch
-            ?? (branchInput as InputValue).branch;
+          const branchId =
+            handler.branch ??
+            (handler.body as InputValue | undefined)?.branch ??
+            (branchInput as InputValue).branch;
 
           if (branchId) {
             const branch = buildBranch(key, branchId, allNodes, allVisited);
@@ -399,9 +443,14 @@ function extractDynamicBranches(
             branches.push(branch);
           } else {
             // Empty branch slot - include so UI can show the slot
-            const emptyBranch: BranchNode = { type: "branch", name: key, children: [] };
+            const emptyBranch: BranchNode = {
+              type: "branch",
+              name: key,
+              children: [],
+            };
             if (prefix === "CATCH") {
-              emptyBranch.exception_type = handler.exception_type || "Exception";
+              emptyBranch.exception_type =
+                handler.exception_type || "Exception";
               emptyBranch.var_name = handler.var_name ?? handler.var;
             }
             branches.push(emptyBranch);
@@ -495,8 +544,18 @@ function formatInputs(
 
   // Always filter these special keys
   const specialKeys = new Set([
-    "BODY", "body", "THEN", "then", "ELSE", "else",
-    "TRY", "FINALLY", "HANDLERS", "handlers", "BRANCHES", "branches"
+    "BODY",
+    "body",
+    "THEN",
+    "then",
+    "ELSE",
+    "else",
+    "TRY",
+    "FINALLY",
+    "HANDLERS",
+    "handlers",
+    "BRANCHES",
+    "branches",
   ]);
 
   for (const [key, value] of Object.entries(inputs)) {

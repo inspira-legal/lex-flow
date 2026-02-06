@@ -1,7 +1,7 @@
 // Command types for centralized editing operations
 // All editing operations are expressed as serializable commands
 
-import type { OpcodeInterface } from "../../api/types";
+import type { OpcodeInterface, DetailedInput } from "../../api/types";
 
 // Union type for all workflow commands
 export type WorkflowCommand =
@@ -42,7 +42,7 @@ export type WorkflowCommand =
   | {
       type: "UPDATE_INTERFACE";
       workflowName: string;
-      inputs: string[];
+      inputs: DetailedInput[];
       outputs: string[];
     }
   | { type: "ADD_DYNAMIC_BRANCH"; nodeId: string; branchPrefix: string }

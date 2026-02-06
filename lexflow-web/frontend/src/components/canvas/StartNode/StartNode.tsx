@@ -1,6 +1,6 @@
-import { useRef, useEffect, useState, memo, useCallback } from "react"
-import { useUiStore, useSelectionStore, useWorkflowStore } from "@/store"
-import type { NodeSlotPositions } from "@/store/uiStore"
+import { useRef, useEffect, useState, memo, useCallback } from "react";
+import { useUiStore, useSelectionStore, useWorkflowStore } from "@/store";
+import type { NodeSlotPositions } from "@/store/uiStore";
 import {
   START_NODE_WIDTH,
   START_NODE_HEIGHT,
@@ -13,8 +13,8 @@ import {
   moreVarsStyle,
   getOutputPortStyle,
   dragHandleStyle,
-} from "./styles"
-import type { StartNodeProps } from "./types"
+} from "./styles";
+import type { StartNodeProps } from "./types";
 
 export const StartNode = memo(function StartNode({
   workflowName,
@@ -33,70 +33,71 @@ export const StartNode = memo(function StartNode({
     unregisterSlotPositions,
     draggingWire,
     setDraggingWire,
-  } = useUiStore()
-  const { selectedStartNode, selectStartNode, selectNode } = useSelectionStore()
-  const { connectNodes } = useWorkflowStore()
+  } = useUiStore();
+  const { selectedStartNode, selectStartNode, selectNode } =
+    useSelectionStore();
+  const { connectNodes } = useWorkflowStore();
 
-  const [isHovered, setIsHovered] = useState(false)
+  const [isHovered, setIsHovered] = useState(false);
 
   // Start node ID for the slot registry
-  const startNodeId = `start-${workflowName}`
+  const startNodeId = `start-${workflowName}`;
 
-  const isSelected = selectedStartNode === workflowName
-  const justDraggedRef = useRef(false)
+  const isSelected = selectedStartNode === workflowName;
+  const justDraggedRef = useRef(false);
 
   const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
+    e.stopPropagation();
     if (justDraggedRef.current) {
-      justDraggedRef.current = false
-      return
+      justDraggedRef.current = false;
+      return;
     }
-    selectNode(null) // Deselect any regular node
-    selectStartNode(workflowName)
-    openNodeEditor()
-  }
+    selectNode(null); // Deselect any regular node
+    selectStartNode(workflowName);
+    openNodeEditor();
+  };
 
   // Handle node drag in free layout mode
   const handleDragStart = (e: React.MouseEvent) => {
-    if (layoutMode !== "free" || !onDrag) return
-    e.stopPropagation()
-    e.preventDefault()
+    if (layoutMode !== "free" || !onDrag) return;
+    e.stopPropagation();
+    e.preventDefault();
 
-    setIsDraggingNode(true)
+    setIsDraggingNode(true);
 
-    const startX = e.clientX
-    const startY = e.clientY
-    let hasMoved = false
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let hasMoved = false;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      const dx = (moveEvent.clientX - startX) / zoom
-      const dy = (moveEvent.clientY - startY) / zoom
+      const dx = (moveEvent.clientX - startX) / zoom;
+      const dy = (moveEvent.clientY - startY) / zoom;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-        hasMoved = true
-        onDrag(dx, dy)
+        hasMoved = true;
+        onDrag(dx, dy);
       }
-    }
+    };
 
     const handleMouseUp = () => {
-      setIsDraggingNode(false)
+      setIsDraggingNode(false);
       if (hasMoved) {
-        justDraggedRef.current = true
+        justDraggedRef.current = true;
       }
-      window.removeEventListener("mousemove", handleMouseMove)
-      window.removeEventListener("mouseup", handleMouseUp)
-    }
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
 
-    window.addEventListener("mousemove", handleMouseMove)
-    window.addEventListener("mouseup", handleMouseUp)
-  }
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
 
   // Handle dragging from output port to connect start node to first node
   const handleOutputPortMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      e.stopPropagation()
-      e.preventDefault()
-      const outputX = x + START_NODE_WIDTH
-      const outputY = y + 30
+      e.stopPropagation();
+      e.preventDefault();
+      const outputX = x + START_NODE_WIDTH;
+      const outputY = y + 30;
       setDraggingWire({
         sourceNodeId: startNodeId, // Use registry ID (start-{workflowName}) to preserve workflow context
         sourcePort: "output",
@@ -105,16 +106,16 @@ export const StartNode = memo(function StartNode({
         dragX: outputX,
         dragY: outputY,
         nearbyPort: null,
-      })
+      });
     },
-    [x, y, startNodeId, setDraggingWire]
-  )
+    [x, y, startNodeId, setDraggingWire],
+  );
 
   // Handle completing connection when dragging from input to output (reverse direction)
   const handleOutputPortMouseUp = useCallback(
     (e: React.MouseEvent) => {
-      e.stopPropagation()
-      e.preventDefault()
+      e.stopPropagation();
+      e.preventDefault();
       if (
         draggingWire &&
         draggingWire.sourcePort === "input" &&
@@ -122,40 +123,40 @@ export const StartNode = memo(function StartNode({
       ) {
         // Connect from start to the source node (reverse: someone dragged from their input to our output)
         // Pass workflowName to scope the start node to this workflow
-        connectNodes("start", draggingWire.sourceNodeId, workflowName)
-        setDraggingWire(null)
+        connectNodes("start", draggingWire.sourceNodeId, workflowName);
+        setDraggingWire(null);
       }
     },
-    [draggingWire, workflowName, connectNodes, setDraggingWire]
-  )
+    [draggingWire, workflowName, connectNodes, setDraggingWire],
+  );
 
   // Check if this output port should be highlighted during wire dragging
   const isOutputPortHighlighted =
     draggingWire?.nearbyPort?.nodeId === startNodeId &&
-    draggingWire?.nearbyPort?.port === "output"
+    draggingWire?.nearbyPort?.port === "output";
 
   // Check if this is a valid drop target for reverse connections
   const isValidOutputDropTarget =
     !!draggingWire &&
     draggingWire.sourcePort === "input" &&
-    !draggingWire.sourceNodeId.startsWith("start-")
+    !draggingWire.sourceNodeId.startsWith("start-");
 
   // Format variables for display
-  const varEntries = Object.entries(variables).slice(0, 3)
-  const hasMoreVars = Object.keys(variables).length > 3
+  const varEntries = Object.entries(variables).slice(0, 3);
+  const hasMoreVars = Object.keys(variables).length > 3;
 
   // Format interface inputs/outputs
-  const inputs = workflowInterface.inputs || []
-  const outputs = workflowInterface.outputs || []
+  const inputs = workflowInterface.inputs || [];
+  const outputs = workflowInterface.outputs || [];
 
   // Calculate dynamic height based on content
-  const baseHeight = 50 // Header + padding
-  const interfaceHeight = inputs.length > 0 || outputs.length > 0 ? 18 : 0
-  const variablesHeight = varEntries.length * 14 + (hasMoreVars ? 12 : 0)
+  const baseHeight = 50; // Header + padding
+  const interfaceHeight = inputs.length > 0 || outputs.length > 0 ? 18 : 0;
+  const variablesHeight = varEntries.length * 14 + (hasMoreVars ? 12 : 0);
   const totalHeight = Math.max(
     START_NODE_HEIGHT,
-    baseHeight + interfaceHeight + variablesHeight + 10
-  )
+    baseHeight + interfaceHeight + variablesHeight + 10,
+  );
 
   // Register slot positions for wire alignment (start node only has output port)
   useEffect(() => {
@@ -163,11 +164,11 @@ export const StartNode = memo(function StartNode({
       input: { x, y: y + 30 }, // Not used but required by interface
       output: { x: x + START_NODE_WIDTH, y: y + 30 },
       branches: {},
-    }
+    };
 
-    registerSlotPositions(startNodeId, positions)
-    return () => unregisterSlotPositions(startNodeId)
-  }, [x, y, startNodeId, registerSlotPositions, unregisterSlotPositions])
+    registerSlotPositions(startNodeId, positions);
+    return () => unregisterSlotPositions(startNodeId);
+  }, [x, y, startNodeId, registerSlotPositions, unregisterSlotPositions]);
 
   return (
     <g
@@ -202,7 +203,7 @@ export const StartNode = memo(function StartNode({
       {(inputs.length > 0 || outputs.length > 0) && (
         <g transform="translate(12, 38)">
           <text x={0} y={0} style={interfaceLabelStyle}>
-            {inputs.length > 0 && `In: ${inputs.join(", ")}`}
+            {inputs.length > 0 && `In: ${inputs.map((i) => i.name).join(", ")}`}
             {inputs.length > 0 && outputs.length > 0 && " | "}
             {outputs.length > 0 && `Out: ${outputs.join(", ")}`}
           </text>
@@ -242,7 +243,10 @@ export const StartNode = memo(function StartNode({
         cx={START_NODE_WIDTH}
         cy={30}
         r={6}
-        style={getOutputPortStyle(isHovered || isOutputPortHighlighted, !!draggingWire)}
+        style={getOutputPortStyle(
+          isHovered || isOutputPortHighlighted,
+          !!draggingWire,
+        )}
         onMouseDown={handleOutputPortMouseDown}
         onMouseUp={handleOutputPortMouseUp}
       />
@@ -260,18 +264,18 @@ export const StartNode = memo(function StartNode({
         />
       )}
     </g>
-  )
-})
+  );
+});
 
 function formatVariableValue(value: unknown): string {
-  if (value === null) return "null"
-  if (value === undefined) return "undefined"
+  if (value === null) return "null";
+  if (value === undefined) return "undefined";
   if (typeof value === "string") {
-    if (value.length > 12) return `"${value.slice(0, 12)}..."`
-    return `"${value}"`
+    if (value.length > 12) return `"${value.slice(0, 12)}..."`;
+    return `"${value}"`;
   }
   if (typeof value === "object") {
-    return JSON.stringify(value).slice(0, 15) + "..."
+    return JSON.stringify(value).slice(0, 15) + "...";
   }
-  return String(value)
+  return String(value);
 }
