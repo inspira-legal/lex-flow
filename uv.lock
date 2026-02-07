@@ -721,6 +721,19 @@ wheels = [
 ]
 
 [[package]]
+name = "gcloud-aio-pubsub"
+version = "6.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "gcloud-aio-auth" },
+    { name = "prometheus-client" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/60/f5/5b0cb4be2da894b0fefe9704b93477084a73d9bf94f89114578cbad7248d/gcloud_aio_pubsub-6.3.0.tar.gz", hash = "sha256:6af619459abf2115ba3fff4f8cdc9213c5e3b59467c77435a2aeaadb39577588", size = 13682, upload-time = "2025-07-17T19:21:59.841Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/da/32/1bd0bb15ce376cf0f8b38598d380a4c2645a7fa7559845a5b9f14fa5ae5d/gcloud_aio_pubsub-6.3.0-py3-none-any.whl", hash = "sha256:92cf936a015371504f997e74172b4b2fab441ab94260aa9e4ad194c3a8c16b6c", size = 17777, upload-time = "2025-07-17T19:21:58.308Z" },
+]
+
+[[package]]
 name = "gcloud-aio-storage"
 version = "9.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1239,6 +1252,7 @@ all = [
     { name = "beautifulsoup4" },
     { name = "bm25s" },
     { name = "fastapi" },
+    { name = "gcloud-aio-pubsub" },
     { name = "gcloud-aio-storage" },
     { name = "google-cloud-aiplatform" },
     { name = "pydantic-ai-slim", extra = ["google"] },
@@ -1261,6 +1275,9 @@ gcs = [
 http = [
     { name = "aiohttp" },
     { name = "beautifulsoup4" },
+]
+pubsub = [
+    { name = "gcloud-aio-pubsub" },
 ]
 pygame = [
     { name = "pygame" },
@@ -1289,9 +1306,10 @@ requires-dist = [
     { name = "beautifulsoup4", marker = "extra == 'http'" },
     { name = "bm25s", marker = "extra == 'rag'" },
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.100.0" },
+    { name = "gcloud-aio-pubsub", marker = "extra == 'pubsub'" },
     { name = "gcloud-aio-storage", marker = "extra == 'gcs'" },
     { name = "google-cloud-aiplatform", marker = "extra == 'rag'" },
-    { name = "lexflow", extras = ["ai", "pygame", "file", "http", "web", "rag", "gcs"], marker = "extra == 'all'" },
+    { name = "lexflow", extras = ["ai", "pygame", "file", "http", "web", "rag", "gcs", "pubsub"], marker = "extra == 'all'" },
     { name = "pydantic" },
     { name = "pydantic-ai-slim", extras = ["google"], marker = "extra == 'ai'" },
     { name = "pygame", marker = "extra == 'pygame'", specifier = ">=2.6.1" },
@@ -1304,7 +1322,7 @@ requires-dist = [
     { name = "rich" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'web'", specifier = ">=0.23.0" },
 ]
-provides-extras = ["ai", "pygame", "file", "gcs", "http", "rag", "web", "dev", "all"]
+provides-extras = ["ai", "pygame", "file", "http", "gcs", "pubsub", "rag", "web", "dev", "all"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1641,15 +1659,15 @@ wheels = [
 
 [[package]]
 name = "opentelemetry-api"
-version = "1.36.0"
+version = "1.39.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "importlib-metadata" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/27/d2/c782c88b8afbf961d6972428821c302bd1e9e7bc361352172f0ca31296e2/opentelemetry_api-1.36.0.tar.gz", hash = "sha256:9a72572b9c416d004d492cbc6e61962c0501eaf945ece9b5a0f56597d8348aa0", size = 64780, upload-time = "2025-07-29T15:12:06.02Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/97/b9/3161be15bb8e3ad01be8be5a968a9237c3027c5be504362ff800fca3e442/opentelemetry_api-1.39.1.tar.gz", hash = "sha256:fbde8c80e1b937a2c61f20347e91c0c18a1940cecf012d62e65a7caf08967c9c", size = 65767, upload-time = "2025-12-11T13:32:39.182Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bb/ee/6b08dde0a022c463b88f55ae81149584b125a42183407dc1045c486cc870/opentelemetry_api-1.36.0-py3-none-any.whl", hash = "sha256:02f20bcacf666e1333b6b1f04e647dc1d5111f86b8e510238fcc56d7762cda8c", size = 65564, upload-time = "2025-07-29T15:11:47.998Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/df/d3f1ddf4bb4cb50ed9b1139cc7b1c54c34a1e7ce8fd1b9a37c0d1551a6bd/opentelemetry_api-1.39.1-py3-none-any.whl", hash = "sha256:2edd8463432a7f8443edce90972169b195e7d6a05500cd29e6d13898187c9950", size = 66356, upload-time = "2025-12-11T13:32:17.304Z" },
 ]
 
 [[package]]
@@ -1705,6 +1723,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/40/f1/6d86a29246dfd2e9b6237f0b5823717f60cad94d47ddc26afa916d21f525/pre_commit-4.5.1.tar.gz", hash = "sha256:eb545fcff725875197837263e977ea257a402056661f09dae08e4b149b030a61", size = 198232, upload-time = "2025-12-16T21:14:33.552Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5d/19/fd3ef348460c80af7bb4669ea7926651d1f95c23ff2df18b9d24bab4f3fa/pre_commit-4.5.1-py2.py3-none-any.whl", hash = "sha256:3b3afd891e97337708c1674210f8eba659b52a38ea5f822ff142d10786221f77", size = 226437, upload-time = "2025-12-16T21:14:32.409Z" },
+]
+
+[[package]]
+name = "prometheus-client"
+version = "0.24.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/58/a794d23feb6b00fc0c72787d7e87d872a6730dd9ed7c7b3e954637d8f280/prometheus_client-0.24.1.tar.gz", hash = "sha256:7e0ced7fbbd40f7b84962d5d2ab6f17ef88a72504dcf7c0b40737b43b2a461f9", size = 85616, upload-time = "2026-01-14T15:26:26.965Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/74/c3/24a2f845e3917201628ecaba4f18bab4d18a337834c1df2a159ee9d22a42/prometheus_client-0.24.1-py3-none-any.whl", hash = "sha256:150db128af71a5c2482b36e588fc8a6b95e498750da4b17065947c16070f4055", size = 64057, upload-time = "2026-01-14T15:26:24.42Z" },
 ]
 
 [[package]]

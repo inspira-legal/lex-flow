@@ -1,0 +1,123 @@
+# Local Pub/Sub Publisher Example (Emulator)
+#
+# This workflow publishes messages to the local Pub/Sub emulator.
+#
+# Prerequisites:
+# - Start emulator: ./setup.sh docker
+# - Create resources: ./create_resources.sh
+# - Set environment: export PUBSUB_EMULATOR_HOST=localhost:8085
+#
+# Usage:
+# export PUBSUB_EMULATOR_HOST=localhost:8085
+# lexflow examples/integrations/pubsub/emulator/publisher.yaml
+
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      publisher: null
+      message_id: null
+      # Emulator configuration
+      project_id: "test-project"
+      topic_id: "test-topic"
+      # Attributes for filtering
+      attributes:
+        source: "lexflow-test"
+        env: "local"
+        test_id: "emulator-test"
+    nodes:
+      start:
+        opcode: workflow_start
+        next: intro
+        inputs: {}
+
+      intro:
+        opcode: io_print
+        next: store_publisher
+        inputs:
+          STRING:
+            literal: "=== Local Pub/Sub Publisher ===\n\n"
+
+      # Create Publisher Client
+      create_publisher:
+        opcode: pubsub_create_publisher
+        isReporter: true
+        inputs: {}
+
+      store_publisher:
+        opcode: data_set_variable_to
+        next: print_created
+        inputs:
+          VARIABLE:
+            literal: "publisher"
+          VALUE:
+            node: create_publisher
+
+      print_created:
+        opcode: io_print
+        next: store_message_id
+        inputs:
+          STRING:
+            literal: "Publisher created\n\n"
+
+      # Publish message with attributes
+      publish_message:
+        opcode: pubsub_publish_message_with_attributes
+        isReporter: true
+        inputs:
+          publisher:
+            variable: "publisher"
+          project_id:
+            variable: "project_id"
+          topic_id:
+            variable: "topic_id"
+          data:
+            literal: "[LEXFLOW-TEST] Hello from local emulator!"
+          attributes:
+            variable: "attributes"
+
+      store_message_id:
+        opcode: data_set_variable_to
+        next: print_published
+        inputs:
+          VARIABLE:
+            literal: "message_id"
+          VALUE:
+            node: publish_message
+
+      print_published:
+        opcode: io_print
+        next: print_id
+        inputs:
+          STRING:
+            literal: "Message published!\nID: "
+
+      print_id:
+        opcode: io_print
+        next: print_attrs_info
+        inputs:
+          STRING:
+            variable: "message_id"
+
+      print_attrs_info:
+        opcode: io_print
+        next: close_publisher
+        inputs:
+          STRING:
+            literal: "\nAttributes: source=lexflow-test, env=local\n"
+
+      # Close publisher client
+      close_publisher:
+        opcode: pubsub_close_publisher
+        next: done
+        inputs:
+          publisher:
+            variable: "publisher"
+
+      done:
+        opcode: io_print
+        inputs:
+          STRING:
+            literal: "\nDone!\n"

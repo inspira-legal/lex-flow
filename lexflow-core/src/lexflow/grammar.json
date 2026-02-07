@@ -187,6 +187,22 @@
       "prefix": "sync_",
       "color": "#A855F7",
       "icon": "🔒"
+    },
+    {
+      "id": "gcs",
+      "label": "Cloud Storage",
+      "prefix": "gcs_",
+      "color": "#4285F4",
+      "icon": "☁️",
+      "requires": "gcs"
+    },
+    {
+      "id": "pubsub",
+      "label": "Pub/Sub",
+      "prefix": "pubsub_",
+      "color": "#EA4335",
+      "icon": "📨",
+      "requires": "pubsub"
     }
   ],
   "constructs": [

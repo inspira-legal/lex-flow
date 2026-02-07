@@ -457,6 +457,131 @@ for name, stats in opcode_metrics.items():
 top_slow = engine.metrics.get_top_operations("opcode", n=10, sort_by="total_time")
 ```
 
+## Opcodes for Long-Running Deployments (lexflow-automações)
+
+When the user says the opcodes will be used in **long-running deployments** on the lexflow-automações platform, follow these additional design patterns.
+
+### Deployment Platform Context
+
+lexflow-automações runs LexFlow workflows as persistent services. Two modes:
+
+- **Server mode**: Workflow receives HTTP/WS/SSE connections via a `_connections` Channel. The workflow loops, processing incoming requests.
+- **Daemon mode**: Workflow runs autonomously (no `_connections`). Examples: Pub/Sub consumers, queue processors, scheduled pollers.
+
+Both modes receive a `_shutdown` asyncio.Event and deployment `config` values as workflow inputs. Opcodes don't interact with these directly — they come through the workflow interface.
+
+### Optional Dependency Pattern
+
+Integration opcode libraries (GCP, AWS, HTTP, AI) MUST be optional:
+
+```python
+"""Google Cloud Pub/Sub opcodes for LexFlow."""
+
+try:
+    from gcloud.aio.pubsub import PublisherClient, SubscriberClient
+    PUBSUB_AVAILABLE = True
+except ImportError:
+    PUBSUB_AVAILABLE = False
+
+
+def register_pubsub_opcodes():
+    """Register Pub/Sub opcodes. No-op if dependency not installed."""
+    if not PUBSUB_AVAILABLE:
+        return
+
+    from .opcodes import opcode, register_category
+
+    register_category(
+        id="pubsub",
+        label="Pub/Sub",
+        prefix="pubsub_",
+        color="#EA4335",
+        icon="📨",
+        requires="pubsub",   # Shown in UI as optional
+        order=270,
+    )
+
+    @opcode(category="pubsub")
+    async def pubsub_create_publisher() -> PublisherClient:
+        """Create a Pub/Sub publisher client."""
+        return PublisherClient()
+```
+
+Key points:
+- Guard imports in `try/except ImportError`
+- Wrap all registrations in a `register_X_opcodes()` function
+- Return early if dependency is missing
+- Use `register_category()` with `requires=` to declare the pip extra
+
+### Category Registration
+
+Group related opcodes under a category for the visual editor palette:
+
+```python
+from .opcodes import register_category
+
+register_category(
+    id="category_id",       # Unique identifier
+    label="Display Label",  # Shown in palette
+    prefix="category_",     # Stripped from display names
+    color="#HEX",           # Palette color
+    icon="📨",              # Palette icon
+    requires="extra_name",  # pip extra (optional)
+    order=270,              # Sort position in palette
+)
+```
+
+### Streaming Opcodes (Async Generators)
+
+For opcodes that produce a stream of values (e.g. message consumers, file watchers), return an `AsyncGenerator`. Workflows consume these via `control_async_foreach`.
+
+```python
+from typing import AsyncGenerator
+
+@opcode(category="mycat")
+async def mycat_stream_items(
+    client: SomeClient,
+    timeout: float | None = None,
+) -> AsyncGenerator[dict, None]:
+    """Stream items as an async generator.
+
+    Use with control_async_foreach to process items continuously.
+    The client is NOT closed by this opcode — use mycat_close_client
+    for cleanup.
+    """
+    async def generator():
+        while True:
+            items = await client.poll()
+            for item in items:
+                yield normalize(item)
+    return generator()
+```
+
+Design rules for streaming opcodes:
+1. **Always return the generator, don't yield directly** — The opcode creates and returns the generator object.
+2. **Don't close resources** — Let the workflow handle cleanup via a separate `close` opcode in a `finally` block.
+3. **Support cancellation** — The generator's `finally` block runs when `control_async_foreach` is cancelled.
+4. **Add backoff for polling** — When polling an external service, use exponential backoff on empty results to avoid wasting resources.
+
+### Resource Lifecycle Opcodes
+
+Always provide explicit create/close pairs for external clients:
+
+```python
+@opcode(category="mycat")
+async def mycat_create_client() -> SomeClient:
+    """Create a client. Close with mycat_close_client."""
+    return SomeClient()
+
+@opcode(category="mycat")
+async def mycat_close_client(client: SomeClient) -> bool:
+    """Close the client and release resources."""
+    await client.close()
+    return True
+```
+
+This lets workflows use `try/finally` for guaranteed cleanup — essential for long-running deployments where resource leaks accumulate.
+
 ## Your Workflow
 
 1. **Understand the requirement**: What operations are needed? What domain do they serve?
