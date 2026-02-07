@@ -24,11 +24,13 @@ Quick reference for all available opcodes in LexFlow.
 - [🌐 HTTP Operations](#http-operations) *(requires `lexflow[http]`)*
 - [📄 HTML Operations](#html-operations) *(requires `lexflow[http]`)*
 - [📋 JSON Operations](#json-operations)
+- [☁️ Cloud Storage](#cloud-storage) *(requires `lexflow[gcs]`)*
 - [🎮 Pygame Operations](#pygame-operations) *(requires `lexflow[pygame]`)*
 - [🔍 RAG Operations](#rag-operations) *(requires `lexflow[rag]`)*
 - [💬 Chat Operations](#chat-operations)
 - [💻 CLI Operations](#cli-operations)
 - [🐙 GitHub Operations](#github-operations)
+- [📨 Pub/Sub](#pub/sub) *(requires `lexflow[pubsub]`)*
 - [⚡ Task Operations](#task-operations)
 - [📡 Channel Operations](#channel-operations)
 - [🔒 Sync Primitives](#sync-primitives)
@@ -1579,6 +1581,333 @@ Raises:
 
 ---
 
+## ☁️ Cloud Storage
+
+> **Requires:** `pip install lexflow[gcs]`
+
+### `gcs_close_client(client)`
+
+Close the GCS client and release resources.
+
+Args:
+    client: GCS client instance to close
+
+Returns:
+    True when closed successfully
+
+Example:
+    client: { node: my_client }
+
+
+**Returns:** `bool`
+
+---
+
+### `gcs_copy_object(client, source_bucket, source_object, dest_bucket, dest_object)`
+
+Copy an object within or between GCS buckets.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    source_bucket: Source bucket name
+    source_object: Source object name/path
+    dest_bucket: Destination bucket name
+    dest_object: Destination object name/path
+
+Returns:
+    Dictionary with copy operation metadata
+
+Example:
+    client: { node: my_client }
+    source_bucket: "source-bucket"
+    source_object: "path/to/file.pdf"
+    dest_bucket: "dest-bucket"
+    dest_object: "backup/file.pdf"
+
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `source_bucket` (str, required)
+- `source_object` (str, required)
+- `dest_bucket` (str, required)
+- `dest_object` (str, required)
+
+**Returns:** `GCSObjectMetadata`
+
+---
+
+### `gcs_create_client(service_file=None)`
+
+Create a Google Cloud Storage async client.
+
+Args:
+    service_file: Optional path to service account JSON file
+
+Returns:
+    Storage client instance
+
+Example:
+    service_file: "/path/to/service-account.json"
+
+Authentication:
+    Uses Google Cloud authentication in this order:
+    1. service_file parameter (if provided)
+    2. GOOGLE_APPLICATION_CREDENTIALS environment variable
+    3. gcloud auth application-default login
+    4. GCE/GKE metadata server (in cloud environments)
+
+
+**Returns:** `Storage`
+
+---
+
+### `gcs_delete_object(client, bucket_name, object_name)`
+
+Delete an object from GCS.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object to delete
+
+Returns:
+    True if deletion was successful
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.pdf"
+
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `gcs_download_object_as_bytes(client, bucket_name, object_name)`
+
+Download an object from GCS as bytes.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object in the bucket
+
+Returns:
+    Object content as bytes
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.pdf"
+
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+
+**Returns:** `bytes`
+
+---
+
+### `gcs_download_object_as_string(client, bucket_name, object_name, encoding="utf-8")`
+
+Download an object from GCS as a string.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object in the bucket
+    encoding: Text encoding (default: utf-8)
+
+Returns:
+    Object content as string
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.txt"
+
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+- `encoding` (str, optional, default: `"utf-8"`)
+
+**Returns:** `str`
+
+---
+
+### `gcs_get_object_metadata(client, bucket_name, object_name)`
+
+Get metadata for an object in GCS.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object
+
+Returns:
+    Dictionary with object metadata including:
+    - name: Object name
+    - size: Size in bytes
+    - contentType: MIME type
+    - updated: Last modification timestamp
+    - md5Hash: MD5 hash of content
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.pdf"
+
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+
+**Returns:** `GCSObjectMetadata`
+
+---
+
+### `gcs_list_objects(client, bucket_name, prefix=None, max_results=None)`
+
+List objects in a GCS bucket.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    prefix: Optional prefix to filter objects
+    max_results: Optional maximum number of results
+
+Returns:
+    List of object metadata dictionaries
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    prefix: "uploads/"
+
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `prefix` (Optional, optional, default: `None`)
+- `max_results` (Optional, optional, default: `None`)
+
+**Returns:** `list`
+
+---
+
+### `gcs_object_exists(client, bucket_name, object_name)`
+
+Check if an object exists in a GCS bucket.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object to check
+
+Returns:
+    True if object exists, False otherwise
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.pdf"
+
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `gcs_upload_object_from_bytes(client, bucket_name, object_name, data, content_type=None)`
+
+Upload bytes to an object in GCS.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path for the object in the bucket
+    data: Bytes content to upload
+    content_type: Optional MIME type (e.g., "application/pdf")
+
+Returns:
+    Dictionary with upload metadata
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "uploads/document.pdf"
+    data: { variable: pdf_bytes }
+    content_type: "application/pdf"
+
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+- `data` (bytes, required)
+- `content_type` (Optional, optional, default: `None`)
+
+**Returns:** `GCSObjectMetadata`
+
+---
+
+### `gcs_upload_object_from_string(client, bucket_name, object_name, data, content_type="text/plain", encoding="utf-8")`
+
+Upload a string to an object in GCS.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path for the object in the bucket
+    data: String content to upload
+    content_type: MIME type (default: "text/plain")
+    encoding: Text encoding (default: utf-8)
+
+Returns:
+    Dictionary with upload metadata
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "logs/output.txt"
+    data: "Hello, World!"
+
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+- `data` (str, required)
+- `content_type` (str, optional, default: `"text/plain"`)
+- `encoding` (str, optional, default: `"utf-8"`)
+
+**Returns:** `GCSObjectMetadata`
+
+---
+
 ## 🎮 Pygame Operations
 
 > **Requires:** `pip install lexflow[pygame]`
@@ -2761,6 +3090,410 @@ Returns:
 
 ---
 
+## 📨 Pub/Sub
+
+> **Requires:** `pip install lexflow[pubsub]`
+
+### `pubsub_ack_message(subscriber, project_id, subscription_id, message)`
+
+Acknowledge a single message received from pubsub_pull_messages.
+
+Args:
+    subscriber: Subscriber client instance
+    project_id: GCP project ID
+    subscription_id: Subscription ID
+    message: Message dictionary with ack_id from pubsub_pull_messages
+
+Returns:
+    True if acknowledged successfully
+
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    message: { variable: msg }
+
+
+**Parameters:**
+
+- `subscriber` (SubscriberClient, required)
+- `project_id` (str, required)
+- `subscription_id` (str, required)
+- `message` (dict, required)
+
+**Returns:** `bool`
+
+---
+
+### `pubsub_acknowledge_messages(subscriber, project_id, subscription_id, ack_ids)`
+
+Acknowledge messages that have been processed.
+
+Args:
+    subscriber: Subscriber client instance (from pubsub_create_subscriber)
+    project_id: GCP project ID
+    subscription_id: Subscription ID (not the full path)
+    ack_ids: List of acknowledgment IDs from pulled messages
+
+Returns:
+    True if acknowledgment was successful
+
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    ack_ids: { variable: message_ack_ids }
+
+
+**Parameters:**
+
+- `subscriber` (SubscriberClient, required)
+- `project_id` (str, required)
+- `subscription_id` (str, required)
+- `ack_ids` (list, required)
+
+**Returns:** `bool`
+
+---
+
+### `pubsub_close_publisher(publisher)`
+
+Close the publisher client and release resources.
+
+Args:
+    publisher: Publisher client instance to close
+
+Returns:
+    True if closed successfully
+
+Example:
+    publisher: { variable: my_publisher }
+
+
+**Returns:** `bool`
+
+---
+
+### `pubsub_close_subscriber(subscriber)`
+
+Close the subscriber client and release resources.
+
+Args:
+    subscriber: Subscriber client instance to close
+
+Returns:
+    True if closed successfully
+
+Example:
+    subscriber: { variable: my_subscriber }
+
+
+**Returns:** `bool`
+
+---
+
+### `pubsub_create_publisher()`
+
+Create a Google Cloud Pub/Sub publisher client.
+
+Returns:
+    PublisherClient instance
+
+Example:
+    (no inputs required)
+
+Authentication:
+    Requires Google Cloud authentication via:
+    - gcloud auth application-default login
+    - Or GOOGLE_APPLICATION_CREDENTIALS environment variable
+
+Note:
+    Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
+    When set, authentication is automatically skipped.
+
+
+**Returns:** `PublisherClient`
+
+---
+
+### `pubsub_create_subscriber()`
+
+Create a Google Cloud Pub/Sub subscriber client.
+
+Returns:
+    SubscriberClient instance
+
+Example:
+    (no inputs required)
+
+Authentication:
+    Requires Google Cloud authentication via:
+    - gcloud auth application-default login
+    - Or GOOGLE_APPLICATION_CREDENTIALS environment variable
+
+Note:
+    Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
+    When set, authentication is automatically skipped.
+
+
+**Returns:** `SubscriberClient`
+
+---
+
+### `pubsub_nack_message(subscriber, project_id, subscription_id, message)`
+
+Negative-acknowledge a message (return to queue for redelivery).
+
+Args:
+    subscriber: Subscriber client instance
+    project_id: GCP project ID
+    subscription_id: Subscription ID
+    message: Message dictionary with ack_id from pubsub_pull_messages
+
+Returns:
+    True if nack'd successfully
+
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    message: { variable: msg }
+
+
+**Parameters:**
+
+- `subscriber` (SubscriberClient, required)
+- `project_id` (str, required)
+- `subscription_id` (str, required)
+- `message` (dict, required)
+
+**Returns:** `bool`
+
+---
+
+### `pubsub_publish_batch(publisher, project_id, topic_id, messages)`
+
+Publish multiple messages to a Pub/Sub topic.
+
+Args:
+    publisher: Publisher client instance (from pubsub_create_publisher)
+    project_id: GCP project ID
+    topic_id: Topic ID (not the full path)
+    messages: List of message dictionaries, each with:
+        - data: Message data as string (required)
+        - attributes: Optional dictionary of attributes
+
+Returns:
+    List of message IDs for the published messages
+
+Example:
+    publisher: { variable: my_publisher }
+    project_id: "my-gcp-project"
+    topic_id: "my-topic"
+    messages:
+      - data: "First message"
+        attributes: { "index": "1" }
+      - data: "Second message"
+        attributes: { "index": "2" }
+
+
+**Parameters:**
+
+- `publisher` (PublisherClient, required)
+- `project_id` (str, required)
+- `topic_id` (str, required)
+- `messages` (list, required)
+
+**Returns:** `list`
+
+---
+
+### `pubsub_publish_message(publisher, project_id, topic_id, data)`
+
+Publish a message to a Pub/Sub topic.
+
+Args:
+    publisher: Publisher client instance (from pubsub_create_publisher)
+    project_id: GCP project ID
+    topic_id: Topic ID (not the full path)
+    data: Message data as string
+
+Returns:
+    Message ID of the published message
+
+Example:
+    publisher: { variable: my_publisher }
+    project_id: "my-gcp-project"
+    topic_id: "my-topic"
+    data: "Hello, Pub/Sub!"
+
+
+**Parameters:**
+
+- `publisher` (PublisherClient, required)
+- `project_id` (str, required)
+- `topic_id` (str, required)
+- `data` (str, required)
+
+**Returns:** `str`
+
+---
+
+### `pubsub_publish_message_with_attributes(publisher, project_id, topic_id, data, attributes)`
+
+Publish a message with custom attributes to a Pub/Sub topic.
+
+Args:
+    publisher: Publisher client instance (from pubsub_create_publisher)
+    project_id: GCP project ID
+    topic_id: Topic ID (not the full path)
+    data: Message data as string
+    attributes: Dictionary of custom attributes (string keys and values)
+
+Returns:
+    Message ID of the published message
+
+Example:
+    publisher: { variable: my_publisher }
+    project_id: "my-gcp-project"
+    topic_id: "my-topic"
+    data: "Hello with attributes!"
+    attributes: { "type": "greeting", "priority": "high" }
+
+
+**Parameters:**
+
+- `publisher` (PublisherClient, required)
+- `project_id` (str, required)
+- `topic_id` (str, required)
+- `data` (str, required)
+- `attributes` (dict, required)
+
+**Returns:** `str`
+
+---
+
+### `pubsub_pull_messages(subscriber, project_id, subscription_id, max_messages=10)`
+
+Pull messages from a Pub/Sub subscription.
+
+Args:
+    subscriber: Subscriber client instance (from pubsub_create_subscriber)
+    project_id: GCP project ID
+    subscription_id: Subscription ID (not the full path)
+    max_messages: Maximum number of messages to pull (default: 10)
+
+Returns:
+    List of message dictionaries with keys:
+    - ack_id: Acknowledgment ID (needed for acknowledging)
+    - message_id: Message ID
+    - data: Message data as string
+    - attributes: Message attributes dictionary
+    - publish_time: Publish timestamp as ISO string
+
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    max_messages: 5
+
+
+**Parameters:**
+
+- `subscriber` (SubscriberClient, required)
+- `project_id` (str, required)
+- `subscription_id` (str, required)
+- `max_messages` (int, optional, default: `10`)
+
+**Returns:** `list`
+
+---
+
+### `pubsub_subscribe_stream(subscriber, project_id, subscription_id, timeout=None, max_messages=None, batch_size=10, min_poll_interval=0.1, max_poll_interval=5.0, max_retries=10)`
+
+Subscribe to a Pub/Sub subscription and stream messages as an async generator.
+
+This opcode returns an async generator that yields messages as they arrive.
+Use with control_async_foreach to process messages continuously.
+
+Uses exponential backoff when no messages are available: starts at
+min_poll_interval and doubles up to max_poll_interval. Resets to
+min_poll_interval when messages are received.
+
+Args:
+    subscriber: Subscriber client instance (from pubsub_create_subscriber)
+    project_id: GCP project ID
+    subscription_id: Subscription ID (not the full path)
+    timeout: Optional timeout in seconds. If None, runs indefinitely.
+    max_messages: Optional max number of messages to receive before stopping.
+    batch_size: Messages to pull per request (default: 10)
+    min_poll_interval: Initial/minimum sleep between polls in seconds (default: 0.1)
+    max_poll_interval: Maximum sleep during backoff in seconds (default: 5.0)
+    max_retries: Maximum consecutive errors before raising (default: 10)
+
+Yields:
+    Message dictionaries with keys:
+    - ack_id: Acknowledgment ID
+    - message_id: Message ID
+    - data: Message data as string
+    - attributes: Message attributes dictionary
+    - publish_time: Publish timestamp as ISO string
+
+Note:
+    The subscriber client is NOT closed by this opcode. Use
+    pubsub_close_subscriber to clean up after streaming completes.
+
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    timeout: 60
+    max_messages: 100
+    batch_size: 20
+    min_poll_interval: 0.05
+    max_poll_interval: 10.0
+
+Usage in workflow:
+    create_subscriber:
+      opcode: pubsub_create_subscriber
+      isReporter: true
+
+    subscribe:
+      opcode: pubsub_subscribe_stream
+      isReporter: true
+      inputs:
+        subscriber: { node: create_subscriber }
+        project_id: { variable: project_id }
+        subscription_id: { variable: subscription_id }
+        timeout: { literal: 30 }
+        batch_size: { literal: 20 }
+
+    process_messages:
+      opcode: control_async_foreach
+      inputs:
+        VAR: { literal: "msg" }
+        ITERABLE: { node: subscribe }
+      branches:
+        BODY:
+          - handle_message
+
+
+**Parameters:**
+
+- `subscriber` (SubscriberClient, required)
+- `project_id` (str, required)
+- `subscription_id` (str, required)
+- `timeout` (Optional, optional, default: `None`)
+- `max_messages` (Optional, optional, default: `None`)
+- `batch_size` (int, optional, default: `10`)
+- `min_poll_interval` (float, optional, default: `0.1`)
+- `max_poll_interval` (float, optional, default: `5.0`)
+- `max_retries` (int, optional, default: `10`)
+
+**Returns:** `AsyncGenerator`
+
+---
+
 ## ⚡ Task Operations
 
 ### `task_await(task, timeout=None)`
@@ -3185,7 +3918,7 @@ Args:
 
 ## Summary
 
-**Total opcodes:** 202
+**Total opcodes:** 225
 
 ### Categories
 
@@ -3209,11 +3942,13 @@ Args:
 | 🌐 HTTP Operations | 8 | `lexflow[http]` |
 | 📄 HTML Operations | 5 | `lexflow[http]` |
 | 📋 JSON Operations | 2 | - |
+| ☁️ Cloud Storage | 11 | `lexflow[gcs]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
 | 🔍 RAG Operations | 20 | `lexflow[rag]` |
 | 💬 Chat Operations | 10 | - |
 | 💻 CLI Operations | 10 | - |
 | 🐙 GitHub Operations | 7 | - |
+| 📨 Pub/Sub | 12 | `lexflow[pubsub]` |
 | ⚡ Task Operations | 10 | - |
 | 📡 Channel Operations | 8 | - |
 | 🔒 Sync Primitives | 8 | - |

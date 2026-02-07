@@ -131,6 +131,14 @@
       "icon": "📋"
     },
     {
+      "id": "gcs",
+      "label": "Cloud Storage",
+      "prefix": "gcs_",
+      "color": "#4285F4",
+      "icon": "☁️",
+      "requires": "gcs"
+    },
+    {
       "id": "pygame",
       "label": "Pygame Operations",
       "prefix": "pygame_",
@@ -168,6 +176,14 @@
       "icon": "🐙"
     },
     {
+      "id": "pubsub",
+      "label": "Pub/Sub",
+      "prefix": "pubsub_",
+      "color": "#EA4335",
+      "icon": "📨",
+      "requires": "pubsub"
+    },
+    {
       "id": "task",
       "label": "Task Operations",
       "prefix": "task_",
@@ -187,22 +203,6 @@
       "prefix": "sync_",
       "color": "#A855F7",
       "icon": "🔒"
-    },
-    {
-      "id": "gcs",
-      "label": "Cloud Storage",
-      "prefix": "gcs_",
-      "color": "#4285F4",
-      "icon": "☁️",
-      "requires": "gcs"
-    },
-    {
-      "id": "pubsub",
-      "label": "Pub/Sub",
-      "prefix": "pubsub_",
-      "color": "#EA4335",
-      "icon": "📨",
-      "requires": "pubsub"
     }
   ],
   "constructs": [
