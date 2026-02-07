@@ -1,7 +1,7 @@
 // WorkflowService - Business logic for YAML workflow manipulation
 // Pure functions that take source and return modified source
 
-import type { OpcodeInterface } from "../../api/types";
+import type { OpcodeInterface, DetailedInput } from "../../api/types";
 
 export interface NodeResult {
   source: string;
@@ -87,7 +87,11 @@ function findWorkflowNodesRange(
           nodesEndLine++;
         }
 
-        return { startLine: nodesStartLine, endLine: nodesEndLine, nodesIndent };
+        return {
+          startLine: nodesStartLine,
+          endLine: nodesEndLine,
+          nodesIndent,
+        };
       }
     }
   }
@@ -962,11 +966,27 @@ export function deleteReporter(
   return { source: newLines.join("\n"), success: true };
 }
 
+// Format detailed inputs as multi-line YAML
+function formatDetailedInputsYaml(
+  inputs: DetailedInput[],
+  baseIndent: string,
+): string[] {
+  if (inputs.length === 0) return [`${baseIndent}inputs: []`];
+  const lines = [`${baseIndent}inputs:`];
+  const itemIndent = baseIndent + "  ";
+  for (const input of inputs) {
+    lines.push(`${itemIndent}- name: "${input.name}"`);
+    lines.push(`${itemIndent}  type: "${input.type}"`);
+    lines.push(`${itemIndent}  required: ${input.required}`);
+  }
+  return lines;
+}
+
 // Update workflow interface
 export function updateWorkflowInterface(
   source: string,
   workflowName: string,
-  inputs: string[],
+  inputs: DetailedInput[],
   outputs: string[],
 ): OperationResult {
   const lines = source.split("\n");
@@ -1012,13 +1032,11 @@ export function updateWorkflowInterface(
 
   const indent = " ".repeat(interfaceIndent);
   const propIndent = " ".repeat(interfaceIndent + 2);
-  const inputsStr =
-    inputs.length > 0 ? `[${inputs.map((i) => `"${i}"`).join(", ")}]` : "[]";
   const outputsStr =
     outputs.length > 0 ? `[${outputs.map((o) => `"${o}"`).join(", ")}]` : "[]";
   const newInterfaceYaml = [
     `${indent}interface:`,
-    `${propIndent}inputs: ${inputsStr}`,
+    ...formatDetailedInputsYaml(inputs, propIndent),
     `${propIndent}outputs: ${outputsStr}`,
   ];
 
@@ -1350,7 +1368,9 @@ export function addDynamicBranch(
 
     if (inputsLine !== -1) {
       // Look for existing branches matching the prefix
-      const branchMatch = line.match(new RegExp(`^\\s+(${branchPrefix}\\d+):\\s*`));
+      const branchMatch = line.match(
+        new RegExp(`^\\s+(${branchPrefix}\\d+):\\s*`),
+      );
       if (branchMatch) {
         existingBranches.push(branchMatch[1]);
       }
@@ -1491,7 +1511,9 @@ export function addDynamicInput(
 
     if (inputsLine !== -1) {
       // Look for existing inputs matching the prefix
-      const inputMatch = line.match(new RegExp(`^\\s+(${inputPrefix}\\d+):\\s*`));
+      const inputMatch = line.match(
+        new RegExp(`^\\s+(${inputPrefix}\\d+):\\s*`),
+      );
       if (inputMatch) {
         existingInputs.push(inputMatch[1]);
       }
@@ -1578,10 +1600,7 @@ export function removeDynamicInput(
     inputEndLine++;
   }
 
-  const newLines = [
-    ...lines.slice(0, inputLine),
-    ...lines.slice(inputEndLine),
-  ];
+  const newLines = [...lines.slice(0, inputLine), ...lines.slice(inputEndLine)];
 
   return { source: newLines.join("\n"), success: true };
 }
@@ -1590,7 +1609,7 @@ export function removeDynamicInput(
 export function addWorkflow(
   source: string,
   name: string,
-  inputs: string[] = [],
+  inputs: DetailedInput[] = [],
   outputs: string[] = [],
   variables: Record<string, unknown> = {},
 ): OperationResult {
@@ -1627,7 +1646,11 @@ export function addWorkflow(
     if (inWorkflows) {
       // Check if we've left the workflows section
       const lineIndent = line.search(/\S/);
-      if (line.trim() !== "" && lineIndent !== -1 && lineIndent <= workflowIndent) {
+      if (
+        line.trim() !== "" &&
+        lineIndent !== -1 &&
+        lineIndent <= workflowIndent
+      ) {
         break;
       }
       lastWorkflowEndLine = i;
@@ -1644,12 +1667,13 @@ export function addWorkflow(
   const propIndent = "    ";
   const varIndent = "      ";
 
-  const inputsStr = inputs.length > 0 ? `[${inputs.map((i) => `"${i}"`).join(", ")}]` : "[]";
-  const outputsStr = outputs.length > 0 ? `[${outputs.map((o) => `"${o}"`).join(", ")}]` : "[]";
+  const outputsStr =
+    outputs.length > 0 ? `[${outputs.map((o) => `"${o}"`).join(", ")}]` : "[]";
+  const inputsLines = formatDetailedInputsYaml(inputs, varIndent);
 
   let workflowYaml = `${indent}- name: ${name}\n`;
   workflowYaml += `${propIndent}interface:\n`;
-  workflowYaml += `${varIndent}inputs: ${inputsStr}\n`;
+  workflowYaml += inputsLines.map((l) => l + "\n").join("");
   workflowYaml += `${varIndent}outputs: ${outputsStr}\n`;
 
   // Add variables section
@@ -1680,10 +1704,7 @@ export function addWorkflow(
 }
 
 // Delete a workflow from the source
-export function deleteWorkflow(
-  source: string,
-  name: string,
-): OperationResult {
+export function deleteWorkflow(source: string, name: string): OperationResult {
   // Cannot delete "main" workflow
   if (name === "main") {
     return { source, success: false };
@@ -1730,7 +1751,11 @@ export function deleteWorkflow(
     }
 
     // If we hit something at the same or lower indent that's not part of the workflow
-    if (lineIndent !== -1 && lineIndent <= workflowIndent && !line.trim().startsWith("-")) {
+    if (
+      lineIndent !== -1 &&
+      lineIndent <= workflowIndent &&
+      !line.trim().startsWith("-")
+    ) {
       break;
     }
 
@@ -1754,7 +1779,7 @@ export interface ChainValidationResult {
   firstNodeId: string | null;
   lastNodeId: string | null;
   predecessorNodeId: string | null; // Node before first selected
-  successorNodeId: string | null;   // Node after last selected
+  successorNodeId: string | null; // Node after last selected
   errors: string[];
 }
 
@@ -1822,7 +1847,11 @@ function getNodeOpcode(source: string, nodeId: string): string | null {
 }
 
 // Get the next pointer of a node
-function getNodeNext(source: string, nodeId: string, workflowName?: string): string | null {
+function getNodeNext(
+  source: string,
+  nodeId: string,
+  workflowName?: string,
+): string | null {
   const range = findNodeLineRange(source, nodeId, workflowName);
   if (!range) return null;
 
@@ -1838,7 +1867,11 @@ function getNodeNext(source: string, nodeId: string, workflowName?: string): str
 }
 
 // Find node that points to a given node
-function findPredecessor(source: string, nodeId: string, workflowName: string): string | null {
+function findPredecessor(
+  source: string,
+  nodeId: string,
+  workflowName: string,
+): string | null {
   const workflowRange = findWorkflowNodesRange(source, workflowName);
   if (!workflowRange) return null;
 
@@ -1881,7 +1914,9 @@ function findReporterNodes(source: string, nodeIds: string[]): string[] {
 
     // Find all { node: "reporter_id" } or { node: reporter_id } references
     // Match both quoted and unquoted node IDs
-    const quotedMatches = nodeContent.matchAll(/\{\s*node:\s*["']([^"']+)["']\s*\}/g);
+    const quotedMatches = nodeContent.matchAll(
+      /\{\s*node:\s*["']([^"']+)["']\s*\}/g,
+    );
     for (const match of quotedMatches) {
       const reporterId = match[1];
       if (!reporterIds.includes(reporterId) && !nodeIds.includes(reporterId)) {
@@ -1891,7 +1926,9 @@ function findReporterNodes(source: string, nodeIds: string[]): string[] {
     }
 
     // Also match unquoted node IDs: { node: some_id }
-    const unquotedMatches = nodeContent.matchAll(/\{\s*node:\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}/g);
+    const unquotedMatches = nodeContent.matchAll(
+      /\{\s*node:\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}/g,
+    );
     for (const match of unquotedMatches) {
       const reporterId = match[1];
       if (!reporterIds.includes(reporterId) && !nodeIds.includes(reporterId)) {
@@ -1912,7 +1949,7 @@ function findReporterNodes(source: string, nodeIds: string[]): string[] {
 export function validateLinearChain(
   source: string,
   nodeIds: string[],
-  workflowName: string
+  workflowName: string,
 ): ChainValidationResult {
   const errors: string[] = [];
 
@@ -1951,7 +1988,9 @@ export function validateLinearChain(
   for (const nodeId of nodeIds) {
     const opcode = getNodeOpcode(source, nodeId);
     if (opcode && BRANCHING_OPCODES.includes(opcode)) {
-      errors.push(`Cannot extract "${nodeId}": branching nodes (${opcode}) are not supported`);
+      errors.push(
+        `Cannot extract "${nodeId}": branching nodes (${opcode}) are not supported`,
+      );
     }
   }
   if (errors.length > 0) {
@@ -1974,7 +2013,9 @@ export function validateLinearChain(
   }
 
   // Find the first node (one that no other selected node points to)
-  const pointedTo = new Set(Object.values(nextMap).filter((n) => n && nodeSet.has(n)));
+  const pointedTo = new Set(
+    Object.values(nextMap).filter((n) => n && nodeSet.has(n)),
+  );
   const candidates = nodeIds.filter((id) => !pointedTo.has(id));
 
   if (candidates.length !== 1) {
@@ -2009,7 +2050,9 @@ export function validateLinearChain(
       lastNodeId: null,
       predecessorNodeId: null,
       successorNodeId: null,
-      errors: ["Selected nodes are not contiguous (some nodes are disconnected)"],
+      errors: [
+        "Selected nodes are not contiguous (some nodes are disconnected)",
+      ],
     };
   }
 
@@ -2039,7 +2082,7 @@ export interface ChainVariables {
 // Analyze variables used and assigned in a chain of nodes
 export function analyzeChainVariables(
   source: string,
-  nodeIds: string[]
+  nodeIds: string[],
 ): ChainVariables {
   const variablesUsed = new Set<string>();
   const variablesSet = new Set<string>();
@@ -2052,7 +2095,9 @@ export function analyzeChainVariables(
     const nodeContent = lines.slice(range.startLine, range.endLine).join("\n");
 
     // Find variables referenced in inputs: { variable: "name" }
-    const variableMatches = nodeContent.matchAll(/\{\s*variable:\s*["']([^"']+)["']\s*\}/g);
+    const variableMatches = nodeContent.matchAll(
+      /\{\s*variable:\s*["']([^"']+)["']\s*\}/g,
+    );
     for (const match of variableMatches) {
       variablesUsed.add(match[1]);
     }
@@ -2061,7 +2106,9 @@ export function analyzeChainVariables(
     const opcode = getNodeOpcode(source, nodeId);
     if (opcode === "data_set_variable_to") {
       // Find VARIABLE input which contains the variable name
-      const varNameMatch = nodeContent.match(/VARIABLE:\s*\{\s*literal:\s*["']([^"']+)["']\s*\}/);
+      const varNameMatch = nodeContent.match(
+        /VARIABLE:\s*\{\s*literal:\s*["']([^"']+)["']\s*\}/,
+      );
       if (varNameMatch) {
         variablesSet.add(varNameMatch[1]);
       }
@@ -2070,7 +2117,9 @@ export function analyzeChainVariables(
 
   // Inputs: variables used but not set within the chain
   // Outputs: variables set within the chain
-  const suggestedInputs = [...variablesUsed].filter((v) => !variablesSet.has(v));
+  const suggestedInputs = [...variablesUsed].filter(
+    (v) => !variablesSet.has(v),
+  );
   const suggestedOutputs = [...variablesSet];
 
   return { suggestedInputs, suggestedOutputs };
@@ -2089,9 +2138,9 @@ export function extractToWorkflow(
   nodeIds: string[],
   sourceWorkflowName: string,
   newWorkflowName: string,
-  newWorkflowInputs: string[],
+  newWorkflowInputs: DetailedInput[],
   newWorkflowOutputs: string[],
-  newWorkflowVariables: Record<string, unknown>
+  newWorkflowVariables: Record<string, unknown>,
 ): ExtractToWorkflowResult {
   // Validate the chain first
   const validation = validateLinearChain(source, nodeIds, sourceWorkflowName);
@@ -2104,7 +2153,13 @@ export function extractToWorkflow(
     };
   }
 
-  const { orderedNodeIds, firstNodeId, lastNodeId, predecessorNodeId, successorNodeId } = validation;
+  const {
+    orderedNodeIds,
+    firstNodeId,
+    lastNodeId,
+    predecessorNodeId,
+    successorNodeId,
+  } = validation;
 
   // Find all reporter nodes referenced by the chain nodes
   const reporterNodeIds = findReporterNodes(source, orderedNodeIds);
@@ -2117,7 +2172,7 @@ export function extractToWorkflow(
     newWorkflowName,
     newWorkflowInputs,
     newWorkflowOutputs,
-    newWorkflowVariables
+    newWorkflowVariables,
   );
   if (!addWorkflowResult.success) {
     return {
@@ -2132,7 +2187,8 @@ export function extractToWorkflow(
   // Step 2: Extract node YAML blocks (in reverse order to preserve line numbers)
   // First extract chain nodes, then reporter nodes
   const chainBlocks: Array<{ id: string; yaml: string; indent: number }> = [];
-  const reporterBlocks: Array<{ id: string; yaml: string; indent: number }> = [];
+  const reporterBlocks: Array<{ id: string; yaml: string; indent: number }> =
+    [];
 
   // Extract chain nodes (in reverse to preserve line numbers)
   for (const nodeId of [...orderedNodeIds].reverse()) {
@@ -2176,7 +2232,11 @@ export function extractToWorkflow(
 
     const lines = result.split("\n");
     const nodeYaml = lines.slice(range.startLine, range.endLine).join("\n");
-    reporterBlocks.unshift({ id: nodeId, yaml: nodeYaml, indent: range.indent });
+    reporterBlocks.unshift({
+      id: nodeId,
+      yaml: nodeYaml,
+      indent: range.indent,
+    });
 
     // Delete from source workflow
     const deleteResult = deleteNode(result, nodeId);
@@ -2196,7 +2256,9 @@ export function extractToWorkflow(
       source,
       success: false,
       newWorkflowCallNodeId: null,
-      errors: [`Could not find nodes section in new workflow "${newWorkflowName}"`],
+      errors: [
+        `Could not find nodes section in new workflow "${newWorkflowName}"`,
+      ],
     };
   }
 
@@ -2242,7 +2304,12 @@ export function extractToWorkflow(
   result = lines.join("\n");
 
   // Step 4: Update start.next to point to first extracted node
-  const connectStartResult = connectNodes(result, "start", firstNodeId!, newWorkflowName);
+  const connectStartResult = connectNodes(
+    result,
+    "start",
+    firstNodeId!,
+    newWorkflowName,
+  );
   if (!connectStartResult.success) {
     return {
       source,
@@ -2254,7 +2321,11 @@ export function extractToWorkflow(
   result = connectStartResult.source;
 
   // Step 5: Set last node's next to null (end of new workflow)
-  const disconnectLastResult = disconnectNode(result, lastNodeId!, newWorkflowName);
+  const disconnectLastResult = disconnectNode(
+    result,
+    lastNodeId!,
+    newWorkflowName,
+  );
   if (!disconnectLastResult.success) {
     return {
       source,
@@ -2269,8 +2340,8 @@ export function extractToWorkflow(
   const callNodeResult = addWorkflowCallNode(
     result,
     newWorkflowName,
-    newWorkflowInputs,
-    sourceWorkflowName
+    newWorkflowInputs.map((i) => i.name),
+    sourceWorkflowName,
   );
   if (!callNodeResult.nodeId) {
     return {
@@ -2290,7 +2361,7 @@ export function extractToWorkflow(
       result,
       predecessorNodeId === "start" ? "start" : predecessorNodeId,
       newCallNodeId,
-      sourceWorkflowName
+      sourceWorkflowName,
     );
     if (!connectPredResult.success) {
       return {
@@ -2305,7 +2376,12 @@ export function extractToWorkflow(
 
   // Step 8: Wire workflow_call to successor
   if (successorNodeId) {
-    const connectSuccResult = connectNodes(result, newCallNodeId, successorNodeId, sourceWorkflowName);
+    const connectSuccResult = connectNodes(
+      result,
+      newCallNodeId,
+      successorNodeId,
+      sourceWorkflowName,
+    );
     if (!connectSuccResult.success) {
       return {
         source,

@@ -2,7 +2,12 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { WorkflowTree, ExampleInfo, OpcodeInterface } from "../api/types";
+import type {
+  WorkflowTree,
+  ExampleInfo,
+  OpcodeInterface,
+  DetailedInput,
+} from "../api/types";
 import * as WorkflowService from "../services/workflow/WorkflowService";
 
 const MAX_HISTORY = 50;
@@ -42,7 +47,11 @@ interface WorkflowState {
     inputKey: string,
     newValue: string,
   ) => boolean;
-  connectNodes: (fromNodeId: string, toNodeId: string, workflowName?: string) => boolean;
+  connectNodes: (
+    fromNodeId: string,
+    toNodeId: string,
+    workflowName?: string,
+  ) => boolean;
   connectBranch: (
     fromNodeId: string,
     toNodeId: string,
@@ -70,7 +79,7 @@ interface WorkflowState {
   // Variable and interface operations
   updateWorkflowInterface: (
     workflowName: string,
-    inputs: string[],
+    inputs: DetailedInput[],
     outputs: string[],
   ) => boolean;
   addVariable: (
@@ -95,7 +104,7 @@ interface WorkflowState {
   // Workflow operations
   addWorkflow: (
     name: string,
-    inputs?: string[],
+    inputs?: DetailedInput[],
     outputs?: string[],
     variables?: Record<string, unknown>,
   ) => boolean;
@@ -106,7 +115,7 @@ interface WorkflowState {
     nodeIds: string[],
     sourceWorkflowName: string,
     newWorkflowName: string,
-    inputs: string[],
+    inputs: DetailedInput[],
     outputs: string[],
     variables: Record<string, unknown>,
   ) => { success: boolean; errors: string[] };
@@ -232,7 +241,11 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Add a new node to a workflow
       addNode: (opcode, workflowName = "main") => {
         const state = get();
-        const result = WorkflowService.addNode(state.source, opcode, workflowName);
+        const result = WorkflowService.addNode(
+          state.source,
+          opcode,
+          workflowName,
+        );
         if (result.nodeId) {
           state.setSource(result.source);
         }
@@ -267,7 +280,12 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Update a node input value
       updateNodeInput: (nodeId, inputKey, newValue) => {
         const state = get();
-        const result = WorkflowService.updateNodeInput(state.source, nodeId, inputKey, newValue);
+        const result = WorkflowService.updateNodeInput(
+          state.source,
+          nodeId,
+          inputKey,
+          newValue,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -277,7 +295,12 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Connect two nodes (set fromNodeId.next = toNodeId)
       connectNodes: (fromNodeId, toNodeId, workflowName) => {
         const state = get();
-        const result = WorkflowService.connectNodes(state.source, fromNodeId, toNodeId, workflowName);
+        const result = WorkflowService.connectNodes(
+          state.source,
+          fromNodeId,
+          toNodeId,
+          workflowName,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -287,7 +310,12 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Connect a branch (set branch: toNodeId in the appropriate branch slot)
       connectBranch: (fromNodeId, toNodeId, branchLabel) => {
         const state = get();
-        const result = WorkflowService.connectBranch(state.source, fromNodeId, toNodeId, branchLabel);
+        const result = WorkflowService.connectBranch(
+          state.source,
+          fromNodeId,
+          toNodeId,
+          branchLabel,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -297,7 +325,11 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Disconnect a node (set its next: to null)
       disconnectNode: (nodeId, workflowName) => {
         const state = get();
-        const result = WorkflowService.disconnectNode(state.source, nodeId, workflowName);
+        const result = WorkflowService.disconnectNode(
+          state.source,
+          nodeId,
+          workflowName,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -343,7 +375,11 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Delete a reporter (replace with a literal placeholder)
       deleteReporter: (parentNodeId, inputPath) => {
         const state = get();
-        const result = WorkflowService.deleteReporter(state.source, parentNodeId, inputPath);
+        const result = WorkflowService.deleteReporter(
+          state.source,
+          parentNodeId,
+          inputPath,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -353,7 +389,12 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Update workflow interface (inputs/outputs)
       updateWorkflowInterface: (workflowName, inputs, outputs) => {
         const state = get();
-        const result = WorkflowService.updateWorkflowInterface(state.source, workflowName, inputs, outputs);
+        const result = WorkflowService.updateWorkflowInterface(
+          state.source,
+          workflowName,
+          inputs,
+          outputs,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -363,7 +404,12 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Add a new variable to a workflow
       addVariable: (workflowName, name, defaultValue) => {
         const state = get();
-        const result = WorkflowService.addVariable(state.source, workflowName, name, defaultValue);
+        const result = WorkflowService.addVariable(
+          state.source,
+          workflowName,
+          name,
+          defaultValue,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -373,7 +419,13 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Update an existing variable
       updateVariable: (workflowName, oldName, newName, newValue) => {
         const state = get();
-        const result = WorkflowService.updateVariable(state.source, workflowName, oldName, newName, newValue);
+        const result = WorkflowService.updateVariable(
+          state.source,
+          workflowName,
+          oldName,
+          newName,
+          newValue,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -381,9 +433,20 @@ export const useWorkflowStore = create<WorkflowState>()(
       },
 
       // Disconnect a specific connection between two nodes
-      disconnectConnection: (fromNodeId, toNodeId, branchLabel, workflowName) => {
+      disconnectConnection: (
+        fromNodeId,
+        toNodeId,
+        branchLabel,
+        workflowName,
+      ) => {
         const state = get();
-        const result = WorkflowService.disconnectConnection(state.source, fromNodeId, toNodeId, branchLabel, workflowName);
+        const result = WorkflowService.disconnectConnection(
+          state.source,
+          fromNodeId,
+          toNodeId,
+          branchLabel,
+          workflowName,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -393,7 +456,11 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Delete a variable from a workflow
       deleteVariable: (workflowName, name) => {
         const state = get();
-        const result = WorkflowService.deleteVariable(state.source, workflowName, name);
+        const result = WorkflowService.deleteVariable(
+          state.source,
+          workflowName,
+          name,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -403,7 +470,11 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Add a dynamic branch to a node (e.g., CATCH2 for try, BRANCH3 for fork)
       addDynamicBranch: (nodeId, branchPrefix) => {
         const state = get();
-        const result = WorkflowService.addDynamicBranch(state.source, nodeId, branchPrefix);
+        const result = WorkflowService.addDynamicBranch(
+          state.source,
+          nodeId,
+          branchPrefix,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -413,7 +484,11 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Remove a dynamic branch from a node
       removeDynamicBranch: (nodeId, branchName) => {
         const state = get();
-        const result = WorkflowService.removeDynamicBranch(state.source, nodeId, branchName);
+        const result = WorkflowService.removeDynamicBranch(
+          state.source,
+          nodeId,
+          branchName,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -423,7 +498,11 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Add a dynamic input to a node (e.g., ARG2 for workflow_call)
       addDynamicInput: (nodeId, inputPrefix) => {
         const state = get();
-        const result = WorkflowService.addDynamicInput(state.source, nodeId, inputPrefix);
+        const result = WorkflowService.addDynamicInput(
+          state.source,
+          nodeId,
+          inputPrefix,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -433,7 +512,11 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Remove a dynamic input from a node
       removeDynamicInput: (nodeId, inputName) => {
         const state = get();
-        const result = WorkflowService.removeDynamicInput(state.source, nodeId, inputName);
+        const result = WorkflowService.removeDynamicInput(
+          state.source,
+          nodeId,
+          inputName,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -443,7 +526,13 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Add a new workflow
       addWorkflow: (name, inputs = [], outputs = [], variables = {}) => {
         const state = get();
-        const result = WorkflowService.addWorkflow(state.source, name, inputs, outputs, variables);
+        const result = WorkflowService.addWorkflow(
+          state.source,
+          name,
+          inputs,
+          outputs,
+          variables,
+        );
         if (result.success) {
           state.setSource(result.source);
         }
@@ -461,7 +550,14 @@ export const useWorkflowStore = create<WorkflowState>()(
       },
 
       // Extract nodes to a new workflow
-      extractToWorkflow: (nodeIds, sourceWorkflowName, newWorkflowName, inputs, outputs, variables) => {
+      extractToWorkflow: (
+        nodeIds,
+        sourceWorkflowName,
+        newWorkflowName,
+        inputs,
+        outputs,
+        variables,
+      ) => {
         const state = get();
         const result = WorkflowService.extractToWorkflow(
           state.source,

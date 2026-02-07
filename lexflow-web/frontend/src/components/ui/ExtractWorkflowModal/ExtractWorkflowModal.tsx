@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react"
-import { createPortal } from "react-dom"
-import { cn } from "@/lib/cn"
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { cn } from "@/lib/cn";
+import type { DetailedInput, InputType } from "@/api/types";
+import { normalizeInput } from "@/api/types";
 import {
   overlayVariants,
   dialogVariants,
@@ -23,9 +25,18 @@ import {
   variableRowVariants,
   smallInputVariants,
   removeButtonVariants,
-} from "../NewWorkflowModal/styles"
-import { infoBoxVariants } from "./styles"
-import type { ExtractWorkflowModalProps } from "./types"
+} from "../NewWorkflowModal/styles";
+import { infoBoxVariants } from "./styles";
+import type { ExtractWorkflowModalProps } from "./types";
+
+const INPUT_TYPES: InputType[] = [
+  "string",
+  "number",
+  "boolean",
+  "list",
+  "dict",
+  "any",
+];
 
 export function ExtractWorkflowModal({
   isOpen,
@@ -36,14 +47,18 @@ export function ExtractWorkflowModal({
   onConfirm,
   onCancel,
 }: ExtractWorkflowModalProps) {
-  const nameInputRef = useRef<HTMLInputElement>(null)
-  const [name, setName] = useState("")
-  const [nameError, setNameError] = useState<string | null>(null)
-  const [inputs, setInputs] = useState<string[]>([])
-  const [newInput, setNewInput] = useState("")
-  const [outputs, setOutputs] = useState<string[]>([])
-  const [newOutput, setNewOutput] = useState("")
-  const [variables, setVariables] = useState<Array<{ name: string; value: string }>>([])
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const [name, setName] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [inputs, setInputs] = useState<DetailedInput[]>([]);
+  const [newInputName, setNewInputName] = useState("");
+  const [newInputType, setNewInputType] = useState<InputType>("string");
+  const [newInputRequired, setNewInputRequired] = useState(false);
+  const [outputs, setOutputs] = useState<string[]>([]);
+  const [newOutput, setNewOutput] = useState("");
+  const [variables, setVariables] = useState<
+    Array<{ name: string; value: string }>
+  >([]);
 
   // Reset form when modal opens or suggestions change
   useEffect(() => {
@@ -51,114 +66,133 @@ export function ExtractWorkflowModal({
       // Reset form state when opening modal - this is intentional to synchronize
       // with external state (suggestedInputs/Outputs from validation)
       /* eslint-disable react-hooks/set-state-in-effect */
-      setName("")
-      setNameError(null)
-      setInputs(suggestedInputs)
-      setNewInput("")
-      setOutputs(suggestedOutputs)
-      setNewOutput("")
-      setVariables([])
+      setName("");
+      setNameError(null);
+      setInputs(suggestedInputs.map(normalizeInput));
+      setNewInputName("");
+      setNewInputType("string");
+      setNewInputRequired(false);
+      setOutputs(suggestedOutputs);
+      setNewOutput("");
+      setVariables([]);
       /* eslint-enable react-hooks/set-state-in-effect */
       setTimeout(() => {
-        nameInputRef.current?.focus()
-      }, 50)
+        nameInputRef.current?.focus();
+      }, 50);
     }
-  }, [isOpen, suggestedInputs, suggestedOutputs])
+  }, [isOpen, suggestedInputs, suggestedOutputs]);
 
   // Handle escape key
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onCancel()
+        onCancel();
       }
-    }
+    };
 
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, onCancel])
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onCancel]);
 
   const validateName = (value: string): string | null => {
     if (!value.trim()) {
-      return "Workflow name is required"
+      return "Workflow name is required";
     }
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(value)) {
-      return "Name must start with a letter or underscore and contain only letters, numbers, and underscores"
+      return "Name must start with a letter or underscore and contain only letters, numbers, and underscores";
     }
     if (existingWorkflowNames.includes(value)) {
-      return "A workflow with this name already exists"
+      return "A workflow with this name already exists";
     }
-    return null
-  }
+    return null;
+  };
 
   const handleNameChange = (value: string) => {
-    setName(value)
+    setName(value);
     if (nameError) {
-      setNameError(validateName(value))
+      setNameError(validateName(value));
     }
-  }
+  };
 
   const handleNameBlur = () => {
-    setNameError(validateName(name))
-  }
+    setNameError(validateName(name));
+  };
 
   const addInput = () => {
-    const trimmed = newInput.trim()
-    if (trimmed && !inputs.includes(trimmed) && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)) {
-      setInputs([...inputs, trimmed])
-      setNewInput("")
+    const trimmed = newInputName.trim();
+    if (
+      trimmed &&
+      !inputs.some((i) => i.name === trimmed) &&
+      /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)
+    ) {
+      setInputs([
+        ...inputs,
+        { name: trimmed, type: newInputType, required: newInputRequired },
+      ]);
+      setNewInputName("");
+      setNewInputType("string");
+      setNewInputRequired(false);
     }
-  }
+  };
 
-  const removeInput = (input: string) => {
-    setInputs(inputs.filter((i) => i !== input))
-  }
+  const removeInput = (inputName: string) => {
+    setInputs(inputs.filter((i) => i.name !== inputName));
+  };
 
   const addOutput = () => {
-    const trimmed = newOutput.trim()
-    if (trimmed && !outputs.includes(trimmed) && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)) {
-      setOutputs([...outputs, trimmed])
-      setNewOutput("")
+    const trimmed = newOutput.trim();
+    if (
+      trimmed &&
+      !outputs.includes(trimmed) &&
+      /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)
+    ) {
+      setOutputs([...outputs, trimmed]);
+      setNewOutput("");
     }
-  }
+  };
 
   const removeOutput = (output: string) => {
-    setOutputs(outputs.filter((o) => o !== output))
-  }
+    setOutputs(outputs.filter((o) => o !== output));
+  };
 
   const addVariable = () => {
-    setVariables([...variables, { name: "", value: "" }])
-  }
+    setVariables([...variables, { name: "", value: "" }]);
+  };
 
-  const updateVariable = (index: number, field: "name" | "value", value: string) => {
-    const updated = [...variables]
-    updated[index][field] = value
-    setVariables(updated)
-  }
+  const updateVariable = (
+    index: number,
+    field: "name" | "value",
+    value: string,
+  ) => {
+    const updated = [...variables];
+    updated[index][field] = value;
+    setVariables(updated);
+  };
 
   const removeVariable = (index: number) => {
-    setVariables(variables.filter((_, i) => i !== index))
-  }
+    setVariables(variables.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = () => {
-    const error = validateName(name)
+    const error = validateName(name);
     if (error) {
-      setNameError(error)
-      return
+      setNameError(error);
+      return;
     }
 
     // Convert variables array to object with parsed values
-    const varsObj: Record<string, unknown> = {}
+    const varsObj: Record<string, unknown> = {};
     for (const v of variables) {
       if (v.name.trim() && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(v.name.trim())) {
-        let parsedValue: unknown = v.value
+        let parsedValue: unknown = v.value;
         try {
-          parsedValue = JSON.parse(v.value)
+          parsedValue = JSON.parse(v.value);
         } catch {
           // Keep as string if not valid JSON
         }
-        varsObj[v.name.trim()] = parsedValue
+        varsObj[v.name.trim()] = parsedValue;
       }
     }
 
@@ -167,10 +201,10 @@ export function ExtractWorkflowModal({
       inputs,
       outputs,
       variables: varsObj,
-    })
-  }
+    });
+  };
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return createPortal(
     <div
@@ -185,7 +219,10 @@ export function ExtractWorkflowModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className={cn(headerVariants())}>
-          <h2 id="extract-workflow-dialog-title" className={cn(titleVariants())}>
+          <h2
+            id="extract-workflow-dialog-title"
+            className={cn(titleVariants())}
+          >
             Extract to Workflow
           </h2>
         </div>
@@ -193,8 +230,9 @@ export function ExtractWorkflowModal({
         <div className={cn(bodyVariants())}>
           {/* Info box showing what will be extracted */}
           <div className={cn(infoBoxVariants())}>
-            <strong>{nodeIds.length} nodes</strong> will be extracted into a new workflow.
-            The selected nodes will be replaced with a workflow_call node.
+            <strong>{nodeIds.length} nodes</strong> will be extracted into a new
+            workflow. The selected nodes will be replaced with a workflow_call
+            node.
           </div>
 
           {/* Workflow Name */}
@@ -212,7 +250,7 @@ export function ExtractWorkflowModal({
               onBlur={handleNameBlur}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  handleSubmit()
+                  handleSubmit();
                 }
               }}
             />
@@ -224,18 +262,26 @@ export function ExtractWorkflowModal({
             <label className={cn(labelVariants())}>
               Interface Inputs
               {suggestedInputs.length > 0 && (
-                <span className="text-text-muted text-xs ml-2">(auto-detected)</span>
+                <span className="text-text-muted text-xs ml-2">
+                  (auto-detected)
+                </span>
               )}
             </label>
             {inputs.length > 0 && (
               <div className={cn(tagListVariants())}>
                 {inputs.map((input) => (
-                  <span key={input} className={cn(tagVariants())}>
-                    {input}
+                  <span key={input.name} className={cn(tagVariants())}>
+                    {input.name}
+                    <span className="text-[10px] opacity-70 ml-0.5">
+                      {input.type}
+                    </span>
+                    {input.required && (
+                      <span className="text-accent-red text-[10px]">*</span>
+                    )}
                     <button
                       className={cn(tagRemoveVariants())}
-                      onClick={() => removeInput(input)}
-                      aria-label={`Remove ${input}`}
+                      onClick={() => removeInput(input.name)}
+                      aria-label={`Remove ${input.name}`}
                     >
                       x
                     </button>
@@ -248,15 +294,34 @@ export function ExtractWorkflowModal({
                 type="text"
                 className={cn(inputVariants())}
                 placeholder="input_name"
-                value={newInput}
-                onChange={(e) => setNewInput(e.target.value)}
+                value={newInputName}
+                onChange={(e) => setNewInputName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    e.preventDefault()
-                    addInput()
+                    e.preventDefault();
+                    addInput();
                   }
                 }}
               />
+              <select
+                className={cn(inputVariants(), "w-24")}
+                value={newInputType}
+                onChange={(e) => setNewInputType(e.target.value as InputType)}
+              >
+                {INPUT_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+              <label className="flex items-center gap-1 text-xs text-text-secondary whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  checked={newInputRequired}
+                  onChange={(e) => setNewInputRequired(e.target.checked)}
+                />
+                Req
+              </label>
               <button
                 type="button"
                 className={cn(addButtonVariants())}
@@ -272,7 +337,9 @@ export function ExtractWorkflowModal({
             <label className={cn(labelVariants())}>
               Interface Outputs
               {suggestedOutputs.length > 0 && (
-                <span className="text-text-muted text-xs ml-2">(auto-detected)</span>
+                <span className="text-text-muted text-xs ml-2">
+                  (auto-detected)
+                </span>
               )}
             </label>
             {outputs.length > 0 && (
@@ -300,8 +367,8 @@ export function ExtractWorkflowModal({
                 onChange={(e) => setNewOutput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    e.preventDefault()
-                    addOutput()
+                    e.preventDefault();
+                    addOutput();
                   }
                 }}
               />
@@ -325,7 +392,9 @@ export function ExtractWorkflowModal({
                   className={cn(smallInputVariants())}
                   placeholder="name"
                   value={variable.name}
-                  onChange={(e) => updateVariable(index, "name", e.target.value)}
+                  onChange={(e) =>
+                    updateVariable(index, "name", e.target.value)
+                  }
                 />
                 <span className="text-text-muted">=</span>
                 <input
@@ -333,7 +402,9 @@ export function ExtractWorkflowModal({
                   className={cn(smallInputVariants())}
                   placeholder="value"
                   value={variable.value}
-                  onChange={(e) => updateVariable(index, "value", e.target.value)}
+                  onChange={(e) =>
+                    updateVariable(index, "value", e.target.value)
+                  }
                 />
                 <button
                   type="button"
@@ -371,6 +442,6 @@ export function ExtractWorkflowModal({
         </div>
       </div>
     </div>,
-    document.body
-  )
+    document.body,
+  );
 }

@@ -1,0 +1,223 @@
+# Helper workflows for wavy hello HTML generator
+#
+# build_wavy_spans: Converts a string into individual <span> elements
+# with staggered animation-delay for a wave effect.
+
+workflows:
+  - name: build_wavy_spans
+    interface:
+      inputs: ["text"]
+      outputs: ["spans_html"]
+    variables:
+      text: ""
+      spans_html: ""
+      i: 0
+      text_len: 0
+      char: ""
+      delay_str: ""
+      span_tag: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: get_text_length
+        inputs: {}
+
+      # Get the length of the input text
+      compute_length:
+        opcode: string_length
+        isReporter: true
+        inputs:
+          text:
+            variable: text
+
+      get_text_length:
+        opcode: data_set_variable_to
+        next: loop_chars
+        inputs:
+          VARIABLE:
+            literal: "text_len"
+          VALUE:
+            node: compute_length
+
+      # Loop over each character index
+      loop_chars:
+        opcode: control_for
+        next: return_spans
+        inputs:
+          VAR:
+            literal: "i"
+          START:
+            literal: 0
+          END:
+            variable: text_len
+          STEP:
+            literal: 1
+          BODY:
+            branch: extract_char
+
+      # -- Loop body: build a <span> for the current character --
+
+      # Extract the character at index i
+      char_at_i:
+        opcode: string_substring
+        isReporter: true
+        inputs:
+          text:
+            variable: text
+          start:
+            variable: i
+          end:
+            node: i_plus_one
+
+      i_plus_one:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: i
+          OPERAND2:
+            literal: 1
+
+      extract_char:
+        opcode: data_set_variable_to
+        next: check_space
+        inputs:
+          VARIABLE:
+            literal: "char"
+          VALUE:
+            node: char_at_i
+
+      # Check if the character is a space (needs special handling)
+      is_space:
+        opcode: operator_equals
+        isReporter: true
+        inputs:
+          left:
+            variable: char
+          right:
+            literal: " "
+
+      check_space:
+        opcode: control_if_else
+        next: compute_delay
+        inputs:
+          CONDITION:
+            node: is_space
+          THEN:
+            branch: set_space_char
+          ELSE:
+            branch: keep_char
+
+      # Replace space with &nbsp; for HTML
+      set_space_char:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "char"
+          VALUE:
+            literal: "&nbsp;"
+
+      keep_char:
+        opcode: noop
+        next: null
+        inputs: {}
+
+      # Compute the animation delay: i * 0.08 seconds
+      delay_value:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: i
+          OPERAND2:
+            literal: 0.08
+
+      delay_as_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: delay_value
+
+      compute_delay:
+        opcode: data_set_variable_to
+        next: build_span
+        inputs:
+          VARIABLE:
+            literal: "delay_str"
+          VALUE:
+            node: delay_as_str
+
+      # Build: <span style="animation-delay:{delay}s">{char}</span>
+      # We build this by chaining operator_add reporters
+      span_part1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "<span style=\"animation-delay:"
+          right:
+            variable: delay_str
+
+      span_part2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: span_part1
+          right:
+            literal: "s\">"
+
+      span_part3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: span_part2
+          right:
+            variable: char
+
+      span_complete:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: span_part3
+          right:
+            literal: "</span>"
+
+      build_span:
+        opcode: data_set_variable_to
+        next: append_span
+        inputs:
+          VARIABLE:
+            literal: "span_tag"
+          VALUE:
+            node: span_complete
+
+      # Append this span to the accumulated HTML
+      accumulated:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: spans_html
+          right:
+            variable: span_tag
+
+      append_span:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "spans_html"
+          VALUE:
+            node: accumulated
+
+      # Return the complete spans HTML
+      return_spans:
+        opcode: workflow_return
+        inputs:
+          VALUE:
+            variable: spans_html

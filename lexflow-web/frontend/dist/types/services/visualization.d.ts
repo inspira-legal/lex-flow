@@ -1,10 +1,11 @@
-import type { WorkflowTree } from "../api/types";
+import type { WorkflowTree, DetailedInput } from "../api/types";
+type RawInput = string | DetailedInput;
 interface WorkflowData {
     workflows?: WorkflowDefinition[];
     nodes?: Record<string, NodeDefinition>;
     name?: string;
     interface?: {
-        inputs?: string[];
+        inputs?: RawInput[];
         outputs?: string[];
     };
     variables?: Record<string, unknown>;
@@ -13,7 +14,7 @@ interface WorkflowDefinition {
     name?: string;
     nodes?: Record<string, NodeDefinition>;
     interface?: {
-        inputs?: string[];
+        inputs?: RawInput[];
         outputs?: string[];
     };
     variables?: Record<string, unknown>;

@@ -42,10 +42,14 @@ jobs:
     if: needs.detect-changes.outputs.core == 'true'
     runs-on: ubuntu-latest
     steps:
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
       - uses: actions/setup-python@v5
         with:
@@ -54,25 +58,34 @@ jobs:
       - name: Install dependencies
         run: pip install python-semantic-release
 
-      - name: Release lexflow-core
-        working-directory: lexflow-core
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          semantic-release version
-          semantic-release publish
+
+      - name: Bump version and push (via SSH deploy key)
+        working-directory: lexflow-core
+        run: semantic-release version --no-vcs-release
+
+      - name: Create GitHub release
+        working-directory: lexflow-core
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: semantic-release publish
 
   update-docs:
     needs: [detect-changes, release-core]
     if: always() && needs.detect-changes.outputs.core == 'true'
     runs-on: ubuntu-latest
     steps:
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
       - uses: actions/setup-python@v5
         with:
@@ -107,10 +120,14 @@ jobs:
     if: always() && needs.detect-changes.outputs.cli == 'true'
     runs-on: ubuntu-latest
     steps:
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
       - uses: actions/setup-python@v5
         with:
@@ -122,25 +139,34 @@ jobs:
       - name: Pull latest changes
         run: git pull origin main
 
-      - name: Release lexflow-cli
-        working-directory: lexflow-cli
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          semantic-release version
-          semantic-release publish
+
+      - name: Bump version and push (via SSH deploy key)
+        working-directory: lexflow-cli
+        run: semantic-release version --no-vcs-release
+
+      - name: Create GitHub release
+        working-directory: lexflow-cli
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: semantic-release publish
 
   release-web:
     needs: [detect-changes, release-core, update-docs, release-cli]
     if: always() && needs.detect-changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
       - uses: actions/setup-python@v5
         with:
@@ -173,10 +199,12 @@ jobs:
           git diff --staged --quiet || git commit -m "chore(web): build frontend library [skip ci]"
           git push origin main
 
-      - name: Release lexflow-web
+      - name: Bump version and push (via SSH deploy key)
+        working-directory: lexflow-web
+        run: semantic-release version --no-vcs-release
+
+      - name: Create GitHub release
         working-directory: lexflow-web
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          semantic-release version
-          semantic-release publish
+        run: semantic-release publish

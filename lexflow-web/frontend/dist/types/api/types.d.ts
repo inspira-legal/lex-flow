@@ -43,13 +43,20 @@ export interface OpcodeParameter {
     required: boolean;
     default?: unknown;
 }
+export type InputType = "string" | "number" | "boolean" | "list" | "dict" | "any";
+export interface DetailedInput {
+    name: string;
+    type: InputType;
+    required: boolean;
+}
+export declare function normalizeInput(input: string | DetailedInput): DetailedInput;
 export interface WorkflowTree {
     type: "project";
     workflows: WorkflowNode[];
     interface?: WorkflowInterface;
 }
 export interface WorkflowInterface {
-    inputs: string[];
+    inputs: DetailedInput[];
     outputs: string[];
 }
 export interface WorkflowNode {

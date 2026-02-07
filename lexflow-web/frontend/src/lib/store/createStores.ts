@@ -2,7 +2,7 @@
 
 import { create, type StateCreator } from "zustand";
 import { persist } from "zustand/middleware";
-import type { WorkflowTree, ExampleInfo, OpcodeInterface } from "../../api/types";
+import type { WorkflowTree, ExampleInfo, OpcodeInterface, DetailedInput } from "../../api/types";
 import * as WorkflowService from "../../services/workflow/WorkflowService";
 import type { LayoutWorkflowGroup } from "../../services/layout/LayoutService";
 import type { FormattedValue } from "../../api/types";
@@ -177,7 +177,7 @@ export interface EditorStoreState {
   deleteReporter: (parentNodeId: string, inputPath: string[]) => boolean;
   updateWorkflowInterface: (
     workflowName: string,
-    inputs: string[],
+    inputs: DetailedInput[],
     outputs: string[],
   ) => boolean;
   addVariable: (

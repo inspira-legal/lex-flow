@@ -164,7 +164,7 @@ describe("WorkflowService", () => {
         baseSource,
         "hello",
         "MESSAGE",
-        "New message"
+        "New message",
       );
 
       expect(result.success).toBe(true);
@@ -190,7 +190,7 @@ describe("WorkflowService", () => {
         baseSource,
         "nonexistent",
         "MESSAGE",
-        "test"
+        "test",
       );
 
       expect(result.success).toBe(false);
@@ -201,7 +201,7 @@ describe("WorkflowService", () => {
         baseSource,
         "hello",
         "NONEXISTENT",
-        "test"
+        "test",
       );
 
       expect(result.success).toBe(false);
@@ -259,7 +259,7 @@ describe("WorkflowService", () => {
         workflowWithVariables,
         "main",
         "greeting",
-        "hi"
+        "hi",
       );
 
       expect(result.success).toBe(true);
@@ -271,7 +271,7 @@ describe("WorkflowService", () => {
         workflowWithVariables,
         "nonexistent",
         "var",
-        1
+        1,
       );
 
       expect(result.success).toBe(false);
@@ -285,7 +285,7 @@ describe("WorkflowService", () => {
         "main",
         "count",
         "counter",
-        100
+        100,
       );
 
       expect(result.success).toBe(true);
@@ -299,7 +299,7 @@ describe("WorkflowService", () => {
         "main",
         "count",
         "count",
-        999
+        999,
       );
 
       expect(result.success).toBe(true);
@@ -312,7 +312,7 @@ describe("WorkflowService", () => {
         "main",
         "nonexistent",
         "new",
-        1
+        1,
       );
 
       expect(result.success).toBe(false);
@@ -332,7 +332,7 @@ describe("WorkflowService", () => {
       const result = deleteVariable(
         workflowWithVariables,
         "main",
-        "nonexistent"
+        "nonexistent",
       );
 
       expect(result.success).toBe(false);
@@ -340,16 +340,24 @@ describe("WorkflowService", () => {
   });
 
   describe("updateWorkflowInterface", () => {
-    it("updates inputs and outputs", () => {
+    it("updates inputs and outputs with detailed format", () => {
       const result = updateWorkflowInterface(
         workflowWithVariables,
         "main",
-        ["a", "b"],
-        ["result"]
+        [
+          { name: "a", type: "string", required: true },
+          { name: "b", type: "number", required: false },
+        ],
+        ["result"],
       );
 
       expect(result.success).toBe(true);
-      expect(result.source).toContain('inputs: ["a", "b"]');
+      expect(result.source).toContain('- name: "a"');
+      expect(result.source).toContain('  type: "string"');
+      expect(result.source).toContain("  required: true");
+      expect(result.source).toContain('- name: "b"');
+      expect(result.source).toContain('  type: "number"');
+      expect(result.source).toContain("  required: false");
       expect(result.source).toContain('outputs: ["result"]');
     });
 
@@ -358,7 +366,7 @@ describe("WorkflowService", () => {
         workflowWithVariables,
         "main",
         [],
-        []
+        [],
       );
 
       expect(result.success).toBe(true);
@@ -371,7 +379,7 @@ describe("WorkflowService", () => {
         workflowWithVariables,
         "nonexistent",
         [],
-        []
+        [],
       );
 
       expect(result.success).toBe(false);
@@ -409,7 +417,7 @@ describe("WorkflowService", () => {
         controlFlowSource,
         "condition",
         "then_node",
-        "THEN"
+        "THEN",
       );
 
       expect(result.success).toBe(true);

@@ -53,6 +53,32 @@ export interface OpcodeParameter {
   default?: unknown;
 }
 
+// Detailed input types for workflow interfaces
+export type InputType =
+  | "string"
+  | "number"
+  | "boolean"
+  | "list"
+  | "dict"
+  | "any";
+
+export interface DetailedInput {
+  name: string;
+  type: InputType;
+  required: boolean;
+}
+
+export function normalizeInput(input: string | DetailedInput): DetailedInput {
+  if (typeof input === "string") {
+    return { name: input, type: "string", required: false };
+  }
+  return {
+    name: input.name,
+    type: input.type || "string",
+    required: input.required ?? false,
+  };
+}
+
 // Visualization tree types
 export interface WorkflowTree {
   type: "project";
@@ -61,7 +87,7 @@ export interface WorkflowTree {
 }
 
 export interface WorkflowInterface {
-  inputs: string[];
+  inputs: DetailedInput[];
   outputs: string[];
 }
 

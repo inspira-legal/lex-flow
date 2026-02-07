@@ -1,9 +1,10 @@
 # Semantic search workflow for RAG pipeline
 # Searches the Qdrant vector database for documents similar to the query
+# Use --input rerank=false to disable BM25 reranking of search results
 workflows:
   - name: main
     interface:
-      inputs: ["query", "project", "collection", "limit", "location"]
+      inputs: ["query", "project", "collection", "limit", "location", "rerank"]
       outputs: []
     variables:
       query: ""
@@ -11,6 +12,7 @@ workflows:
       collection: "documents"
       limit: 5
       location: "us-central1"
+      rerank: true
       client: null
       query_embedding: null
       results: []
@@ -93,11 +95,13 @@ workflows:
             variable: project
           location:
             variable: location
+          model:
+            literal: "text-multilingual-embedding-002"
 
       # Search Qdrant
       search_qdrant:
         opcode: data_set_variable_to
-        next: get_result_count
+        next: check_rerank
         inputs:
           VARIABLE:
             literal: results
@@ -116,6 +120,37 @@ workflows:
             variable: query_embedding
           limit:
             variable: limit
+
+      # Conditionally rerank results using BM25
+      check_rerank:
+        opcode: control_if
+        next: get_result_count
+        inputs:
+          CONDITION:
+            variable: rerank
+          THEN:
+            branch: store_reranked_results
+
+      # BM25 rerank search results
+      bm25_rerank_results:
+        opcode: bm25_rerank
+        isReporter: true
+        inputs:
+          query:
+            variable: query
+          results:
+            variable: results
+          top_k:
+            variable: limit
+
+      store_reranked_results:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: results
+          VALUE:
+            node: bm25_rerank_results
 
       # Get number of results
       get_result_count:

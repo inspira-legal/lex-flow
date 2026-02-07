@@ -1,0 +1,230 @@
+# Demonstrates the detailed interface inputs format with name, type, and required fields.
+# This format is used by the web editor to display type hints and required indicators.
+#
+# Run: lexflow examples/basics/detailed_inputs.yaml --input username=Alice --input age=30 --input verbose=true
+
+workflows:
+  - name: main
+    interface:
+      inputs:
+        - name: "username"
+          type: "string"
+          required: true
+        - name: "age"
+          type: "number"
+          required: false
+        - name: "verbose"
+          type: "boolean"
+          required: false
+        - name: "hobbies"
+          type: "list"
+          required: false
+      outputs: []
+    variables:
+      username: "World"
+      age: 0
+      verbose: false
+      hobbies: ["reading", "coding"]
+      greeting: ""
+      birth_year: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: build_greeting
+        inputs: {}
+
+      # Build greeting string: "Hello, <username>!"
+      build_greeting:
+        opcode: data_set_variable_to
+        next: print_greeting
+        inputs:
+          VARIABLE:
+            literal: "greeting"
+          VALUE:
+            node: greeting_full
+
+      greeting_prefix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Hello, "
+          right:
+            variable: username
+
+      greeting_full:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: greeting_prefix
+          right:
+            literal: "!\n"
+
+      print_greeting:
+        opcode: io_print
+        next: check_age
+        inputs:
+          STRING:
+            variable: greeting
+
+      # If age > 0, calculate and print approximate birth year
+      check_age:
+        opcode: control_if
+        next: check_verbose
+        inputs:
+          CONDITION:
+            node: age_provided
+          THEN:
+            branch: calc_birth_year
+
+      age_provided:
+        opcode: operator_greater_than
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: age
+          OPERAND2:
+            literal: 0
+
+      calc_birth_year:
+        opcode: data_set_variable_to
+        next: print_birth_year
+        inputs:
+          VARIABLE:
+            literal: "birth_year"
+          VALUE:
+            node: birth_year_calc
+
+      birth_year_calc:
+        opcode: operator_subtract
+        isReporter: true
+        inputs:
+          left:
+            literal: 2026
+          right:
+            variable: age
+
+      print_birth_year:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: birth_year_msg
+
+      birth_year_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: birth_year_msg_prefix
+          right:
+            literal: ".\n"
+
+      birth_year_msg_prefix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "You were born around "
+          right:
+            node: birth_year_str
+
+      birth_year_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: birth_year
+
+      # If verbose is true, print the hobbies list
+      check_verbose:
+        opcode: control_if
+        next: null
+        inputs:
+          CONDITION:
+            variable: verbose
+          THEN:
+            branch: print_hobbies_header
+
+      print_hobbies_header:
+        opcode: io_print
+        next: print_hobby_count
+        inputs:
+          STRING:
+            literal: "Your hobbies:\n"
+
+      print_hobby_count:
+        opcode: io_print
+        next: iterate_hobbies
+        inputs:
+          STRING:
+            node: hobby_count_msg
+
+      hobby_count_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  ("
+          right:
+            node: hobby_count_suffix
+
+      hobby_count_suffix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: hobby_count_str
+          right:
+            literal: " total)\n"
+
+      hobby_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: hobby_count
+
+      hobby_count:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          items:
+            variable: hobbies
+
+      iterate_hobbies:
+        opcode: control_foreach
+        next: null
+        inputs:
+          VAR:
+            literal: "hobby"
+          ITERABLE:
+            variable: hobbies
+          BODY:
+            branch: print_hobby
+
+      print_hobby:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: hobby_line
+
+      hobby_line:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  - "
+          right:
+            node: hobby_with_newline
+
+      hobby_with_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: hobby
+          right:
+            literal: "\n"

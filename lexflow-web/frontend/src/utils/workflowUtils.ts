@@ -17,7 +17,7 @@ export function getWorkflowCallParamMapping(
 
   const mapping: Record<string, string> = {};
   workflow.interface.inputs.forEach((param, i) => {
-    mapping[`ARG${i + 1}`] = param;
+    mapping[`ARG${i + 1}`] = param.name;
   });
   return mapping;
 }
@@ -60,6 +60,6 @@ export function getCallableWorkflows(
     .filter((w) => w.name !== "main")
     .map((w) => ({
       name: w.name,
-      params: w.interface.inputs,
+      params: w.interface.inputs.map((i) => i.name),
     }));
 }
