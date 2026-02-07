@@ -2,6 +2,41 @@
 
 <!-- version list -->
 
+## v1.10.0 (2026-02-07)
+
+### Bug Fixes
+
+- **web**: Add missing gcs category to grammar and node palette
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+- **web**: Strip pubsub_ and async_ prefixes in node palette display names
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+### Chores
+
+- **core**: Release 1.5.0
+  ([`0ced13d`](https://github.com/inspira-legal/lex-flow/commit/0ced13df9391ba444b53a54594c6c4f4a47bbddb))
+
+- **web**: Build frontend library [skip ci]
+  ([`c765070`](https://github.com/inspira-legal/lex-flow/commit/c7650708687c5322e88c6bc2f8fbd44f8bfaf4c0))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`b4c9b1d`](https://github.com/inspira-legal/lex-flow/commit/b4c9b1d840beab82d96e0030fb4e33cb8e6f6e9b))
+
+### Features
+
+- **core**: Add Google Cloud Pub/Sub opcodes
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+- **core**: Add long-running deployment docs to agent instructions
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+- **core**: PubSub Opcodes(#12)
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+
 ## v1.9.1 (2026-02-06)
 
 ### Bug Fixes
