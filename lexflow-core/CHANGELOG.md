@@ -2,6 +2,62 @@
 
 <!-- version list -->
 
+## v1.5.0 (2026-02-07)
+
+### Bug Fixes
+
+- **ci**: Use SSH deploy key for semantic-release push instead of GITHUB_TOKEN
+  ([`d5491b9`](https://github.com/inspira-legal/lex-flow/commit/d5491b92b2f2c7333efa8a908be63387511ab1dd))
+
+- **rag**: Fix RAG pipeline workflows and add BM25 reranking
+  ([`4ae28fa`](https://github.com/inspira-legal/lex-flow/commit/4ae28fa73fb14457b9c1d12847287ba26c5e02f4))
+
+- **web**: Add --no-vcs-release to version step, let publish create GitHub release
+  ([`6f0581e`](https://github.com/inspira-legal/lex-flow/commit/6f0581ed3e0f1756101aae596bfc04e8093b308a))
+
+- **web**: Add missing gcs category to grammar and node palette
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+- **web**: Strip pubsub_ and async_ prefixes in node palette display names
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+### Chores
+
+- **web**: Build frontend library [skip ci]
+  ([`35a1ad9`](https://github.com/inspira-legal/lex-flow/commit/35a1ad9f35fbe960317ea0e7632b1bdc0a12b2b1))
+
+- **web**: Release 1.8.0
+  ([`9533fb9`](https://github.com/inspira-legal/lex-flow/commit/9533fb97e50d1e0828217d5792f0272c8b1bec05))
+
+- **web**: Release 1.9.0
+  ([`815f888`](https://github.com/inspira-legal/lex-flow/commit/815f888a841d89e454dfd8f57bc74a661faf4ff3))
+
+- **web**: Release 1.9.1
+  ([`7086800`](https://github.com/inspira-legal/lex-flow/commit/70868009964ba347b672af850fa1e3f8d14f56ec))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`10d8af6`](https://github.com/inspira-legal/lex-flow/commit/10d8af6b3efd864db1df403ab5a9547b99f16798))
+
+### Features
+
+- **core**: Add Google Cloud Pub/Sub opcodes
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+- **core**: Add long-running deployment docs to agent instructions
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+- **core**: PubSub Opcodes(#12)
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+- **web**: Add detailed interface inputs support (name, type, required)
+  ([`d360a6e`](https://github.com/inspira-legal/lex-flow/commit/d360a6e80085a44fa16e8a987bf504b9f354d651))
+
+- **web**: Trigerring new release updated editor
+  ([`72152b8`](https://github.com/inspira-legal/lex-flow/commit/72152b875b6109f549c5da7b84361b29302fb118))
+
+
 ## v1.4.0 (2026-02-05)
 
 ### Bug Fixes
