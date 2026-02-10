@@ -22,17 +22,15 @@ Quick reference for all available opcodes in LexFlow.
 - [⏱ Async Operations](#async-operations)
 - [🤖 AI Operations (Pydantic AI)](#ai-operations-pydantic-ai) *(requires `lexflow[ai]`)*
 - [🌐 HTTP Operations](#http-operations) *(requires `lexflow[http]`)*
-- [📊 Google Sheets Operations](#google-sheets-operations) *(requires `lexflow[sheets]`)*
 - [📄 HTML Operations](#html-operations) *(requires `lexflow[http]`)*
 - [📋 JSON Operations](#json-operations)
-- [☁️ Cloud Storage](#cloud-storage) *(requires `lexflow[gcs]`)*
+- [hubspot HubSpot Operations](#hubspot-operations) *(requires `lexflow[hubspot]`)*
 - [🎮 Pygame Operations](#pygame-operations) *(requires `lexflow[pygame]`)*
 - [🔍 RAG Operations](#rag-operations) *(requires `lexflow[rag]`)*
 - [🐘 PgVector Operations](#pgvector-operations) *(requires `lexflow[pgvector]`)*
 - [💬 Chat Operations](#chat-operations)
 - [💻 CLI Operations](#cli-operations)
 - [🐙 GitHub Operations](#github-operations)
-- [📨 Pub/Sub](#pub/sub) *(requires `lexflow[pubsub]`)*
 - [⚡ Task Operations](#task-operations)
 - [📡 Channel Operations](#channel-operations)
 - [🔒 Sync Primitives](#sync-primitives)
@@ -1434,352 +1432,6 @@ Yields:
 
 ---
 
-## 📊 Google Sheets Operations
-
-> **Requires:** `pip install lexflow[sheets]`
-
-### `sheets_append(client, spreadsheet_id, range_notation, values, value_input_option="RAW")`
-
-Append rows to a Google Sheet.
-
-Args:
-    client: SheetsClient from sheets_create_client
-    spreadsheet_id: The spreadsheet ID (from URL)
-    range_notation: Range to append after (e.g., "Sheet1!A:D")
-    values: 2D list of values to append (each inner list is a row)
-    value_input_option: "RAW" for raw values, "USER_ENTERED" for formulas
-
-Returns:
-    Response dict with updatedCells, updatedRows, updatedRange
-
-Example:
-    client: { node: create_client }
-    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-    range_notation: "Sheet1!A:C"
-    values: [["Alice", 30, "alice@example.com"]]
-
-
-**Parameters:**
-
-- `client` (Any, required)
-- `spreadsheet_id` (Any, required)
-- `range_notation` (Any, required)
-- `values` (Any, required)
-- `value_input_option` (Any, optional, default: `"RAW"`)
-
-**Returns:** `Any`
-
----
-
-### `sheets_clear(client, spreadsheet_id, range_notation)`
-
-Clear values from a Google Sheet range.
-
-Args:
-    client: SheetsClient from sheets_create_client
-    spreadsheet_id: The spreadsheet ID (from URL)
-    range_notation: Range in A1 notation to clear (e.g., "Sheet1!A1:D10")
-
-Returns:
-    Response dict with clearedRange
-
-Example:
-    client: { node: create_client }
-    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-    range_notation: "Sheet1!A2:D100"
-
-
-**Parameters:**
-
-- `client` (Any, required)
-- `spreadsheet_id` (Any, required)
-- `range_notation` (Any, required)
-
-**Returns:** `Any`
-
----
-
-### `sheets_create_client(credentials_path=None)`
-
-Create a Google Sheets client for API operations.
-
-Args:
-    credentials_path: Path to service account JSON file. If None,
-        uses Application Default Credentials (ADC).
-
-Returns:
-    SheetsClient object to use with other sheets_* opcodes
-
-Example with Service Account:
-    credentials_path: "/path/to/service-account.json"
-
-Example with ADC (after running 'gcloud auth application-default login'):
-    # No arguments needed
-
-
-**Returns:** `Any`
-
----
-
-### `sheets_create_sheet(client, spreadsheet_id, title)`
-
-Create a new sheet (tab) in a spreadsheet.
-
-Args:
-    client: SheetsClient from sheets_create_client
-    spreadsheet_id: The spreadsheet ID (from URL)
-    title: Name for the new sheet
-
-Returns:
-    Dict with sheetId and title of the created sheet
-
-Example:
-    client: { node: create_client }
-    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-    title: "New Sheet"
-
-
-**Parameters:**
-
-- `client` (Any, required)
-- `spreadsheet_id` (Any, required)
-- `title` (Any, required)
-
-**Returns:** `Any`
-
----
-
-### `sheets_delete_sheet(client, spreadsheet_id, sheet_id)`
-
-Delete a sheet (tab) from a spreadsheet.
-
-Args:
-    client: SheetsClient from sheets_create_client
-    spreadsheet_id: The spreadsheet ID (from URL)
-    sheet_id: The sheet ID to delete (from sheets_list_sheets)
-
-Returns:
-    Dict with success status
-
-Example:
-    client: { node: create_client }
-    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-    sheet_id: 123456789
-
-
-**Parameters:**
-
-- `client` (Any, required)
-- `spreadsheet_id` (Any, required)
-- `sheet_id` (Any, required)
-
-**Returns:** `Any`
-
----
-
-### `sheets_get_column(client, spreadsheet_id, sheet_name, column)`
-
-Read a specific column from a Google Sheet.
-
-Args:
-    client: SheetsClient from sheets_create_client
-    spreadsheet_id: The spreadsheet ID (from URL)
-    sheet_name: Name of the sheet (tab)
-    column: Column letter (e.g., "A", "B", "AA")
-
-Returns:
-    List of values in the column (excluding empty trailing cells)
-
-Example:
-    client: { node: create_client }
-    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-    sheet_name: "Sheet1"
-    column: "A"
-
-
-**Parameters:**
-
-- `client` (Any, required)
-- `spreadsheet_id` (Any, required)
-- `sheet_name` (Any, required)
-- `column` (Any, required)
-
-**Returns:** `Any`
-
----
-
-### `sheets_get_last_row(client, spreadsheet_id, sheet_name)`
-
-Get the number of the last row with data in a sheet.
-
-Args:
-    client: SheetsClient from sheets_create_client
-    spreadsheet_id: The spreadsheet ID (from URL)
-    sheet_name: Name of the sheet (tab)
-
-Returns:
-    Last row number with data (0 if sheet is empty)
-
-Example:
-    client: { node: create_client }
-    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-    sheet_name: "Sheet1"
-
-
-**Parameters:**
-
-- `client` (Any, required)
-- `spreadsheet_id` (Any, required)
-- `sheet_name` (Any, required)
-
-**Returns:** `Any`
-
----
-
-### `sheets_get_row(client, spreadsheet_id, sheet_name, row_number)`
-
-Read a specific row from a Google Sheet.
-
-Args:
-    client: SheetsClient from sheets_create_client
-    spreadsheet_id: The spreadsheet ID (from URL)
-    sheet_name: Name of the sheet (tab)
-    row_number: Row number (1-indexed)
-
-Returns:
-    List of values in the row
-
-Example:
-    client: { node: create_client }
-    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-    sheet_name: "Sheet1"
-    row_number: 5
-
-
-**Parameters:**
-
-- `client` (Any, required)
-- `spreadsheet_id` (Any, required)
-- `sheet_name` (Any, required)
-- `row_number` (Any, required)
-
-**Returns:** `Any`
-
----
-
-### `sheets_get_values(client, spreadsheet_id, range_notation)`
-
-Read values from a Google Sheet range.
-
-Args:
-    client: SheetsClient from sheets_create_client
-    spreadsheet_id: The spreadsheet ID (from URL)
-    range_notation: Range in A1 notation (e.g., "Sheet1!A1:D10")
-
-Returns:
-    2D list of values (rows x columns). Empty cells are empty strings.
-
-Example:
-    client: { node: create_client }
-    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-    range_notation: "Sheet1!A1:D10"
-
-
-**Parameters:**
-
-- `client` (Any, required)
-- `spreadsheet_id` (Any, required)
-- `range_notation` (Any, required)
-
-**Returns:** `Any`
-
----
-
-### `sheets_list_sheets(client, spreadsheet_id)`
-
-List all sheets (tabs) in a spreadsheet.
-
-Args:
-    client: SheetsClient from sheets_create_client
-    spreadsheet_id: The spreadsheet ID (from URL)
-
-Returns:
-    List of dicts with sheetId, title, index for each sheet
-
-Example:
-    client: { node: create_client }
-    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-
-
-**Parameters:**
-
-- `client` (Any, required)
-- `spreadsheet_id` (Any, required)
-
-**Returns:** `Any`
-
----
-
-### `sheets_test_connection(client, spreadsheet_id, range_notation="A1:B2")`
-
-Test connection to a Google Sheet.
-
-Args:
-    client: SheetsClient from sheets_create_client
-    spreadsheet_id: The spreadsheet ID (from URL)
-    range_notation: Range to test reading (default: "A1:B2")
-
-Returns:
-    True if connection successful, raises exception otherwise
-
-Example:
-    client: { node: create_client }
-    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-
-
-**Parameters:**
-
-- `client` (Any, required)
-- `spreadsheet_id` (Any, required)
-- `range_notation` (Any, optional, default: `"A1:B2"`)
-
-**Returns:** `Any`
-
----
-
-### `sheets_update(client, spreadsheet_id, range_notation, values, value_input_option="RAW")`
-
-Update values in a Google Sheet range.
-
-Args:
-    client: SheetsClient from sheets_create_client
-    spreadsheet_id: The spreadsheet ID (from URL)
-    range_notation: Range in A1 notation (e.g., "Sheet1!A1:D10")
-    values: 2D list of values (rows x columns)
-    value_input_option: "RAW" for raw values, "USER_ENTERED" for formulas
-
-Returns:
-    Response dict with updatedCells, updatedRows, updatedColumns
-
-Example:
-    client: { node: create_client }
-    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-    range_notation: "Sheet1!A1:C1"
-    values: [["Name", "Age", "Email"]]
-
-
-**Parameters:**
-
-- `client` (Any, required)
-- `spreadsheet_id` (Any, required)
-- `range_notation` (Any, required)
-- `values` (Any, required)
-- `value_input_option` (Any, optional, default: `"RAW"`)
-
-**Returns:** `Any`
-
----
-
 ## 📄 HTML Operations
 
 > **Requires:** `pip install lexflow[http]`
@@ -1929,330 +1581,507 @@ Raises:
 
 ---
 
-## ☁️ Cloud Storage
+## hubspot HubSpot Operations
 
-> **Requires:** `pip install lexflow[gcs]`
+> **Requires:** `pip install lexflow[hubspot]`
 
-### `gcs_close_client(client)`
+### `hubspot_associate(client, from_type, from_id, to_type, to_id, association_type)`
 
-Close the GCS client and release resources.
-
-Args:
-    client: GCS client instance to close
-
-Returns:
-    True when closed successfully
-
-Example:
-    client: { node: my_client }
-
-
-**Returns:** `bool`
-
----
-
-### `gcs_copy_object(client, source_bucket, source_object, dest_bucket, dest_object)`
-
-Copy an object within or between GCS buckets.
+Create an association between two HubSpot objects.
 
 Args:
-    client: GCS client instance (from gcs_create_client)
-    source_bucket: Source bucket name
-    source_object: Source object name/path
-    dest_bucket: Destination bucket name
-    dest_object: Destination object name/path
+    client: HubSpotClient from hubspot_create_client
+    from_type: Source object type (contacts, companies, deals)
+    from_id: Source object ID
+    to_type: Target object type (contacts, companies, deals)
+    to_id: Target object ID
+    association_type: Association type ID or label (e.g., "contact_to_company")
 
 Returns:
-    Dictionary with copy operation metadata
+    Association response object
 
-Example:
-    client: { node: my_client }
-    source_bucket: "source-bucket"
-    source_object: "path/to/file.pdf"
-    dest_bucket: "dest-bucket"
-    dest_object: "backup/file.pdf"
+Example - Associate contact with company:
+    client: { node: create_client }
+    from_type: "contacts"
+    from_id: "12345"
+    to_type: "companies"
+    to_id: "67890"
+    association_type: "contact_to_company"
+
+Example - Associate deal with contact:
+    client: { node: create_client }
+    from_type: "deals"
+    from_id: "11111"
+    to_type: "contacts"
+    to_id: "12345"
+    association_type: "deal_to_contact"
 
 
 **Parameters:**
 
-- `client` (Storage, required)
-- `source_bucket` (str, required)
-- `source_object` (str, required)
-- `dest_bucket` (str, required)
-- `dest_object` (str, required)
+- `client` (HubSpotClient, required)
+- `from_type` (str, required)
+- `from_id` (str, required)
+- `to_type` (str, required)
+- `to_id` (str, required)
+- `association_type` (str, required)
 
-**Returns:** `GCSObjectMetadata`
+**Returns:** `Dict`
 
 ---
 
-### `gcs_create_client(service_file=None)`
+### `hubspot_create_client(access_token, base_url="https://api.hubapi.com")`
 
-Create a Google Cloud Storage async client.
+Create a HubSpot API client for CRM operations.
 
 Args:
-    service_file: Optional path to service account JSON file
+    access_token: HubSpot private app access token
+    base_url: HubSpot API base URL (default: https://api.hubapi.com)
 
 Returns:
-    Storage client instance
+    HubSpotClient object to use with other hubspot_* opcodes
 
 Example:
-    service_file: "/path/to/service-account.json"
-
-Authentication:
-    Uses Google Cloud authentication in this order:
-    1. service_file parameter (if provided)
-    2. GOOGLE_APPLICATION_CREDENTIALS environment variable
-    3. gcloud auth application-default login
-    4. GCE/GKE metadata server (in cloud environments)
+    access_token: "pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
 
-**Returns:** `Storage`
+**Parameters:**
+
+- `access_token` (str, required)
+- `base_url` (str, optional, default: `"https://api.hubapi.com"`)
+
+**Returns:** `HubSpotClient`
 
 ---
 
-### `gcs_delete_object(client, bucket_name, object_name)`
+### `hubspot_create_company(client, properties)`
 
-Delete an object from GCS.
+Create a new company in HubSpot.
 
 Args:
-    client: GCS client instance (from gcs_create_client)
-    bucket_name: Name of the bucket
-    object_name: Name/path of the object to delete
+    client: HubSpotClient from hubspot_create_client
+    properties: Dict of company properties (e.g., name, domain, industry)
+
+Returns:
+    Created company object with id, properties, createdAt
+
+Example:
+    client: { node: create_client }
+    properties:
+      name: "Acme Corp"
+      domain: "acme.com"
+      industry: "Technology"
+
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `properties` (Dict, required)
+
+**Returns:** `Dict`
+
+---
+
+### `hubspot_create_contact(client, properties)`
+
+Create a new contact in HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    properties: Dict of contact properties (e.g., firstname, lastname, email)
+
+Returns:
+    Created contact object with id, properties, createdAt
+
+Example:
+    client: { node: create_client }
+    properties:
+      firstname: "John"
+      lastname: "Doe"
+      email: "john.doe@example.com"
+
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `properties` (Dict, required)
+
+**Returns:** `Dict`
+
+---
+
+### `hubspot_create_deal(client, properties)`
+
+Create a new deal in HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    properties: Dict of deal properties (e.g., dealname, amount, dealstage)
+
+Returns:
+    Created deal object with id, properties, createdAt
+
+Example:
+    client: { node: create_client }
+    properties:
+      dealname: "New Business Deal"
+      amount: "10000"
+      dealstage: "appointmentscheduled"
+
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `properties` (Dict, required)
+
+**Returns:** `Dict`
+
+---
+
+### `hubspot_delete_contact(client, contact_id)`
+
+Delete a contact from HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    contact_id: The HubSpot contact ID
 
 Returns:
     True if deletion was successful
 
 Example:
-    client: { node: my_client }
-    bucket_name: "my-bucket"
-    object_name: "path/to/file.pdf"
+    client: { node: create_client }
+    contact_id: "12345"
 
 
 **Parameters:**
 
-- `client` (Storage, required)
-- `bucket_name` (str, required)
-- `object_name` (str, required)
+- `client` (HubSpotClient, required)
+- `contact_id` (str, required)
 
 **Returns:** `bool`
 
 ---
 
-### `gcs_download_object_as_bytes(client, bucket_name, object_name)`
+### `hubspot_get_company(client, company_id, properties=None)`
 
-Download an object from GCS as bytes.
+Get a company by ID from HubSpot.
 
 Args:
-    client: GCS client instance (from gcs_create_client)
-    bucket_name: Name of the bucket
-    object_name: Name/path of the object in the bucket
+    client: HubSpotClient from hubspot_create_client
+    company_id: The HubSpot company ID
+    properties: List of property names to return (default: all)
 
 Returns:
-    Object content as bytes
+    Company object with id, properties, createdAt, updatedAt
 
 Example:
-    client: { node: my_client }
-    bucket_name: "my-bucket"
-    object_name: "path/to/file.pdf"
+    client: { node: create_client }
+    company_id: "67890"
+    properties: ["name", "domain", "industry"]
 
 
 **Parameters:**
 
-- `client` (Storage, required)
-- `bucket_name` (str, required)
-- `object_name` (str, required)
+- `client` (HubSpotClient, required)
+- `company_id` (str, required)
+- `properties` (Optional, optional, default: `None`)
 
-**Returns:** `bytes`
+**Returns:** `Dict`
 
 ---
 
-### `gcs_download_object_as_string(client, bucket_name, object_name, encoding="utf-8")`
+### `hubspot_get_contact(client, contact_id, properties=None)`
 
-Download an object from GCS as a string.
+Get a contact by ID from HubSpot.
 
 Args:
-    client: GCS client instance (from gcs_create_client)
-    bucket_name: Name of the bucket
-    object_name: Name/path of the object in the bucket
-    encoding: Text encoding (default: utf-8)
+    client: HubSpotClient from hubspot_create_client
+    contact_id: The HubSpot contact ID
+    properties: List of property names to return (default: all)
 
 Returns:
-    Object content as string
+    Contact object with id, properties, createdAt, updatedAt
 
 Example:
-    client: { node: my_client }
-    bucket_name: "my-bucket"
-    object_name: "path/to/file.txt"
+    client: { node: create_client }
+    contact_id: "12345"
+    properties: ["firstname", "lastname", "email"]
 
 
 **Parameters:**
 
-- `client` (Storage, required)
-- `bucket_name` (str, required)
-- `object_name` (str, required)
-- `encoding` (str, optional, default: `"utf-8"`)
+- `client` (HubSpotClient, required)
+- `contact_id` (str, required)
+- `properties` (Optional, optional, default: `None`)
 
-**Returns:** `str`
+**Returns:** `Dict`
 
 ---
 
-### `gcs_get_object_metadata(client, bucket_name, object_name)`
+### `hubspot_get_deal(client, deal_id, properties=None)`
 
-Get metadata for an object in GCS.
+Get a deal by ID from HubSpot.
 
 Args:
-    client: GCS client instance (from gcs_create_client)
-    bucket_name: Name of the bucket
-    object_name: Name/path of the object
+    client: HubSpotClient from hubspot_create_client
+    deal_id: The HubSpot deal ID
+    properties: List of property names to return (default: all)
 
 Returns:
-    Dictionary with object metadata including:
-    - name: Object name
-    - size: Size in bytes
-    - contentType: MIME type
-    - updated: Last modification timestamp
-    - md5Hash: MD5 hash of content
+    Deal object with id, properties, createdAt, updatedAt
 
 Example:
-    client: { node: my_client }
-    bucket_name: "my-bucket"
-    object_name: "path/to/file.pdf"
+    client: { node: create_client }
+    deal_id: "11111"
+    properties: ["dealname", "amount", "dealstage"]
 
 
 **Parameters:**
 
-- `client` (Storage, required)
-- `bucket_name` (str, required)
-- `object_name` (str, required)
+- `client` (HubSpotClient, required)
+- `deal_id` (str, required)
+- `properties` (Optional, optional, default: `None`)
 
-**Returns:** `GCSObjectMetadata`
+**Returns:** `Dict`
 
 ---
 
-### `gcs_list_objects(client, bucket_name, prefix=None, max_results=None)`
+### `hubspot_list_properties(client, object_type)`
 
-List objects in a GCS bucket.
+List all properties for a HubSpot object type.
 
 Args:
-    client: GCS client instance (from gcs_create_client)
-    bucket_name: Name of the bucket
-    prefix: Optional prefix to filter objects
-    max_results: Optional maximum number of results
+    client: HubSpotClient from hubspot_create_client
+    object_type: Object type (contacts, companies, deals)
 
 Returns:
-    List of object metadata dictionaries
+    List of property objects with name, label, type, description
 
 Example:
-    client: { node: my_client }
-    bucket_name: "my-bucket"
-    prefix: "uploads/"
+    client: { node: create_client }
+    object_type: "contacts"
 
 
 **Parameters:**
 
-- `client` (Storage, required)
-- `bucket_name` (str, required)
-- `prefix` (Optional, optional, default: `None`)
-- `max_results` (Optional, optional, default: `None`)
+- `client` (HubSpotClient, required)
+- `object_type` (str, required)
 
-**Returns:** `list`
+**Returns:** `List`
 
 ---
 
-### `gcs_object_exists(client, bucket_name, object_name)`
+### `hubspot_search_companies(client, filters, properties=None, limit=100)`
 
-Check if an object exists in a GCS bucket.
+Search companies in HubSpot using filters.
 
 Args:
-    client: GCS client instance (from gcs_create_client)
-    bucket_name: Name of the bucket
-    object_name: Name/path of the object to check
+    client: HubSpotClient from hubspot_create_client
+    filters: List of filter objects with propertyName, operator, value.
+        Operators: EQ, NEQ, LT, LTE, GT, GTE, IN, NOT_IN, CONTAINS
+    properties: List of property names to return
+    limit: Maximum number of results (default: 100, max: 100)
 
 Returns:
-    True if object exists, False otherwise
+    Dict with 'results' list and 'total' count
 
 Example:
-    client: { node: my_client }
-    bucket_name: "my-bucket"
-    object_name: "path/to/file.pdf"
+    client: { node: create_client }
+    filters:
+      - propertyName: "domain"
+        operator: "EQ"
+        value: "hubspot.com"
+    properties: ["name", "domain", "industry"]
+    limit: 10
 
 
 **Parameters:**
 
-- `client` (Storage, required)
-- `bucket_name` (str, required)
-- `object_name` (str, required)
+- `client` (HubSpotClient, required)
+- `filters` (List, required)
+- `properties` (Optional, optional, default: `None`)
+- `limit` (int, optional, default: `100`)
+
+**Returns:** `Dict`
+
+---
+
+### `hubspot_search_contacts(client, filters, properties=None, limit=100)`
+
+Search contacts in HubSpot using filters.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    filters: List of filter objects with propertyName, operator, value.
+        Operators: EQ, NEQ, LT, LTE, GT, GTE, IN, NOT_IN, CONTAINS
+    properties: List of property names to return
+    limit: Maximum number of results (default: 100, max: 100)
+
+Returns:
+    Dict with 'results' list and 'total' count
+
+Example:
+    client: { node: create_client }
+    filters:
+      - propertyName: "email"
+        operator: "EQ"
+        value: "test@example.com"
+    properties: ["firstname", "lastname", "email"]
+    limit: 10
+
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `filters` (List, required)
+- `properties` (Optional, optional, default: `None`)
+- `limit` (int, optional, default: `100`)
+
+**Returns:** `Dict`
+
+---
+
+### `hubspot_search_deals(client, filters, properties=None, limit=100)`
+
+Search deals in HubSpot using filters.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    filters: List of filter objects with propertyName, operator, value.
+        Operators: EQ, NEQ, LT, LTE, GT, GTE, IN, NOT_IN, CONTAINS
+    properties: List of property names to return
+    limit: Maximum number of results (default: 100, max: 100)
+
+Returns:
+    Dict with 'results' list and 'total' count
+
+Example:
+    client: { node: create_client }
+    filters:
+      - propertyName: "dealstage"
+        operator: "EQ"
+        value: "closedwon"
+    properties: ["dealname", "amount", "dealstage"]
+    limit: 10
+
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `filters` (List, required)
+- `properties` (Optional, optional, default: `None`)
+- `limit` (int, optional, default: `100`)
+
+**Returns:** `Dict`
+
+---
+
+### `hubspot_test_connection(client)`
+
+Test connection to HubSpot API.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+
+Returns:
+    True if connection successful, raises exception otherwise
+
+Example:
+    client: { node: create_client }
+
 
 **Returns:** `bool`
 
 ---
 
-### `gcs_upload_object_from_bytes(client, bucket_name, object_name, data, content_type=None)`
+### `hubspot_update_company(client, company_id, properties)`
 
-Upload bytes to an object in GCS.
+Update an existing company in HubSpot.
 
 Args:
-    client: GCS client instance (from gcs_create_client)
-    bucket_name: Name of the bucket
-    object_name: Name/path for the object in the bucket
-    data: Bytes content to upload
-    content_type: Optional MIME type (e.g., "application/pdf")
+    client: HubSpotClient from hubspot_create_client
+    company_id: The HubSpot company ID
+    properties: Dict of company properties to update
 
 Returns:
-    Dictionary with upload metadata
+    Updated company object
 
 Example:
-    client: { node: my_client }
-    bucket_name: "my-bucket"
-    object_name: "uploads/document.pdf"
-    data: { variable: pdf_bytes }
-    content_type: "application/pdf"
+    client: { node: create_client }
+    company_id: "67890"
+    properties:
+      industry: "Software"
+      numberofemployees: "100"
 
 
 **Parameters:**
 
-- `client` (Storage, required)
-- `bucket_name` (str, required)
-- `object_name` (str, required)
-- `data` (bytes, required)
-- `content_type` (Optional, optional, default: `None`)
+- `client` (HubSpotClient, required)
+- `company_id` (str, required)
+- `properties` (Dict, required)
 
-**Returns:** `GCSObjectMetadata`
+**Returns:** `Dict`
 
 ---
 
-### `gcs_upload_object_from_string(client, bucket_name, object_name, data, content_type="text/plain", encoding="utf-8")`
+### `hubspot_update_contact(client, contact_id, properties)`
 
-Upload a string to an object in GCS.
+Update an existing contact in HubSpot.
 
 Args:
-    client: GCS client instance (from gcs_create_client)
-    bucket_name: Name of the bucket
-    object_name: Name/path for the object in the bucket
-    data: String content to upload
-    content_type: MIME type (default: "text/plain")
-    encoding: Text encoding (default: utf-8)
+    client: HubSpotClient from hubspot_create_client
+    contact_id: The HubSpot contact ID
+    properties: Dict of contact properties to update
 
 Returns:
-    Dictionary with upload metadata
+    Updated contact object
 
 Example:
-    client: { node: my_client }
-    bucket_name: "my-bucket"
-    object_name: "logs/output.txt"
-    data: "Hello, World!"
+    client: { node: create_client }
+    contact_id: "12345"
+    properties:
+      firstname: "Jane"
+      phone: "+1234567890"
 
 
 **Parameters:**
 
-- `client` (Storage, required)
-- `bucket_name` (str, required)
-- `object_name` (str, required)
-- `data` (str, required)
-- `content_type` (str, optional, default: `"text/plain"`)
-- `encoding` (str, optional, default: `"utf-8"`)
+- `client` (HubSpotClient, required)
+- `contact_id` (str, required)
+- `properties` (Dict, required)
 
-**Returns:** `GCSObjectMetadata`
+**Returns:** `Dict`
+
+---
+
+### `hubspot_update_deal(client, deal_id, properties)`
+
+Update an existing deal in HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    deal_id: The HubSpot deal ID
+    properties: Dict of deal properties to update
+
+Returns:
+    Updated deal object
+
+Example:
+    client: { node: create_client }
+    deal_id: "11111"
+    properties:
+      amount: "15000"
+      dealstage: "closedwon"
+
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `deal_id` (str, required)
+- `properties` (Dict, required)
+
+**Returns:** `Dict`
 
 ---
 
@@ -3654,410 +3483,6 @@ Returns:
 
 ---
 
-## 📨 Pub/Sub
-
-> **Requires:** `pip install lexflow[pubsub]`
-
-### `pubsub_ack_message(subscriber, project_id, subscription_id, message)`
-
-Acknowledge a single message received from pubsub_pull_messages.
-
-Args:
-    subscriber: Subscriber client instance
-    project_id: GCP project ID
-    subscription_id: Subscription ID
-    message: Message dictionary with ack_id from pubsub_pull_messages
-
-Returns:
-    True if acknowledged successfully
-
-Example:
-    subscriber: { variable: my_subscriber }
-    project_id: "my-gcp-project"
-    subscription_id: "my-subscription"
-    message: { variable: msg }
-
-
-**Parameters:**
-
-- `subscriber` (SubscriberClient, required)
-- `project_id` (str, required)
-- `subscription_id` (str, required)
-- `message` (dict, required)
-
-**Returns:** `bool`
-
----
-
-### `pubsub_acknowledge_messages(subscriber, project_id, subscription_id, ack_ids)`
-
-Acknowledge messages that have been processed.
-
-Args:
-    subscriber: Subscriber client instance (from pubsub_create_subscriber)
-    project_id: GCP project ID
-    subscription_id: Subscription ID (not the full path)
-    ack_ids: List of acknowledgment IDs from pulled messages
-
-Returns:
-    True if acknowledgment was successful
-
-Example:
-    subscriber: { variable: my_subscriber }
-    project_id: "my-gcp-project"
-    subscription_id: "my-subscription"
-    ack_ids: { variable: message_ack_ids }
-
-
-**Parameters:**
-
-- `subscriber` (SubscriberClient, required)
-- `project_id` (str, required)
-- `subscription_id` (str, required)
-- `ack_ids` (list, required)
-
-**Returns:** `bool`
-
----
-
-### `pubsub_close_publisher(publisher)`
-
-Close the publisher client and release resources.
-
-Args:
-    publisher: Publisher client instance to close
-
-Returns:
-    True if closed successfully
-
-Example:
-    publisher: { variable: my_publisher }
-
-
-**Returns:** `bool`
-
----
-
-### `pubsub_close_subscriber(subscriber)`
-
-Close the subscriber client and release resources.
-
-Args:
-    subscriber: Subscriber client instance to close
-
-Returns:
-    True if closed successfully
-
-Example:
-    subscriber: { variable: my_subscriber }
-
-
-**Returns:** `bool`
-
----
-
-### `pubsub_create_publisher()`
-
-Create a Google Cloud Pub/Sub publisher client.
-
-Returns:
-    PublisherClient instance
-
-Example:
-    (no inputs required)
-
-Authentication:
-    Requires Google Cloud authentication via:
-    - gcloud auth application-default login
-    - Or GOOGLE_APPLICATION_CREDENTIALS environment variable
-
-Note:
-    Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
-    When set, authentication is automatically skipped.
-
-
-**Returns:** `PublisherClient`
-
----
-
-### `pubsub_create_subscriber()`
-
-Create a Google Cloud Pub/Sub subscriber client.
-
-Returns:
-    SubscriberClient instance
-
-Example:
-    (no inputs required)
-
-Authentication:
-    Requires Google Cloud authentication via:
-    - gcloud auth application-default login
-    - Or GOOGLE_APPLICATION_CREDENTIALS environment variable
-
-Note:
-    Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
-    When set, authentication is automatically skipped.
-
-
-**Returns:** `SubscriberClient`
-
----
-
-### `pubsub_nack_message(subscriber, project_id, subscription_id, message)`
-
-Negative-acknowledge a message (return to queue for redelivery).
-
-Args:
-    subscriber: Subscriber client instance
-    project_id: GCP project ID
-    subscription_id: Subscription ID
-    message: Message dictionary with ack_id from pubsub_pull_messages
-
-Returns:
-    True if nack'd successfully
-
-Example:
-    subscriber: { variable: my_subscriber }
-    project_id: "my-gcp-project"
-    subscription_id: "my-subscription"
-    message: { variable: msg }
-
-
-**Parameters:**
-
-- `subscriber` (SubscriberClient, required)
-- `project_id` (str, required)
-- `subscription_id` (str, required)
-- `message` (dict, required)
-
-**Returns:** `bool`
-
----
-
-### `pubsub_publish_batch(publisher, project_id, topic_id, messages)`
-
-Publish multiple messages to a Pub/Sub topic.
-
-Args:
-    publisher: Publisher client instance (from pubsub_create_publisher)
-    project_id: GCP project ID
-    topic_id: Topic ID (not the full path)
-    messages: List of message dictionaries, each with:
-        - data: Message data as string (required)
-        - attributes: Optional dictionary of attributes
-
-Returns:
-    List of message IDs for the published messages
-
-Example:
-    publisher: { variable: my_publisher }
-    project_id: "my-gcp-project"
-    topic_id: "my-topic"
-    messages:
-      - data: "First message"
-        attributes: { "index": "1" }
-      - data: "Second message"
-        attributes: { "index": "2" }
-
-
-**Parameters:**
-
-- `publisher` (PublisherClient, required)
-- `project_id` (str, required)
-- `topic_id` (str, required)
-- `messages` (list, required)
-
-**Returns:** `list`
-
----
-
-### `pubsub_publish_message(publisher, project_id, topic_id, data)`
-
-Publish a message to a Pub/Sub topic.
-
-Args:
-    publisher: Publisher client instance (from pubsub_create_publisher)
-    project_id: GCP project ID
-    topic_id: Topic ID (not the full path)
-    data: Message data as string
-
-Returns:
-    Message ID of the published message
-
-Example:
-    publisher: { variable: my_publisher }
-    project_id: "my-gcp-project"
-    topic_id: "my-topic"
-    data: "Hello, Pub/Sub!"
-
-
-**Parameters:**
-
-- `publisher` (PublisherClient, required)
-- `project_id` (str, required)
-- `topic_id` (str, required)
-- `data` (str, required)
-
-**Returns:** `str`
-
----
-
-### `pubsub_publish_message_with_attributes(publisher, project_id, topic_id, data, attributes)`
-
-Publish a message with custom attributes to a Pub/Sub topic.
-
-Args:
-    publisher: Publisher client instance (from pubsub_create_publisher)
-    project_id: GCP project ID
-    topic_id: Topic ID (not the full path)
-    data: Message data as string
-    attributes: Dictionary of custom attributes (string keys and values)
-
-Returns:
-    Message ID of the published message
-
-Example:
-    publisher: { variable: my_publisher }
-    project_id: "my-gcp-project"
-    topic_id: "my-topic"
-    data: "Hello with attributes!"
-    attributes: { "type": "greeting", "priority": "high" }
-
-
-**Parameters:**
-
-- `publisher` (PublisherClient, required)
-- `project_id` (str, required)
-- `topic_id` (str, required)
-- `data` (str, required)
-- `attributes` (dict, required)
-
-**Returns:** `str`
-
----
-
-### `pubsub_pull_messages(subscriber, project_id, subscription_id, max_messages=10)`
-
-Pull messages from a Pub/Sub subscription.
-
-Args:
-    subscriber: Subscriber client instance (from pubsub_create_subscriber)
-    project_id: GCP project ID
-    subscription_id: Subscription ID (not the full path)
-    max_messages: Maximum number of messages to pull (default: 10)
-
-Returns:
-    List of message dictionaries with keys:
-    - ack_id: Acknowledgment ID (needed for acknowledging)
-    - message_id: Message ID
-    - data: Message data as string
-    - attributes: Message attributes dictionary
-    - publish_time: Publish timestamp as ISO string
-
-Example:
-    subscriber: { variable: my_subscriber }
-    project_id: "my-gcp-project"
-    subscription_id: "my-subscription"
-    max_messages: 5
-
-
-**Parameters:**
-
-- `subscriber` (SubscriberClient, required)
-- `project_id` (str, required)
-- `subscription_id` (str, required)
-- `max_messages` (int, optional, default: `10`)
-
-**Returns:** `list`
-
----
-
-### `pubsub_subscribe_stream(subscriber, project_id, subscription_id, timeout=None, max_messages=None, batch_size=10, min_poll_interval=0.1, max_poll_interval=5.0, max_retries=10)`
-
-Subscribe to a Pub/Sub subscription and stream messages as an async generator.
-
-This opcode returns an async generator that yields messages as they arrive.
-Use with control_async_foreach to process messages continuously.
-
-Uses exponential backoff when no messages are available: starts at
-min_poll_interval and doubles up to max_poll_interval. Resets to
-min_poll_interval when messages are received.
-
-Args:
-    subscriber: Subscriber client instance (from pubsub_create_subscriber)
-    project_id: GCP project ID
-    subscription_id: Subscription ID (not the full path)
-    timeout: Optional timeout in seconds. If None, runs indefinitely.
-    max_messages: Optional max number of messages to receive before stopping.
-    batch_size: Messages to pull per request (default: 10)
-    min_poll_interval: Initial/minimum sleep between polls in seconds (default: 0.1)
-    max_poll_interval: Maximum sleep during backoff in seconds (default: 5.0)
-    max_retries: Maximum consecutive errors before raising (default: 10)
-
-Yields:
-    Message dictionaries with keys:
-    - ack_id: Acknowledgment ID
-    - message_id: Message ID
-    - data: Message data as string
-    - attributes: Message attributes dictionary
-    - publish_time: Publish timestamp as ISO string
-
-Note:
-    The subscriber client is NOT closed by this opcode. Use
-    pubsub_close_subscriber to clean up after streaming completes.
-
-Example:
-    subscriber: { variable: my_subscriber }
-    project_id: "my-gcp-project"
-    subscription_id: "my-subscription"
-    timeout: 60
-    max_messages: 100
-    batch_size: 20
-    min_poll_interval: 0.05
-    max_poll_interval: 10.0
-
-Usage in workflow:
-    create_subscriber:
-      opcode: pubsub_create_subscriber
-      isReporter: true
-
-    subscribe:
-      opcode: pubsub_subscribe_stream
-      isReporter: true
-      inputs:
-        subscriber: { node: create_subscriber }
-        project_id: { variable: project_id }
-        subscription_id: { variable: subscription_id }
-        timeout: { literal: 30 }
-        batch_size: { literal: 20 }
-
-    process_messages:
-      opcode: control_async_foreach
-      inputs:
-        VAR: { literal: "msg" }
-        ITERABLE: { node: subscribe }
-      branches:
-        BODY:
-          - handle_message
-
-
-**Parameters:**
-
-- `subscriber` (SubscriberClient, required)
-- `project_id` (str, required)
-- `subscription_id` (str, required)
-- `timeout` (Optional, optional, default: `None`)
-- `max_messages` (Optional, optional, default: `None`)
-- `batch_size` (int, optional, default: `10`)
-- `min_poll_interval` (float, optional, default: `0.1`)
-- `max_poll_interval` (float, optional, default: `5.0`)
-- `max_retries` (int, optional, default: `10`)
-
-**Returns:** `AsyncGenerator`
-
----
-
 ## ⚡ Task Operations
 
 ### `task_await(task, timeout=None)`
@@ -4504,17 +3929,15 @@ Args:
 | ⏱ Async Operations | 3 | - |
 | 🤖 AI Operations (Pydantic AI) | 4 | `lexflow[ai]` |
 | 🌐 HTTP Operations | 8 | `lexflow[http]` |
-| 📊 Google Sheets Operations | 12 | `lexflow[sheets]` |
 | 📄 HTML Operations | 5 | `lexflow[http]` |
 | 📋 JSON Operations | 2 | - |
-| ☁️ Cloud Storage | 11 | `lexflow[gcs]` |
+| hubspot HubSpot Operations | 17 | `lexflow[hubspot]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
 | 🔍 RAG Operations | 20 | `lexflow[rag]` |
 | 🐘 PgVector Operations | 9 | `lexflow[pgvector]` |
 | 💬 Chat Operations | 10 | - |
 | 💻 CLI Operations | 10 | - |
 | 🐙 GitHub Operations | 7 | - |
-| 📨 Pub/Sub | 12 | `lexflow[pubsub]` |
 | ⚡ Task Operations | 10 | - |
 | 📡 Channel Operations | 8 | - |
 | 🔒 Sync Primitives | 8 | - |

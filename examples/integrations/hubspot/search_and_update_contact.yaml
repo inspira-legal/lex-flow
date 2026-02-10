@@ -1,0 +1,150 @@
+# HubSpot: Search and Update Contact
+# Busca um contato por email e atualiza o lead score
+#
+# Uso:
+#   lexflow search_and_update_contact.yaml \
+#     --input token=$HUBSPOT_TOKEN \
+#     --input email=test@example.com \
+#     --input score=85
+#
+# Requer:
+#   pip install lexflow[hubspot]
+
+workflows:
+  - name: main
+    interface:
+      inputs: [token, email, score]
+      outputs: []
+    variables:
+      token: ""
+      email: ""
+      score: 0
+      client: null
+      results: []
+      contact_id: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_start
+        inputs: {}
+
+      print_start:
+        opcode: io_print
+        next: store_client
+        inputs:
+          values:
+            - { literal: "Searching for contact: " }
+            - { variable: email }
+
+      # Criar cliente HubSpot
+      create_client:
+        opcode: hubspot_create_client
+        isReporter: true
+        inputs:
+          access_token: { variable: token }
+
+      store_client:
+        opcode: data_set_variable_to
+        next: store_results
+        inputs:
+          VARIABLE: { literal: "client" }
+          VALUE: { node: create_client }
+
+      # Buscar contato por email
+      search_contact:
+        opcode: hubspot_search_contacts
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          filters:
+            - propertyName: "email"
+              operator: "EQ"
+              value: { variable: email }
+          properties: ["email", "firstname", "lastname", "company"]
+
+      # Extrair resultados
+      get_results:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { node: search_contact }
+          key: { literal: "results" }
+
+      store_results:
+        opcode: data_set_variable_to
+        next: check_found
+        inputs:
+          VARIABLE: { literal: "results" }
+          VALUE: { node: get_results }
+
+      # Verificar se encontrou
+      results_length:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          list: { variable: results }
+
+      has_results:
+        opcode: operator_greater_than
+        isReporter: true
+        inputs:
+          left: { node: results_length }
+          right: { literal: 0 }
+
+      check_found:
+        opcode: control_if
+        inputs:
+          condition: { node: has_results }
+        branches:
+          THEN: { branch: get_first_contact }
+          ELSE: { branch: not_found }
+
+      # Se encontrou, extrair ID e atualizar
+      first_contact:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          list: { variable: results }
+          index: { literal: 0 }
+
+      extract_contact_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { node: first_contact }
+          key: { literal: "id" }
+
+      get_first_contact:
+        opcode: data_set_variable_to
+        next: do_update
+        inputs:
+          VARIABLE: { literal: "contact_id" }
+          VALUE: { node: extract_contact_id }
+
+      do_update:
+        opcode: hubspot_update_contact
+        next: print_success
+        inputs:
+          client: { variable: client }
+          contact_id: { variable: contact_id }
+          properties:
+            lead_score: { variable: score }
+
+      print_success:
+        opcode: io_print
+        next: null
+        inputs:
+          values:
+            - { literal: "Contact " }
+            - { variable: contact_id }
+            - { literal: " updated with score: " }
+            - { variable: score }
+
+      # Se nao encontrou
+      not_found:
+        opcode: io_print
+        next: null
+        inputs:
+          values:
+            - { literal: "Contact not found with email: " }
+            - { variable: email }

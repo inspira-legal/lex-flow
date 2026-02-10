@@ -1,0 +1,101 @@
+# HubSpot: Create Contact and Associate with Company
+# Cria um contato e associa a uma empresa existente
+#
+# Uso:
+#   lexflow create_contact_with_company.yaml \
+#     --input token=$HUBSPOT_TOKEN \
+#     --input firstname=John \
+#     --input lastname=Doe \
+#     --input email=john.doe@acme.com \
+#     --input company_id=12345
+#
+# Requer:
+#   pip install lexflow[hubspot]
+
+workflows:
+  - name: main
+    interface:
+      inputs: [token, firstname, lastname, email, company_id]
+      outputs: []
+    variables:
+      token: ""
+      firstname: ""
+      lastname: ""
+      email: ""
+      company_id: ""
+      client: null
+      contact_id: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_start
+        inputs: {}
+
+      print_start:
+        opcode: io_print
+        next: store_client
+        inputs:
+          MESSAGE: { literal: "Creating contact in HubSpot..." }
+
+      # Criar cliente HubSpot
+      create_client:
+        opcode: hubspot_create_client
+        isReporter: true
+        inputs:
+          access_token: { variable: token }
+
+      store_client:
+        opcode: data_set_variable_to
+        next: store_contact_id
+        inputs:
+          VARIABLE: { literal: "client" }
+          VALUE: { node: create_client }
+
+      # Criar novo contato
+      create_contact:
+        opcode: hubspot_create_contact
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          properties:
+            firstname: { variable: firstname }
+            lastname: { variable: lastname }
+            email: { variable: email }
+
+      # Extrair ID do contato criado
+      get_contact_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { node: create_contact }
+          key: { literal: "id" }
+
+      store_contact_id:
+        opcode: data_set_variable_to
+        next: do_associate
+        inputs:
+          VARIABLE: { literal: "contact_id" }
+          VALUE: { node: get_contact_id }
+
+      # Associar contato à empresa
+      do_associate:
+        opcode: hubspot_associate
+        next: print_result
+        inputs:
+          client: { variable: client }
+          from_type: { literal: "contacts" }
+          from_id: { variable: contact_id }
+          to_type: { literal: "companies" }
+          to_id: { variable: company_id }
+          association_type: { literal: "contact_to_company" }
+
+      # Imprimir resultado
+      print_result:
+        opcode: io_print
+        next: null
+        inputs:
+          values:
+            - { literal: "Contact created with ID: " }
+            - { variable: contact_id }
+            - { literal: " and associated with company: " }
+            - { variable: company_id }
