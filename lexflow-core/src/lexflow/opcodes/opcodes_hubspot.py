@@ -36,12 +36,88 @@ def _check_hubspot():
         )
 
 
+# Valid HubSpot object types (for path validation)
+VALID_OBJECT_TYPES = {
+    "contacts",
+    "companies",
+    "deals",
+    "tickets",
+    "line_items",
+    "products",
+    "quotes",
+}
+
+# Default association type IDs (HubSpot v4 API)
+# See: https://developers.hubspot.com/docs/api/crm/associations
+ASSOCIATION_TYPE_IDS = {
+    # contact ↔ company
+    ("contacts", "companies"): 1,
+    ("companies", "contacts"): 2,
+    # deal ↔ contact
+    ("deals", "contacts"): 3,
+    ("contacts", "deals"): 4,
+    # deal ↔ company
+    ("deals", "companies"): 5,
+    ("companies", "deals"): 6,
+    # ticket ↔ contact
+    ("tickets", "contacts"): 15,
+    ("contacts", "tickets"): 16,
+    # ticket ↔ company
+    ("tickets", "companies"): 26,
+    ("companies", "tickets"): 27,
+    # ticket ↔ deal
+    ("tickets", "deals"): 27,
+    ("deals", "tickets"): 28,
+}
+
+
+def _validate_object_type(object_type: str) -> str:
+    """Validate and normalize HubSpot object type."""
+    normalized = object_type.lower().strip()
+    if normalized not in VALID_OBJECT_TYPES:
+        raise ValueError(
+            f"Invalid object type: '{object_type}'. "
+            f"Valid types: {', '.join(sorted(VALID_OBJECT_TYPES))}"
+        )
+    return normalized
+
+
+def _validate_id(value: str, name: str = "id") -> str:
+    """Validate that an ID is safe for use in URL paths (alphanumeric only)."""
+    str_value = str(value)
+    if not str_value.isalnum():
+        raise ValueError(f"Invalid {name}: '{value}'. Must be alphanumeric.")
+
+
+def _get_association_type_id(
+    from_type: str, to_type: str, association_type: Optional[int] = None
+) -> int:
+    """Get the numeric association type ID."""
+    # If explicit ID provided, use it
+    if association_type is not None:
+        return int(association_type)
+
+    # Infer from object type pair
+    key = (from_type, to_type)
+    if key in ASSOCIATION_TYPE_IDS:
+        return ASSOCIATION_TYPE_IDS[key]
+
+    raise ValueError(
+        f"Unknown association type for {from_type} → {to_type}. "
+        f"Please provide a numeric association_type ID. "
+        f"See: https://developers.hubspot.com/docs/api/crm/associations"
+    )
+
+
+HUBSPOT_API_BASE_URL = "https://api.hubapi.com"
+
+
 class HubSpotClient:
     """Reusable HubSpot API client."""
 
-    def __init__(self, access_token: str, base_url: str = "https://api.hubapi.com"):
+    def __init__(self, access_token: str):
         self.access_token = access_token
-        self.base_url = base_url.rstrip("/")
+        self.base_url = HUBSPOT_API_BASE_URL
 
     async def _request(
         self,
@@ -67,10 +143,20 @@ class HubSpotClient:
                 data = await response.json()
 
                 if response.status >= 400:
-                    error_msg = data.get("message", str(data))
-                    raise ValueError(
+                    # Only extract safe error fields to avoid leaking PII
+                    error_msg = data.get("message", "Unknown error")
+                    category = data.get("category", "")
+                    correlation_id = data.get("correlationId", "")
+
+                    error_parts = [
                         f"HubSpot API error ({response.status}): {error_msg}"
-                    )
+                    ]
+                    if category:
+                        error_parts.append(f"Category: {category}")
+                    if correlation_id:
+                        error_parts.append(f"CorrelationId: {correlation_id}")
+
+                    raise ValueError(". ".join(error_parts))
 
                 return data
 
@@ -125,13 +211,11 @@ def register_hubspot_opcodes():
     @opcode(category="hubspot")
     async def hubspot_create_client(
         access_token: str,
-        base_url: str = "https://api.hubapi.com",
     ) -> HubSpotClient:
         """Create a HubSpot API client for CRM operations.
 
         Args:
             access_token: HubSpot private app access token
-            base_url: HubSpot API base URL (default: https://api.hubapi.com)
 
         Returns:
             HubSpotClient object to use with other hubspot_* opcodes
@@ -140,7 +224,7 @@ def register_hubspot_opcodes():
             access_token: "pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         """
         _check_hubspot()
-        return HubSpotClient(access_token, base_url)
+        return HubSpotClient(access_token)
 
     # ============================================================================
     # Contacts
@@ -168,6 +252,7 @@ def register_hubspot_opcodes():
             properties: ["firstname", "lastname", "email"]
         """
         _check_hubspot()
+        _validate_id(contact_id, "contact_id")
 
         params = {}
         if properties:
@@ -264,6 +349,7 @@ def register_hubspot_opcodes():
               phone: "+1234567890"
         """
         _check_hubspot()
+        _validate_id(contact_id, "contact_id")
 
         body = {"properties": properties}
         return await client.patch(
@@ -289,6 +375,7 @@ def register_hubspot_opcodes():
             contact_id: "12345"
         """
         _check_hubspot()
+        _validate_id(contact_id, "contact_id")
 
         await client.delete(f"/crm/v3/objects/contacts/{contact_id}")
         return True
@@ -319,6 +406,7 @@ def register_hubspot_opcodes():
             properties: ["name", "domain", "industry"]
         """
         _check_hubspot()
+        _validate_id(company_id, "company_id")
 
         params = {}
         if properties:
@@ -417,6 +505,7 @@ def register_hubspot_opcodes():
               numberofemployees: "100"
         """
         _check_hubspot()
+        _validate_id(company_id, "company_id")
 
         body = {"properties": properties}
         return await client.patch(
@@ -449,6 +538,7 @@ def register_hubspot_opcodes():
             properties: ["dealname", "amount", "dealstage"]
         """
         _check_hubspot()
+        _validate_id(deal_id, "deal_id")
 
         params = {}
         if properties:
@@ -545,6 +635,7 @@ def register_hubspot_opcodes():
               dealstage: "closedwon"
         """
         _check_hubspot()
+        _validate_id(deal_id, "deal_id")
 
         body = {"properties": properties}
         return await client.patch(f"/crm/v3/objects/deals/{deal_id}", json_data=body)
@@ -560,64 +651,61 @@ def register_hubspot_opcodes():
         from_id: str,
         to_type: str,
         to_id: str,
-        association_type: str,
+        association_type: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Create an association between two HubSpot objects.
 
         Args:
             client: HubSpotClient from hubspot_create_client
-            from_type: Source object type (contacts, companies, deals)
+            from_type: Source object type (contacts, companies, deals, tickets)
             from_id: Source object ID
-            to_type: Target object type (contacts, companies, deals)
+            to_type: Target object type (contacts, companies, deals, tickets)
             to_id: Target object ID
-            association_type: Association type ID or label (e.g., "contact_to_company")
+            association_type: Integer association type ID (HubSpot v4 API).
+                If not provided, auto-inferred from object types.
+                Common IDs: contacts→companies=1, companies→contacts=2,
+                deals→contacts=3, contacts→deals=4, deals→companies=5,
+                companies→deals=6, tickets→contacts=15, contacts→tickets=16.
+                See: https://developers.hubspot.com/docs/api/crm/associations
 
         Returns:
             Association response object
 
-        Example - Associate contact with company:
+        Example - Associate contact with company (auto-inferred):
             client: { node: create_client }
             from_type: "contacts"
             from_id: "12345"
             to_type: "companies"
             to_id: "67890"
-            association_type: "contact_to_company"
 
-        Example - Associate deal with contact:
+        Example - Associate with explicit type ID:
             client: { node: create_client }
             from_type: "deals"
             from_id: "11111"
             to_type: "contacts"
             to_id: "12345"
-            association_type: "deal_to_contact"
+            association_type: 3
         """
         _check_hubspot()
+
+        # Validate object types (prevents path traversal)
+        from_type = _validate_object_type(from_type)
+        to_type = _validate_object_type(to_type)
+
+        # Validate IDs are alphanumeric (prevents injection)
+        _validate_id(from_id, "from_id")
+        _validate_id(to_id, "to_id")
+
+        # Get numeric association type ID
+        type_id = _get_association_type_id(from_type, to_type, association_type)
 
         endpoint = (
             f"/crm/v4/objects/{from_type}/{from_id}/associations/{to_type}/{to_id}"
         )
 
         body = [
-            {
-                "associationCategory": "HUBSPOT_DEFINED",
-                "associationTypeId": association_type,
-            }
+            {"associationCategory": "HUBSPOT_DEFINED", "associationTypeId": type_id}
         ]
-
-        # Try numeric association type first
-        try:
-            type_id = int(association_type)
-            body = [
-                {"associationCategory": "HUBSPOT_DEFINED", "associationTypeId": type_id}
-            ]
-        except ValueError:
-            # Use label-based association
-            body = [
-                {
-                    "associationCategory": "USER_DEFINED",
-                    "associationTypeId": association_type,
-                }
-            ]
 
         return await client.put(endpoint, json_data=body)
 
@@ -644,6 +732,7 @@ def register_hubspot_opcodes():
             object_type: "contacts"
         """
         _check_hubspot()
+        object_type = _validate_object_type(object_type)
 
         response = await client.get(f"/crm/v3/properties/{object_type}")
         return response.get("results", [])
