@@ -1585,36 +1585,40 @@ Raises:
 
 > **Requires:** `pip install lexflow[hubspot]`
 
-### `hubspot_associate(client, from_type, from_id, to_type, to_id, association_type)`
+### `hubspot_associate(client, from_type, from_id, to_type, to_id, association_type=None)`
 
 Create an association between two HubSpot objects.
 
 Args:
     client: HubSpotClient from hubspot_create_client
-    from_type: Source object type (contacts, companies, deals)
+    from_type: Source object type (contacts, companies, deals, tickets)
     from_id: Source object ID
-    to_type: Target object type (contacts, companies, deals)
+    to_type: Target object type (contacts, companies, deals, tickets)
     to_id: Target object ID
-    association_type: Association type ID or label (e.g., "contact_to_company")
+    association_type: Integer association type ID (HubSpot v4 API).
+        If not provided, auto-inferred from object types.
+        Common IDs: contacts→companies=1, companies→contacts=2,
+        deals→contacts=3, contacts→deals=4, deals→companies=5,
+        companies→deals=6, tickets→contacts=15, contacts→tickets=16.
+        See: https://developers.hubspot.com/docs/api/crm/associations
 
 Returns:
     Association response object
 
-Example - Associate contact with company:
+Example - Associate contact with company (auto-inferred):
     client: { node: create_client }
     from_type: "contacts"
     from_id: "12345"
     to_type: "companies"
     to_id: "67890"
-    association_type: "contact_to_company"
 
-Example - Associate deal with contact:
+Example - Associate with explicit type ID:
     client: { node: create_client }
     from_type: "deals"
     from_id: "11111"
     to_type: "contacts"
     to_id: "12345"
-    association_type: "deal_to_contact"
+    association_type: 3
 
 
 **Parameters:**
@@ -1624,19 +1628,18 @@ Example - Associate deal with contact:
 - `from_id` (str, required)
 - `to_type` (str, required)
 - `to_id` (str, required)
-- `association_type` (str, required)
+- `association_type` (Optional, optional, default: `None`)
 
 **Returns:** `Dict`
 
 ---
 
-### `hubspot_create_client(access_token, base_url="https://api.hubapi.com")`
+### `hubspot_create_client(access_token)`
 
 Create a HubSpot API client for CRM operations.
 
 Args:
     access_token: HubSpot private app access token
-    base_url: HubSpot API base URL (default: https://api.hubapi.com)
 
 Returns:
     HubSpotClient object to use with other hubspot_* opcodes
@@ -1644,11 +1647,6 @@ Returns:
 Example:
     access_token: "pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
-
-**Parameters:**
-
-- `access_token` (str, required)
-- `base_url` (str, optional, default: `"https://api.hubapi.com"`)
 
 **Returns:** `HubSpotClient`
 
