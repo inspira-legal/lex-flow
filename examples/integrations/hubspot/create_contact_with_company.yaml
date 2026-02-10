@@ -78,6 +78,7 @@ workflows:
           VALUE: { node: get_contact_id }
 
       # Associar contato à empresa
+      # association_type é inferido automaticamente: contacts→companies = 1
       do_associate:
         opcode: hubspot_associate
         next: print_result
@@ -87,7 +88,6 @@ workflows:
           from_id: { variable: contact_id }
           to_type: { literal: "companies" }
           to_id: { variable: company_id }
-          association_type: { literal: "contact_to_company" }
 
       # Imprimir resultado
       print_result:
