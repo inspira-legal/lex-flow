@@ -1,0 +1,55 @@
+# Simple Slack Test - Just send a message
+#
+# Usage:
+#   lexflow examples/integrations/slack/test_slack_simple.yaml \
+#     --input token=xoxb-YOUR-TOKEN \
+#     --input channel=general
+
+workflows:
+  - name: main
+    interface:
+      inputs: ["token", "channel"]
+      outputs: []
+    variables:
+      token: ""
+      channel: "general"
+    nodes:
+      start:
+        opcode: workflow_start
+        next: create_client
+        inputs: {}
+
+      create_client:
+        opcode: slack_create_client
+        isReporter: true
+        inputs:
+          token: { variable: token }
+        next: test_auth
+
+      test_auth:
+        opcode: slack_test_auth
+        isReporter: true
+        inputs:
+          client: { node: create_client }
+        next: print_auth
+
+      print_auth:
+        opcode: io_print
+        inputs:
+          value: { node: test_auth }
+        next: send_message
+
+      send_message:
+        opcode: slack_send_message
+        isReporter: true
+        inputs:
+          client: { node: create_client }
+          channel: { variable: channel }
+          text: { literal: "Hello from LexFlow!" }
+        next: print_result
+
+      print_result:
+        opcode: io_print
+        inputs:
+          value: { node: send_message }
+        next: null
