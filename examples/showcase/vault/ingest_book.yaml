@@ -1,0 +1,900 @@
+# Book Ingestion Workflow - Vault / Book Collection RAG Pipeline
+#
+# Processes a PDF book from Google Cloud Storage: downloads, extracts text,
+# chunks it intelligently, generates embeddings, and stores in Qdrant.
+#
+# Run via CLI:
+#   lexflow examples/showcase/vault/ingest_book.yaml \
+#     --input bucket=mvp-personal-vault \
+#     --input objeto=solar_system.pdf \
+#     --input livro_id=solar-system-001 \
+#     --input projeto_gcp=inspira-development
+#
+# Run via Web UI:
+#   Load this file and use inputs:
+#   {
+#     "bucket": "mvp-personal-vault",
+#     "objeto": "solar_system.pdf",
+#     "livro_id": "solar-system-001",
+#     "projeto_gcp": "inspira-development"
+#   }
+#
+# Requirements:
+#   pip install lexflow[rag,gcs]
+#   gcloud auth application-default login
+#   docker run -d -p 6333:6333 qdrant/qdrant
+
+workflows:
+  - name: main
+    interface:
+      inputs: [bucket, objeto, livro_id, projeto_gcp, qdrant_url, collection, chunk_size, overlap]
+      outputs: []
+    variables:
+      # Input parameters
+      bucket: ""
+      objeto: ""
+      livro_id: ""
+      projeto_gcp: ""
+      qdrant_url: "http://localhost:6333"
+      collection: "livros"
+      chunk_size: 1000
+      overlap: 200
+      # State variables
+      gcs_client: null
+      pdf_bytes: null
+      qdrant_client: null
+      pdf_pages: []
+      chunks: []
+      chunk_texts: []
+      chunk_count: 0
+      embeddings: []
+      ids: []
+      payloads: []
+      current_index: 0
+      current_chunk: null
+      source_path: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: build_source_path
+        inputs: {}
+
+      # Build source path for display (gs://bucket/objeto)
+      source_path_prefix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "gs://"
+          right:
+            variable: bucket
+
+      source_path_full:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: source_path_prefix
+          right:
+            node: source_path_suffix
+
+      source_path_suffix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "/"
+          right:
+            variable: objeto
+
+      build_source_path:
+        opcode: data_set_variable_to
+        next: print_header
+        inputs:
+          VARIABLE:
+            literal: "source_path"
+          VALUE:
+            node: source_path_full
+
+      # ========================================================================
+      # HEADER
+      # ========================================================================
+      print_header:
+        opcode: io_print
+        next: print_separator
+        inputs:
+          STRING:
+            literal: "\n================================================================================\n"
+
+      print_separator:
+        opcode: io_print
+        next: print_title
+        inputs:
+          STRING:
+            literal: "                   VAULT - BOOK INGESTION PIPELINE\n"
+
+      print_title:
+        opcode: io_print
+        next: print_settings_header
+        inputs:
+          STRING:
+            literal: "================================================================================\n\n"
+
+      # Print settings
+      print_settings_header:
+        opcode: io_print
+        next: print_bucket
+        inputs:
+          STRING:
+            literal: "Settings:\n"
+
+      format_bucket:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Bucket:      "
+          right:
+            node: bucket_with_newline
+
+      bucket_with_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: bucket
+          right:
+            literal: "\n"
+
+      print_bucket:
+        opcode: io_print
+        next: print_objeto
+        inputs:
+          STRING:
+            node: format_bucket
+
+      format_objeto:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Objeto:      "
+          right:
+            node: objeto_with_newline
+
+      objeto_with_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: objeto
+          right:
+            literal: "\n"
+
+      print_objeto:
+        opcode: io_print
+        next: print_livro_id
+        inputs:
+          STRING:
+            node: format_objeto
+
+      format_livro_id:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Livro ID:    "
+          right:
+            node: livro_id_with_newline
+
+      livro_id_with_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: livro_id
+          right:
+            literal: "\n"
+
+      print_livro_id:
+        opcode: io_print
+        next: print_collection
+        inputs:
+          STRING:
+            node: format_livro_id
+
+      format_collection:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Collection:  "
+          right:
+            node: collection_with_newline
+
+      collection_with_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: collection
+          right:
+            literal: "\n\n"
+
+      print_collection:
+        opcode: io_print
+        next: print_step1
+        inputs:
+          STRING:
+            node: format_collection
+
+      # ========================================================================
+      # STEP 1: Create GCS Client
+      # ========================================================================
+      print_step1:
+        opcode: io_print
+        next: create_gcs_client
+        inputs:
+          STRING:
+            literal: "[1/6] Criando cliente GCS... "
+
+      do_create_gcs_client:
+        opcode: gcs_create_client
+        isReporter: true
+        inputs: {}
+
+      create_gcs_client:
+        opcode: data_set_variable_to
+        next: print_step1_done
+        inputs:
+          VARIABLE:
+            literal: "gcs_client"
+          VALUE:
+            node: do_create_gcs_client
+
+      print_step1_done:
+        opcode: io_print
+        next: print_step2
+        inputs:
+          STRING:
+            literal: "OK\n"
+
+      # ========================================================================
+      # STEP 2: Download PDF from GCS
+      # ========================================================================
+      print_step2:
+        opcode: io_print
+        next: download_pdf
+        inputs:
+          STRING:
+            literal: "[2/6] Baixando PDF do GCS... "
+
+      do_download_pdf:
+        opcode: gcs_download_object_as_bytes
+        isReporter: true
+        inputs:
+          client:
+            variable: gcs_client
+          bucket_name:
+            variable: bucket
+          object_name:
+            variable: objeto
+
+      download_pdf:
+        opcode: data_set_variable_to
+        next: print_step2_done
+        inputs:
+          VARIABLE:
+            literal: "pdf_bytes"
+          VALUE:
+            node: do_download_pdf
+
+      print_step2_done:
+        opcode: io_print
+        next: print_step3
+        inputs:
+          STRING:
+            literal: "OK\n"
+
+      # ========================================================================
+      # STEP 3: Connect to Qdrant
+      # ========================================================================
+      print_step3:
+        opcode: io_print
+        next: connect_qdrant
+        inputs:
+          STRING:
+            literal: "[3/6] Conectando ao Qdrant... "
+
+      do_connect_qdrant:
+        opcode: qdrant_connect
+        isReporter: true
+        inputs:
+          url:
+            variable: qdrant_url
+
+      connect_qdrant:
+        opcode: data_set_variable_to
+        next: print_step3_done
+        inputs:
+          VARIABLE:
+            literal: "qdrant_client"
+          VALUE:
+            node: do_connect_qdrant
+
+      print_step3_done:
+        opcode: io_print
+        next: print_step4
+        inputs:
+          STRING:
+            literal: "OK\n"
+
+      # ========================================================================
+      # STEP 4: Create Collection (if not exists)
+      # ========================================================================
+      print_step4:
+        opcode: io_print
+        next: create_collection
+        inputs:
+          STRING:
+            literal: "[4/6] Criando collection (se necessário)... "
+
+      do_create_collection:
+        opcode: qdrant_create_collection
+        isReporter: true
+        inputs:
+          client:
+            variable: qdrant_client
+          name:
+            variable: collection
+          vector_size:
+            literal: 768
+
+      create_collection:
+        opcode: control_if_else
+        next: print_step5
+        inputs:
+          CONDITION:
+            node: do_create_collection
+          THEN:
+            branch: print_created
+          ELSE:
+            branch: print_exists
+
+      print_created:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "Criada\n"
+
+      print_exists:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "Já existe\n"
+
+      # ========================================================================
+      # STEP 5: Extract text from PDF bytes (per page)
+      # ========================================================================
+      print_step5:
+        opcode: io_print
+        next: extract_pdf
+        inputs:
+          STRING:
+            literal: "[5/6] Extraindo texto do PDF... "
+
+      do_extract_pdf:
+        opcode: pdf_extract_pages_from_bytes
+        isReporter: true
+        inputs:
+          data:
+            variable: pdf_bytes
+
+      extract_pdf:
+        opcode: data_set_variable_to
+        next: print_step5_done
+        inputs:
+          VARIABLE:
+            literal: "pdf_pages"
+          VALUE:
+            node: do_extract_pdf
+
+      page_count:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          items:
+            variable: pdf_pages
+
+      page_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: page_count
+
+      step5_done_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: page_count_str
+          right:
+            literal: " páginas extraídas\n"
+
+      print_step5_done:
+        opcode: io_print
+        next: chunk_text
+        inputs:
+          STRING:
+            node: step5_done_msg
+
+      # ========================================================================
+      # STEP 6: Chunk, embed, and upsert
+      # ========================================================================
+      do_chunk_pages:
+        opcode: text_chunk_pages_smart
+        isReporter: true
+        inputs:
+          pages:
+            variable: pdf_pages
+          chunk_size:
+            variable: chunk_size
+          overlap:
+            variable: overlap
+
+      chunk_text:
+        opcode: data_set_variable_to
+        next: store_chunk_count
+        inputs:
+          VARIABLE:
+            literal: "chunks"
+          VALUE:
+            node: do_chunk_pages
+
+      get_chunk_count:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          items:
+            variable: chunks
+
+      store_chunk_count:
+        opcode: data_set_variable_to
+        next: extract_chunk_texts
+        inputs:
+          VARIABLE:
+            literal: "chunk_count"
+          VALUE:
+            node: get_chunk_count
+
+      # Extract text strings from chunk dicts for embedding
+      extract_chunk_texts:
+        opcode: data_set_variable_to
+        next: extract_texts_loop
+        inputs:
+          VARIABLE:
+            literal: "chunk_texts"
+          VALUE:
+            literal: []
+
+      extract_texts_loop:
+        opcode: control_foreach
+        next: generate_embeddings
+        inputs:
+          VAR:
+            literal: "current_chunk"
+          ITERABLE:
+            variable: chunks
+          BODY:
+            branch: extract_text_body
+
+      extract_text_body:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "chunk_texts"
+          VALUE:
+            node: append_chunk_text
+
+      get_chunk_text:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_chunk
+          key:
+            literal: "text"
+
+      append_chunk_text:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          items:
+            variable: chunk_texts
+          value:
+            node: get_chunk_text
+
+      do_generate_embeddings:
+        opcode: embedding_create_batch
+        isReporter: true
+        inputs:
+          texts:
+            variable: chunk_texts
+          project:
+            variable: projeto_gcp
+          location:
+            literal: "us-central1"
+          model:
+            literal: "text-multilingual-embedding-002"
+
+      generate_embeddings:
+        opcode: data_set_variable_to
+        next: init_build_loop
+        inputs:
+          VARIABLE:
+            literal: "embeddings"
+          VALUE:
+            node: do_generate_embeddings
+
+      # Generate a base ID from random number
+      base_id:
+        opcode: math_random
+        isReporter: true
+        inputs:
+          min_val:
+            literal: 100000
+          max_val:
+            literal: 999999
+
+      init_build_loop:
+        opcode: data_set_variable_to
+        next: reset_ids
+        inputs:
+          VARIABLE:
+            literal: "current_index"
+          VALUE:
+            literal: 0
+
+      reset_ids:
+        opcode: data_set_variable_to
+        next: reset_payloads
+        inputs:
+          VARIABLE:
+            literal: "ids"
+          VALUE:
+            literal: []
+
+      reset_payloads:
+        opcode: data_set_variable_to
+        next: print_step6
+        inputs:
+          VARIABLE:
+            literal: "payloads"
+          VALUE:
+            literal: []
+
+      print_step6:
+        opcode: io_print
+        next: build_loop
+        inputs:
+          STRING:
+            literal: "[6/6] Gerando embeddings e salvando no Qdrant... "
+
+      build_loop:
+        opcode: control_foreach
+        next: do_upsert
+        inputs:
+          VAR:
+            literal: "current_chunk"
+          ITERABLE:
+            variable: chunks
+          BODY:
+            branch: build_loop_body
+
+      # Build loop body: append ID and payload for current chunk
+      build_loop_body:
+        opcode: data_set_variable_to
+        next: build_payload
+        inputs:
+          VARIABLE:
+            literal: "ids"
+          VALUE:
+            node: append_id
+
+      # Generate unique ID: base_id * 1000 + current_index
+      current_id:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: base_id_scaled
+          right:
+            variable: current_index
+
+      base_id_scaled:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          left:
+            node: base_id
+          right:
+            literal: 1000
+
+      append_id:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          items:
+            variable: ids
+          value:
+            node: current_id
+
+      # Build payload dict for current chunk
+      build_payload:
+        opcode: data_set_variable_to
+        next: increment_index
+        inputs:
+          VARIABLE:
+            literal: "payloads"
+          VALUE:
+            node: append_payload
+
+      # Extract metadata from current_chunk dict
+      get_payload_text:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_chunk
+          key:
+            literal: "text"
+
+      get_page_start:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_chunk
+          key:
+            literal: "page_start"
+
+      get_page_end:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_chunk
+          key:
+            literal: "page_end"
+
+      # Create payload dictionary with text, source, livro_id, and page metadata
+      payload_base:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      payload_with_text:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_base
+          key:
+            literal: "text"
+          value:
+            node: get_payload_text
+
+      payload_with_source:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_with_text
+          key:
+            literal: "source"
+          value:
+            variable: source_path
+
+      payload_with_livro_id:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_with_source
+          key:
+            literal: "livro_id"
+          value:
+            variable: livro_id
+
+      payload_with_index:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_with_livro_id
+          key:
+            literal: "chunk_index"
+          value:
+            variable: current_index
+
+      payload_with_page_start:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_with_index
+          key:
+            literal: "page_start"
+          value:
+            node: get_page_start
+
+      payload_with_page_end:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_with_page_start
+          key:
+            literal: "page_end"
+          value:
+            node: get_page_end
+
+      append_payload:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          items:
+            variable: payloads
+          value:
+            node: payload_with_page_end
+
+      # Increment index for next iteration
+      increment_index:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "current_index"
+          VALUE:
+            node: next_index
+
+      next_index:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: current_index
+          right:
+            literal: 1
+
+      # ========================================================================
+      # Perform batch upsert to Qdrant
+      # ========================================================================
+      do_qdrant_upsert:
+        opcode: qdrant_upsert_batch
+        isReporter: true
+        inputs:
+          client:
+            variable: qdrant_client
+          collection:
+            variable: collection
+          point_ids:
+            variable: ids
+          vectors:
+            variable: embeddings
+          payloads:
+            variable: payloads
+
+      do_upsert:
+        opcode: control_if
+        next: print_footer
+        inputs:
+          CONDITION:
+            node: do_qdrant_upsert
+          THEN:
+            branch: print_upsert_done
+          ELSE:
+            branch: print_upsert_failed
+
+      print_upsert_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "OK\n"
+
+      print_upsert_failed:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "FALHOU!\n"
+
+      # ========================================================================
+      # FOOTER
+      # ========================================================================
+      print_footer:
+        opcode: io_print
+        next: print_success
+        inputs:
+          STRING:
+            literal: "\n================================================================================\n"
+
+      chunk_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: chunk_count
+
+      success_msg_part1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "SUCESSO: Indexados "
+          right:
+            node: chunk_count_str
+
+      success_msg_part2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: success_msg_part1
+          right:
+            literal: " chunks do livro '"
+
+      success_msg_part3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: success_msg_part2
+          right:
+            variable: livro_id
+
+      success_msg_part4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: success_msg_part3
+          right:
+            literal: "' na collection '"
+
+      success_msg_part5:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: success_msg_part4
+          right:
+            variable: collection
+
+      success_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: success_msg_part5
+          right:
+            literal: "'\n"
+
+      print_success:
+        opcode: io_print
+        next: print_final_separator
+        inputs:
+          STRING:
+            node: success_msg
+
+      print_final_separator:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "================================================================================\n\n"
