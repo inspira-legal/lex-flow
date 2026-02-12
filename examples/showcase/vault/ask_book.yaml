@@ -1,0 +1,688 @@
+# Book Question-Answering Workflow - Vault / Book Collection RAG Pipeline
+#
+# This workflow implements a complete RAG pipeline for book questions:
+# 1. Embeds the user's question
+# 2. Searches Qdrant for relevant book chunks
+# 3. Optionally applies BM25 reranking for hybrid search
+# 4. Uses AI to generate an answer grounded in the retrieved context
+#
+# Run via CLI:
+#   lexflow examples/showcase/vault/ask_book.yaml \
+#     --input pergunta="Quais planetas existem no sistema solar?" \
+#     --input projeto_gcp=inspira-development
+#
+# Run via Web UI:
+#   Load this file and use inputs:
+#   {
+#     "pergunta": "Quais planetas existem no sistema solar?",
+#     "projeto_gcp": "inspira-development"
+#   }
+#
+# Requirements:
+#   pip install lexflow[rag,ai]
+#   gcloud auth application-default login
+#   docker run -d -p 6333:6333 qdrant/qdrant
+
+workflows:
+  - name: main
+    interface:
+      inputs: [pergunta, projeto_gcp, collection, num_results, qdrant_url, rerank]
+      outputs: []
+    variables:
+      # Input parameters
+      pergunta: ""
+      projeto_gcp: ""
+      collection: "livros"
+      num_results: 5
+      qdrant_url: "http://localhost:6333"
+      rerank: true
+      # Qdrant client
+      qdrant_client: null
+      # Search results
+      question_embedding: null
+      search_results: null
+      results_count: 0
+      # Context building
+      context_text: ""
+      sources_set: null
+      current_index: 0
+      current_result: null
+      current_payload: null
+      current_text: ""
+      current_source: ""
+      # AI components
+      model: null
+      rag_agent: null
+      full_prompt: ""
+      answer: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      # ========================================================================
+      # HEADER
+      # ========================================================================
+      print_header:
+        opcode: io_print
+        next: print_question_header
+        inputs:
+          STRING:
+            literal: "\n================================================================================\n                   VAULT - BOOK Q&A (RAG)\n================================================================================\n\n"
+
+      print_question_header:
+        opcode: io_print
+        next: print_question_value
+        inputs:
+          STRING:
+            literal: "Pergunta: "
+
+      format_question_display:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: pergunta
+          right:
+            literal: "\n\n"
+
+      print_question_value:
+        opcode: io_print
+        next: print_retrieving
+        inputs:
+          STRING:
+            node: format_question_display
+
+      # ========================================================================
+      # RETRIEVAL - Connect to Qdrant and search
+      # ========================================================================
+      print_retrieving:
+        opcode: io_print
+        next: store_qdrant_client
+        inputs:
+          STRING:
+            literal: "[1/3] Buscando contexto relevante...\n"
+
+      # Connect to Qdrant
+      connect_qdrant:
+        opcode: qdrant_connect
+        isReporter: true
+        inputs:
+          url:
+            variable: qdrant_url
+
+      store_qdrant_client:
+        opcode: data_set_variable_to
+        next: store_question_embedding
+        inputs:
+          VARIABLE:
+            literal: "qdrant_client"
+          VALUE:
+            node: connect_qdrant
+
+      # Create embedding for the question
+      create_question_embedding:
+        opcode: embedding_create
+        isReporter: true
+        inputs:
+          text:
+            variable: pergunta
+          project:
+            variable: projeto_gcp
+          location:
+            literal: "us-central1"
+          model:
+            literal: "text-multilingual-embedding-002"
+
+      store_question_embedding:
+        opcode: data_set_variable_to
+        next: store_search_results
+        inputs:
+          VARIABLE:
+            literal: "question_embedding"
+          VALUE:
+            node: create_question_embedding
+
+      # Search Qdrant for relevant chunks
+      search_qdrant:
+        opcode: qdrant_search
+        isReporter: true
+        inputs:
+          client:
+            variable: qdrant_client
+          collection:
+            variable: collection
+          query_vector:
+            variable: question_embedding
+          limit:
+            variable: num_results
+
+      store_search_results:
+        opcode: data_set_variable_to
+        next: check_rerank
+        inputs:
+          VARIABLE:
+            literal: "search_results"
+          VALUE:
+            node: search_qdrant
+
+      # Conditionally apply BM25 reranking
+      check_rerank:
+        opcode: control_if
+        next: store_results_count
+        inputs:
+          CONDITION:
+            variable: rerank
+          THEN:
+            branch: rerank_results
+
+      # BM25 rerank search results
+      do_rerank:
+        opcode: bm25_rerank
+        isReporter: true
+        inputs:
+          query:
+            variable: pergunta
+          results:
+            variable: search_results
+          top_k:
+            variable: num_results
+
+      rerank_results:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "search_results"
+          VALUE:
+            node: do_rerank
+
+      # Get results count
+      get_results_count:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          items:
+            variable: search_results
+
+      store_results_count:
+        opcode: data_set_variable_to
+        next: init_sources_set
+        inputs:
+          VARIABLE:
+            literal: "results_count"
+          VALUE:
+            node: get_results_count
+
+      # Initialize sources set (using a dict to track unique sources)
+      create_sources_set:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      init_sources_set:
+        opcode: data_set_variable_to
+        next: build_context_loop
+        inputs:
+          VARIABLE:
+            literal: "sources_set"
+          VALUE:
+            node: create_sources_set
+
+      # ========================================================================
+      # BUILD CONTEXT - Loop through results and concatenate
+      # ========================================================================
+      build_context_loop:
+        opcode: control_while
+        next: print_found_context
+        inputs:
+          CONDITION:
+            node: check_context_index
+          BODY:
+            branch: process_result
+
+      check_context_index:
+        opcode: operator_less_than
+        isReporter: true
+        inputs:
+          left:
+            variable: current_index
+          right:
+            variable: results_count
+
+      # Process each search result
+      process_result:
+        opcode: data_set_variable_to
+        next: extract_payload
+        inputs:
+          VARIABLE:
+            literal: "current_result"
+          VALUE:
+            node: get_current_result
+
+      get_current_result:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items:
+            variable: search_results
+          index:
+            variable: current_index
+
+      # Extract payload from result
+      extract_payload:
+        opcode: data_set_variable_to
+        next: extract_text
+        inputs:
+          VARIABLE:
+            literal: "current_payload"
+          VALUE:
+            node: get_payload
+
+      get_payload:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_result
+          key:
+            literal: "payload"
+
+      # Extract text from payload
+      extract_text:
+        opcode: data_set_variable_to
+        next: extract_source
+        inputs:
+          VARIABLE:
+            literal: "current_text"
+          VALUE:
+            node: get_text
+
+      get_text:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_payload
+          key:
+            literal: "text"
+          default:
+            literal: ""
+
+      # Extract source from payload
+      extract_source:
+        opcode: data_set_variable_to
+        next: add_source_to_set
+        inputs:
+          VARIABLE:
+            literal: "current_source"
+          VALUE:
+            node: get_source
+
+      get_source:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_payload
+          key:
+            literal: "source"
+          default:
+            literal: "unknown"
+
+      # Add source to sources set (dict key = source name)
+      add_source_to_set:
+        opcode: dict_set
+        next: append_to_context
+        inputs:
+          d:
+            variable: sources_set
+          key:
+            variable: current_source
+          value:
+            literal: true
+
+      # Append text to context with source attribution
+      append_to_context:
+        opcode: data_set_variable_to
+        next: increment_context_index
+        inputs:
+          VARIABLE:
+            literal: "context_text"
+          VALUE:
+            node: build_context_entry
+
+      build_context_entry:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: context_text
+          right:
+            node: format_context_entry
+
+      format_context_entry:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "[Fonte: "
+          right:
+            node: format_context_entry_2
+
+      format_context_entry_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: current_source
+          right:
+            node: format_context_entry_3
+
+      format_context_entry_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "]\n"
+          right:
+            node: format_context_entry_4
+
+      format_context_entry_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: current_text
+          right:
+            literal: "\n\n"
+
+      # Increment index
+      increment_context_index:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "current_index"
+          VALUE:
+            node: next_context_index
+
+      next_context_index:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: current_index
+          right:
+            literal: 1
+
+      # ========================================================================
+      # PRINT FOUND CONTEXT INFO
+      # ========================================================================
+      print_found_context:
+        opcode: io_print
+        next: print_generating
+        inputs:
+          STRING:
+            node: format_found_context
+
+      # Get number of unique sources
+      get_sources_keys:
+        opcode: dict_keys
+        isReporter: true
+        inputs:
+          d:
+            variable: sources_set
+
+      get_sources_count:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          items:
+            node: get_sources_keys
+
+      results_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: results_count
+
+      sources_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_sources_count
+
+      format_found_context:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "      Encontrados "
+          right:
+            node: format_found_context_2
+
+      format_found_context_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: results_count_str
+          right:
+            node: format_found_context_3
+
+      format_found_context_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " trechos relevantes de "
+          right:
+            node: format_found_context_4
+
+      format_found_context_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: sources_count_str
+          right:
+            literal: " documento(s)\n\n"
+
+      # ========================================================================
+      # AI GENERATION - Create agent and generate answer
+      # ========================================================================
+      print_generating:
+        opcode: io_print
+        next: store_model
+        inputs:
+          STRING:
+            literal: "[2/3] Gerando resposta com IA...\n"
+
+      # Create Vertex AI Model
+      create_model:
+        opcode: pydantic_ai_create_vertex_model
+        isReporter: true
+        inputs:
+          model_name:
+            literal: "gemini-2.0-flash"
+          project:
+            variable: projeto_gcp
+          location:
+            literal: "us-central1"
+
+      store_model:
+        opcode: data_set_variable_to
+        next: store_rag_agent
+        inputs:
+          VARIABLE:
+            literal: "model"
+          VALUE:
+            node: create_model
+
+      # Create RAG Agent with specialized system prompt
+      create_rag_agent:
+        opcode: pydantic_ai_create_agent
+        isReporter: true
+        inputs:
+          model:
+            variable: model
+          instructions:
+            literal: |
+              Você é um assistente especializado em responder perguntas sobre livros.
+              Responda apenas com base no contexto fornecido.
+              Se o contexto não contiver informação suficiente, diga honestamente.
+              Seja conciso e cite de qual fonte/documento veio a informação.
+              Responda em português.
+
+      store_rag_agent:
+        opcode: data_set_variable_to
+        next: store_full_prompt
+        inputs:
+          VARIABLE:
+            literal: "rag_agent"
+          VALUE:
+            node: create_rag_agent
+
+      # Build the full prompt with context and question
+      build_full_prompt:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "CONTEXTO:\n"
+          right:
+            node: build_full_prompt_2
+
+      build_full_prompt_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: context_text
+          right:
+            node: build_full_prompt_3
+
+      build_full_prompt_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "\nPERGUNTA: "
+          right:
+            node: build_full_prompt_4
+
+      build_full_prompt_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: pergunta
+          right:
+            literal: "\n\nResponda a pergunta baseado apenas no contexto fornecido. Cite suas fontes."
+
+      store_full_prompt:
+        opcode: data_set_variable_to
+        next: store_answer
+        inputs:
+          VARIABLE:
+            literal: "full_prompt"
+          VALUE:
+            node: build_full_prompt
+
+      # Run the AI agent
+      run_rag_agent:
+        opcode: pydantic_ai_run
+        isReporter: true
+        inputs:
+          agent:
+            variable: rag_agent
+          prompt:
+            variable: full_prompt
+
+      store_answer:
+        opcode: data_set_variable_to
+        next: print_step3
+        inputs:
+          VARIABLE:
+            literal: "answer"
+          VALUE:
+            node: run_rag_agent
+
+      print_step3:
+        opcode: io_print
+        next: print_answer_header
+        inputs:
+          STRING:
+            literal: "[3/3] Resposta gerada!\n"
+
+      # ========================================================================
+      # OUTPUT - Print the answer nicely formatted
+      # ========================================================================
+      print_answer_header:
+        opcode: io_print
+        next: print_answer
+        inputs:
+          STRING:
+            literal: "\n--------------------------------------------------------------------------------\nRESPOSTA\n--------------------------------------------------------------------------------\n\n"
+
+      format_answer_output:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: answer
+          right:
+            literal: "\n"
+
+      print_answer:
+        opcode: io_print
+        next: print_sources_header
+        inputs:
+          STRING:
+            node: format_answer_output
+
+      # Print sources
+      print_sources_header:
+        opcode: io_print
+        next: print_sources_list
+        inputs:
+          STRING:
+            literal: "\nFontes consultadas: "
+
+      # Join source names
+      join_sources:
+        opcode: string_join
+        isReporter: true
+        inputs:
+          items:
+            node: get_sources_keys
+          separator:
+            literal: ", "
+
+      format_sources_output:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: join_sources
+          right:
+            literal: "\n"
+
+      print_sources_list:
+        opcode: io_print
+        next: print_footer
+        inputs:
+          STRING:
+            node: format_sources_output
+
+      # Footer
+      print_footer:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "--------------------------------------------------------------------------------\n\n"
