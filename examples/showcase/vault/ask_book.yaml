@@ -5,6 +5,7 @@
 # 2. Searches Qdrant for relevant book chunks
 # 3. Optionally applies BM25 reranking for hybrid search
 # 4. Uses AI to generate an answer grounded in the retrieved context
+# 5. Returns answer + array of source excerpts (trechos)
 #
 # Run via CLI:
 #   lexflow examples/showcase/vault/ask_book.yaml \
@@ -16,6 +17,12 @@
 #   {
 #     "pergunta": "Quais planetas existem no sistema solar?",
 #     "projeto_gcp": "inspira-development"
+#   }
+#
+# Output format:
+#   {
+#     "answer": "A resposta gerada pela IA...",
+#     "highlights": ["trecho 1...", "trecho 2...", ...]
 #   }
 #
 # Requirements:
@@ -50,11 +57,15 @@ workflows:
       current_payload: null
       current_text: ""
       current_source: ""
+      # Output - trechos encontrados
+      trechos: []
       # AI components
       model: null
       rag_agent: null
       full_prompt: ""
       answer: ""
+      # Final result
+      resultado_final: null
     nodes:
       start:
         opcode: workflow_start
@@ -292,7 +303,7 @@ workflows:
       # Extract text from payload
       extract_text:
         opcode: data_set_variable_to
-        next: extract_source
+        next: add_to_trechos
         inputs:
           VARIABLE:
             literal: "current_text"
@@ -309,6 +320,25 @@ workflows:
             literal: "text"
           default:
             literal: ""
+
+      # Add text to trechos array
+      append_trecho:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          items:
+            variable: trechos
+          value:
+            variable: current_text
+
+      add_to_trechos:
+        opcode: data_set_variable_to
+        next: extract_source
+        inputs:
+          VARIABLE:
+            literal: "trechos"
+          VALUE:
+            node: append_trecho
 
       # Extract source from payload
       extract_source:
@@ -682,7 +712,53 @@ workflows:
       # Footer
       print_footer:
         opcode: io_print
-        next: null
+        next: build_result
         inputs:
           STRING:
             literal: "--------------------------------------------------------------------------------\n\n"
+
+      # ========================================================================
+      # BUILD FINAL RESULT - Return answer + trechos
+      # ========================================================================
+      create_result_dict:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      add_answer_to_result:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: create_result_dict
+          key:
+            literal: "answer"
+          value:
+            variable: answer
+
+      add_highlights_to_result:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: add_answer_to_result
+          key:
+            literal: "highlights"
+          value:
+            variable: trechos
+
+      build_result:
+        opcode: data_set_variable_to
+        next: return_result
+        inputs:
+          VARIABLE:
+            literal: "resultado_final"
+          VALUE:
+            node: add_highlights_to_result
+
+      return_result:
+        opcode: workflow_return
+        next: null
+        inputs:
+          value:
+            variable: resultado_final
