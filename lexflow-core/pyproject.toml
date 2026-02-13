@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 ai = ["pydantic-ai-slim[google]>=0.1,<1.0"]
+search = ["tavily-python"]
 file = ["pymupdf"]
 pgvector = ["asyncpg", "pgvector"]
 gcs = ["gcloud-aio-storage"]
