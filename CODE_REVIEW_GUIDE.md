@@ -36,7 +36,7 @@ Before submitting a PR, verify:
 
 | ID | Rule | Section |
 |----|------|---------|
-| H1 | Commit messages MUST follow Conventional Commits with scope: `<type>(<scope>): <desc>` | [Repo Patterns > Commits](#commits) |
+| H1 | Commit messages MUST follow Conventional Commits with scope: `<type>(<scope>): <description>` | [Repo Patterns > Commits](#commits) |
 | H2 | New code MUST include tests: happy path + main error paths / corner cases | [Tests](#tests-and-functional-validation) |
 | H3 | Opcodes MUST be `async def`, fully typed, with docstring, using `@opcode()` | [Repo Patterns > Opcodes](#opcodes) |
 | H4 | Existing opcode signatures MUST NOT change without a major version bump | [Contracts > Backward Compatibility](#backward-compatibility) |
@@ -52,7 +52,7 @@ Before submitting a PR, verify:
 
 | ID | Rule | Section |
 |----|------|---------|
-| M1 | Optional dependencies follow graceful degradation: `try/except ImportError` + `*_AVAILABLE` flag + `register_*_opcodes()`; add `_check_*()` for deps requiring API keys | [Repo Patterns > Optional Dependencies](#optional-dependencies) |
+| M1 | Optional dependencies follow graceful degradation: `try/except ImportError` + `*_AVAILABLE` flag + `register_*_opcodes()`; check for API keys in resource getters | [Repo Patterns > Optional Dependencies](#optional-dependencies) |
 | M2 | Pydantic v2 only — no v1 compatibility patterns | [Repo Patterns > Pydantic](#pydantic) |
 | M3 | FastAPI app uses factory pattern (`create_app()`) | [Repo Patterns > FastAPI](#fastapi) |
 | M4 | Thread-safe state MUST use `ContextVar`, not global variables | [Repo Patterns > State](#state-management) |
@@ -390,8 +390,7 @@ Reference: `lexflow-web/src/lexflow_web/api.py`
 
 - `ParseError` is an **internal** exception in `parser.py`. It is always converted to `ValueError` at the boundary. Consumers should catch `ValueError` for parse errors.
 - `RuntimeError` is used for workflow-level errors (e.g., `Throw` statement).
-- `PermissionError` is raised when an opcode/workflow is not in the tool allowlist.
-- `TimeoutError` for agent execution timeouts.
+- `asyncio.TimeoutError` for task and channel timeouts (e.g., `await_task`, `channel_receive`).
 - `ImportError` with descriptive message for missing optional dependencies.
 
 The core does **not** use `HTTPException` — that is exclusively for the web layer.
