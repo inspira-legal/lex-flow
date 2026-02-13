@@ -34,6 +34,7 @@ Quick reference for all available opcodes in LexFlow.
 - [⚡ Task Operations](#task-operations)
 - [📡 Channel Operations](#channel-operations)
 - [🔒 Sync Primitives](#sync-primitives)
+- [💬 Intercom](#intercom)
 
 ## 📤 I/O Operations
 
@@ -3916,9 +3917,608 @@ Args:
 
 ---
 
+## 💬 Intercom
+
+### `intercom_assign_conversation(client, id, admin_id, assignee_id, body=None)`
+
+Assign a conversation to an admin or team.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    id: Conversation ID
+    admin_id: Admin ID performing the assignment
+    assignee_id: Admin or team ID to assign to
+    body: Optional message about the assignment
+
+Returns:
+    Dict with: id, assignee_id, assignee_type, updated_at
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `id` (str, required)
+- `admin_id` (str, required)
+- `assignee_id` (str, required)
+- `body` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_close_conversation(client, id, admin_id, body=None)`
+
+Close a conversation.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    id: Conversation ID
+    admin_id: Admin ID performing the action
+    body: Optional closing message
+
+Returns:
+    Dict with: id, state, open, updated_at
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `id` (str, required)
+- `admin_id` (str, required)
+- `body` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_create_client(token)`
+
+Create an Intercom API client.
+
+Args:
+    token: Intercom Access Token
+
+Returns:
+    IntercomClient instance for use with other Intercom opcodes
+
+
+**Returns:** `IntercomClient`
+
+---
+
+### `intercom_create_company(client, company_id, name, plan=None, monthly_spend=None, website=None, industry=None, size=None, custom_attributes=None)`
+
+Create or update a company.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    company_id: Unique company ID (external identifier)
+    name: Company name
+    plan: Company plan name
+    monthly_spend: Monthly spend amount
+    website: Company website URL
+    industry: Industry name
+    size: Company size (number of employees)
+    custom_attributes: Custom attributes dictionary
+
+Returns:
+    Dict with: id, company_id, name, plan, monthly_spend, created_at, updated_at
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `company_id` (str, required)
+- `name` (str, required)
+- `plan` (Optional, optional, default: `None`)
+- `monthly_spend` (Optional, optional, default: `None`)
+- `website` (Optional, optional, default: `None`)
+- `industry` (Optional, optional, default: `None`)
+- `size` (Optional, optional, default: `None`)
+- `custom_attributes` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_create_contact(client, role, email, name=None, phone=None, external_id=None, custom_attributes=None)`
+
+Create a contact (user or lead).
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    role: Contact role ("user" or "lead")
+    email: Contact email address
+    name: Contact name
+    phone: Contact phone number
+    external_id: External ID for the contact
+    custom_attributes: Custom attributes dictionary
+
+Returns:
+    Dict with: id, type, role, email, name, phone, external_id, created_at
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `role` (str, required)
+- `email` (str, required)
+- `name` (Optional, optional, default: `None`)
+- `phone` (Optional, optional, default: `None`)
+- `external_id` (Optional, optional, default: `None`)
+- `custom_attributes` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_create_note(client, contact_id, body, admin_id=None)`
+
+Create a note on a contact.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    contact_id: Contact ID
+    body: Note body text
+    admin_id: Admin ID who creates the note
+
+Returns:
+    Dict with: type, id, body, author, created_at
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `contact_id` (str, required)
+- `body` (str, required)
+- `admin_id` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_create_tag(client, name)`
+
+Create a tag.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    name: Tag name
+
+Returns:
+    Dict with: type, id, name
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `name` (str, required)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_delete_contact(client, id)`
+
+Delete a contact.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    id: Contact ID to delete
+
+Returns:
+    Dict with: id, type, deleted (boolean)
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `id` (str, required)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_get_admin(client, id)`
+
+Get admin details.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    id: Admin ID
+
+Returns:
+    Dict with: type, id, name, email, job_title, away_mode_enabled, has_inbox_seat
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `id` (str, required)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_get_company(client, id)`
+
+Get a company by ID.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    id: Company ID (Intercom internal ID)
+
+Returns:
+    Dict with: id, company_id, name, plan, monthly_spend, website, industry, size, user_count, created_at
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `id` (str, required)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_get_contact(client, id)`
+
+Get a contact by ID.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    id: Contact ID
+
+Returns:
+    Dict with: id, type, role, email, name, phone, external_id, created_at, updated_at
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `id` (str, required)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_get_conversation(client, id)`
+
+Get a conversation by ID.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    id: Conversation ID
+
+Returns:
+    Dict with: id, state, open, read, priority, source, contacts, assignee, created_at, updated_at
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `id` (str, required)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_list_admins(client)`
+
+List all admins/teammates.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+
+Returns:
+    List of admin dicts with: type, id, name, email, job_title, away_mode_enabled
+
+
+**Returns:** `List`
+
+---
+
+### `intercom_list_companies(client, per_page=50, page=1)`
+
+List companies with pagination.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    per_page: Number of companies per page (max 60)
+    page: Page number
+
+Returns:
+    Dict with: companies (list), total_count, page, pages
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `per_page` (int, optional, default: `50`)
+- `page` (int, optional, default: `1`)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_list_contacts(client, per_page=50, starting_after=None)`
+
+List contacts with pagination.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    per_page: Number of contacts per page (max 150)
+    starting_after: Cursor for pagination
+
+Returns:
+    Dict with: contacts (list), total_count, has_more, next_cursor
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `per_page` (int, optional, default: `50`)
+- `starting_after` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_list_conversations(client, per_page=20, starting_after=None)`
+
+List conversations with pagination.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    per_page: Number of conversations per page (max 150)
+    starting_after: Cursor for pagination
+
+Returns:
+    Dict with: conversations (list), has_more, next_cursor
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `per_page` (int, optional, default: `20`)
+- `starting_after` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_list_notes(client, contact_id, per_page=50, page=1)`
+
+List notes for a contact.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    contact_id: Contact ID
+    per_page: Number of notes per page
+    page: Page number
+
+Returns:
+    Dict with: notes (list), total_count, page, pages
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `contact_id` (str, required)
+- `per_page` (int, optional, default: `50`)
+- `page` (int, optional, default: `1`)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_list_tags(client)`
+
+List all tags.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+
+Returns:
+    List of tag dicts with: type, id, name
+
+
+**Returns:** `List`
+
+---
+
+### `intercom_reply_to_conversation(client, id, body, type="admin", admin_id=None, message_type="comment")`
+
+Reply to a conversation.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    id: Conversation ID
+    body: Reply body text
+    type: Reply type ("admin" or "user")
+    admin_id: Admin ID (required if type is "admin")
+    message_type: Message type ("comment" or "note")
+
+Returns:
+    Dict with: type, id, conversation_id, body, created_at
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `id` (str, required)
+- `body` (str, required)
+- `type` (str, optional, default: `"admin"`)
+- `admin_id` (Optional, optional, default: `None`)
+- `message_type` (str, optional, default: `"comment"`)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_search_contacts(client, query, per_page=50, starting_after=None)`
+
+Search contacts using query.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    query: Search query object (see Intercom API docs)
+    per_page: Number of contacts per page (max 150)
+    starting_after: Cursor for pagination
+
+Returns:
+    Dict with: contacts (list), total_count, has_more, next_cursor
+
+Example query:
+    {"field": "email", "operator": "=", "value": "user@example.com"}
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `query` (Dict, required)
+- `per_page` (int, optional, default: `50`)
+- `starting_after` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_send_message(client, from_admin_id, to_contact_id, body, message_type="inapp", subject=None)`
+
+Send a message to a contact.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    from_admin_id: Admin ID sending the message
+    to_contact_id: Contact ID to send to
+    body: Message body
+    message_type: Message type ("inapp" or "email")
+    subject: Email subject (required for email type)
+
+Returns:
+    Dict with: type, id, body, message_type, created_at
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `from_admin_id` (str, required)
+- `to_contact_id` (str, required)
+- `body` (str, required)
+- `message_type` (str, optional, default: `"inapp"`)
+- `subject` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_snooze_conversation(client, id, admin_id, snoozed_until)`
+
+Snooze a conversation until a specific time.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    id: Conversation ID
+    admin_id: Admin ID performing the action
+    snoozed_until: Unix timestamp for when to unsnooze
+
+Returns:
+    Dict with: id, state, snoozed_until, updated_at
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `id` (str, required)
+- `admin_id` (str, required)
+- `snoozed_until` (int, required)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_tag_contact(client, contact_id, tag_id)`
+
+Add a tag to a contact.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    contact_id: Contact ID
+    tag_id: Tag ID
+
+Returns:
+    Dict with: type, id, name
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `contact_id` (str, required)
+- `tag_id` (str, required)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_untag_contact(client, contact_id, tag_id)`
+
+Remove a tag from a contact.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    contact_id: Contact ID
+    tag_id: Tag ID
+
+Returns:
+    Dict with: type, id, name
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `contact_id` (str, required)
+- `tag_id` (str, required)
+
+**Returns:** `Dict`
+
+---
+
+### `intercom_update_contact(client, id, email=None, name=None, phone=None, external_id=None, custom_attributes=None)`
+
+Update a contact.
+
+Args:
+    client: Intercom client (from intercom_create_client)
+    id: Contact ID
+    email: New email address
+    name: New name
+    phone: New phone number
+    external_id: New external ID
+    custom_attributes: Custom attributes to update
+
+Returns:
+    Dict with: id, type, role, email, name, phone, external_id, updated_at
+
+
+**Parameters:**
+
+- `client` (IntercomClient, required)
+- `id` (str, required)
+- `email` (Optional, optional, default: `None`)
+- `name` (Optional, optional, default: `None`)
+- `phone` (Optional, optional, default: `None`)
+- `external_id` (Optional, optional, default: `None`)
+- `custom_attributes` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
 ## Summary
 
-**Total opcodes:** 225
+**Total opcodes:** 257
+>>>>>>> Stashed changes
 
 ### Categories
 
@@ -3952,3 +4552,4 @@ Args:
 | ⚡ Task Operations | 10 | - |
 | 📡 Channel Operations | 8 | - |
 | 🔒 Sync Primitives | 8 | - |
+| 💬 Intercom | 25 | - |
