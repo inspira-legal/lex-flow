@@ -441,6 +441,7 @@ Reference: `lexflow-core/src/lexflow/metrics.py`
 - New endpoints that read files should validate paths against traversal.
 - New opcode modules that fetch URLs or read files should consider SSRF/path traversal.
 - Environment variables with secrets should never be logged or returned in responses.
+- API keys, tokens, and credentials must be loaded from environment variables, never hardcoded in source.
 - The `.env` file must remain in `.gitignore`.
 
 ---
