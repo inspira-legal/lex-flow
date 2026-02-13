@@ -46,6 +46,7 @@ Before submitting a PR, verify:
 | H8 | Before modifying AST/Parser/Executor, confirm the feature cannot be an opcode | [Core Extension](#what-belongs-in-core) |
 | H9 | Core MUST NOT add application concerns (scheduling, persistence, orchestration) | [Core Extension](#what-belongs-in-core) |
 | H10 | New mandatory dependencies on core require strong justification | [Core Extension](#what-belongs-in-core) |
+| H11 | AST/Parser/Executor changes are "heart surgery" — require architectural review | [Core Extension](#what-belongs-in-core) |
 
 ### MEDIUM
 
@@ -61,6 +62,7 @@ Before submitting a PR, verify:
 | M8 | New core modules must follow existing single-responsibility separation | [Core Extension](#what-belongs-in-core) |
 | M9 | Imports from internal modules (`from lexflow.parser import ...`) have no stability guarantee | [Contracts > Backward Compatibility](#backward-compatibility) |
 | M10 | POST endpoints return errors in body (`success=False`); GET endpoints use `HTTPException` | [Contracts > API](#api-endpoints) |
+| M11 | Core MUST NOT include logging frameworks — consumers configure their own | [Observability](#observability) |
 
 ### LOW
 
@@ -249,7 +251,7 @@ These rules determine whether a new feature should be added to `lexflow-core` or
 | H8 | **If it can be an opcode, it MUST be an opcode** | *"Can I solve this with `@opcode()` + optional dep?"* If yes -> opcode. |
 | H9 | **Core is a runtime/interpreter** — application concerns stay outside | *"Does this feature make sense without knowing where/when the workflow runs?"* If no -> outside core. |
 | H10 | **No new mandatory heavy deps** — use optional dep pattern if external lib needed | *"Do ALL consumers need this dep, even those who don't use the feature?"* If no -> optional. |
-| S4 | **AST/Parser/Executor changes are "heart surgery"** — require architectural review | *"Do I need to change the language grammar for this?"* If yes -> architectural review required. |
+| H11 | **AST/Parser/Executor changes are "heart surgery"** — require architectural review | *"Do I need to change the language grammar for this?"* If yes -> architectural review required. |
 | M7 | **Core must not assume deployment environment** — no Redis, no DB, no scheduler, no queue | *"Does it work with just `python -c 'from lexflow import ...'`?"* If no -> outside core. |
 | M8 | **New modules follow single-responsibility** — one file = one responsibility | *"Does this code belong in an existing file or is it a new responsibility?"* |
 
@@ -258,10 +260,10 @@ These rules determine whether a new feature should be added to `lexflow-core` or
 | Feature | Passes | Fails | Verdict |
 |---------|--------|-------|---------|
 | Scheduling module | — | H9 (app concern), M7 (assumes scheduler infra) | **Outside core** |
-| Multiple start nodes | H9 (execution model) | H8 (can't be opcode) -> triggers S4 | **Core, but needs architectural review** |
+| Multiple start nodes | H9 (execution model) | H8 (can't be opcode) -> triggers H11 | **Core, but needs architectural review** |
 | Kafka integration opcode | H8 (is an opcode), H10 (optional dep) | — | **Opcode with optional dep** |
 | Workflow persistence/saving | — | H9 (app concern), M7 (assumes storage) | **Outside core** |
-| New AST statement type | H9 (language feature) | H8 (can't be opcode) -> triggers S4 | **Core, needs architectural review** |
+| New AST statement type | H9 (language feature) | H8 (can't be opcode) -> triggers H11 | **Core, needs architectural review** |
 | Rate limiter | — | H9 (app concern), M7 (assumes infra) | **Outside core** |
 
 ---
@@ -418,7 +420,7 @@ Reference:
 
 ## Observability
 
-The core intentionally does **NOT** include logging (Rule R2). This is a design decision to keep the library clean — consumers configure their own logging.
+The core intentionally does **NOT** include logging (Rule M11). This is a design decision to keep the library clean — consumers configure their own logging.
 
 **What exists**:
 - `ExecutionMetrics` — custom performance metrics for workflow execution (node, statement, expression, opcode, workflow_call timings).
