@@ -293,7 +293,7 @@ async def test_my_opcode_happy_path():
     assert result == "hello-5"
 
 async def test_my_opcode_missing_param():
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         await default_registry.call("my_opcode", [])
 ```
 
@@ -314,7 +314,7 @@ class TestSomeOpcode:
 @pytest.mark.skipif(SOME_LIB_AVAILABLE, reason="Test only when lib is NOT installed")
 class TestImportErrorWhenNotInstalled:
     async def test_opcode_not_registered(self):
-        assert "some_opcode" not in default_registry._opcodes
+        assert "some_opcode" not in default_registry.list_opcodes()
 ```
 
 **Mocking pattern** (unittest.mock):
