@@ -1,0 +1,706 @@
+# Multi-Agent Web Research with Refinement Loop
+#
+# This workflow demonstrates a multi-agent architecture where:
+#   - A Coordinator agent understands user requests and orchestrates research
+#   - A Researcher agent (used as a tool) performs web searches
+#   - A refinement loop allows users to iteratively improve results
+#   - Conversation history is maintained for context-aware refinements
+#
+# Architecture:
+#   MAIN (Coordinator) -> ai_agent_with_tools -> web_researcher workflow
+#
+# Prerequisites:
+#   - pip install lexflow[ai,search]
+#   - gcloud auth application-default login
+#   - Set TAVILY_API_KEY environment variable
+#
+# Run:
+#   TAVILY_API_KEY=your-key uv run lexflow examples/multi_agent/coordinator_researcher.yaml
+
+workflows:
+  # ==========================================================================
+  # MAIN WORKFLOW - Coordinator Agent
+  # ==========================================================================
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      # AI components
+      model: null
+      agent: null
+      # Conversation state
+      history: null
+      result: null
+      user_request: ""
+      response_text: ""
+      # Loop control
+      satisfied: false
+      user_answer: ""
+      # Error handling
+      error_msg: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      # ========================================================================
+      # HEADER
+      # ========================================================================
+      print_header:
+        opcode: io_print
+        next: print_separator
+        inputs:
+          STRING:
+            literal: "\n================================================================================\n"
+
+      print_separator:
+        opcode: io_print
+        next: print_title
+        inputs:
+          STRING:
+            literal: "             MULTI-AGENT WEB RESEARCH WITH REFINEMENT LOOP\n"
+
+      print_title:
+        opcode: io_print
+        next: print_description
+        inputs:
+          STRING:
+            literal: "================================================================================\n\n"
+
+      print_description:
+        opcode: io_print
+        next: store_model
+        inputs:
+          STRING:
+            literal: |
+              This system uses two AI agents:
+                - Coordinator: Understands your request and orchestrates research
+                - Researcher: Performs web searches (news, general, context)
+
+              You can refine results iteratively until satisfied.
+
+      # ========================================================================
+    # SETUP: Create Model and Agent
+      # ========================================================================
+      create_model:
+        opcode: pydantic_ai_create_vertex_model
+        isReporter: true
+        inputs:
+          model_name:
+            literal: "gemini-2.5-flash"
+          project:
+            literal: null
+          location:
+            literal: "us-central1"
+
+      store_model:
+        opcode: data_set_variable_to
+        next: print_model_created
+        inputs:
+          VARIABLE:
+            literal: "model"
+          VALUE:
+            node: create_model
+
+      print_model_created:
+        opcode: io_print
+        next: store_agent
+        inputs:
+          STRING:
+            literal: "\n[SETUP] Created Vertex AI model: gemini-2.5-flash\n"
+
+      create_agent:
+        opcode: pydantic_ai_create_agent
+        isReporter: true
+        inputs:
+          model:
+            variable: "model"
+          instructions:
+            literal: |
+              You are a research coordinator. Your task is to:
+              1. Understand the user's research request
+              2. Formulate a clear, specific search query
+              3. Call the web_researcher tool with that query
+              4. Present the results in a clear, organized format
+
+              When calling web_researcher, pass a specific and contextual query.
+              If the user asks for refinement, adjust the query based on their
+              feedback and the conversation history.
+
+              Always be helpful and thorough in your research coordination.
+
+      store_agent:
+        opcode: data_set_variable_to
+        next: print_agent_created
+        inputs:
+          VARIABLE:
+            literal: "agent"
+          VALUE:
+            node: create_agent
+
+      print_agent_created:
+        opcode: io_print
+        next: store_history
+        inputs:
+          STRING:
+            literal: "[SETUP] Created Coordinator agent\n"
+
+      # Create conversation history
+      create_history:
+        opcode: chat_create
+        isReporter: true
+        inputs: {}
+
+      store_history:
+        opcode: data_set_variable_to
+        next: print_history_created
+        inputs:
+          VARIABLE:
+            literal: "history"
+          VALUE:
+            node: create_history
+
+      print_history_created:
+        opcode: io_print
+        next: print_ready
+        inputs:
+          STRING:
+            literal: "[SETUP] Created conversation history\n"
+
+      print_ready:
+        opcode: io_print
+        next: get_initial_request
+        inputs:
+          STRING:
+            literal: "\n================================================================================\n\n"
+
+      # ========================================================================
+      # GET INITIAL USER REQUEST
+      # ========================================================================
+      get_user_input:
+        opcode: io_input
+        isReporter: true
+        inputs:
+          prompt:
+            literal: "What would you like to research? "
+
+      get_initial_request:
+        opcode: data_set_variable_to
+        next: refinement_loop
+        inputs:
+          VARIABLE:
+            literal: "user_request"
+          VALUE:
+            node: get_user_input
+
+      # ========================================================================
+      # MAIN REFINEMENT LOOP
+      # ========================================================================
+      # Check if user is satisfied (loop condition)
+      check_not_satisfied:
+        opcode: operator_not
+        isReporter: true
+        inputs:
+          value:
+            variable: satisfied
+
+      refinement_loop:
+        opcode: control_while
+        next: print_conclusion
+        inputs:
+          CONDITION:
+            node: check_not_satisfied
+          BODY:
+            branch: add_request_to_history
+
+      # Add user request to history
+      add_request_to_history:
+        opcode: chat_add_user
+        next: print_processing
+        inputs:
+          history:
+            variable: history
+          content:
+            variable: user_request
+
+      print_processing:
+        opcode: io_print
+        next: run_with_try
+        inputs:
+          STRING:
+            literal: "\n[COORDINATOR] Processing your request...\n"
+
+      # ========================================================================
+      # EXECUTE AGENT WITH ERROR HANDLING
+      # ========================================================================
+      run_with_try:
+        opcode: control_try
+        next: extract_response_text
+        inputs:
+          TRY:
+            branch: execute_agent
+          CATCH1:
+            exception_type: "TimeoutError"
+            var: "error_msg"
+            body:
+              branch: handle_timeout
+          CATCH2:
+            exception_type: null
+            var: "error_msg"
+            body:
+              branch: handle_generic
+
+      # Build prompt with history context
+      build_prompt_part1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "Conversation history:\n"
+          OPERAND2:
+            node: history_as_prompt
+
+      history_as_prompt:
+        opcode: chat_to_prompt
+        isReporter: true
+        inputs:
+          history:
+            variable: history
+
+      build_prompt_part2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: build_prompt_part1
+          OPERAND2:
+            literal: "\n\nCurrent request: "
+
+      build_full_prompt:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: build_prompt_part2
+          OPERAND2:
+            variable: user_request
+
+      # Call coordinator agent with web_researcher as tool
+      agent_call:
+        opcode: ai_agent_with_tools
+        isReporter: true
+        inputs:
+          agent:
+            variable: "agent"
+          messages:
+            node: build_full_prompt
+          tools:
+            literal:
+              - { workflow: "web_researcher" }
+          output:
+            literal: null
+          max_tool_calls:
+            literal: 5
+          timeout_seconds:
+            literal: 180
+
+      execute_agent:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "result"
+          VALUE:
+            node: agent_call
+
+      # ========================================================================
+      # ERROR HANDLERS
+      # ========================================================================
+      handle_timeout:
+        opcode: io_print
+        next: set_satisfied_on_error
+        inputs:
+          STRING:
+            literal: "\n[ERROR] Research timed out. Please try again with a more specific query.\n"
+
+      handle_generic:
+        opcode: io_print
+        next: print_generic_detail
+        inputs:
+          STRING:
+            literal: "\n[ERROR] An error occurred: "
+
+      print_generic_detail:
+        opcode: io_print
+        next: set_satisfied_on_error
+        inputs:
+          STRING:
+            variable: error_msg
+
+      set_satisfied_on_error:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "satisfied"
+          VALUE:
+            literal: true
+
+      # ========================================================================
+      # DISPLAY RESULTS
+      # ========================================================================
+      get_response_text:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: result
+          key:
+            literal: "text"
+
+      extract_response_text:
+        opcode: data_set_variable_to
+        next: add_response_to_history
+        inputs:
+          VARIABLE:
+            literal: "response_text"
+          VALUE:
+            node: get_response_text
+
+      # Add assistant response to history
+      add_response_to_history:
+        opcode: chat_add_assistant
+        next: print_results_header
+        inputs:
+          history:
+            variable: history
+          content:
+            variable: response_text
+
+      print_results_header:
+        opcode: io_print
+        next: print_response
+        inputs:
+          STRING:
+            literal: "\n================================================================================\n                              RESEARCH RESULTS\n================================================================================\n\n"
+
+      print_response:
+        opcode: io_print
+        next: print_results_footer
+        inputs:
+          STRING:
+            variable: response_text
+
+      print_results_footer:
+        opcode: io_print
+        next: ask_satisfaction
+        inputs:
+          STRING:
+            literal: "\n\n================================================================================\n"
+
+      # ========================================================================
+      # ASK IF USER IS SATISFIED
+      # ========================================================================
+      get_satisfaction_input:
+        opcode: io_input
+        isReporter: true
+        inputs:
+          prompt:
+            literal: "\nAre you satisfied with these results? (yes/no): "
+
+      ask_satisfaction:
+        opcode: data_set_variable_to
+        next: check_satisfaction
+        inputs:
+          VARIABLE:
+            literal: "user_answer"
+          VALUE:
+            node: get_satisfaction_input
+
+      # Check user's answer
+      is_yes:
+        opcode: operator_equals
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: user_answer
+          OPERAND2:
+            literal: "yes"
+
+      is_sim:
+        opcode: operator_equals
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: user_answer
+          OPERAND2:
+            literal: "sim"
+
+      is_satisfied_check:
+        opcode: operator_or
+        isReporter: true
+        inputs:
+          OPERAND1:
+            node: is_yes
+          OPERAND2:
+            node: is_sim
+
+      check_satisfaction:
+        opcode: control_if_else
+        next: null
+        inputs:
+          CONDITION:
+            node: is_satisfied_check
+          THEN:
+            branch: set_satisfied_true
+          ELSE:
+            branch: get_refinement
+
+      # User is satisfied - exit loop
+      set_satisfied_true:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "satisfied"
+          VALUE:
+            literal: true
+
+      # User wants refinement
+      get_refinement_input:
+        opcode: io_input
+        isReporter: true
+        inputs:
+          prompt:
+            literal: "\nHow would you like to refine the search? "
+
+      get_refinement:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "user_request"
+          VALUE:
+            node: get_refinement_input
+
+      # ========================================================================
+      # CONCLUSION
+      # ========================================================================
+      print_conclusion:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n================================================================================\n                         RESEARCH SESSION COMPLETE\n================================================================================\n\nThank you for using the Multi-Agent Research System!\n"
+
+
+  # ==========================================================================
+  # WEB RESEARCHER WORKFLOW (Used as a tool by the Coordinator)
+  # ==========================================================================
+  - name: web_researcher
+    interface:
+      description: "Research information on the web about a topic. Receives a search query and returns detailed results with sources. Uses multiple search strategies: news search for recent events, general web search for broad information, and context search for detailed explanations."
+      inputs: ["query"]
+      outputs: ["research_results"]
+    variables:
+      # Input
+      query: ""
+      # AI components
+      model: null
+      agent: null
+      # Results
+      result: null
+      error_msg: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_researcher_start
+        inputs: {}
+
+      # Print tool invocation
+      format_start_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "\n   [TOOL] web_researcher called with query: \""
+          OPERAND2:
+            node: format_start_msg_2
+
+      format_start_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            variable: query
+          OPERAND2:
+            literal: "\"\n"
+
+      print_researcher_start:
+        opcode: io_print
+        next: store_researcher_model
+        inputs:
+          STRING:
+            node: format_start_msg
+
+      # Create model and agent for researcher
+      create_researcher_model:
+        opcode: pydantic_ai_create_vertex_model
+        isReporter: true
+        inputs:
+          model_name:
+            literal: "gemini-2.5-flash"
+          project:
+            literal: null
+          location:
+            literal: "us-central1"
+
+      store_researcher_model:
+        opcode: data_set_variable_to
+        next: store_researcher_agent
+        inputs:
+          VARIABLE:
+            literal: "model"
+          VALUE:
+            node: create_researcher_model
+
+      create_researcher_agent:
+        opcode: pydantic_ai_create_agent
+        isReporter: true
+        inputs:
+          model:
+            variable: "model"
+          instructions:
+            literal: |
+              You are a specialized web researcher. For each query:
+
+              1. Use web_search_news to find recent news and developments
+              2. Use web_search for general web results and broader context
+              3. Use web_search_context for detailed explanations when needed
+
+              Compile your findings into a well-organized report with:
+              - Executive Summary (2-3 sentences)
+              - Key Findings (bulleted list)
+              - Recent News (if applicable)
+              - Sources Consulted (with URLs when available)
+
+              Be thorough but concise. Focus on the most relevant and reliable information.
+
+      store_researcher_agent:
+        opcode: data_set_variable_to
+        next: print_searching
+        inputs:
+          VARIABLE:
+            literal: "agent"
+          VALUE:
+            node: create_researcher_agent
+
+      print_searching:
+        opcode: io_print
+        next: run_researcher_try
+        inputs:
+          STRING:
+            literal: "   [TOOL] Researcher agent searching...\n"
+
+      # Execute researcher with error handling
+      run_researcher_try:
+        opcode: control_try
+        next: return_result
+        inputs:
+          TRY:
+            branch: execute_researcher
+          CATCH1:
+            exception_type: null
+            var: "error_msg"
+            body:
+              branch: handle_researcher_error
+
+      # Build search prompt
+      build_search_prompt:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "Research the following topic thoroughly: "
+          OPERAND2:
+            variable: query
+
+      # Call researcher agent with web search tools
+      researcher_call:
+        opcode: ai_agent_with_tools
+        isReporter: true
+        inputs:
+          agent:
+            variable: "agent"
+          messages:
+            node: build_search_prompt
+          tools:
+            literal:
+              - web_search
+              - web_search_news
+              - web_search_context
+          output:
+            literal: null
+          max_tool_calls:
+            literal: 10
+          timeout_seconds:
+            literal: 120
+
+      execute_researcher:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "result"
+          VALUE:
+            node: researcher_call
+
+      # Error handler for researcher
+      handle_researcher_error:
+        opcode: io_print
+        next: return_error
+        inputs:
+          STRING:
+            node: format_error_msg
+
+      format_error_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          OPERAND1:
+            literal: "   [TOOL] Research error: "
+          OPERAND2:
+            variable: error_msg
+
+      return_error:
+        opcode: workflow_return
+        next: null
+        inputs:
+          VALUE:
+            literal: "Research failed. Please try a different query."
+
+      # Return successful result
+      get_result_text:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: result
+          key:
+            literal: "text"
+
+      print_done:
+        opcode: io_print
+        isReporter: true
+        inputs:
+          STRING:
+            literal: "   [TOOL] web_researcher completed\n"
+
+      return_result:
+        opcode: workflow_return
+        next: null
+        inputs:
+          VALUE:
+            node: get_result_text
