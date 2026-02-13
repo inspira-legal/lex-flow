@@ -52,12 +52,12 @@ Before submitting a PR, verify:
 
 | ID | Rule | Section |
 |----|------|---------|
-| M1 | Optional dependencies MUST follow the graceful degradation pattern: `try/except ImportError` + `*_AVAILABLE` flag + `_check_*()` + `register_*_opcodes()` | [Repo Patterns > Dependencies](#optional-dependencies) |
+| M1 | Optional dependencies follow graceful degradation: `try/except ImportError` + `*_AVAILABLE` flag + `register_*_opcodes()`; add `_check_*()` for deps requiring API keys | [Repo Patterns > Dependencies](#optional-dependencies) |
 | M2 | Pydantic v2 only — no v1 compatibility patterns | [Repo Patterns > Pydantic](#pydantic) |
 | M3 | FastAPI app uses factory pattern (`create_app()`) | [Repo Patterns > FastAPI](#fastapi) |
 | M4 | Thread-safe state MUST use `ContextVar`, not global variables | [Repo Patterns > State](#state-management) |
 | M5 | Ruff is mandatory — do not disable or bypass pre-commit hooks | [Repo Patterns > Linting](#linting) |
-| M6 | Async tests use `pytestmark = pytest.mark.asyncio` with 10s timeout | [Tests](#tests-and-functional-validation) |
+| M6 | Async tests use `pytestmark = pytest.mark.asyncio`; global 10s timeout via `pytest.ini` | [Tests](#tests-and-functional-validation) |
 | M7 | Core MUST NOT assume a specific deployment environment | [Core Extension](#what-belongs-in-core) |
 | M8 | New core modules must follow existing single-responsibility separation | [Core Extension](#what-belongs-in-core) |
 | M9 | Imports from internal modules (`from lexflow.parser import ...`) have no stability guarantee | [Contracts > Backward Compatibility](#backward-compatibility) |
@@ -129,7 +129,7 @@ Reference: `lexflow-core/src/lexflow/opcodes/opcodes.py`
 
 ### Optional Dependencies
 
-**Rule M1** — All optional dependency modules MUST follow this exact pattern:
+**Rule M1** — Optional dependency modules should follow this pattern (see `opcodes_web_search.py` for canonical example):
 
 ```python
 # 1. Try import + availability flag
@@ -162,9 +162,8 @@ def register_some_opcodes():
 ```
 
 Reference files:
-- `lexflow-core/src/lexflow/opcodes/opcodes_web_search.py`
-- `lexflow-core/src/lexflow/opcodes/opcodes_pydantic_ai.py`
-- `lexflow-core/src/lexflow/opcodes/opcodes_http.py`
+- `lexflow-core/src/lexflow/opcodes/opcodes_web_search.py` (canonical — full pattern)
+- `lexflow-core/src/lexflow/opcodes/opcodes_http.py` (minimal — `*_AVAILABLE` + conditional registration)
 
 ### Pydantic
 
@@ -201,10 +200,6 @@ _my_context: ContextVar[Optional[MyType]] = ContextVar("_my_context", default=No
 # Bad
 _global_state: Optional[MyType] = None
 ```
-
-Reference:
-- `lexflow-core/src/lexflow/opcodes/opcodes_pydantic_ai.py` — `_tool_call_context`, `_workflow_manager_context`
-- `lexflow-web/src/lexflow_web/opcodes.py` — `web_send`, `web_receive`
 
 ### Linting
 
@@ -414,7 +409,6 @@ async def my_opcode(value: str) -> str:
 Reference:
 - `lexflow-core/src/lexflow/parser.py` — `ParseError`, conversion to `ValueError`
 - `lexflow-core/src/lexflow/executor.py` — `RuntimeError` for `Throw`
-- `lexflow-core/src/lexflow/opcodes/opcodes_pydantic_ai.py` — `PermissionError`, `TimeoutError`
 
 ---
 
@@ -443,10 +437,6 @@ Reference: `lexflow-core/src/lexflow/metrics.py`
 
 **What IS enforced in core**:
 - **Path traversal protection** in the examples endpoint (`api.py:206-209`).
-- **Tool allowlist** for AI agents — opcodes/workflows must be explicitly listed to be callable (`opcodes_pydantic_ai.py`).
-- **`max_tool_calls` limit** to prevent runaway tool execution.
-- **Execution timeout** (`timeout_seconds`) for agent operations.
-- **`ContextVar` isolation** prevents cross-request state contamination.
 
 **What to watch in PRs**:
 - New endpoints that read files should validate paths against traversal.
@@ -465,7 +455,6 @@ Reference: `lexflow-core/src/lexflow/metrics.py`
 | AST with discriminated unions | `lexflow-core/src/lexflow/ast.py` |
 | FastAPI factory pattern | `lexflow-web/src/lexflow_web/app.py` |
 | API endpoint patterns | `lexflow-web/src/lexflow_web/api.py` |
-| ContextVar usage | `lexflow-core/src/lexflow/opcodes/opcodes_pydantic_ai.py` |
 | Unit tests with mocking | `tests/unit/test_web_search_opcodes.py` |
 | Integration tests with YAML | `tests/integration/async_features/test_background_tasks.py` |
 | Custom metrics | `lexflow-core/src/lexflow/metrics.py` |
