@@ -2,10 +2,8 @@
 
 import importlib.util
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch, AsyncMock
 from lexflow import default_registry
-
-pytestmark = pytest.mark.asyncio
 
 
 TAVILY_AVAILABLE = importlib.util.find_spec("tavily") is not None
@@ -15,6 +13,7 @@ TAVILY_AVAILABLE = importlib.util.find_spec("tavily") is not None
 try:
     from lexflow.opcodes.opcodes_web_search import (
         _check_tavily,
+        _format_results,
         _get_client,
         _time_range_to_days,
         TAVILY_AVAILABLE as MODULE_TAVILY_AVAILABLE,
@@ -24,6 +23,64 @@ try:
 except ImportError:
     HELPERS_AVAILABLE = False
     MODULE_TAVILY_AVAILABLE = False
+
+
+class TestCheckTavily:
+    """Tests for _check_tavily helper."""
+
+    @pytest.mark.skipif(not HELPERS_AVAILABLE, reason="helpers not available")
+    @pytest.mark.skipif(not TAVILY_AVAILABLE, reason="tavily not installed")
+    def test_raises_import_error_when_not_installed(self):
+        with patch("lexflow.opcodes.opcodes_web_search.TAVILY_AVAILABLE", False):
+            with pytest.raises(ImportError, match="tavily-python is required"):
+                _check_tavily()
+
+    @pytest.mark.skipif(not HELPERS_AVAILABLE, reason="helpers not available")
+    @pytest.mark.skipif(not TAVILY_AVAILABLE, reason="tavily not installed")
+    def test_no_error_when_installed(self):
+        _check_tavily()
+
+
+class TestFormatResults:
+    """Tests for _format_results helper."""
+
+    @pytest.mark.skipif(not HELPERS_AVAILABLE, reason="helpers not available")
+    def test_formats_results(self):
+        response = {
+            "results": [
+                {
+                    "title": "Test",
+                    "url": "https://example.com",
+                    "content": "content",
+                    "score": 0.95,
+                    "extra_field": "ignored",
+                }
+            ]
+        }
+        results = _format_results(response)
+        assert len(results) == 1
+        assert results[0] == {
+            "title": "Test",
+            "url": "https://example.com",
+            "content": "content",
+            "score": 0.95,
+        }
+
+    @pytest.mark.skipif(not HELPERS_AVAILABLE, reason="helpers not available")
+    def test_empty_results(self):
+        assert _format_results({}) == []
+        assert _format_results({"results": []}) == []
+
+    @pytest.mark.skipif(not HELPERS_AVAILABLE, reason="helpers not available")
+    def test_missing_keys_use_defaults(self):
+        response = {"results": [{}]}
+        results = _format_results(response)
+        assert results[0] == {
+            "title": "",
+            "url": "",
+            "content": "",
+            "score": 0.0,
+        }
 
 
 class TestTimeRangeToDays:
@@ -46,18 +103,9 @@ class TestTimeRangeToDays:
         assert _time_range_to_days("year") == 365
 
     @pytest.mark.skipif(not HELPERS_AVAILABLE, reason="helpers not available")
-    def test_unknown_defaults_to_week(self):
-        assert _time_range_to_days("unknown") == 7
-
-
-class TestCheckTavily:
-    """Tests for _check_tavily helper."""
-
-    @pytest.mark.skipif(not HELPERS_AVAILABLE, reason="helpers not available")
-    @pytest.mark.skipif(MODULE_TAVILY_AVAILABLE, reason="tavily is installed")
-    def test_raises_import_error_when_not_installed(self):
-        with pytest.raises(ImportError, match="tavily-python is not installed"):
-            _check_tavily()
+    def test_unknown_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid time_range 'unknown'"):
+            _time_range_to_days("unknown")
 
 
 class TestGetClient:
@@ -81,6 +129,8 @@ class TestGetClient:
 @pytest.mark.skipif(not TAVILY_AVAILABLE, reason="tavily not installed")
 class TestWebSearchOpcode:
     """Tests for web_search opcode."""
+
+    pytestmark = pytest.mark.asyncio
 
     async def test_basic_search(self):
         """Test basic web search functionality."""
@@ -129,7 +179,7 @@ class TestWebSearchOpcode:
                 mock_client.search = AsyncMock(return_value=mock_response)
                 mock_client_class.return_value = mock_client
 
-                result = await default_registry.call(
+                await default_registry.call(
                     "web_search",
                     [
                         "test query",
@@ -155,10 +205,17 @@ class TestWebSearchOpcode:
             with pytest.raises(ValueError, match="TAVILY_API_KEY"):
                 await default_registry.call("web_search", ["test query"])
 
+    async def test_invalid_search_depth_raises_error(self):
+        """Test that invalid search_depth raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid search_depth 'deep'"):
+            await default_registry.call("web_search", ["test query", 5, "deep"])
+
 
 @pytest.mark.skipif(not TAVILY_AVAILABLE, reason="tavily not installed")
 class TestWebSearchNewsOpcode:
     """Tests for web_search_news opcode."""
+
+    pytestmark = pytest.mark.asyncio
 
     async def test_basic_news_search(self):
         """Test basic news search functionality."""
@@ -219,10 +276,20 @@ class TestWebSearchNewsOpcode:
                 assert call_kwargs["max_results"] == 10
                 assert call_kwargs["days"] == 1  # day = 1
 
+    async def test_invalid_time_range_raises_error(self):
+        """Test that invalid time_range raises ValueError."""
+        with patch.dict("os.environ", {"TAVILY_API_KEY": "test-key"}):
+            with pytest.raises(ValueError, match="Invalid time_range 'yesterday'"):
+                await default_registry.call(
+                    "web_search_news", ["test query", 5, "yesterday"]
+                )
+
 
 @pytest.mark.skipif(not TAVILY_AVAILABLE, reason="tavily not installed")
 class TestWebSearchContextOpcode:
     """Tests for web_search_context opcode."""
+
+    pytestmark = pytest.mark.asyncio
 
     async def test_basic_context_search(self):
         """Test basic context search functionality."""
@@ -259,7 +326,7 @@ class TestWebSearchContextOpcode:
                 mock_client.get_search_context = AsyncMock(return_value=mock_context)
                 mock_client_class.return_value = mock_client
 
-                result = await default_registry.call(
+                await default_registry.call(
                     "web_search_context",
                     [
                         "test query",
@@ -275,22 +342,18 @@ class TestWebSearchContextOpcode:
                 )
 
 
-@pytest.mark.skipif(
-    TAVILY_AVAILABLE, reason="Test only when tavily is not installed"
-)
+@pytest.mark.skipif(TAVILY_AVAILABLE, reason="Test only when tavily is not installed")
 class TestImportErrorWhenNotInstalled:
     """Tests for graceful handling when tavily is not installed."""
 
-    async def test_web_search_import_error(self):
+    def test_web_search_import_error(self):
         """Test that web_search opcode is not registered when tavily not installed."""
-        # When tavily is not installed, the opcode should not be registered
-        # This test verifies the graceful degradation
-        assert "web_search" not in default_registry._opcodes
+        assert "web_search" not in default_registry.opcodes
 
-    async def test_web_search_news_import_error(self):
+    def test_web_search_news_import_error(self):
         """Test that web_search_news opcode is not registered."""
-        assert "web_search_news" not in default_registry._opcodes
+        assert "web_search_news" not in default_registry.opcodes
 
-    async def test_web_search_context_import_error(self):
+    def test_web_search_context_import_error(self):
         """Test that web_search_context opcode is not registered."""
-        assert "web_search_context" not in default_registry._opcodes
+        assert "web_search_context" not in default_registry.opcodes
