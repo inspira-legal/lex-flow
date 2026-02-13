@@ -52,7 +52,7 @@ Before submitting a PR, verify:
 
 | ID | Rule | Section |
 |----|------|---------|
-| M1 | Optional dependencies follow graceful degradation: `try/except ImportError` + `*_AVAILABLE` flag + `register_*_opcodes()`; add `_check_*()` for deps requiring API keys | [Repo Patterns > Dependencies](#optional-dependencies) |
+| M1 | Optional dependencies follow graceful degradation: `try/except ImportError` + `*_AVAILABLE` flag + `register_*_opcodes()`; add `_check_*()` for deps requiring API keys | [Repo Patterns > Optional Dependencies](#optional-dependencies) |
 | M2 | Pydantic v2 only — no v1 compatibility patterns | [Repo Patterns > Pydantic](#pydantic) |
 | M3 | FastAPI app uses factory pattern (`create_app()`) | [Repo Patterns > FastAPI](#fastapi) |
 | M4 | Thread-safe state MUST use `ContextVar`, not global variables | [Repo Patterns > State](#state-management) |
@@ -84,7 +84,7 @@ Before submitting a PR, verify:
 
 Format: `<type>(<scope>): <description>`
 
-Valid types: `feat`, `fix`, `docs`, `chore`, `style`, `test`
+Valid types: `feat`, `fix`, `perf`, `refactor`, `docs`, `chore`, `test`
 Valid scopes: `core`, `web`, `cli`, `ai`, `examples`
 
 Breaking changes MUST include `BREAKING CHANGE:` in the commit footer. This triggers a major version bump via semantic-release.
@@ -436,7 +436,7 @@ Reference: `lexflow-core/src/lexflow/metrics.py`
 **Rule L5** — The APIs in this repo are for development/testing only. Endpoint security (auth, CORS, rate limiting) is **not in scope** — that is the responsibility of consuming repositories.
 
 **What IS enforced in core**:
-- **Path traversal protection** in the examples endpoint (`api.py:206-209`).
+- **Path traversal protection** in the `get_example` endpoint (see `lexflow-web/src/lexflow_web/api.py`).
 
 **What to watch in PRs**:
 - New endpoints that read files should validate paths against traversal.
