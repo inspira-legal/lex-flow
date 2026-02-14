@@ -19,6 +19,8 @@ def _format_type(type_hint: Any) -> str:
     """Format a type hint for display."""
     if type_hint is None:
         return "None"
+    if getattr(type_hint, "__origin__", None) is not None:
+        return str(type_hint).replace("typing.", "")
     if hasattr(type_hint, "__name__"):
         return type_hint.__name__
     return str(type_hint).replace("typing.", "")
