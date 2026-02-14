@@ -24,6 +24,7 @@ Quick reference for all available opcodes in LexFlow.
 - [🌐 HTTP Operations](#http-operations) *(requires `lexflow[http]`)*
 - [📄 HTML Operations](#html-operations) *(requires `lexflow[http]`)*
 - [📋 JSON Operations](#json-operations)
+- [🔍 Web Search](#web-search) *(requires `lexflow[search]`)*
 - [☁️ Cloud Storage](#cloud-storage) *(requires `lexflow[gcs]`)*
 - [🎮 Pygame Operations](#pygame-operations) *(requires `lexflow[pygame]`)*
 - [🔍 RAG Operations](#rag-operations) *(requires `lexflow[rag]`)*
@@ -410,7 +411,6 @@ Args:
     text: Source string
     start: Start index (0-based)
     end: End index (exclusive), or None for rest of string
-
 
 **Parameters:**
 
@@ -1083,7 +1083,6 @@ Args:
 Yields:
     Each item from the list
 
-
 **Parameters:**
 
 - `items` (List, required)
@@ -1108,7 +1107,6 @@ Args:
 
 Yields:
     Integers in the range
-
 
 **Parameters:**
 
@@ -1151,7 +1149,6 @@ Args:
 Returns:
     Agent instance ready to use
 
-
 **Parameters:**
 
 - `model` (Any, required)
@@ -1174,7 +1171,6 @@ Args:
 Returns:
     GoogleModel instance configured for Vertex AI
 
-
 **Parameters:**
 
 - `model_name` (str, required)
@@ -1196,7 +1192,6 @@ Args:
 Returns:
     String output from the agent
 
-
 **Parameters:**
 
 - `agent` (Any, required)
@@ -1216,7 +1211,6 @@ Args:
 
 Returns:
     String output from the agent
-
 
 **Parameters:**
 
@@ -1243,7 +1237,6 @@ Args:
 Returns:
     Response dict with keys: status, headers, text, json
 
-
 **Parameters:**
 
 - `url` (str, required)
@@ -1267,7 +1260,6 @@ Args:
 
 Returns:
     Response dict with keys: status, headers, text, json
-
 
 **Parameters:**
 
@@ -1296,7 +1288,6 @@ Args:
 Returns:
     Response dict with keys: status, headers, text, json
 
-
 **Parameters:**
 
 - `method` (str, required)
@@ -1321,7 +1312,6 @@ Args:
 Returns:
     HTTPSession object (use with control_with)
 
-
 **Parameters:**
 
 - `timeout` (float, optional, default: `30.0`)
@@ -1342,7 +1332,6 @@ Args:
 
 Returns:
     Response dict (same as http_get)
-
 
 **Parameters:**
 
@@ -1368,7 +1357,6 @@ Args:
 Returns:
     Response dict (same as http_post)
 
-
 **Parameters:**
 
 - `session` (HTTPSession, required)
@@ -1393,7 +1381,6 @@ Args:
 
 Yields:
     Byte chunks from the response
-
 
 **Parameters:**
 
@@ -1421,7 +1408,6 @@ Args:
 Yields:
     Each line from the response (stripped of newlines)
 
-
 **Parameters:**
 
 - `url` (str, required)
@@ -1448,7 +1434,6 @@ Args:
 Returns:
     Attribute value as string, or default if not found
 
-
 **Parameters:**
 
 - `element` (Any, required)
@@ -1470,7 +1455,6 @@ Args:
 Returns:
     Text content of the element
 
-
 **Parameters:**
 
 - `element` (Any, required)
@@ -1490,7 +1474,6 @@ Args:
 Returns:
     BeautifulSoup object for use with html_select* opcodes
 
-
 **Returns:** `Any`
 
 ---
@@ -1505,7 +1488,6 @@ Args:
 
 Returns:
     List of matching elements (may be empty)
-
 
 **Parameters:**
 
@@ -1526,7 +1508,6 @@ Args:
 
 Returns:
     First matching element, or None if no match
-
 
 **Parameters:**
 
@@ -1552,7 +1533,6 @@ Returns:
 Raises:
     ValueError: If the string is not valid JSON
 
-
 **Returns:** `Any`
 
 ---
@@ -1571,13 +1551,127 @@ Returns:
 Raises:
     TypeError: If the object is not JSON serializable
 
-
 **Parameters:**
 
 - `obj` (Any, required)
 - `indent` (Optional, optional, default: `None`)
 
 **Returns:** `str`
+
+---
+
+## 🔍 Web Search
+
+> **Requires:** `pip install lexflow[search]`
+
+### `web_search(query, max_results=5, search_depth="basic", include_domains=None, exclude_domains=None, time_range=None)`
+
+Perform a general web search using Tavily API.
+
+Args:
+    query: The search query string
+    max_results: Maximum number of results to return (default: 5)
+    search_depth: Search depth - "basic" for fast results, "advanced" for
+                 more comprehensive results (default: "basic")
+    include_domains: List of domains to include in search (optional)
+    exclude_domains: List of domains to exclude from search (optional)
+    time_range: Time range filter - "day", "week", "month", or "year" (optional)
+
+Returns:
+    Dict with keys:
+    - query: The original query string
+    - results: List of result dicts, each with:
+        - title: Page title
+        - url: Page URL
+        - content: Snippet/content from the page
+        - score: Relevance score (0-1)
+    - response_time: Time taken for the search in seconds
+
+Example:
+    query: "Python 3.12 new features"
+    max_results: 5
+    search_depth: "basic"
+
+**Parameters:**
+
+- `query` (str, required)
+- `max_results` (int, optional, default: `5`)
+- `search_depth` (str, optional, default: `"basic"`)
+- `include_domains` (Optional, optional, default: `None`)
+- `exclude_domains` (Optional, optional, default: `None`)
+- `time_range` (Optional, optional, default: `None`)
+
+**Returns:** `Dict`
+
+---
+
+### `web_search_context(query, max_results=5, max_tokens=4000)`
+
+Search the web and return context optimized for RAG/agent prompts.
+
+This opcode returns a plain string (not a dict) of search results ready
+to be injected directly into LLM prompts. It uses Tavily's
+get_search_context() method which is optimized for RAG workflows.
+
+Args:
+    query: The search query string
+    max_results: Maximum number of results to include (default: 5)
+    max_tokens: Maximum tokens in the returned context (default: 4000)
+
+Returns:
+    A formatted string containing search results optimized for use
+    as context in LLM prompts.
+
+Example:
+    query: "quantum computing applications 2024"
+    max_results: 5
+    max_tokens: 4000
+
+**Parameters:**
+
+- `query` (str, required)
+- `max_results` (int, optional, default: `5`)
+- `max_tokens` (int, optional, default: `4000`)
+
+**Returns:** `str`
+
+---
+
+### `web_search_news(query, max_results=5, time_range="week")`
+
+Search for news articles using Tavily API.
+
+This is a specialized search focused on news content with a default
+time range of one week for recent news.
+
+Args:
+    query: The search query string
+    max_results: Maximum number of results to return (default: 5)
+    time_range: Time range filter - "day", "week", "month", or "year"
+               (default: "week")
+
+Returns:
+    Dict with keys:
+    - query: The original query string
+    - results: List of result dicts, each with:
+        - title: Article title
+        - url: Article URL
+        - content: Snippet/content from the article
+        - score: Relevance score (0-1)
+    - response_time: Time taken for the search in seconds
+
+Example:
+    query: "artificial intelligence breakthroughs"
+    max_results: 5
+    time_range: "week"
+
+**Parameters:**
+
+- `query` (str, required)
+- `max_results` (int, optional, default: `5`)
+- `time_range` (str, optional, default: `"week"`)
+
+**Returns:** `Dict`
 
 ---
 
@@ -1597,7 +1691,6 @@ Returns:
 
 Example:
     client: { node: my_client }
-
 
 **Returns:** `bool`
 
@@ -1623,7 +1716,6 @@ Example:
     source_object: "path/to/file.pdf"
     dest_bucket: "dest-bucket"
     dest_object: "backup/file.pdf"
-
 
 **Parameters:**
 
@@ -1657,7 +1749,6 @@ Authentication:
     3. gcloud auth application-default login
     4. GCE/GKE metadata server (in cloud environments)
 
-
 **Returns:** `Storage`
 
 ---
@@ -1678,7 +1769,6 @@ Example:
     client: { node: my_client }
     bucket_name: "my-bucket"
     object_name: "path/to/file.pdf"
-
 
 **Parameters:**
 
@@ -1707,7 +1797,6 @@ Example:
     bucket_name: "my-bucket"
     object_name: "path/to/file.pdf"
 
-
 **Parameters:**
 
 - `client` (Storage, required)
@@ -1735,7 +1824,6 @@ Example:
     client: { node: my_client }
     bucket_name: "my-bucket"
     object_name: "path/to/file.txt"
-
 
 **Parameters:**
 
@@ -1770,7 +1858,6 @@ Example:
     bucket_name: "my-bucket"
     object_name: "path/to/file.pdf"
 
-
 **Parameters:**
 
 - `client` (Storage, required)
@@ -1799,7 +1886,6 @@ Example:
     bucket_name: "my-bucket"
     prefix: "uploads/"
 
-
 **Parameters:**
 
 - `client` (Storage, required)
@@ -1827,7 +1913,6 @@ Example:
     client: { node: my_client }
     bucket_name: "my-bucket"
     object_name: "path/to/file.pdf"
-
 
 **Parameters:**
 
@@ -1859,7 +1944,6 @@ Example:
     object_name: "uploads/document.pdf"
     data: { variable: pdf_bytes }
     content_type: "application/pdf"
-
 
 **Parameters:**
 
@@ -1894,7 +1978,6 @@ Example:
     object_name: "logs/output.txt"
     data: "Hello, World!"
 
-
 **Parameters:**
 
 - `client` (Storage, required)
@@ -1924,7 +2007,6 @@ Args:
 Returns:
     List [r, g, b]
 
-
 **Parameters:**
 
 - `r` (int, required)
@@ -1947,7 +2029,6 @@ Args:
 Returns:
     pygame.Surface object representing the display
 
-
 **Parameters:**
 
 - `width` (int, required)
@@ -1965,7 +2046,6 @@ Async delay in milliseconds.
 Args:
     milliseconds: Delay duration in milliseconds
 
-
 **Returns:** `NoneType`
 
 ---
@@ -1980,7 +2060,6 @@ Args:
     y: Center Y position
     radius: Circle radius
     color: RGB color as [r, g, b]
-
 
 **Parameters:**
 
@@ -2006,7 +2085,6 @@ Args:
     height: Rectangle height
     color: RGB color as [r, g, b]
     filled: If True, fill; if False, draw outline only
-
 
 **Parameters:**
 
@@ -2034,7 +2112,6 @@ Args:
     font_size: Font size in pixels (default: 48)
     color: RGB color as [r, g, b], defaults to white
 
-
 **Parameters:**
 
 - `screen` (Any, required)
@@ -2056,7 +2133,6 @@ Args:
     screen: The display surface
     color: RGB color as [r, g, b] where each value is 0-255
 
-
 **Parameters:**
 
 - `screen` (Any, required)
@@ -2076,7 +2152,6 @@ Args:
 Returns:
     True if key is pressed, False otherwise
 
-
 **Returns:** `bool`
 
 ---
@@ -2090,7 +2165,6 @@ Args:
 
 Returns:
     Height in pixels
-
 
 **Returns:** `int`
 
@@ -2106,7 +2180,6 @@ Args:
 Returns:
     Width in pixels
 
-
 **Returns:** `int`
 
 ---
@@ -2117,7 +2190,6 @@ Get milliseconds since pygame.init() was called.
 
 Returns:
     Milliseconds elapsed since pygame initialization
-
 
 **Returns:** `int`
 
@@ -2154,7 +2226,6 @@ Check if user wants to quit (clicked X button).
 Returns:
     True if quit event detected, False otherwise
 
-
 **Returns:** `bool`
 
 ---
@@ -2188,7 +2259,6 @@ Args:
 Returns:
     Reranked results with updated 'score' and 'bm25_score' added
 
-
 **Parameters:**
 
 - `query` (str, required)
@@ -2214,7 +2284,6 @@ Args:
 Returns:
     List of floats representing the embedding vector
 
-
 **Parameters:**
 
 - `text` (str, required)
@@ -2239,7 +2308,6 @@ Args:
 Returns:
     List of embedding vectors (each is a list of floats)
 
-
 **Parameters:**
 
 - `texts` (List, required)
@@ -2261,7 +2329,6 @@ Args:
 Returns:
     List of strings, one per page
 
-
 **Returns:** `List`
 
 ---
@@ -2276,7 +2343,6 @@ Args:
 Returns:
     List of strings, one per page
 
-
 **Returns:** `List`
 
 ---
@@ -2290,7 +2356,6 @@ Args:
 
 Returns:
     Extracted text from all pages concatenated
-
 
 **Returns:** `str`
 
@@ -2309,7 +2374,6 @@ Args:
 Returns:
     Extracted text from all pages concatenated
 
-
 **Returns:** `str`
 
 ---
@@ -2323,7 +2387,6 @@ Args:
 
 Returns:
     Number of pages in the PDF
-
 
 **Returns:** `int`
 
@@ -2339,7 +2402,6 @@ Args:
 
 Returns:
     True if collection exists
-
 
 **Parameters:**
 
@@ -2360,7 +2422,6 @@ Args:
 Returns:
     QdrantClient instance
 
-
 **Returns:** `Any`
 
 ---
@@ -2376,7 +2437,6 @@ Args:
 
 Returns:
     True if created, False if already existed
-
 
 **Parameters:**
 
@@ -2400,7 +2460,6 @@ Args:
 Returns:
     True if deletion was successful
 
-
 **Parameters:**
 
 - `client` (Any, required)
@@ -2421,7 +2480,6 @@ Args:
 
 Returns:
     True if deletion was successful
-
 
 **Parameters:**
 
@@ -2444,7 +2502,6 @@ Args:
 
 Returns:
     List of dicts with keys: id, score, payload
-
 
 **Parameters:**
 
@@ -2470,7 +2527,6 @@ Args:
 
 Returns:
     True if upsert was successful
-
 
 **Parameters:**
 
@@ -2498,7 +2554,6 @@ Args:
 Returns:
     True if upsert was successful
 
-
 **Parameters:**
 
 - `client` (Any, required)
@@ -2523,7 +2578,6 @@ Args:
 Returns:
     List of text chunks
 
-
 **Parameters:**
 
 - `text` (str, required)
@@ -2545,7 +2599,6 @@ Args:
 
 Returns:
     List of text chunks split at sentence boundaries
-
 
 **Parameters:**
 
@@ -2570,7 +2623,6 @@ Args:
 
 Returns:
     List of dicts with keys: text, page_start, page_end, line_start, line_end
-
 
 **Parameters:**
 
@@ -2598,7 +2650,6 @@ Args:
 Returns:
     List of dicts with keys: text, page_start, page_end, line_start, line_end
 
-
 **Parameters:**
 
 - `pages` (List, required)
@@ -2622,7 +2673,6 @@ Args:
 
 Returns:
     The updated history
-
 
 **Parameters:**
 
@@ -2648,7 +2698,6 @@ Returns:
 Raises:
     ValueError: If role is not "user" or "assistant"
 
-
 **Parameters:**
 
 - `history` (List, required)
@@ -2670,7 +2719,6 @@ Args:
 Returns:
     The updated history
 
-
 **Parameters:**
 
 - `history` (List, required)
@@ -2690,7 +2738,6 @@ Args:
 Returns:
     The same list, now empty
 
-
 **Returns:** `List`
 
 ---
@@ -2701,7 +2748,6 @@ Create a new empty chat history.
 
 Returns:
     Empty list ready to store chat messages
-
 
 **Returns:** `List`
 
@@ -2717,7 +2763,6 @@ Args:
 Returns:
     Formatted string with each message on its own line
 
-
 **Returns:** `str`
 
 ---
@@ -2732,7 +2777,6 @@ Args:
 
 Returns:
     The last message dict, or None if empty or no match
-
 
 **Parameters:**
 
@@ -2753,7 +2797,6 @@ Args:
 Returns:
     Number of messages
 
-
 **Returns:** `int`
 
 ---
@@ -2767,7 +2810,6 @@ Args:
 
 Returns:
     A formatted string containing the conversation context
-
 
 **Returns:** `str`
 
@@ -2791,7 +2833,6 @@ Args:
 
 Returns:
     The assistant's response string
-
 
 **Parameters:**
 
@@ -2855,7 +2896,6 @@ Args:
     message: Optional message to show
     width: Bar width in characters (default: 30)
 
-
 **Parameters:**
 
 - `current` (int, required)
@@ -2874,7 +2914,6 @@ Stop a spinner with failure indicator.
 Args:
     spinner: Spinner object from spinner_start
     message: Error message to display
-
 
 **Parameters:**
 
@@ -2895,7 +2934,6 @@ Args:
 Returns:
     Spinner object (use with spinner_stop, spinner_update)
 
-
 **Returns:** `Spinner`
 
 ---
@@ -2908,7 +2946,6 @@ Args:
     spinner: Spinner object from spinner_start
     message: Final message (empty = original message + "done")
     success: True for checkmark, False for X mark
-
 
 **Parameters:**
 
@@ -2927,7 +2964,6 @@ Update the message of a running spinner.
 Args:
     spinner: Spinner object from spinner_start
     message: New message to display
-
 
 **Parameters:**
 
@@ -2953,7 +2989,6 @@ Args:
 Returns:
     File content as a string (UTF-8 decoded)
 
-
 **Parameters:**
 
 - `owner` (str, required)
@@ -2977,7 +3012,6 @@ Args:
 Returns:
     The PR diff as a string in unified diff format
 
-
 **Parameters:**
 
 - `owner` (str, required)
@@ -2999,7 +3033,6 @@ Args:
 
 Returns:
     List of dicts with: path, additions, deletions, status
-
 
 **Parameters:**
 
@@ -3023,7 +3056,6 @@ Args:
 Returns:
     Dict with: title, body, author, state, base_branch, head_branch, url
 
-
 **Parameters:**
 
 - `owner` (str, required)
@@ -3045,7 +3077,6 @@ Args:
 Returns:
     Dict with: name, full_name, description, default_branch, url, is_private
 
-
 **Parameters:**
 
 - `owner` (str, required)
@@ -3062,7 +3093,6 @@ Check if GitHub CLI is available and authenticated.
 Returns:
     True if gh CLI is installed and authenticated
 
-
 **Returns:** `bool`
 
 ---
@@ -3078,7 +3108,6 @@ Args:
 
 Returns:
     List of comment dicts with: id, author, body, created_at, type
-
 
 **Parameters:**
 
@@ -3113,7 +3142,6 @@ Example:
     subscription_id: "my-subscription"
     message: { variable: msg }
 
-
 **Parameters:**
 
 - `subscriber` (SubscriberClient, required)
@@ -3144,7 +3172,6 @@ Example:
     subscription_id: "my-subscription"
     ack_ids: { variable: message_ack_ids }
 
-
 **Parameters:**
 
 - `subscriber` (SubscriberClient, required)
@@ -3169,7 +3196,6 @@ Returns:
 Example:
     publisher: { variable: my_publisher }
 
-
 **Returns:** `bool`
 
 ---
@@ -3186,7 +3212,6 @@ Returns:
 
 Example:
     subscriber: { variable: my_subscriber }
-
 
 **Returns:** `bool`
 
@@ -3211,7 +3236,6 @@ Note:
     Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
     When set, authentication is automatically skipped.
 
-
 **Returns:** `PublisherClient`
 
 ---
@@ -3235,7 +3259,6 @@ Note:
     Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
     When set, authentication is automatically skipped.
 
-
 **Returns:** `SubscriberClient`
 
 ---
@@ -3258,7 +3281,6 @@ Example:
     project_id: "my-gcp-project"
     subscription_id: "my-subscription"
     message: { variable: msg }
-
 
 **Parameters:**
 
@@ -3296,7 +3318,6 @@ Example:
       - data: "Second message"
         attributes: { "index": "2" }
 
-
 **Parameters:**
 
 - `publisher` (PublisherClient, required)
@@ -3326,7 +3347,6 @@ Example:
     project_id: "my-gcp-project"
     topic_id: "my-topic"
     data: "Hello, Pub/Sub!"
-
 
 **Parameters:**
 
@@ -3359,7 +3379,6 @@ Example:
     topic_id: "my-topic"
     data: "Hello with attributes!"
     attributes: { "type": "greeting", "priority": "high" }
-
 
 **Parameters:**
 
@@ -3396,7 +3415,6 @@ Example:
     project_id: "my-gcp-project"
     subscription_id: "my-subscription"
     max_messages: 5
-
 
 **Parameters:**
 
@@ -3477,7 +3495,6 @@ Usage in workflow:
         BODY:
           - handle_message
 
-
 **Parameters:**
 
 - `subscriber` (SubscriberClient, required)
@@ -3511,7 +3528,6 @@ Raises:
     asyncio.TimeoutError: If timeout exceeded
     Exception: If the task raised an exception
 
-
 **Parameters:**
 
 - `task` (Any, required)
@@ -3532,7 +3548,6 @@ Args:
 Returns:
     List of results in the same order as tasks
 
-
 **Parameters:**
 
 - `tasks` (List, required)
@@ -3552,7 +3567,6 @@ Args:
 Returns:
     True if cancel was requested
 
-
 **Returns:** `bool`
 
 ---
@@ -3566,7 +3580,6 @@ Args:
 
 Returns:
     Exception message as string, or None if succeeded/not done
-
 
 **Returns:** `Optional`
 
@@ -3582,7 +3595,6 @@ Args:
 Returns:
     The task's unique ID
 
-
 **Returns:** `int`
 
 ---
@@ -3597,7 +3609,6 @@ Args:
 Returns:
     True if task is done (completed, cancelled, or failed)
 
-
 **Returns:** `bool`
 
 ---
@@ -3611,7 +3622,6 @@ Args:
 
 Returns:
     The task's name
-
 
 **Returns:** `str`
 
@@ -3630,7 +3640,6 @@ Returns:
 Raises:
     InvalidStateError: If task is not done
 
-
 **Returns:** `Any`
 
 ---
@@ -3641,7 +3650,6 @@ Sleep for the specified number of seconds.
 
 Args:
     seconds: Duration to sleep
-
 
 **Returns:** `NoneType`
 
@@ -3664,7 +3672,6 @@ Close a channel.
 Args:
     channel: The channel to close
 
-
 **Returns:** `NoneType`
 
 ---
@@ -3678,7 +3685,6 @@ Args:
 
 Returns:
     A new Channel object
-
 
 **Returns:** `Channel`
 
@@ -3694,7 +3700,6 @@ Args:
 Returns:
     True if closed
 
-
 **Returns:** `bool`
 
 ---
@@ -3709,7 +3714,6 @@ Args:
 Returns:
     True if empty
 
-
 **Returns:** `bool`
 
 ---
@@ -3723,7 +3727,6 @@ Args:
 
 Returns:
     Number of items in buffer
-
 
 **Returns:** `int`
 
@@ -3745,7 +3748,6 @@ Returns:
 Raises:
     asyncio.TimeoutError: If timeout exceeded
     RuntimeError: If channel is closed and empty
-
 
 **Parameters:**
 
@@ -3769,7 +3771,6 @@ Args:
 Raises:
     RuntimeError: If the channel is closed
 
-
 **Parameters:**
 
 - `channel` (Channel, required)
@@ -3789,7 +3790,6 @@ Args:
 Returns:
     Dict with keys: value, ok (True if received)
 
-
 **Returns:** `dict`
 
 ---
@@ -3803,7 +3803,6 @@ Clear an event (reset to unset state).
 Args:
     event: The event to clear
 
-
 **Returns:** `NoneType`
 
 ---
@@ -3814,7 +3813,6 @@ Create an event for signaling between tasks.
 
 Returns:
     An asyncio.Event
-
 
 **Returns:** `Event`
 
@@ -3830,7 +3828,6 @@ Args:
 Returns:
     True if set
 
-
 **Returns:** `bool`
 
 ---
@@ -3841,7 +3838,6 @@ Set an event (signal waiting tasks).
 
 Args:
     event: The event to set
-
 
 **Returns:** `NoneType`
 
@@ -3857,7 +3853,6 @@ Args:
 
 Returns:
     True if event was set, False if timeout
-
 
 **Parameters:**
 
@@ -3879,7 +3874,6 @@ Args:
 Returns:
     True if acquired, False if timeout
 
-
 **Parameters:**
 
 - `semaphore` (Semaphore, required)
@@ -3899,7 +3893,6 @@ Args:
 Returns:
     An asyncio.Semaphore
 
-
 **Returns:** `Semaphore`
 
 ---
@@ -3911,14 +3904,13 @@ Release a semaphore permit.
 Args:
     semaphore: The semaphore to release
 
-
 **Returns:** `NoneType`
 
 ---
 
 ## Summary
 
-**Total opcodes:** 225
+**Total opcodes:** 228
 
 ### Categories
 
@@ -3942,6 +3934,7 @@ Args:
 | 🌐 HTTP Operations | 8 | `lexflow[http]` |
 | 📄 HTML Operations | 5 | `lexflow[http]` |
 | 📋 JSON Operations | 2 | - |
+| 🔍 Web Search | 3 | `lexflow[search]` |
 | ☁️ Cloud Storage | 11 | `lexflow[gcs]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
 | 🔍 RAG Operations | 20 | `lexflow[rag]` |
