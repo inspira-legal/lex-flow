@@ -409,11 +409,10 @@ Check if string starts with prefix.
 
 Extract substring from start to end index.
 
-            Args:
-                text: Source string
-                start: Start index (0-based)
-                end: End index (exclusive), or None for rest of string
-            
+Args:
+    text: Source string
+    start: Start index (0-based)
+    end: End index (exclusive), or None for rest of string
 
 **Parameters:**
 
@@ -1077,15 +1076,14 @@ Execute body with resource as async context manager, binding to var.
 
 Convert a list to an async generator.
 
-            Useful for simulating streaming or rate-limited iteration.
+Useful for simulating streaming or rate-limited iteration.
 
-            Args:
-                items: List of items to yield
-                delay: Delay in seconds between yielding items
+Args:
+    items: List of items to yield
+    delay: Delay in seconds between yielding items
 
-            Yields:
-                Each item from the list
-            
+Yields:
+    Each item from the list
 
 **Parameters:**
 
@@ -1100,18 +1098,17 @@ Convert a list to an async generator.
 
 Create an async range generator.
 
-            Like range() but async, with optional delay between items.
-            Useful for rate-limited iteration with control_async_foreach.
+Like range() but async, with optional delay between items.
+Useful for rate-limited iteration with control_async_foreach.
 
-            Args:
-                start: Start value (or stop if stop is None)
-                stop: Stop value (exclusive)
-                step: Step between values (default 1)
-                delay: Delay in seconds between yielding values
+Args:
+    start: Start value (or stop if stop is None)
+    stop: Stop value (exclusive)
+    step: Step between values (default 1)
+    delay: Delay in seconds between yielding values
 
-            Yields:
-                Integers in the range
-            
+Yields:
+    Integers in the range
 
 **Parameters:**
 
@@ -1216,14 +1213,13 @@ Note:
 
 Create a pydantic_ai Agent.
 
-        Args:
-            model: Model instance (from pydantic_ai_create_vertex_model)
-            instructions: Optional instructions for the agent
-            system_prompt: Optional static system prompt
+Args:
+    model: Model instance (from pydantic_ai_create_vertex_model)
+    instructions: Optional instructions for the agent
+    system_prompt: Optional static system prompt
 
-        Returns:
-            Agent instance ready to use
-        
+Returns:
+    Agent instance ready to use
 
 **Parameters:**
 
@@ -1239,14 +1235,13 @@ Create a pydantic_ai Agent.
 
 Create a Google Vertex AI model instance.
 
-        Args:
-            model_name: Model name (e.g., "gemini-1.5-flash", "gemini-1.5-pro")
-            project: Optional GCP project ID (uses default if not specified)
-            location: Optional region (e.g., "us-central1")
+Args:
+    model_name: Model name (e.g., "gemini-1.5-flash", "gemini-1.5-pro")
+    project: Optional GCP project ID (uses default if not specified)
+    location: Optional region (e.g., "us-central1")
 
-        Returns:
-            GoogleModel instance configured for Vertex AI
-        
+Returns:
+    GoogleModel instance configured for Vertex AI
 
 **Parameters:**
 
@@ -1262,13 +1257,12 @@ Create a Google Vertex AI model instance.
 
 Run agent asynchronously with a prompt.
 
-        Args:
-            agent: Agent instance (from pydantic_ai_create_agent)
-            prompt: User prompt to send to the agent
+Args:
+    agent: Agent instance (from pydantic_ai_create_agent)
+    prompt: User prompt to send to the agent
 
-        Returns:
-            String output from the agent
-        
+Returns:
+    String output from the agent
 
 **Parameters:**
 
@@ -1283,13 +1277,12 @@ Run agent asynchronously with a prompt.
 
 Run agent with a prompt (legacy name, actually async).
 
-        Args:
-            agent: Agent instance (from pydantic_ai_create_agent)
-            prompt: User prompt to send to the agent
+Args:
+    agent: Agent instance (from pydantic_ai_create_agent)
+    prompt: User prompt to send to the agent
 
-        Returns:
-            String output from the agent
-        
+Returns:
+    String output from the agent
 
 **Parameters:**
 
@@ -1308,14 +1301,13 @@ Run agent with a prompt (legacy name, actually async).
 
 Perform an HTTP GET request.
 
-            Args:
-                url: The URL to request
-                headers: Optional dictionary of HTTP headers
-                timeout: Request timeout in seconds (default: 30.0)
+Args:
+    url: The URL to request
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
 
-            Returns:
-                Response dict with keys: status, headers, text, json
-            
+Returns:
+    Response dict with keys: status, headers, text, json
 
 **Parameters:**
 
@@ -1331,16 +1323,15 @@ Perform an HTTP GET request.
 
 Perform an HTTP POST request.
 
-            Args:
-                url: The URL to request
-                data: Form data to send (for form-encoded POST)
-                json: JSON data to send (sets Content-Type automatically)
-                headers: Optional dictionary of HTTP headers
-                timeout: Request timeout in seconds (default: 30.0)
+Args:
+    url: The URL to request
+    data: Form data to send (for form-encoded POST)
+    json: JSON data to send (sets Content-Type automatically)
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
 
-            Returns:
-                Response dict with keys: status, headers, text, json
-            
+Returns:
+    Response dict with keys: status, headers, text, json
 
 **Parameters:**
 
@@ -1358,17 +1349,16 @@ Perform an HTTP POST request.
 
 Perform a generic HTTP request with any method.
 
-            Args:
-                method: HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
-                url: The URL to request
-                data: Form data to send
-                json: JSON data to send (sets Content-Type automatically)
-                headers: Optional dictionary of HTTP headers
-                timeout: Request timeout in seconds (default: 30.0)
+Args:
+    method: HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+    url: The URL to request
+    data: Form data to send
+    json: JSON data to send (sets Content-Type automatically)
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
 
-            Returns:
-                Response dict with keys: status, headers, text, json
-            
+Returns:
+    Response dict with keys: status, headers, text, json
 
 **Parameters:**
 
@@ -1387,13 +1377,12 @@ Perform a generic HTTP request with any method.
 
 Create an HTTP session for reuse with control_with.
 
-            Args:
-                timeout: Default request timeout in seconds
-                headers: Default headers for all requests
+Args:
+    timeout: Default request timeout in seconds
+    headers: Default headers for all requests
 
-            Returns:
-                HTTPSession object (use with control_with)
-            
+Returns:
+    HTTPSession object (use with control_with)
 
 **Parameters:**
 
@@ -1408,14 +1397,13 @@ Create an HTTP session for reuse with control_with.
 
 Perform GET request using a session.
 
-            Args:
-                session: HTTPSession from http_session_create
-                url: The URL to request
-                headers: Optional additional headers
+Args:
+    session: HTTPSession from http_session_create
+    url: The URL to request
+    headers: Optional additional headers
 
-            Returns:
-                Response dict (same as http_get)
-            
+Returns:
+    Response dict (same as http_get)
 
 **Parameters:**
 
@@ -1431,16 +1419,15 @@ Perform GET request using a session.
 
 Perform POST request using a session.
 
-            Args:
-                session: HTTPSession from http_session_create
-                url: The URL to request
-                data: Form data to send
-                json: JSON data to send
-                headers: Optional additional headers
+Args:
+    session: HTTPSession from http_session_create
+    url: The URL to request
+    data: Form data to send
+    json: JSON data to send
+    headers: Optional additional headers
 
-            Returns:
-                Response dict (same as http_post)
-            
+Returns:
+    Response dict (same as http_post)
 
 **Parameters:**
 
@@ -1458,15 +1445,14 @@ Perform POST request using a session.
 
 Stream chunks from an HTTP response.
 
-            Args:
-                url: The URL to request
-                chunk_size: Size of each chunk in bytes (default: 8192)
-                headers: Optional dictionary of HTTP headers
-                timeout: Request timeout in seconds (default: 30.0)
+Args:
+    url: The URL to request
+    chunk_size: Size of each chunk in bytes (default: 8192)
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
 
-            Yields:
-                Byte chunks from the response
-            
+Yields:
+    Byte chunks from the response
 
 **Parameters:**
 
@@ -1483,17 +1469,16 @@ Stream chunks from an HTTP response.
 
 Stream lines from an HTTP response.
 
-            Yields each line as it becomes available. Useful for streaming APIs
-            like Server-Sent Events or newline-delimited JSON.
+Yields each line as it becomes available. Useful for streaming APIs
+like Server-Sent Events or newline-delimited JSON.
 
-            Args:
-                url: The URL to request
-                headers: Optional dictionary of HTTP headers
-                timeout: Request timeout in seconds (default: 30.0)
+Args:
+    url: The URL to request
+    headers: Optional dictionary of HTTP headers
+    timeout: Request timeout in seconds (default: 30.0)
 
-            Yields:
-                Each line from the response (stripped of newlines)
-            
+Yields:
+    Each line from the response (stripped of newlines)
 
 **Parameters:**
 
@@ -1859,14 +1844,13 @@ Example:
 
 Get an attribute value from an HTML element.
 
-            Args:
-                element: BeautifulSoup element
-                attr: Attribute name (e.g., "href", "class", "id")
-                default: Value to return if attribute not found
+Args:
+    element: BeautifulSoup element
+    attr: Attribute name (e.g., "href", "class", "id")
+    default: Value to return if attribute not found
 
-            Returns:
-                Attribute value as string, or default if not found
-            
+Returns:
+    Attribute value as string, or default if not found
 
 **Parameters:**
 
@@ -1882,13 +1866,12 @@ Get an attribute value from an HTML element.
 
 Get the text content from an HTML element.
 
-            Args:
-                element: BeautifulSoup element
-                strip: Whether to strip whitespace (default: True)
+Args:
+    element: BeautifulSoup element
+    strip: Whether to strip whitespace (default: True)
 
-            Returns:
-                Text content of the element
-            
+Returns:
+    Text content of the element
 
 **Parameters:**
 
@@ -1903,12 +1886,11 @@ Get the text content from an HTML element.
 
 Parse an HTML string into a BeautifulSoup object.
 
-            Args:
-                html_text: HTML content as a string
+Args:
+    html_text: HTML content as a string
 
-            Returns:
-                BeautifulSoup object for use with html_select* opcodes
-            
+Returns:
+    BeautifulSoup object for use with html_select* opcodes
 
 **Returns:** `Any`
 
@@ -1918,13 +1900,12 @@ Parse an HTML string into a BeautifulSoup object.
 
 Select elements matching a CSS selector.
 
-            Args:
-                soup: BeautifulSoup object or element (from html_parse)
-                selector: CSS selector string
+Args:
+    soup: BeautifulSoup object or element (from html_parse)
+    selector: CSS selector string
 
-            Returns:
-                List of matching elements (may be empty)
-            
+Returns:
+    List of matching elements (may be empty)
 
 **Parameters:**
 
@@ -1939,13 +1920,12 @@ Select elements matching a CSS selector.
 
 Select the first element matching a CSS selector.
 
-            Args:
-                soup: BeautifulSoup object or element (from html_parse)
-                selector: CSS selector string
+Args:
+    soup: BeautifulSoup object or element (from html_parse)
+    selector: CSS selector string
 
-            Returns:
-                First matching element, or None if no match
-            
+Returns:
+    First matching element, or None if no match
 
 **Parameters:**
 
@@ -1962,15 +1942,14 @@ Select the first element matching a CSS selector.
 
 Parse a JSON string into a Python object.
 
-        Args:
-            text: JSON string to parse
+Args:
+    text: JSON string to parse
 
-        Returns:
-            Parsed Python object (dict, list, str, int, float, bool, or None)
+Returns:
+    Parsed Python object (dict, list, str, int, float, bool, or None)
 
-        Raises:
-            ValueError: If the string is not valid JSON
-        
+Raises:
+    ValueError: If the string is not valid JSON
 
 **Returns:** `Any`
 
@@ -1980,16 +1959,15 @@ Parse a JSON string into a Python object.
 
 Convert a Python object to a JSON string.
 
-        Args:
-            obj: Python object to serialize
-            indent: Number of spaces for indentation (None for compact)
+Args:
+    obj: Python object to serialize
+    indent: Number of spaces for indentation (None for compact)
 
-        Returns:
-            JSON string representation
+Returns:
+    JSON string representation
 
-        Raises:
-            TypeError: If the object is not JSON serializable
-        
+Raises:
+    TypeError: If the object is not JSON serializable
 
 **Parameters:**
 
@@ -2525,15 +2503,14 @@ Example:
 
 Close the GCS client and release resources.
 
-        Args:
-            client: GCS client instance to close
+Args:
+    client: GCS client instance to close
 
-        Returns:
-            True when closed successfully
+Returns:
+    True when closed successfully
 
-        Example:
-            client: { node: my_client }
-        
+Example:
+    client: { node: my_client }
 
 **Returns:** `bool`
 
@@ -2543,23 +2520,22 @@ Close the GCS client and release resources.
 
 Copy an object within or between GCS buckets.
 
-        Args:
-            client: GCS client instance (from gcs_create_client)
-            source_bucket: Source bucket name
-            source_object: Source object name/path
-            dest_bucket: Destination bucket name
-            dest_object: Destination object name/path
+Args:
+    client: GCS client instance (from gcs_create_client)
+    source_bucket: Source bucket name
+    source_object: Source object name/path
+    dest_bucket: Destination bucket name
+    dest_object: Destination object name/path
 
-        Returns:
-            Dictionary with copy operation metadata
+Returns:
+    Dictionary with copy operation metadata
 
-        Example:
-            client: { node: my_client }
-            source_bucket: "source-bucket"
-            source_object: "path/to/file.pdf"
-            dest_bucket: "dest-bucket"
-            dest_object: "backup/file.pdf"
-        
+Example:
+    client: { node: my_client }
+    source_bucket: "source-bucket"
+    source_object: "path/to/file.pdf"
+    dest_bucket: "dest-bucket"
+    dest_object: "backup/file.pdf"
 
 **Parameters:**
 
@@ -2577,22 +2553,21 @@ Copy an object within or between GCS buckets.
 
 Create a Google Cloud Storage async client.
 
-        Args:
-            service_file: Optional path to service account JSON file
+Args:
+    service_file: Optional path to service account JSON file
 
-        Returns:
-            Storage client instance
+Returns:
+    Storage client instance
 
-        Example:
-            service_file: "/path/to/service-account.json"
+Example:
+    service_file: "/path/to/service-account.json"
 
-        Authentication:
-            Uses Google Cloud authentication in this order:
-            1. service_file parameter (if provided)
-            2. GOOGLE_APPLICATION_CREDENTIALS environment variable
-            3. gcloud auth application-default login
-            4. GCE/GKE metadata server (in cloud environments)
-        
+Authentication:
+    Uses Google Cloud authentication in this order:
+    1. service_file parameter (if provided)
+    2. GOOGLE_APPLICATION_CREDENTIALS environment variable
+    3. gcloud auth application-default login
+    4. GCE/GKE metadata server (in cloud environments)
 
 **Returns:** `Storage`
 
@@ -2602,19 +2577,18 @@ Create a Google Cloud Storage async client.
 
 Delete an object from GCS.
 
-        Args:
-            client: GCS client instance (from gcs_create_client)
-            bucket_name: Name of the bucket
-            object_name: Name/path of the object to delete
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object to delete
 
-        Returns:
-            True if deletion was successful
+Returns:
+    True if deletion was successful
 
-        Example:
-            client: { node: my_client }
-            bucket_name: "my-bucket"
-            object_name: "path/to/file.pdf"
-        
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.pdf"
 
 **Parameters:**
 
@@ -2630,19 +2604,18 @@ Delete an object from GCS.
 
 Download an object from GCS as bytes.
 
-        Args:
-            client: GCS client instance (from gcs_create_client)
-            bucket_name: Name of the bucket
-            object_name: Name/path of the object in the bucket
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object in the bucket
 
-        Returns:
-            Object content as bytes
+Returns:
+    Object content as bytes
 
-        Example:
-            client: { node: my_client }
-            bucket_name: "my-bucket"
-            object_name: "path/to/file.pdf"
-        
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.pdf"
 
 **Parameters:**
 
@@ -2658,20 +2631,19 @@ Download an object from GCS as bytes.
 
 Download an object from GCS as a string.
 
-        Args:
-            client: GCS client instance (from gcs_create_client)
-            bucket_name: Name of the bucket
-            object_name: Name/path of the object in the bucket
-            encoding: Text encoding (default: utf-8)
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object in the bucket
+    encoding: Text encoding (default: utf-8)
 
-        Returns:
-            Object content as string
+Returns:
+    Object content as string
 
-        Example:
-            client: { node: my_client }
-            bucket_name: "my-bucket"
-            object_name: "path/to/file.txt"
-        
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.txt"
 
 **Parameters:**
 
@@ -2688,24 +2660,23 @@ Download an object from GCS as a string.
 
 Get metadata for an object in GCS.
 
-        Args:
-            client: GCS client instance (from gcs_create_client)
-            bucket_name: Name of the bucket
-            object_name: Name/path of the object
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object
 
-        Returns:
-            Dictionary with object metadata including:
-            - name: Object name
-            - size: Size in bytes
-            - contentType: MIME type
-            - updated: Last modification timestamp
-            - md5Hash: MD5 hash of content
+Returns:
+    Dictionary with object metadata including:
+    - name: Object name
+    - size: Size in bytes
+    - contentType: MIME type
+    - updated: Last modification timestamp
+    - md5Hash: MD5 hash of content
 
-        Example:
-            client: { node: my_client }
-            bucket_name: "my-bucket"
-            object_name: "path/to/file.pdf"
-        
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.pdf"
 
 **Parameters:**
 
@@ -2721,20 +2692,19 @@ Get metadata for an object in GCS.
 
 List objects in a GCS bucket.
 
-        Args:
-            client: GCS client instance (from gcs_create_client)
-            bucket_name: Name of the bucket
-            prefix: Optional prefix to filter objects
-            max_results: Optional maximum number of results
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    prefix: Optional prefix to filter objects
+    max_results: Optional maximum number of results
 
-        Returns:
-            List of object metadata dictionaries
+Returns:
+    List of object metadata dictionaries
 
-        Example:
-            client: { node: my_client }
-            bucket_name: "my-bucket"
-            prefix: "uploads/"
-        
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    prefix: "uploads/"
 
 **Parameters:**
 
@@ -2751,19 +2721,18 @@ List objects in a GCS bucket.
 
 Check if an object exists in a GCS bucket.
 
-        Args:
-            client: GCS client instance (from gcs_create_client)
-            bucket_name: Name of the bucket
-            object_name: Name/path of the object to check
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object to check
 
-        Returns:
-            True if object exists, False otherwise
+Returns:
+    True if object exists, False otherwise
 
-        Example:
-            client: { node: my_client }
-            bucket_name: "my-bucket"
-            object_name: "path/to/file.pdf"
-        
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.pdf"
 
 **Parameters:**
 
@@ -2779,23 +2748,22 @@ Check if an object exists in a GCS bucket.
 
 Upload bytes to an object in GCS.
 
-        Args:
-            client: GCS client instance (from gcs_create_client)
-            bucket_name: Name of the bucket
-            object_name: Name/path for the object in the bucket
-            data: Bytes content to upload
-            content_type: Optional MIME type (e.g., "application/pdf")
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path for the object in the bucket
+    data: Bytes content to upload
+    content_type: Optional MIME type (e.g., "application/pdf")
 
-        Returns:
-            Dictionary with upload metadata
+Returns:
+    Dictionary with upload metadata
 
-        Example:
-            client: { node: my_client }
-            bucket_name: "my-bucket"
-            object_name: "uploads/document.pdf"
-            data: { variable: pdf_bytes }
-            content_type: "application/pdf"
-        
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "uploads/document.pdf"
+    data: { variable: pdf_bytes }
+    content_type: "application/pdf"
 
 **Parameters:**
 
@@ -2813,23 +2781,22 @@ Upload bytes to an object in GCS.
 
 Upload a string to an object in GCS.
 
-        Args:
-            client: GCS client instance (from gcs_create_client)
-            bucket_name: Name of the bucket
-            object_name: Name/path for the object in the bucket
-            data: String content to upload
-            content_type: MIME type (default: "text/plain")
-            encoding: Text encoding (default: utf-8)
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path for the object in the bucket
+    data: String content to upload
+    content_type: MIME type (default: "text/plain")
+    encoding: Text encoding (default: utf-8)
 
-        Returns:
-            Dictionary with upload metadata
+Returns:
+    Dictionary with upload metadata
 
-        Example:
-            client: { node: my_client }
-            bucket_name: "my-bucket"
-            object_name: "logs/output.txt"
-            data: "Hello, World!"
-        
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "logs/output.txt"
+    data: "Hello, World!"
 
 **Parameters:**
 
@@ -2852,14 +2819,13 @@ Upload a string to an object in GCS.
 
 Create an RGB color list.
 
-        Args:
-            r: Red value (0-255)
-            g: Green value (0-255)
-            b: Blue value (0-255)
+Args:
+    r: Red value (0-255)
+    g: Green value (0-255)
+    b: Blue value (0-255)
 
-        Returns:
-            List [r, g, b]
-        
+Returns:
+    List [r, g, b]
 
 **Parameters:**
 
@@ -2875,14 +2841,13 @@ Create an RGB color list.
 
 Create a pygame window and return the display surface.
 
-        Args:
-            width: Window width in pixels
-            height: Window height in pixels
-            title: Window title
+Args:
+    width: Window width in pixels
+    height: Window height in pixels
+    title: Window title
 
-        Returns:
-            pygame.Surface object representing the display
-        
+Returns:
+    pygame.Surface object representing the display
 
 **Parameters:**
 
@@ -2898,9 +2863,8 @@ Create a pygame window and return the display surface.
 
 Async delay in milliseconds.
 
-        Args:
-            milliseconds: Delay duration in milliseconds
-        
+Args:
+    milliseconds: Delay duration in milliseconds
 
 **Returns:** `NoneType`
 
@@ -2910,13 +2874,12 @@ Async delay in milliseconds.
 
 Draw a filled circle on the screen.
 
-        Args:
-            screen: The display surface
-            x: Center X position
-            y: Center Y position
-            radius: Circle radius
-            color: RGB color as [r, g, b]
-        
+Args:
+    screen: The display surface
+    x: Center X position
+    y: Center Y position
+    radius: Circle radius
+    color: RGB color as [r, g, b]
 
 **Parameters:**
 
@@ -2934,15 +2897,14 @@ Draw a filled circle on the screen.
 
 Draw a rectangle on the screen.
 
-        Args:
-            screen: The display surface
-            x: X position (left edge)
-            y: Y position (top edge)
-            width: Rectangle width
-            height: Rectangle height
-            color: RGB color as [r, g, b]
-            filled: If True, fill; if False, draw outline only
-        
+Args:
+    screen: The display surface
+    x: X position (left edge)
+    y: Y position (top edge)
+    width: Rectangle width
+    height: Rectangle height
+    color: RGB color as [r, g, b]
+    filled: If True, fill; if False, draw outline only
 
 **Parameters:**
 
@@ -2962,14 +2924,13 @@ Draw a rectangle on the screen.
 
 Draw text on the screen.
 
-        Args:
-            screen: The display surface
-            text: Text to render
-            x: X position (left edge)
-            y: Y position (top edge)
-            font_size: Font size in pixels (default: 48)
-            color: RGB color as [r, g, b], defaults to white
-        
+Args:
+    screen: The display surface
+    text: Text to render
+    x: X position (left edge)
+    y: Y position (top edge)
+    font_size: Font size in pixels (default: 48)
+    color: RGB color as [r, g, b], defaults to white
 
 **Parameters:**
 
@@ -2988,10 +2949,9 @@ Draw text on the screen.
 
 Fill the entire screen with a color.
 
-        Args:
-            screen: The display surface
-            color: RGB color as [r, g, b] where each value is 0-255
-        
+Args:
+    screen: The display surface
+    color: RGB color as [r, g, b] where each value is 0-255
 
 **Parameters:**
 
@@ -3006,12 +2966,11 @@ Fill the entire screen with a color.
 
 Check if a specific key is currently pressed.
 
-        Args:
-            key_name: Key name (e.g., "up", "down", "left", "right", "space")
+Args:
+    key_name: Key name (e.g., "up", "down", "left", "right", "space")
 
-        Returns:
-            True if key is pressed, False otherwise
-        
+Returns:
+    True if key is pressed, False otherwise
 
 **Returns:** `bool`
 
@@ -3021,12 +2980,11 @@ Check if a specific key is currently pressed.
 
 Get the height of the screen.
 
-        Args:
-            screen: The display surface
+Args:
+    screen: The display surface
 
-        Returns:
-            Height in pixels
-        
+Returns:
+    Height in pixels
 
 **Returns:** `int`
 
@@ -3036,12 +2994,11 @@ Get the height of the screen.
 
 Get the width of the screen.
 
-        Args:
-            screen: The display surface
+Args:
+    screen: The display surface
 
-        Returns:
-            Width in pixels
-        
+Returns:
+    Width in pixels
 
 **Returns:** `int`
 
@@ -3051,9 +3008,8 @@ Get the width of the screen.
 
 Get milliseconds since pygame.init() was called.
 
-        Returns:
-            Milliseconds elapsed since pygame initialization
-        
+Returns:
+    Milliseconds elapsed since pygame initialization
 
 **Returns:** `int`
 
@@ -3087,9 +3043,8 @@ Quit pygame and close all windows.
 
 Check if user wants to quit (clicked X button).
 
-        Returns:
-            True if quit event detected, False otherwise
-        
+Returns:
+    True if quit event detected, False otherwise
 
 **Returns:** `bool`
 
@@ -3111,19 +3066,18 @@ Update the display to show all drawn elements.
 
 Rerank search results using BM25 combined with semantic scores.
 
-        Combines the original semantic similarity score with BM25 keyword matching
-        for improved retrieval quality (hybrid search).
+Combines the original semantic similarity score with BM25 keyword matching
+for improved retrieval quality (hybrid search).
 
-        Args:
-            query: The search query
-            results: List of search results with 'payload' containing text and 'score'
-            top_k: Number of results to return (default: 10)
-            text_field: Field name in payload containing text (default: "text")
-            alpha: Weight for semantic score vs BM25 (0=BM25 only, 1=semantic only)
+Args:
+    query: The search query
+    results: List of search results with 'payload' containing text and 'score'
+    top_k: Number of results to return (default: 10)
+    text_field: Field name in payload containing text (default: "text")
+    alpha: Weight for semantic score vs BM25 (0=BM25 only, 1=semantic only)
 
-        Returns:
-            Reranked results with updated 'score' and 'bm25_score' added
-        
+Returns:
+    Reranked results with updated 'score' and 'bm25_score' added
 
 **Parameters:**
 
@@ -3141,15 +3095,14 @@ Rerank search results using BM25 combined with semantic scores.
 
 Create an embedding vector for a single text.
 
-            Args:
-                text: Text to embed
-                project: Google Cloud project ID
-                location: Google Cloud region (default: "us-central1")
-                model: Embedding model name (default: "text-embedding-004")
+Args:
+    text: Text to embed
+    project: Google Cloud project ID
+    location: Google Cloud region (default: "us-central1")
+    model: Embedding model name (default: "text-embedding-004")
 
-            Returns:
-                List of floats representing the embedding vector
-            
+Returns:
+    List of floats representing the embedding vector
 
 **Parameters:**
 
@@ -3166,15 +3119,14 @@ Create an embedding vector for a single text.
 
 Create embedding vectors for multiple texts (more efficient).
 
-            Args:
-                texts: List of texts to embed
-                project: Google Cloud project ID
-                location: Google Cloud region (default: "us-central1")
-                model: Embedding model name (default: "text-embedding-004")
+Args:
+    texts: List of texts to embed
+    project: Google Cloud project ID
+    location: Google Cloud region (default: "us-central1")
+    model: Embedding model name (default: "text-embedding-004")
 
-            Returns:
-                List of embedding vectors (each is a list of floats)
-            
+Returns:
+    List of embedding vectors (each is a list of floats)
 
 **Parameters:**
 
@@ -3191,12 +3143,11 @@ Create embedding vectors for multiple texts (more efficient).
 
 Extract text from a PDF file page by page.
 
-            Args:
-                file_path: Path to the PDF file
+Args:
+    file_path: Path to the PDF file
 
-            Returns:
-                List of strings, one per page
-            
+Returns:
+    List of strings, one per page
 
 **Returns:** `List[str]`
 
@@ -3206,12 +3157,11 @@ Extract text from a PDF file page by page.
 
 Extract text from PDF bytes page by page.
 
-            Args:
-                data: PDF content as bytes
+Args:
+    data: PDF content as bytes
 
-            Returns:
-                List of strings, one per page
-            
+Returns:
+    List of strings, one per page
 
 **Returns:** `List[str]`
 
@@ -3221,12 +3171,11 @@ Extract text from PDF bytes page by page.
 
 Extract all text from a PDF file.
 
-            Args:
-                file_path: Path to the PDF file
+Args:
+    file_path: Path to the PDF file
 
-            Returns:
-                Extracted text from all pages concatenated
-            
+Returns:
+    Extracted text from all pages concatenated
 
 **Returns:** `str`
 
@@ -3236,15 +3185,14 @@ Extract all text from a PDF file.
 
 Extract all text from PDF bytes.
 
-            Useful for processing PDFs downloaded from GCS or other sources
-            without writing to disk.
+Useful for processing PDFs downloaded from GCS or other sources
+without writing to disk.
 
-            Args:
-                data: PDF content as bytes
+Args:
+    data: PDF content as bytes
 
-            Returns:
-                Extracted text from all pages concatenated
-            
+Returns:
+    Extracted text from all pages concatenated
 
 **Returns:** `str`
 
@@ -3254,12 +3202,11 @@ Extract all text from PDF bytes.
 
 Get the number of pages in a PDF file.
 
-            Args:
-                file_path: Path to the PDF file
+Args:
+    file_path: Path to the PDF file
 
-            Returns:
-                Number of pages in the PDF
-            
+Returns:
+    Number of pages in the PDF
 
 **Returns:** `int`
 
@@ -3269,13 +3216,12 @@ Get the number of pages in a PDF file.
 
 Check if a Qdrant collection exists.
 
-            Args:
-                client: QdrantClient instance
-                name: Collection name to check
+Args:
+    client: QdrantClient instance
+    name: Collection name to check
 
-            Returns:
-                True if collection exists
-            
+Returns:
+    True if collection exists
 
 **Parameters:**
 
@@ -3290,12 +3236,11 @@ Check if a Qdrant collection exists.
 
 Create a Qdrant client connection.
 
-            Args:
-                url: Qdrant server URL (default: "http://localhost:6333")
+Args:
+    url: Qdrant server URL (default: "http://localhost:6333")
 
-            Returns:
-                QdrantClient instance
-            
+Returns:
+    QdrantClient instance
 
 **Returns:** `Any`
 
@@ -3305,14 +3250,13 @@ Create a Qdrant client connection.
 
 Create a Qdrant collection if it doesn't exist.
 
-            Args:
-                client: QdrantClient instance
-                name: Collection name
-                vector_size: Dimension of embedding vectors (default: 768)
+Args:
+    client: QdrantClient instance
+    name: Collection name
+    vector_size: Dimension of embedding vectors (default: 768)
 
-            Returns:
-                True if created, False if already existed
-            
+Returns:
+    True if created, False if already existed
 
 **Parameters:**
 
@@ -3328,14 +3272,13 @@ Create a Qdrant collection if it doesn't exist.
 
 Delete points from a Qdrant collection by IDs.
 
-            Args:
-                client: QdrantClient instance
-                collection: Collection name
-                point_ids: List of point IDs to delete
+Args:
+    client: QdrantClient instance
+    collection: Collection name
+    point_ids: List of point IDs to delete
 
-            Returns:
-                True if deletion was successful
-            
+Returns:
+    True if deletion was successful
 
 **Parameters:**
 
@@ -3351,13 +3294,12 @@ Delete points from a Qdrant collection by IDs.
 
 Delete a Qdrant collection.
 
-            Args:
-                client: QdrantClient instance
-                name: Collection name to delete
+Args:
+    client: QdrantClient instance
+    name: Collection name to delete
 
-            Returns:
-                True if deletion was successful
-            
+Returns:
+    True if deletion was successful
 
 **Parameters:**
 
@@ -3372,15 +3314,14 @@ Delete a Qdrant collection.
 
 Search for similar vectors in a Qdrant collection.
 
-            Args:
-                client: QdrantClient instance
-                collection: Collection name
-                query_vector: Embedding vector to search for
-                limit: Maximum number of results (default: 5)
+Args:
+    client: QdrantClient instance
+    collection: Collection name
+    query_vector: Embedding vector to search for
+    limit: Maximum number of results (default: 5)
 
-            Returns:
-                List of dicts with keys: id, score, payload
-            
+Returns:
+    List of dicts with keys: id, score, payload
 
 **Parameters:**
 
@@ -3397,16 +3338,15 @@ Search for similar vectors in a Qdrant collection.
 
 Insert or update a single point in a Qdrant collection.
 
-            Args:
-                client: QdrantClient instance
-                collection: Collection name
-                point_id: Unique identifier for the point
-                vector: Embedding vector
-                payload: Optional metadata dict
+Args:
+    client: QdrantClient instance
+    collection: Collection name
+    point_id: Unique identifier for the point
+    vector: Embedding vector
+    payload: Optional metadata dict
 
-            Returns:
-                True if upsert was successful
-            
+Returns:
+    True if upsert was successful
 
 **Parameters:**
 
@@ -3424,16 +3364,15 @@ Insert or update a single point in a Qdrant collection.
 
 Insert or update multiple points in a Qdrant collection.
 
-            Args:
-                client: QdrantClient instance
-                collection: Collection name
-                point_ids: List of unique identifiers
-                vectors: List of embedding vectors
-                payloads: Optional list of metadata dicts
+Args:
+    client: QdrantClient instance
+    collection: Collection name
+    point_ids: List of unique identifiers
+    vectors: List of embedding vectors
+    payloads: Optional list of metadata dicts
 
-            Returns:
-                True if upsert was successful
-            
+Returns:
+    True if upsert was successful
 
 **Parameters:**
 
@@ -3451,14 +3390,13 @@ Insert or update multiple points in a Qdrant collection.
 
 Split text into overlapping chunks for embedding.
 
-        Args:
-            text: Text to split into chunks
-            chunk_size: Maximum characters per chunk (default: 500)
-            overlap: Characters to overlap between chunks (default: 50)
+Args:
+    text: Text to split into chunks
+    chunk_size: Maximum characters per chunk (default: 500)
+    overlap: Characters to overlap between chunks (default: 50)
 
-        Returns:
-            List of text chunks
-        
+Returns:
+    List of text chunks
 
 **Parameters:**
 
@@ -3474,14 +3412,13 @@ Split text into overlapping chunks for embedding.
 
 Split text into chunks by sentence boundaries.
 
-        Args:
-            text: Text to split into chunks
-            sentences_per_chunk: Number of sentences per chunk (default: 5)
-            overlap: Number of sentences to overlap (default: 1)
+Args:
+    text: Text to split into chunks
+    sentences_per_chunk: Number of sentences per chunk (default: 5)
+    overlap: Number of sentences to overlap (default: 1)
 
-        Returns:
-            List of text chunks split at sentence boundaries
-        
+Returns:
+    List of text chunks split at sentence boundaries
 
 **Parameters:**
 
@@ -3497,16 +3434,15 @@ Split text into chunks by sentence boundaries.
 
 Split pages into chunks with page and line metadata.
 
-        Chunks text while tracking which page(s) and line(s) each chunk spans.
+Chunks text while tracking which page(s) and line(s) each chunk spans.
 
-        Args:
-            pages: List of page texts (from pdf_extract_pages)
-            chunk_size: Maximum characters per chunk (default: 500)
-            overlap: Characters to overlap between chunks (default: 50)
+Args:
+    pages: List of page texts (from pdf_extract_pages)
+    chunk_size: Maximum characters per chunk (default: 500)
+    overlap: Characters to overlap between chunks (default: 50)
 
-        Returns:
-            List of dicts with keys: text, page_start, page_end, line_start, line_end
-        
+Returns:
+    List of dicts with keys: text, page_start, page_end, line_start, line_end
 
 **Parameters:**
 
@@ -3522,18 +3458,17 @@ Split pages into chunks with page and line metadata.
 
 Split pages into chunks at sentence boundaries with page/line metadata.
 
-        Like text_chunk_pages but tries to break at sentence endings (., !, ?)
-        for better semantic coherence.
+Like text_chunk_pages but tries to break at sentence endings (., !, ?)
+for better semantic coherence.
 
-        Args:
-            pages: List of page texts (from pdf_extract_pages)
-            chunk_size: Target characters per chunk (default: 1000)
-            overlap: Target overlap between chunks (default: 200)
-            min_chunk_size: Minimum chunk size before forcing a break (default: 100)
+Args:
+    pages: List of page texts (from pdf_extract_pages)
+    chunk_size: Target characters per chunk (default: 1000)
+    overlap: Target overlap between chunks (default: 200)
+    min_chunk_size: Minimum chunk size before forcing a break (default: 100)
 
-        Returns:
-            List of dicts with keys: text, page_start, page_end, line_start, line_end
-        
+Returns:
+    List of dicts with keys: text, page_start, page_end, line_start, line_end
 
 **Parameters:**
 
@@ -3768,13 +3703,12 @@ Returns:
 
 Add an assistant message to chat history.
 
-    Args:
-        history: The chat history list to modify
-        content: The assistant's response
+Args:
+    history: The chat history list to modify
+    content: The assistant's response
 
-    Returns:
-        The updated history
-    
+Returns:
+    The updated history
 
 **Parameters:**
 
@@ -3789,17 +3723,16 @@ Add an assistant message to chat history.
 
 Add a message to chat history.
 
-    Args:
-        history: The chat history list to modify
-        role: Message role - "user" or "assistant"
-        content: The message content
+Args:
+    history: The chat history list to modify
+    role: Message role - "user" or "assistant"
+    content: The message content
 
-    Returns:
-        The updated history (same list, modified in place)
+Returns:
+    The updated history (same list, modified in place)
 
-    Raises:
-        ValueError: If role is not "user" or "assistant"
-    
+Raises:
+    ValueError: If role is not "user" or "assistant"
 
 **Parameters:**
 
@@ -3815,13 +3748,12 @@ Add a message to chat history.
 
 Add a user message to chat history.
 
-    Args:
-        history: The chat history list to modify
-        content: The user's message
+Args:
+    history: The chat history list to modify
+    content: The user's message
 
-    Returns:
-        The updated history
-    
+Returns:
+    The updated history
 
 **Parameters:**
 
@@ -3836,12 +3768,11 @@ Add a user message to chat history.
 
 Clear all messages from chat history.
 
-    Args:
-        history: The chat history list to clear
+Args:
+    history: The chat history list to clear
 
-    Returns:
-        The same list, now empty
-    
+Returns:
+    The same list, now empty
 
 **Returns:** `List[dict]`
 
@@ -3851,9 +3782,8 @@ Clear all messages from chat history.
 
 Create a new empty chat history.
 
-    Returns:
-        Empty list ready to store chat messages
-    
+Returns:
+    Empty list ready to store chat messages
 
 **Returns:** `List[dict]`
 
@@ -3863,12 +3793,11 @@ Create a new empty chat history.
 
 Format chat history as a readable string.
 
-    Args:
-        history: The chat history list
+Args:
+    history: The chat history list
 
-    Returns:
-        Formatted string with each message on its own line
-    
+Returns:
+    Formatted string with each message on its own line
 
 **Returns:** `str`
 
@@ -3878,13 +3807,12 @@ Format chat history as a readable string.
 
 Get the last message from chat history.
 
-    Args:
-        history: The chat history list
-        role: Optional filter - get last message with this role
+Args:
+    history: The chat history list
+    role: Optional filter - get last message with this role
 
-    Returns:
-        The last message dict, or None if empty or no match
-    
+Returns:
+    The last message dict, or None if empty or no match
 
 **Parameters:**
 
@@ -3899,12 +3827,11 @@ Get the last message from chat history.
 
 Get the number of messages in chat history.
 
-    Args:
-        history: The chat history list
+Args:
+    history: The chat history list
 
-    Returns:
-        Number of messages
-    
+Returns:
+    Number of messages
 
 **Returns:** `int`
 
@@ -3914,12 +3841,11 @@ Get the number of messages in chat history.
 
 Convert chat history to a single prompt string for AI.
 
-    Args:
-        history: The chat history list
+Args:
+    history: The chat history list
 
-    Returns:
-        A formatted string containing the conversation context
-    
+Returns:
+    A formatted string containing the conversation context
 
 **Returns:** `str`
 
@@ -3929,21 +3855,20 @@ Convert chat history to a single prompt string for AI.
 
 Send a message to an AI agent with conversation history context.
 
-    This opcode:
-    1. Adds the user message to history
-    2. Builds a context-aware prompt from history
-    3. Sends to the agent
-    4. Adds the response to history
-    5. Returns the response
+This opcode:
+1. Adds the user message to history
+2. Builds a context-aware prompt from history
+3. Sends to the agent
+4. Adds the response to history
+5. Returns the response
 
-    Args:
-        agent: A pydantic-ai Agent instance
-        history: The chat history list (will be modified)
-        user_message: The new user message to send
+Args:
+    agent: A pydantic-ai Agent instance
+    history: The chat history list (will be modified)
+    user_message: The new user message to send
 
-    Returns:
-        The assistant's response string
-    
+Returns:
+    The assistant's response string
 
 **Parameters:**
 
@@ -4001,12 +3926,11 @@ Print a warning message with yellow indicator.
 
 Display/update a progress bar.
 
-    Args:
-        current: Current progress value
-        total: Total/max value
-        message: Optional message to show
-        width: Bar width in characters (default: 30)
-    
+Args:
+    current: Current progress value
+    total: Total/max value
+    message: Optional message to show
+    width: Bar width in characters (default: 30)
 
 **Parameters:**
 
@@ -4023,10 +3947,9 @@ Display/update a progress bar.
 
 Stop a spinner with failure indicator.
 
-    Args:
-        spinner: Spinner object from spinner_start
-        message: Error message to display
-    
+Args:
+    spinner: Spinner object from spinner_start
+    message: Error message to display
 
 **Parameters:**
 
@@ -4041,12 +3964,11 @@ Stop a spinner with failure indicator.
 
 Start an animated spinner.
 
-    Args:
-        message: Message to display next to spinner
+Args:
+    message: Message to display next to spinner
 
-    Returns:
-        Spinner object (use with spinner_stop, spinner_update)
-    
+Returns:
+    Spinner object (use with spinner_stop, spinner_update)
 
 **Returns:** `Spinner`
 
@@ -4056,11 +3978,10 @@ Start an animated spinner.
 
 Stop a spinner and show completion message.
 
-    Args:
-        spinner: Spinner object from spinner_start
-        message: Final message (empty = original message + "done")
-        success: True for checkmark, False for X mark
-    
+Args:
+    spinner: Spinner object from spinner_start
+    message: Final message (empty = original message + "done")
+    success: True for checkmark, False for X mark
 
 **Parameters:**
 
@@ -4076,10 +3997,9 @@ Stop a spinner and show completion message.
 
 Update the message of a running spinner.
 
-    Args:
-        spinner: Spinner object from spinner_start
-        message: New message to display
-    
+Args:
+    spinner: Spinner object from spinner_start
+    message: New message to display
 
 **Parameters:**
 
@@ -4096,15 +4016,14 @@ Update the message of a running spinner.
 
 Get file content from a repository at a specific ref.
 
-    Args:
-        owner: Repository owner
-        repo: Repository name
-        path: File path relative to repo root
-        ref: Git reference (branch, tag, or commit SHA)
+Args:
+    owner: Repository owner
+    repo: Repository name
+    path: File path relative to repo root
+    ref: Git reference (branch, tag, or commit SHA)
 
-    Returns:
-        File content as a string (UTF-8 decoded)
-    
+Returns:
+    File content as a string (UTF-8 decoded)
 
 **Parameters:**
 
@@ -4121,14 +4040,13 @@ Get file content from a repository at a specific ref.
 
 Get the full diff of a PR.
 
-    Args:
-        owner: Repository owner
-        repo: Repository name
-        pr_number: Pull request number
+Args:
+    owner: Repository owner
+    repo: Repository name
+    pr_number: Pull request number
 
-    Returns:
-        The PR diff as a string in unified diff format
-    
+Returns:
+    The PR diff as a string in unified diff format
 
 **Parameters:**
 
@@ -4144,14 +4062,13 @@ Get the full diff of a PR.
 
 Get list of files changed in a PR.
 
-    Args:
-        owner: Repository owner
-        repo: Repository name
-        pr_number: Pull request number
+Args:
+    owner: Repository owner
+    repo: Repository name
+    pr_number: Pull request number
 
-    Returns:
-        List of dicts with: path, additions, deletions, status
-    
+Returns:
+    List of dicts with: path, additions, deletions, status
 
 **Parameters:**
 
@@ -4167,14 +4084,13 @@ Get list of files changed in a PR.
 
 Get PR metadata from GitHub.
 
-    Args:
-        owner: Repository owner (e.g., "anthropics")
-        repo: Repository name (e.g., "lex-flow")
-        pr_number: Pull request number
+Args:
+    owner: Repository owner (e.g., "anthropics")
+    repo: Repository name (e.g., "lex-flow")
+    pr_number: Pull request number
 
-    Returns:
-        Dict with: title, body, author, state, base_branch, head_branch, url
-    
+Returns:
+    Dict with: title, body, author, state, base_branch, head_branch, url
 
 **Parameters:**
 
@@ -4190,13 +4106,12 @@ Get PR metadata from GitHub.
 
 Get repository metadata.
 
-    Args:
-        owner: Repository owner
-        repo: Repository name
+Args:
+    owner: Repository owner
+    repo: Repository name
 
-    Returns:
-        Dict with: name, full_name, description, default_branch, url, is_private
-    
+Returns:
+    Dict with: name, full_name, description, default_branch, url, is_private
 
 **Parameters:**
 
@@ -4211,9 +4126,8 @@ Get repository metadata.
 
 Check if GitHub CLI is available and authenticated.
 
-    Returns:
-        True if gh CLI is installed and authenticated
-    
+Returns:
+    True if gh CLI is installed and authenticated
 
 **Returns:** `bool`
 
@@ -4223,14 +4137,13 @@ Check if GitHub CLI is available and authenticated.
 
 Get all comments on a PR.
 
-    Args:
-        owner: Repository owner
-        repo: Repository name
-        pr_number: Pull request number
+Args:
+    owner: Repository owner
+    repo: Repository name
+    pr_number: Pull request number
 
-    Returns:
-        List of comment dicts with: id, author, body, created_at, type
-    
+Returns:
+    List of comment dicts with: id, author, body, created_at, type
 
 **Parameters:**
 
@@ -4250,21 +4163,20 @@ Get all comments on a PR.
 
 Acknowledge a single message received from pubsub_pull_messages.
 
-        Args:
-            subscriber: Subscriber client instance
-            project_id: GCP project ID
-            subscription_id: Subscription ID
-            message: Message dictionary with ack_id from pubsub_pull_messages
+Args:
+    subscriber: Subscriber client instance
+    project_id: GCP project ID
+    subscription_id: Subscription ID
+    message: Message dictionary with ack_id from pubsub_pull_messages
 
-        Returns:
-            True if acknowledged successfully
+Returns:
+    True if acknowledged successfully
 
-        Example:
-            subscriber: { variable: my_subscriber }
-            project_id: "my-gcp-project"
-            subscription_id: "my-subscription"
-            message: { variable: msg }
-        
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    message: { variable: msg }
 
 **Parameters:**
 
@@ -4281,21 +4193,20 @@ Acknowledge a single message received from pubsub_pull_messages.
 
 Acknowledge messages that have been processed.
 
-        Args:
-            subscriber: Subscriber client instance (from pubsub_create_subscriber)
-            project_id: GCP project ID
-            subscription_id: Subscription ID (not the full path)
-            ack_ids: List of acknowledgment IDs from pulled messages
+Args:
+    subscriber: Subscriber client instance (from pubsub_create_subscriber)
+    project_id: GCP project ID
+    subscription_id: Subscription ID (not the full path)
+    ack_ids: List of acknowledgment IDs from pulled messages
 
-        Returns:
-            True if acknowledgment was successful
+Returns:
+    True if acknowledgment was successful
 
-        Example:
-            subscriber: { variable: my_subscriber }
-            project_id: "my-gcp-project"
-            subscription_id: "my-subscription"
-            ack_ids: { variable: message_ack_ids }
-        
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    ack_ids: { variable: message_ack_ids }
 
 **Parameters:**
 
@@ -4312,15 +4223,14 @@ Acknowledge messages that have been processed.
 
 Close the publisher client and release resources.
 
-        Args:
-            publisher: Publisher client instance to close
+Args:
+    publisher: Publisher client instance to close
 
-        Returns:
-            True if closed successfully
+Returns:
+    True if closed successfully
 
-        Example:
-            publisher: { variable: my_publisher }
-        
+Example:
+    publisher: { variable: my_publisher }
 
 **Returns:** `bool`
 
@@ -4330,15 +4240,14 @@ Close the publisher client and release resources.
 
 Close the subscriber client and release resources.
 
-        Args:
-            subscriber: Subscriber client instance to close
+Args:
+    subscriber: Subscriber client instance to close
 
-        Returns:
-            True if closed successfully
+Returns:
+    True if closed successfully
 
-        Example:
-            subscriber: { variable: my_subscriber }
-        
+Example:
+    subscriber: { variable: my_subscriber }
 
 **Returns:** `bool`
 
@@ -4348,21 +4257,20 @@ Close the subscriber client and release resources.
 
 Create a Google Cloud Pub/Sub publisher client.
 
-        Returns:
-            PublisherClient instance
+Returns:
+    PublisherClient instance
 
-        Example:
-            (no inputs required)
+Example:
+    (no inputs required)
 
-        Authentication:
-            Requires Google Cloud authentication via:
-            - gcloud auth application-default login
-            - Or GOOGLE_APPLICATION_CREDENTIALS environment variable
+Authentication:
+    Requires Google Cloud authentication via:
+    - gcloud auth application-default login
+    - Or GOOGLE_APPLICATION_CREDENTIALS environment variable
 
-        Note:
-            Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
-            When set, authentication is automatically skipped.
-        
+Note:
+    Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
+    When set, authentication is automatically skipped.
 
 **Returns:** `PublisherClient`
 
@@ -4372,21 +4280,20 @@ Create a Google Cloud Pub/Sub publisher client.
 
 Create a Google Cloud Pub/Sub subscriber client.
 
-        Returns:
-            SubscriberClient instance
+Returns:
+    SubscriberClient instance
 
-        Example:
-            (no inputs required)
+Example:
+    (no inputs required)
 
-        Authentication:
-            Requires Google Cloud authentication via:
-            - gcloud auth application-default login
-            - Or GOOGLE_APPLICATION_CREDENTIALS environment variable
+Authentication:
+    Requires Google Cloud authentication via:
+    - gcloud auth application-default login
+    - Or GOOGLE_APPLICATION_CREDENTIALS environment variable
 
-        Note:
-            Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
-            When set, authentication is automatically skipped.
-        
+Note:
+    Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
+    When set, authentication is automatically skipped.
 
 **Returns:** `SubscriberClient`
 
@@ -4396,21 +4303,20 @@ Create a Google Cloud Pub/Sub subscriber client.
 
 Negative-acknowledge a message (return to queue for redelivery).
 
-        Args:
-            subscriber: Subscriber client instance
-            project_id: GCP project ID
-            subscription_id: Subscription ID
-            message: Message dictionary with ack_id from pubsub_pull_messages
+Args:
+    subscriber: Subscriber client instance
+    project_id: GCP project ID
+    subscription_id: Subscription ID
+    message: Message dictionary with ack_id from pubsub_pull_messages
 
-        Returns:
-            True if nack'd successfully
+Returns:
+    True if nack'd successfully
 
-        Example:
-            subscriber: { variable: my_subscriber }
-            project_id: "my-gcp-project"
-            subscription_id: "my-subscription"
-            message: { variable: msg }
-        
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    message: { variable: msg }
 
 **Parameters:**
 
@@ -4427,27 +4333,26 @@ Negative-acknowledge a message (return to queue for redelivery).
 
 Publish multiple messages to a Pub/Sub topic.
 
-        Args:
-            publisher: Publisher client instance (from pubsub_create_publisher)
-            project_id: GCP project ID
-            topic_id: Topic ID (not the full path)
-            messages: List of message dictionaries, each with:
-                - data: Message data as string (required)
-                - attributes: Optional dictionary of attributes
+Args:
+    publisher: Publisher client instance (from pubsub_create_publisher)
+    project_id: GCP project ID
+    topic_id: Topic ID (not the full path)
+    messages: List of message dictionaries, each with:
+        - data: Message data as string (required)
+        - attributes: Optional dictionary of attributes
 
-        Returns:
-            List of message IDs for the published messages
+Returns:
+    List of message IDs for the published messages
 
-        Example:
-            publisher: { variable: my_publisher }
-            project_id: "my-gcp-project"
-            topic_id: "my-topic"
-            messages:
-              - data: "First message"
-                attributes: { "index": "1" }
-              - data: "Second message"
-                attributes: { "index": "2" }
-        
+Example:
+    publisher: { variable: my_publisher }
+    project_id: "my-gcp-project"
+    topic_id: "my-topic"
+    messages:
+      - data: "First message"
+        attributes: { "index": "1" }
+      - data: "Second message"
+        attributes: { "index": "2" }
 
 **Parameters:**
 
@@ -4464,21 +4369,20 @@ Publish multiple messages to a Pub/Sub topic.
 
 Publish a message to a Pub/Sub topic.
 
-        Args:
-            publisher: Publisher client instance (from pubsub_create_publisher)
-            project_id: GCP project ID
-            topic_id: Topic ID (not the full path)
-            data: Message data as string
+Args:
+    publisher: Publisher client instance (from pubsub_create_publisher)
+    project_id: GCP project ID
+    topic_id: Topic ID (not the full path)
+    data: Message data as string
 
-        Returns:
-            Message ID of the published message
+Returns:
+    Message ID of the published message
 
-        Example:
-            publisher: { variable: my_publisher }
-            project_id: "my-gcp-project"
-            topic_id: "my-topic"
-            data: "Hello, Pub/Sub!"
-        
+Example:
+    publisher: { variable: my_publisher }
+    project_id: "my-gcp-project"
+    topic_id: "my-topic"
+    data: "Hello, Pub/Sub!"
 
 **Parameters:**
 
@@ -4495,23 +4399,22 @@ Publish a message to a Pub/Sub topic.
 
 Publish a message with custom attributes to a Pub/Sub topic.
 
-        Args:
-            publisher: Publisher client instance (from pubsub_create_publisher)
-            project_id: GCP project ID
-            topic_id: Topic ID (not the full path)
-            data: Message data as string
-            attributes: Dictionary of custom attributes (string keys and values)
+Args:
+    publisher: Publisher client instance (from pubsub_create_publisher)
+    project_id: GCP project ID
+    topic_id: Topic ID (not the full path)
+    data: Message data as string
+    attributes: Dictionary of custom attributes (string keys and values)
 
-        Returns:
-            Message ID of the published message
+Returns:
+    Message ID of the published message
 
-        Example:
-            publisher: { variable: my_publisher }
-            project_id: "my-gcp-project"
-            topic_id: "my-topic"
-            data: "Hello with attributes!"
-            attributes: { "type": "greeting", "priority": "high" }
-        
+Example:
+    publisher: { variable: my_publisher }
+    project_id: "my-gcp-project"
+    topic_id: "my-topic"
+    data: "Hello with attributes!"
+    attributes: { "type": "greeting", "priority": "high" }
 
 **Parameters:**
 
@@ -4529,26 +4432,25 @@ Publish a message with custom attributes to a Pub/Sub topic.
 
 Pull messages from a Pub/Sub subscription.
 
-        Args:
-            subscriber: Subscriber client instance (from pubsub_create_subscriber)
-            project_id: GCP project ID
-            subscription_id: Subscription ID (not the full path)
-            max_messages: Maximum number of messages to pull (default: 10)
+Args:
+    subscriber: Subscriber client instance (from pubsub_create_subscriber)
+    project_id: GCP project ID
+    subscription_id: Subscription ID (not the full path)
+    max_messages: Maximum number of messages to pull (default: 10)
 
-        Returns:
-            List of message dictionaries with keys:
-            - ack_id: Acknowledgment ID (needed for acknowledging)
-            - message_id: Message ID
-            - data: Message data as string
-            - attributes: Message attributes dictionary
-            - publish_time: Publish timestamp as ISO string
+Returns:
+    List of message dictionaries with keys:
+    - ack_id: Acknowledgment ID (needed for acknowledging)
+    - message_id: Message ID
+    - data: Message data as string
+    - attributes: Message attributes dictionary
+    - publish_time: Publish timestamp as ISO string
 
-        Example:
-            subscriber: { variable: my_subscriber }
-            project_id: "my-gcp-project"
-            subscription_id: "my-subscription"
-            max_messages: 5
-        
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    max_messages: 5
 
 **Parameters:**
 
@@ -4565,70 +4467,69 @@ Pull messages from a Pub/Sub subscription.
 
 Subscribe to a Pub/Sub subscription and stream messages as an async generator.
 
-        This opcode returns an async generator that yields messages as they arrive.
-        Use with control_async_foreach to process messages continuously.
+This opcode returns an async generator that yields messages as they arrive.
+Use with control_async_foreach to process messages continuously.
 
-        Uses exponential backoff when no messages are available: starts at
-        min_poll_interval and doubles up to max_poll_interval. Resets to
-        min_poll_interval when messages are received.
+Uses exponential backoff when no messages are available: starts at
+min_poll_interval and doubles up to max_poll_interval. Resets to
+min_poll_interval when messages are received.
 
-        Args:
-            subscriber: Subscriber client instance (from pubsub_create_subscriber)
-            project_id: GCP project ID
-            subscription_id: Subscription ID (not the full path)
-            timeout: Optional timeout in seconds. If None, runs indefinitely.
-            max_messages: Optional max number of messages to receive before stopping.
-            batch_size: Messages to pull per request (default: 10)
-            min_poll_interval: Initial/minimum sleep between polls in seconds (default: 0.1)
-            max_poll_interval: Maximum sleep during backoff in seconds (default: 5.0)
-            max_retries: Maximum consecutive errors before raising (default: 10)
+Args:
+    subscriber: Subscriber client instance (from pubsub_create_subscriber)
+    project_id: GCP project ID
+    subscription_id: Subscription ID (not the full path)
+    timeout: Optional timeout in seconds. If None, runs indefinitely.
+    max_messages: Optional max number of messages to receive before stopping.
+    batch_size: Messages to pull per request (default: 10)
+    min_poll_interval: Initial/minimum sleep between polls in seconds (default: 0.1)
+    max_poll_interval: Maximum sleep during backoff in seconds (default: 5.0)
+    max_retries: Maximum consecutive errors before raising (default: 10)
 
-        Yields:
-            Message dictionaries with keys:
-            - ack_id: Acknowledgment ID
-            - message_id: Message ID
-            - data: Message data as string
-            - attributes: Message attributes dictionary
-            - publish_time: Publish timestamp as ISO string
+Yields:
+    Message dictionaries with keys:
+    - ack_id: Acknowledgment ID
+    - message_id: Message ID
+    - data: Message data as string
+    - attributes: Message attributes dictionary
+    - publish_time: Publish timestamp as ISO string
 
-        Note:
-            The subscriber client is NOT closed by this opcode. Use
-            pubsub_close_subscriber to clean up after streaming completes.
+Note:
+    The subscriber client is NOT closed by this opcode. Use
+    pubsub_close_subscriber to clean up after streaming completes.
 
-        Example:
-            subscriber: { variable: my_subscriber }
-            project_id: "my-gcp-project"
-            subscription_id: "my-subscription"
-            timeout: 60
-            max_messages: 100
-            batch_size: 20
-            min_poll_interval: 0.05
-            max_poll_interval: 10.0
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    timeout: 60
+    max_messages: 100
+    batch_size: 20
+    min_poll_interval: 0.05
+    max_poll_interval: 10.0
 
-        Usage in workflow:
-            create_subscriber:
-              opcode: pubsub_create_subscriber
-              isReporter: true
+Usage in workflow:
+    create_subscriber:
+      opcode: pubsub_create_subscriber
+      isReporter: true
 
-            subscribe:
-              opcode: pubsub_subscribe_stream
-              isReporter: true
-              inputs:
-                subscriber: { node: create_subscriber }
-                project_id: { variable: project_id }
-                subscription_id: { variable: subscription_id }
-                timeout: { literal: 30 }
-                batch_size: { literal: 20 }
+    subscribe:
+      opcode: pubsub_subscribe_stream
+      isReporter: true
+      inputs:
+        subscriber: { node: create_subscriber }
+        project_id: { variable: project_id }
+        subscription_id: { variable: subscription_id }
+        timeout: { literal: 30 }
+        batch_size: { literal: 20 }
 
-            process_messages:
-              opcode: control_async_foreach
-              inputs:
-                VAR: { literal: "msg" }
-                ITERABLE: { node: subscribe }
-              branches:
-                BODY:
-                  - handle_message
-        
+    process_messages:
+      opcode: control_async_foreach
+      inputs:
+        VAR: { literal: "msg" }
+        ITERABLE: { node: subscribe }
+      branches:
+        BODY:
+          - handle_message
 
 **Parameters:**
 
@@ -4652,17 +4553,16 @@ Subscribe to a Pub/Sub subscription and stream messages as an async generator.
 
 Wait for a background task to complete and get its result.
 
-    Args:
-        task: LexFlowTask handle from control_spawn
-        timeout: Optional timeout in seconds
+Args:
+    task: LexFlowTask handle from control_spawn
+    timeout: Optional timeout in seconds
 
-    Returns:
-        The task's return value
+Returns:
+    The task's return value
 
-    Raises:
-        asyncio.TimeoutError: If timeout exceeded
-        Exception: If the task raised an exception
-    
+Raises:
+    asyncio.TimeoutError: If timeout exceeded
+    Exception: If the task raised an exception
 
 **Parameters:**
 
@@ -4677,13 +4577,12 @@ Wait for a background task to complete and get its result.
 
 Wait for multiple tasks to complete.
 
-    Args:
-        tasks: List of LexFlowTask handles
-        timeout: Optional timeout in seconds
+Args:
+    tasks: List of LexFlowTask handles
+    timeout: Optional timeout in seconds
 
-    Returns:
-        List of results in the same order as tasks
-    
+Returns:
+    List of results in the same order as tasks
 
 **Parameters:**
 
@@ -4698,12 +4597,11 @@ Wait for multiple tasks to complete.
 
 Request cancellation of a background task.
 
-    Args:
-        task: LexFlowTask handle from control_spawn
+Args:
+    task: LexFlowTask handle from control_spawn
 
-    Returns:
-        True if cancel was requested
-    
+Returns:
+    True if cancel was requested
 
 **Returns:** `bool`
 
@@ -4713,12 +4611,11 @@ Request cancellation of a background task.
 
 Get the exception message from a failed task.
 
-    Args:
-        task: LexFlowTask handle from control_spawn
+Args:
+    task: LexFlowTask handle from control_spawn
 
-    Returns:
-        Exception message as string, or None if succeeded/not done
-    
+Returns:
+    Exception message as string, or None if succeeded/not done
 
 **Returns:** `Optional[str]`
 
@@ -4728,12 +4625,11 @@ Get the exception message from a failed task.
 
 Get the ID of a task.
 
-    Args:
-        task: LexFlowTask handle from control_spawn
+Args:
+    task: LexFlowTask handle from control_spawn
 
-    Returns:
-        The task's unique ID
-    
+Returns:
+    The task's unique ID
 
 **Returns:** `int`
 
@@ -4743,12 +4639,11 @@ Get the ID of a task.
 
 Check if a background task has completed.
 
-    Args:
-        task: LexFlowTask handle from control_spawn
+Args:
+    task: LexFlowTask handle from control_spawn
 
-    Returns:
-        True if task is done (completed, cancelled, or failed)
-    
+Returns:
+    True if task is done (completed, cancelled, or failed)
 
 **Returns:** `bool`
 
@@ -4758,12 +4653,11 @@ Check if a background task has completed.
 
 Get the name of a task.
 
-    Args:
-        task: LexFlowTask handle from control_spawn
+Args:
+    task: LexFlowTask handle from control_spawn
 
-    Returns:
-        The task's name
-    
+Returns:
+    The task's name
 
 **Returns:** `str`
 
@@ -4773,15 +4667,14 @@ Get the name of a task.
 
 Get the result of a completed task.
 
-    Args:
-        task: LexFlowTask handle from control_spawn
+Args:
+    task: LexFlowTask handle from control_spawn
 
-    Returns:
-        The task's return value
+Returns:
+    The task's return value
 
-    Raises:
-        InvalidStateError: If task is not done
-    
+Raises:
+    InvalidStateError: If task is not done
 
 **Returns:** `Any`
 
@@ -4791,9 +4684,8 @@ Get the result of a completed task.
 
 Sleep for the specified number of seconds.
 
-    Args:
-        seconds: Duration to sleep
-    
+Args:
+    seconds: Duration to sleep
 
 **Returns:** `NoneType`
 
@@ -4813,9 +4705,8 @@ Yield control to other tasks momentarily.
 
 Close a channel.
 
-    Args:
-        channel: The channel to close
-    
+Args:
+    channel: The channel to close
 
 **Returns:** `NoneType`
 
@@ -4825,12 +4716,11 @@ Close a channel.
 
 Create a new channel for inter-task communication.
 
-    Args:
-        size: Buffer size (0 for unbuffered/synchronous)
+Args:
+    size: Buffer size (0 for unbuffered/synchronous)
 
-    Returns:
-        A new Channel object
-    
+Returns:
+    A new Channel object
 
 **Returns:** `Channel`
 
@@ -4840,12 +4730,11 @@ Create a new channel for inter-task communication.
 
 Check if a channel is closed.
 
-    Args:
-        channel: The channel to check
+Args:
+    channel: The channel to check
 
-    Returns:
-        True if closed
-    
+Returns:
+    True if closed
 
 **Returns:** `bool`
 
@@ -4855,12 +4744,11 @@ Check if a channel is closed.
 
 Check if a channel buffer is empty.
 
-    Args:
-        channel: The channel to check
+Args:
+    channel: The channel to check
 
-    Returns:
-        True if empty
-    
+Returns:
+    True if empty
 
 **Returns:** `bool`
 
@@ -4870,12 +4758,11 @@ Check if a channel buffer is empty.
 
 Get the number of items in the channel buffer.
 
-    Args:
-        channel: The channel to check
+Args:
+    channel: The channel to check
 
-    Returns:
-        Number of items in buffer
-    
+Returns:
+    Number of items in buffer
 
 **Returns:** `int`
 
@@ -4885,19 +4772,18 @@ Get the number of items in the channel buffer.
 
 Receive a value from a channel.
 
-    Blocks until a value is available.
+Blocks until a value is available.
 
-    Args:
-        channel: The channel to receive from
-        timeout: Optional timeout in seconds
+Args:
+    channel: The channel to receive from
+    timeout: Optional timeout in seconds
 
-    Returns:
-        The received value
+Returns:
+    The received value
 
-    Raises:
-        asyncio.TimeoutError: If timeout exceeded
-        RuntimeError: If channel is closed and empty
-    
+Raises:
+    asyncio.TimeoutError: If timeout exceeded
+    RuntimeError: If channel is closed and empty
 
 **Parameters:**
 
@@ -4912,15 +4798,14 @@ Receive a value from a channel.
 
 Send a value through a channel.
 
-    Blocks if the channel buffer is full.
+Blocks if the channel buffer is full.
 
-    Args:
-        channel: The channel to send to
-        value: The value to send
+Args:
+    channel: The channel to send to
+    value: The value to send
 
-    Raises:
-        RuntimeError: If the channel is closed
-    
+Raises:
+    RuntimeError: If the channel is closed
 
 **Parameters:**
 
@@ -4935,12 +4820,11 @@ Send a value through a channel.
 
 Try to receive a value without blocking.
 
-    Args:
-        channel: The channel to receive from
+Args:
+    channel: The channel to receive from
 
-    Returns:
-        Dict with keys: value, ok (True if received)
-    
+Returns:
+    Dict with keys: value, ok (True if received)
 
 **Returns:** `dict`
 
@@ -4952,9 +4836,8 @@ Try to receive a value without blocking.
 
 Clear an event (reset to unset state).
 
-    Args:
-        event: The event to clear
-    
+Args:
+    event: The event to clear
 
 **Returns:** `NoneType`
 
@@ -4964,9 +4847,8 @@ Clear an event (reset to unset state).
 
 Create an event for signaling between tasks.
 
-    Returns:
-        An asyncio.Event
-    
+Returns:
+    An asyncio.Event
 
 **Returns:** `Event`
 
@@ -4976,12 +4858,11 @@ Create an event for signaling between tasks.
 
 Check if an event is set.
 
-    Args:
-        event: The event to check
+Args:
+    event: The event to check
 
-    Returns:
-        True if set
-    
+Returns:
+    True if set
 
 **Returns:** `bool`
 
@@ -4991,9 +4872,8 @@ Check if an event is set.
 
 Set an event (signal waiting tasks).
 
-    Args:
-        event: The event to set
-    
+Args:
+    event: The event to set
 
 **Returns:** `NoneType`
 
@@ -5003,13 +4883,12 @@ Set an event (signal waiting tasks).
 
 Wait for an event to be set.
 
-    Args:
-        event: The event to wait for
-        timeout: Optional timeout in seconds
+Args:
+    event: The event to wait for
+    timeout: Optional timeout in seconds
 
-    Returns:
-        True if event was set, False if timeout
-    
+Returns:
+    True if event was set, False if timeout
 
 **Parameters:**
 
@@ -5024,13 +4903,12 @@ Wait for an event to be set.
 
 Acquire a semaphore permit.
 
-    Args:
-        semaphore: The semaphore to acquire
-        timeout: Optional timeout in seconds
+Args:
+    semaphore: The semaphore to acquire
+    timeout: Optional timeout in seconds
 
-    Returns:
-        True if acquired, False if timeout
-    
+Returns:
+    True if acquired, False if timeout
 
 **Parameters:**
 
@@ -5045,12 +4923,11 @@ Acquire a semaphore permit.
 
 Create a semaphore for limiting concurrent access.
 
-    Args:
-        permits: Number of permits (1 for mutex)
+Args:
+    permits: Number of permits (1 for mutex)
 
-    Returns:
-        An asyncio.Semaphore
-    
+Returns:
+    An asyncio.Semaphore
 
 **Returns:** `Semaphore`
 
@@ -5060,9 +4937,8 @@ Create a semaphore for limiting concurrent access.
 
 Release a semaphore permit.
 
-    Args:
-        semaphore: The semaphore to release
-    
+Args:
+    semaphore: The semaphore to release
 
 **Returns:** `NoneType`
 

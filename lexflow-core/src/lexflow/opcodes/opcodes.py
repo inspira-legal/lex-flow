@@ -298,7 +298,7 @@ class OpcodeRegistry:
         return name in self._privileged
 
     @staticmethod
-    def _format_type_hint(type_hint) -> str:
+    def _format_type_hint(type_hint: Any) -> str:
         """Format a type hint preserving generic parameters."""
         if getattr(type_hint, "__origin__", None) is not None:
             return str(type_hint).replace("typing.", "")
@@ -343,7 +343,9 @@ class OpcodeRegistry:
             "name": name,
             "parameters": params,
             "return_type": return_type_name,
-            "doc": original_func.__doc__,
+            "doc": inspect.cleandoc(original_func.__doc__)
+            if original_func.__doc__
+            else None,
         }
 
     def list_opcodes(self, include_private: bool = False) -> list[str]:
