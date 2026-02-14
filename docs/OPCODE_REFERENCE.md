@@ -385,7 +385,7 @@ Split string by delimiter.
 - `text` (str, required)
 - `delimiter` (str, optional, default: `" "`)
 
-**Returns:** `list`
+**Returns:** `list[str]`
 
 ---
 
@@ -410,7 +410,6 @@ Args:
     text: Source string
     start: Start index (0-based)
     end: End index (exclusive), or None for rest of string
-
 
 **Parameters:**
 
@@ -497,7 +496,7 @@ Create a range as list.
 - `stop` (int, optional, default: `None`)
 - `step` (int, optional, default: `1`)
 
-**Returns:** `list`
+**Returns:** `list[int]`
 
 ---
 
@@ -686,7 +685,7 @@ Get property value with optional default.
 
 **Parameters:**
 
-- `obj` (Union, required)
+- `obj` (Union[types.SimpleNamespace, dict], required)
 - `key` (str, required)
 - `default` (Any, optional, default: `None`)
 
@@ -700,7 +699,7 @@ Check if object has property.
 
 **Parameters:**
 
-- `obj` (Union, required)
+- `obj` (Union[types.SimpleNamespace, dict], required)
 - `key` (str, required)
 
 **Returns:** `bool`
@@ -721,10 +720,10 @@ Remove property (returns object for chaining).
 
 **Parameters:**
 
-- `obj` (Union, required)
+- `obj` (Union[types.SimpleNamespace, dict], required)
 - `key` (str, required)
 
-**Returns:** `Union`
+**Returns:** `Union[types.SimpleNamespace, dict]`
 
 ---
 
@@ -734,11 +733,11 @@ Set property value (returns object for chaining).
 
 **Parameters:**
 
-- `obj` (Union, required)
+- `obj` (Union[types.SimpleNamespace, dict], required)
 - `key` (str, required)
 - `value` (Any, required)
 
-**Returns:** `Union`
+**Returns:** `Union[types.SimpleNamespace, dict]`
 
 ---
 
@@ -788,7 +787,7 @@ Get length of a value.
 
 Create a range as list.
 
-**Returns:** `list`
+**Returns:** `list[int]`
 
 ---
 
@@ -1083,13 +1082,12 @@ Args:
 Yields:
     Each item from the list
 
-
 **Parameters:**
 
-- `items` (List, required)
+- `items` (List[Any], required)
 - `delay` (float, optional, default: `0`)
 
-**Returns:** `AsyncGenerator`
+**Returns:** `AsyncGenerator[Any, NoneType]`
 
 ---
 
@@ -1109,7 +1107,6 @@ Args:
 Yields:
     Integers in the range
 
-
 **Parameters:**
 
 - `start` (int, required)
@@ -1117,7 +1114,7 @@ Yields:
 - `step` (int, optional, default: `1`)
 - `delay` (float, optional, default: `0`)
 
-**Returns:** `AsyncGenerator`
+**Returns:** `AsyncGenerator[int, NoneType]`
 
 ---
 
@@ -1151,7 +1148,6 @@ Args:
 Returns:
     Agent instance ready to use
 
-
 **Parameters:**
 
 - `model` (Any, required)
@@ -1174,12 +1170,11 @@ Args:
 Returns:
     GoogleModel instance configured for Vertex AI
 
-
 **Parameters:**
 
 - `model_name` (str, required)
-- `project` (Optional, optional, default: `None`)
-- `location` (Optional, optional, default: `None`)
+- `project` (Optional[str], optional, default: `None`)
+- `location` (Optional[str], optional, default: `None`)
 
 **Returns:** `Any`
 
@@ -1195,7 +1190,6 @@ Args:
 
 Returns:
     String output from the agent
-
 
 **Parameters:**
 
@@ -1216,7 +1210,6 @@ Args:
 
 Returns:
     String output from the agent
-
 
 **Parameters:**
 
@@ -1243,14 +1236,13 @@ Args:
 Returns:
     Response dict with keys: status, headers, text, json
 
-
 **Parameters:**
 
 - `url` (str, required)
-- `headers` (Optional, optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 - `timeout` (float, optional, default: `30.0`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -1268,16 +1260,15 @@ Args:
 Returns:
     Response dict with keys: status, headers, text, json
 
-
 **Parameters:**
 
 - `url` (str, required)
-- `data` (Optional, optional, default: `None`)
-- `json` (Optional, optional, default: `None`)
-- `headers` (Optional, optional, default: `None`)
+- `data` (Optional[Dict[str, Any]], optional, default: `None`)
+- `json` (Optional[Dict[str, Any]], optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 - `timeout` (float, optional, default: `30.0`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -1296,17 +1287,16 @@ Args:
 Returns:
     Response dict with keys: status, headers, text, json
 
-
 **Parameters:**
 
 - `method` (str, required)
 - `url` (str, required)
-- `data` (Optional, optional, default: `None`)
-- `json` (Optional, optional, default: `None`)
-- `headers` (Optional, optional, default: `None`)
+- `data` (Optional[Dict[str, Any]], optional, default: `None`)
+- `json` (Optional[Dict[str, Any]], optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 - `timeout` (float, optional, default: `30.0`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -1321,11 +1311,10 @@ Args:
 Returns:
     HTTPSession object (use with control_with)
 
-
 **Parameters:**
 
 - `timeout` (float, optional, default: `30.0`)
-- `headers` (Optional, optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 
 **Returns:** `HTTPSession`
 
@@ -1343,14 +1332,13 @@ Args:
 Returns:
     Response dict (same as http_get)
 
-
 **Parameters:**
 
 - `session` (HTTPSession, required)
 - `url` (str, required)
-- `headers` (Optional, optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -1368,16 +1356,15 @@ Args:
 Returns:
     Response dict (same as http_post)
 
-
 **Parameters:**
 
 - `session` (HTTPSession, required)
 - `url` (str, required)
-- `data` (Optional, optional, default: `None`)
-- `json` (Optional, optional, default: `None`)
-- `headers` (Optional, optional, default: `None`)
+- `data` (Optional[Dict[str, Any]], optional, default: `None`)
+- `json` (Optional[Dict[str, Any]], optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -1394,15 +1381,14 @@ Args:
 Yields:
     Byte chunks from the response
 
-
 **Parameters:**
 
 - `url` (str, required)
 - `chunk_size` (int, optional, default: `8192`)
-- `headers` (Optional, optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 - `timeout` (float, optional, default: `30.0`)
 
-**Returns:** `AsyncGenerator`
+**Returns:** `AsyncGenerator[bytes, NoneType]`
 
 ---
 
@@ -1421,14 +1407,13 @@ Args:
 Yields:
     Each line from the response (stripped of newlines)
 
-
 **Parameters:**
 
 - `url` (str, required)
-- `headers` (Optional, optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 - `timeout` (float, optional, default: `30.0`)
 
-**Returns:** `AsyncGenerator`
+**Returns:** `AsyncGenerator[str, NoneType]`
 
 ---
 
@@ -1448,14 +1433,13 @@ Args:
 Returns:
     Attribute value as string, or default if not found
 
-
 **Parameters:**
 
 - `element` (Any, required)
 - `attr` (str, required)
-- `default` (Optional, optional, default: `None`)
+- `default` (Optional[str], optional, default: `None`)
 
-**Returns:** `Optional`
+**Returns:** `Optional[str]`
 
 ---
 
@@ -1469,7 +1453,6 @@ Args:
 
 Returns:
     Text content of the element
-
 
 **Parameters:**
 
@@ -1490,7 +1473,6 @@ Args:
 Returns:
     BeautifulSoup object for use with html_select* opcodes
 
-
 **Returns:** `Any`
 
 ---
@@ -1506,13 +1488,12 @@ Args:
 Returns:
     List of matching elements (may be empty)
 
-
 **Parameters:**
 
 - `soup` (Any, required)
 - `selector` (str, required)
 
-**Returns:** `List`
+**Returns:** `List[Any]`
 
 ---
 
@@ -1527,13 +1508,12 @@ Args:
 Returns:
     First matching element, or None if no match
 
-
 **Parameters:**
 
 - `soup` (Any, required)
 - `selector` (str, required)
 
-**Returns:** `Optional`
+**Returns:** `Optional[Any]`
 
 ---
 
@@ -1551,7 +1531,6 @@ Returns:
 
 Raises:
     ValueError: If the string is not valid JSON
-
 
 **Returns:** `Any`
 
@@ -1571,11 +1550,10 @@ Returns:
 Raises:
     TypeError: If the object is not JSON serializable
 
-
 **Parameters:**
 
 - `obj` (Any, required)
-- `indent` (Optional, optional, default: `None`)
+- `indent` (Optional[int], optional, default: `None`)
 
 **Returns:** `str`
 
@@ -1597,7 +1575,6 @@ Returns:
 
 Example:
     client: { node: my_client }
-
 
 **Returns:** `bool`
 
@@ -1623,7 +1600,6 @@ Example:
     source_object: "path/to/file.pdf"
     dest_bucket: "dest-bucket"
     dest_object: "backup/file.pdf"
-
 
 **Parameters:**
 
@@ -1657,7 +1633,6 @@ Authentication:
     3. gcloud auth application-default login
     4. GCE/GKE metadata server (in cloud environments)
 
-
 **Returns:** `Storage`
 
 ---
@@ -1678,7 +1653,6 @@ Example:
     client: { node: my_client }
     bucket_name: "my-bucket"
     object_name: "path/to/file.pdf"
-
 
 **Parameters:**
 
@@ -1707,7 +1681,6 @@ Example:
     bucket_name: "my-bucket"
     object_name: "path/to/file.pdf"
 
-
 **Parameters:**
 
 - `client` (Storage, required)
@@ -1735,7 +1708,6 @@ Example:
     client: { node: my_client }
     bucket_name: "my-bucket"
     object_name: "path/to/file.txt"
-
 
 **Parameters:**
 
@@ -1770,7 +1742,6 @@ Example:
     bucket_name: "my-bucket"
     object_name: "path/to/file.pdf"
 
-
 **Parameters:**
 
 - `client` (Storage, required)
@@ -1799,15 +1770,14 @@ Example:
     bucket_name: "my-bucket"
     prefix: "uploads/"
 
-
 **Parameters:**
 
 - `client` (Storage, required)
 - `bucket_name` (str, required)
-- `prefix` (Optional, optional, default: `None`)
-- `max_results` (Optional, optional, default: `None`)
+- `prefix` (Optional[str], optional, default: `None`)
+- `max_results` (Optional[int], optional, default: `None`)
 
-**Returns:** `list`
+**Returns:** `list[lexflow.opcodes.opcodes_gcs.GCSObjectMetadata]`
 
 ---
 
@@ -1827,7 +1797,6 @@ Example:
     client: { node: my_client }
     bucket_name: "my-bucket"
     object_name: "path/to/file.pdf"
-
 
 **Parameters:**
 
@@ -1860,14 +1829,13 @@ Example:
     data: { variable: pdf_bytes }
     content_type: "application/pdf"
 
-
 **Parameters:**
 
 - `client` (Storage, required)
 - `bucket_name` (str, required)
 - `object_name` (str, required)
 - `data` (bytes, required)
-- `content_type` (Optional, optional, default: `None`)
+- `content_type` (Optional[str], optional, default: `None`)
 
 **Returns:** `GCSObjectMetadata`
 
@@ -1893,7 +1861,6 @@ Example:
     bucket_name: "my-bucket"
     object_name: "logs/output.txt"
     data: "Hello, World!"
-
 
 **Parameters:**
 
@@ -1924,7 +1891,6 @@ Args:
 Returns:
     List [r, g, b]
 
-
 **Parameters:**
 
 - `r` (int, required)
@@ -1947,7 +1913,6 @@ Args:
 Returns:
     pygame.Surface object representing the display
 
-
 **Parameters:**
 
 - `width` (int, required)
@@ -1965,7 +1930,6 @@ Async delay in milliseconds.
 Args:
     milliseconds: Delay duration in milliseconds
 
-
 **Returns:** `NoneType`
 
 ---
@@ -1980,7 +1944,6 @@ Args:
     y: Center Y position
     radius: Circle radius
     color: RGB color as [r, g, b]
-
 
 **Parameters:**
 
@@ -2006,7 +1969,6 @@ Args:
     height: Rectangle height
     color: RGB color as [r, g, b]
     filled: If True, fill; if False, draw outline only
-
 
 **Parameters:**
 
@@ -2034,7 +1996,6 @@ Args:
     font_size: Font size in pixels (default: 48)
     color: RGB color as [r, g, b], defaults to white
 
-
 **Parameters:**
 
 - `screen` (Any, required)
@@ -2056,7 +2017,6 @@ Args:
     screen: The display surface
     color: RGB color as [r, g, b] where each value is 0-255
 
-
 **Parameters:**
 
 - `screen` (Any, required)
@@ -2076,7 +2036,6 @@ Args:
 Returns:
     True if key is pressed, False otherwise
 
-
 **Returns:** `bool`
 
 ---
@@ -2090,7 +2049,6 @@ Args:
 
 Returns:
     Height in pixels
-
 
 **Returns:** `int`
 
@@ -2106,7 +2064,6 @@ Args:
 Returns:
     Width in pixels
 
-
 **Returns:** `int`
 
 ---
@@ -2117,7 +2074,6 @@ Get milliseconds since pygame.init() was called.
 
 Returns:
     Milliseconds elapsed since pygame initialization
-
 
 **Returns:** `int`
 
@@ -2154,7 +2110,6 @@ Check if user wants to quit (clicked X button).
 Returns:
     True if quit event detected, False otherwise
 
-
 **Returns:** `bool`
 
 ---
@@ -2188,16 +2143,15 @@ Args:
 Returns:
     Reranked results with updated 'score' and 'bm25_score' added
 
-
 **Parameters:**
 
 - `query` (str, required)
-- `results` (List, required)
+- `results` (List[Dict[str, Any]], required)
 - `top_k` (int, optional, default: `10`)
 - `text_field` (str, optional, default: `"text"`)
 - `alpha` (float, optional, default: `0.5`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -2214,7 +2168,6 @@ Args:
 Returns:
     List of floats representing the embedding vector
 
-
 **Parameters:**
 
 - `text` (str, required)
@@ -2222,7 +2175,7 @@ Returns:
 - `location` (str, optional, default: `"us-central1"`)
 - `model` (str, optional, default: `"text-embedding-004"`)
 
-**Returns:** `List`
+**Returns:** `List[float]`
 
 ---
 
@@ -2239,15 +2192,14 @@ Args:
 Returns:
     List of embedding vectors (each is a list of floats)
 
-
 **Parameters:**
 
-- `texts` (List, required)
+- `texts` (List[str], required)
 - `project` (str, required)
 - `location` (str, optional, default: `"us-central1"`)
 - `model` (str, optional, default: `"text-embedding-004"`)
 
-**Returns:** `List`
+**Returns:** `List[List[float]]`
 
 ---
 
@@ -2261,8 +2213,7 @@ Args:
 Returns:
     List of strings, one per page
 
-
-**Returns:** `List`
+**Returns:** `List[str]`
 
 ---
 
@@ -2276,8 +2227,7 @@ Args:
 Returns:
     List of strings, one per page
 
-
-**Returns:** `List`
+**Returns:** `List[str]`
 
 ---
 
@@ -2290,7 +2240,6 @@ Args:
 
 Returns:
     Extracted text from all pages concatenated
-
 
 **Returns:** `str`
 
@@ -2309,7 +2258,6 @@ Args:
 Returns:
     Extracted text from all pages concatenated
 
-
 **Returns:** `str`
 
 ---
@@ -2323,7 +2271,6 @@ Args:
 
 Returns:
     Number of pages in the PDF
-
 
 **Returns:** `int`
 
@@ -2339,7 +2286,6 @@ Args:
 
 Returns:
     True if collection exists
-
 
 **Parameters:**
 
@@ -2360,7 +2306,6 @@ Args:
 Returns:
     QdrantClient instance
 
-
 **Returns:** `Any`
 
 ---
@@ -2376,7 +2321,6 @@ Args:
 
 Returns:
     True if created, False if already existed
-
 
 **Parameters:**
 
@@ -2400,12 +2344,11 @@ Args:
 Returns:
     True if deletion was successful
 
-
 **Parameters:**
 
 - `client` (Any, required)
 - `collection` (str, required)
-- `point_ids` (List, required)
+- `point_ids` (List[int], required)
 
 **Returns:** `bool`
 
@@ -2421,7 +2364,6 @@ Args:
 
 Returns:
     True if deletion was successful
-
 
 **Parameters:**
 
@@ -2445,15 +2387,14 @@ Args:
 Returns:
     List of dicts with keys: id, score, payload
 
-
 **Parameters:**
 
 - `client` (Any, required)
 - `collection` (str, required)
-- `query_vector` (List, required)
+- `query_vector` (List[float], required)
 - `limit` (int, optional, default: `5`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -2471,14 +2412,13 @@ Args:
 Returns:
     True if upsert was successful
 
-
 **Parameters:**
 
 - `client` (Any, required)
 - `collection` (str, required)
 - `point_id` (int, required)
-- `vector` (List, required)
-- `payload` (Optional, optional, default: `None`)
+- `vector` (List[float], required)
+- `payload` (Optional[Dict[str, Any]], optional, default: `None`)
 
 **Returns:** `bool`
 
@@ -2498,14 +2438,13 @@ Args:
 Returns:
     True if upsert was successful
 
-
 **Parameters:**
 
 - `client` (Any, required)
 - `collection` (str, required)
-- `point_ids` (List, required)
-- `vectors` (List, required)
-- `payloads` (Optional, optional, default: `None`)
+- `point_ids` (List[int], required)
+- `vectors` (List[List[float]], required)
+- `payloads` (Optional[List[Dict[str, Any]]], optional, default: `None`)
 
 **Returns:** `bool`
 
@@ -2523,14 +2462,13 @@ Args:
 Returns:
     List of text chunks
 
-
 **Parameters:**
 
 - `text` (str, required)
 - `chunk_size` (int, optional, default: `500`)
 - `overlap` (int, optional, default: `50`)
 
-**Returns:** `List`
+**Returns:** `List[str]`
 
 ---
 
@@ -2546,14 +2484,13 @@ Args:
 Returns:
     List of text chunks split at sentence boundaries
 
-
 **Parameters:**
 
 - `text` (str, required)
 - `sentences_per_chunk` (int, optional, default: `5`)
 - `overlap` (int, optional, default: `1`)
 
-**Returns:** `List`
+**Returns:** `List[str]`
 
 ---
 
@@ -2571,14 +2508,13 @@ Args:
 Returns:
     List of dicts with keys: text, page_start, page_end, line_start, line_end
 
-
 **Parameters:**
 
-- `pages` (List, required)
+- `pages` (List[str], required)
 - `chunk_size` (int, optional, default: `500`)
 - `overlap` (int, optional, default: `50`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -2598,15 +2534,14 @@ Args:
 Returns:
     List of dicts with keys: text, page_start, page_end, line_start, line_end
 
-
 **Parameters:**
 
-- `pages` (List, required)
+- `pages` (List[str], required)
 - `chunk_size` (int, optional, default: `1000`)
 - `overlap` (int, optional, default: `200`)
 - `min_chunk_size` (int, optional, default: `100`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -2623,13 +2558,12 @@ Args:
 Returns:
     The updated history
 
-
 **Parameters:**
 
-- `history` (List, required)
+- `history` (List[dict], required)
 - `content` (str, required)
 
-**Returns:** `List`
+**Returns:** `List[dict]`
 
 ---
 
@@ -2648,14 +2582,13 @@ Returns:
 Raises:
     ValueError: If role is not "user" or "assistant"
 
-
 **Parameters:**
 
-- `history` (List, required)
+- `history` (List[dict], required)
 - `role` (str, required)
 - `content` (str, required)
 
-**Returns:** `List`
+**Returns:** `List[dict]`
 
 ---
 
@@ -2670,13 +2603,12 @@ Args:
 Returns:
     The updated history
 
-
 **Parameters:**
 
-- `history` (List, required)
+- `history` (List[dict], required)
 - `content` (str, required)
 
-**Returns:** `List`
+**Returns:** `List[dict]`
 
 ---
 
@@ -2690,8 +2622,7 @@ Args:
 Returns:
     The same list, now empty
 
-
-**Returns:** `List`
+**Returns:** `List[dict]`
 
 ---
 
@@ -2702,8 +2633,7 @@ Create a new empty chat history.
 Returns:
     Empty list ready to store chat messages
 
-
-**Returns:** `List`
+**Returns:** `List[dict]`
 
 ---
 
@@ -2716,7 +2646,6 @@ Args:
 
 Returns:
     Formatted string with each message on its own line
-
 
 **Returns:** `str`
 
@@ -2733,13 +2662,12 @@ Args:
 Returns:
     The last message dict, or None if empty or no match
 
-
 **Parameters:**
 
-- `history` (List, required)
-- `role` (Optional, optional, default: `None`)
+- `history` (List[dict], required)
+- `role` (Optional[str], optional, default: `None`)
 
-**Returns:** `Optional`
+**Returns:** `Optional[dict]`
 
 ---
 
@@ -2752,7 +2680,6 @@ Args:
 
 Returns:
     Number of messages
-
 
 **Returns:** `int`
 
@@ -2767,7 +2694,6 @@ Args:
 
 Returns:
     A formatted string containing the conversation context
-
 
 **Returns:** `str`
 
@@ -2792,11 +2718,10 @@ Args:
 Returns:
     The assistant's response string
 
-
 **Parameters:**
 
 - `agent` (Any, required)
-- `history` (List, required)
+- `history` (List[dict], required)
 - `user_message` (str, required)
 
 **Returns:** `str`
@@ -2855,7 +2780,6 @@ Args:
     message: Optional message to show
     width: Bar width in characters (default: 30)
 
-
 **Parameters:**
 
 - `current` (int, required)
@@ -2874,7 +2798,6 @@ Stop a spinner with failure indicator.
 Args:
     spinner: Spinner object from spinner_start
     message: Error message to display
-
 
 **Parameters:**
 
@@ -2895,7 +2818,6 @@ Args:
 Returns:
     Spinner object (use with spinner_stop, spinner_update)
 
-
 **Returns:** `Spinner`
 
 ---
@@ -2908,7 +2830,6 @@ Args:
     spinner: Spinner object from spinner_start
     message: Final message (empty = original message + "done")
     success: True for checkmark, False for X mark
-
 
 **Parameters:**
 
@@ -2927,7 +2848,6 @@ Update the message of a running spinner.
 Args:
     spinner: Spinner object from spinner_start
     message: New message to display
-
 
 **Parameters:**
 
@@ -2953,7 +2873,6 @@ Args:
 Returns:
     File content as a string (UTF-8 decoded)
 
-
 **Parameters:**
 
 - `owner` (str, required)
@@ -2977,7 +2896,6 @@ Args:
 Returns:
     The PR diff as a string in unified diff format
 
-
 **Parameters:**
 
 - `owner` (str, required)
@@ -3000,14 +2918,13 @@ Args:
 Returns:
     List of dicts with: path, additions, deletions, status
 
-
 **Parameters:**
 
 - `owner` (str, required)
 - `repo` (str, required)
 - `pr_number` (int, required)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -3023,14 +2940,13 @@ Args:
 Returns:
     Dict with: title, body, author, state, base_branch, head_branch, url
 
-
 **Parameters:**
 
 - `owner` (str, required)
 - `repo` (str, required)
 - `pr_number` (int, required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -3045,13 +2961,12 @@ Args:
 Returns:
     Dict with: name, full_name, description, default_branch, url, is_private
 
-
 **Parameters:**
 
 - `owner` (str, required)
 - `repo` (str, required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -3061,7 +2976,6 @@ Check if GitHub CLI is available and authenticated.
 
 Returns:
     True if gh CLI is installed and authenticated
-
 
 **Returns:** `bool`
 
@@ -3079,14 +2993,13 @@ Args:
 Returns:
     List of comment dicts with: id, author, body, created_at, type
 
-
 **Parameters:**
 
 - `owner` (str, required)
 - `repo` (str, required)
 - `pr_number` (int, required)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -3112,7 +3025,6 @@ Example:
     project_id: "my-gcp-project"
     subscription_id: "my-subscription"
     message: { variable: msg }
-
 
 **Parameters:**
 
@@ -3144,7 +3056,6 @@ Example:
     subscription_id: "my-subscription"
     ack_ids: { variable: message_ack_ids }
 
-
 **Parameters:**
 
 - `subscriber` (SubscriberClient, required)
@@ -3169,7 +3080,6 @@ Returns:
 Example:
     publisher: { variable: my_publisher }
 
-
 **Returns:** `bool`
 
 ---
@@ -3186,7 +3096,6 @@ Returns:
 
 Example:
     subscriber: { variable: my_subscriber }
-
 
 **Returns:** `bool`
 
@@ -3211,7 +3120,6 @@ Note:
     Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
     When set, authentication is automatically skipped.
 
-
 **Returns:** `PublisherClient`
 
 ---
@@ -3235,7 +3143,6 @@ Note:
     Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
     When set, authentication is automatically skipped.
 
-
 **Returns:** `SubscriberClient`
 
 ---
@@ -3258,7 +3165,6 @@ Example:
     project_id: "my-gcp-project"
     subscription_id: "my-subscription"
     message: { variable: msg }
-
 
 **Parameters:**
 
@@ -3296,7 +3202,6 @@ Example:
       - data: "Second message"
         attributes: { "index": "2" }
 
-
 **Parameters:**
 
 - `publisher` (PublisherClient, required)
@@ -3326,7 +3231,6 @@ Example:
     project_id: "my-gcp-project"
     topic_id: "my-topic"
     data: "Hello, Pub/Sub!"
-
 
 **Parameters:**
 
@@ -3359,7 +3263,6 @@ Example:
     topic_id: "my-topic"
     data: "Hello with attributes!"
     attributes: { "type": "greeting", "priority": "high" }
-
 
 **Parameters:**
 
@@ -3396,7 +3299,6 @@ Example:
     project_id: "my-gcp-project"
     subscription_id: "my-subscription"
     max_messages: 5
-
 
 **Parameters:**
 
@@ -3477,20 +3379,19 @@ Usage in workflow:
         BODY:
           - handle_message
 
-
 **Parameters:**
 
 - `subscriber` (SubscriberClient, required)
 - `project_id` (str, required)
 - `subscription_id` (str, required)
-- `timeout` (Optional, optional, default: `None`)
-- `max_messages` (Optional, optional, default: `None`)
+- `timeout` (Optional[float], optional, default: `None`)
+- `max_messages` (Optional[int], optional, default: `None`)
 - `batch_size` (int, optional, default: `10`)
 - `min_poll_interval` (float, optional, default: `0.1`)
 - `max_poll_interval` (float, optional, default: `5.0`)
 - `max_retries` (int, optional, default: `10`)
 
-**Returns:** `AsyncGenerator`
+**Returns:** `AsyncGenerator[dict, NoneType]`
 
 ---
 
@@ -3511,11 +3412,10 @@ Raises:
     asyncio.TimeoutError: If timeout exceeded
     Exception: If the task raised an exception
 
-
 **Parameters:**
 
 - `task` (Any, required)
-- `timeout` (Optional, optional, default: `None`)
+- `timeout` (Optional[float], optional, default: `None`)
 
 **Returns:** `Any`
 
@@ -3532,13 +3432,12 @@ Args:
 Returns:
     List of results in the same order as tasks
 
-
 **Parameters:**
 
 - `tasks` (List, required)
-- `timeout` (Optional, optional, default: `None`)
+- `timeout` (Optional[float], optional, default: `None`)
 
-**Returns:** `List`
+**Returns:** `List[Any]`
 
 ---
 
@@ -3551,7 +3450,6 @@ Args:
 
 Returns:
     True if cancel was requested
-
 
 **Returns:** `bool`
 
@@ -3567,8 +3465,7 @@ Args:
 Returns:
     Exception message as string, or None if succeeded/not done
 
-
-**Returns:** `Optional`
+**Returns:** `Optional[str]`
 
 ---
 
@@ -3581,7 +3478,6 @@ Args:
 
 Returns:
     The task's unique ID
-
 
 **Returns:** `int`
 
@@ -3597,7 +3493,6 @@ Args:
 Returns:
     True if task is done (completed, cancelled, or failed)
 
-
 **Returns:** `bool`
 
 ---
@@ -3611,7 +3506,6 @@ Args:
 
 Returns:
     The task's name
-
 
 **Returns:** `str`
 
@@ -3630,7 +3524,6 @@ Returns:
 Raises:
     InvalidStateError: If task is not done
 
-
 **Returns:** `Any`
 
 ---
@@ -3641,7 +3534,6 @@ Sleep for the specified number of seconds.
 
 Args:
     seconds: Duration to sleep
-
 
 **Returns:** `NoneType`
 
@@ -3664,7 +3556,6 @@ Close a channel.
 Args:
     channel: The channel to close
 
-
 **Returns:** `NoneType`
 
 ---
@@ -3678,7 +3569,6 @@ Args:
 
 Returns:
     A new Channel object
-
 
 **Returns:** `Channel`
 
@@ -3694,7 +3584,6 @@ Args:
 Returns:
     True if closed
 
-
 **Returns:** `bool`
 
 ---
@@ -3709,7 +3598,6 @@ Args:
 Returns:
     True if empty
 
-
 **Returns:** `bool`
 
 ---
@@ -3723,7 +3611,6 @@ Args:
 
 Returns:
     Number of items in buffer
-
 
 **Returns:** `int`
 
@@ -3746,11 +3633,10 @@ Raises:
     asyncio.TimeoutError: If timeout exceeded
     RuntimeError: If channel is closed and empty
 
-
 **Parameters:**
 
 - `channel` (Channel, required)
-- `timeout` (Optional, optional, default: `None`)
+- `timeout` (Optional[float], optional, default: `None`)
 
 **Returns:** `Any`
 
@@ -3768,7 +3654,6 @@ Args:
 
 Raises:
     RuntimeError: If the channel is closed
-
 
 **Parameters:**
 
@@ -3789,7 +3674,6 @@ Args:
 Returns:
     Dict with keys: value, ok (True if received)
 
-
 **Returns:** `dict`
 
 ---
@@ -3803,7 +3687,6 @@ Clear an event (reset to unset state).
 Args:
     event: The event to clear
 
-
 **Returns:** `NoneType`
 
 ---
@@ -3814,7 +3697,6 @@ Create an event for signaling between tasks.
 
 Returns:
     An asyncio.Event
-
 
 **Returns:** `Event`
 
@@ -3830,7 +3712,6 @@ Args:
 Returns:
     True if set
 
-
 **Returns:** `bool`
 
 ---
@@ -3841,7 +3722,6 @@ Set an event (signal waiting tasks).
 
 Args:
     event: The event to set
-
 
 **Returns:** `NoneType`
 
@@ -3858,11 +3738,10 @@ Args:
 Returns:
     True if event was set, False if timeout
 
-
 **Parameters:**
 
 - `event` (Event, required)
-- `timeout` (Optional, optional, default: `None`)
+- `timeout` (Optional[float], optional, default: `None`)
 
 **Returns:** `bool`
 
@@ -3879,11 +3758,10 @@ Args:
 Returns:
     True if acquired, False if timeout
 
-
 **Parameters:**
 
 - `semaphore` (Semaphore, required)
-- `timeout` (Optional, optional, default: `None`)
+- `timeout` (Optional[float], optional, default: `None`)
 
 **Returns:** `bool`
 
@@ -3899,7 +3777,6 @@ Args:
 Returns:
     An asyncio.Semaphore
 
-
 **Returns:** `Semaphore`
 
 ---
@@ -3910,7 +3787,6 @@ Release a semaphore permit.
 
 Args:
     semaphore: The semaphore to release
-
 
 **Returns:** `NoneType`
 
