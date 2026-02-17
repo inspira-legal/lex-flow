@@ -1,0 +1,430 @@
+workflows:
+  - name: main
+    interface:
+      inputs:
+        - name: company_name
+          type: string
+        - name: competitor_name
+          type: string
+        - name: api_key
+          type: string
+      outputs:
+        - name: final_report
+          type: string
+    variables:
+      # API Configuration
+      api_key: ""
+      base_url: "https://openrouter.ai/api/v1/chat/completions"
+
+      # Models - using free tier models (2025)
+      research_model: "google/gemini-2.5-flash"  # Fast and powerful for research
+      formatter_model: "google/gemini-2.5-flash-lite"  # Lightweight for formatting
+
+      # Headers
+      headers: {}
+
+      # Research Prompting
+      research_prompt_part1: |
+        You are an advanced AI research assistant specialized in conducting deep research on the latest news about competitors that may impact a company's business. Your task is to gather and analyze recent, relevant information **ONLY about the specified competitor and provide insights on how this might affect the company you're researching for.**
+
+        You will be provided with the following information:
+        <company_name>
+      research_prompt_part2: |
+        </company_name>
+        This is the name of the company you are conducting research for (your client).
+        <competitor_name>
+      research_prompt_part3: |
+        </competitor_name>
+        This is the name of the competitor you must exclusively focus your research on.
+
+        IMPORTANT INSTRUCTIONS:
+        - Focus EXCLUSIVELY on researching and analyzing the competitor specified in competitor_name. Do NOT analyze your client company.
+        - The client company information is provided only for context.
+        - Based on your knowledge, provide analysis of the competitor's recent activities.
+
+        Follow these steps:
+        1. Analyze recent news, product launches, and market positioning related ONLY to the competitor.
+        2. Focus on: Product launches, Mergers, Leadership changes, Financials, Legal issues, Tech advancements, Marketing, Expansion.
+        3. Analyze trends and implications for the client company.
+        4. Provide actionable insights.
+      
+      # Templates for safer prompt construction
+      research_prompt_template: |
+        You are an advanced AI research assistant specialized in conducting deep research on the latest news about competitors that may impact a company's business. Your task is to gather and analyze recent, relevant information **ONLY about the specified competitor and provide insights on how this might affect {company_name}.**
+
+        <competitor_name>
+        {competitor_name}
+        </competitor_name>
+        
+        This is the name of the competitor you must exclusively focus your research on.
+
+        IMPORTANT INSTRUCTIONS:
+        - Focus EXCLUSIVELY on researching and analyzing the competitor specified. Do NOT analyze your client {company_name}.
+        - Based on your knowledge, provide analysis of the competitor's recent activities.
+
+        Follow these steps:
+        1. Analyze recent news, product launches, and market positioning related ONLY to the competitor.
+        2. Focus on: Product launches, Mergers, Leadership changes, Financials, Legal issues, Tech advancements, Marketing, Expansion.
+        3. Analyze trends and implications for the client company {company_name}.
+        4. Provide actionable insights.
+
+      research_full_prompt: ""
+      research_messages: []
+      research_body: {}
+      research_response_raw: {}
+      research_content: ""
+
+      # Formatter Prompting
+      formatter_system_prompt: |
+        <Agent>
+          <Description>
+            You are a competitive intelligence specialist who formats reports for internal communication via Slack. Your ONLY task is to transform raw competitive research data into a structured, actionable report using simple Slack formatting (bold, italic, lists), without Markdown or XML.
+          </Description>
+          <Context>
+            The input will be raw research data about a specific competitor.
+            Two company names will be referenced:
+            - Competitor: The company being researched
+            - Client: The company needing intelligence
+
+            Format this into a professional business report using simple Slack formatting:
+            - *text* for bold
+            - _text_ for italic
+            - • for bullet lists
+            - `title` for the analysis title
+
+            Do NOT use double asterisk (**).
+          </Context>
+        </Agent>
+
+      formatter_user_prompt_template: |
+        ANALYSE THIS TEXT AND FORMAT IT:
+
+        {research_content}
+      formatter_full_user_prompt: ""
+      formatter_messages: []
+      formatter_body: {}
+      formatter_response_raw: {}
+      formatter_content: ""
+
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_start
+        inputs: {}
+
+      print_start:
+        opcode: io_print
+        next: build_headers
+        inputs:
+          STRING: {literal: "\n=== Competitive Analysis Workflow (OpenRouter) ===\n"}
+
+      # ---------------------------------------------------------
+      # 1. Prepare Headers (shared for both API calls)
+      # ---------------------------------------------------------
+      build_headers:
+        opcode: dict_create
+        next: add_content_type
+        inputs:
+          key1: {literal: "HTTP-Referer"}
+          val1: {literal: "https://lexflow.dev"}
+          key2: {literal: "X-Title"}
+          val2: {literal: "Lexflow Competitive Analysis"}
+
+      add_content_type:
+        opcode: dict_set
+        next: add_auth_header
+        inputs:
+          d: {node: build_headers}
+          key: {literal: "Content-Type"}
+          value: {literal: "application/json"}
+
+      add_auth_header:
+        opcode: dict_set
+        next: save_headers
+        inputs:
+          d: {node: add_content_type}
+          key: {literal: "Authorization"}
+          value: {node: fmt_bearer}
+
+      fmt_bearer:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: {literal: "Bearer "}
+          right: {variable: "api_key"}
+
+      save_headers:
+        opcode: data_set_variable_to
+        next: build_research_prompt
+        inputs:
+          VARIABLE: {literal: "headers"}
+          VALUE: {node: add_auth_header}
+
+      # ---------------------------------------------------------
+      # 2. Build Research Prompt
+      # ---------------------------------------------------------
+      build_research_prompt:
+        opcode: string_replace
+        next: create_research_message
+        inputs:
+          template: {variable: "research_prompt_template"}
+          replace:
+            company_name: {variable: "company_name"}
+            competitor_name: {variable: "competitor_name"}
+
+      # ---------------------------------------------------------
+      # 3. Create Research Request Body
+      # ---------------------------------------------------------
+      create_research_message:
+        opcode: dict_create
+        next: create_research_messages_list
+        inputs:
+          key1: {literal: "role"}
+          val1: {literal: "user"}
+          key2: {literal: "content"}
+          val2: {node: build_research_prompt}
+
+      create_research_messages_list:
+        opcode: list_create
+        next: create_research_body
+        inputs:
+          item1: {node: create_research_message}
+
+      create_research_body:
+        opcode: dict_create
+        next: set_research_model
+        inputs:
+          key1: {literal: "messages"}
+          val1: {node: create_research_messages_list}
+
+      set_research_model:
+        opcode: dict_set
+        next: set_research_temp
+        inputs:
+          d: {node: create_research_body}
+          key: {literal: "model"}
+          value: {variable: "research_model"}
+
+      set_research_temp:
+        opcode: dict_set
+        next: save_research_body
+        inputs:
+          d: {node: set_research_model}
+          key: {literal: "temperature"}
+          value: {literal: 0.3}
+
+      save_research_body:
+        opcode: data_set_variable_to
+        next: print_research_start
+        inputs:
+          VARIABLE: {literal: "research_body"}
+          VALUE: {node: set_research_temp}
+
+      # ---------------------------------------------------------
+      # 4. Call Research API
+      # ---------------------------------------------------------
+      print_research_start:
+        opcode: io_print
+        next: call_research_api
+        inputs:
+          STRING: {literal: "\n[1/2] Conducting competitive research...\n"}
+
+      call_research_api:
+        opcode: network_http_post
+        next: save_research_response
+        isReporter: true
+        inputs:
+          url: {variable: "base_url"}
+          headers: {variable: "headers"}
+          json: {variable: "research_body"}
+
+      save_research_response:
+        opcode: data_set_variable_to
+        next: save_research_content
+        inputs:
+          VARIABLE: {literal: "research_response_raw"}
+          VALUE: {node: call_research_api}
+
+      # ---------------------------------------------------------
+      # 5. Extract Research Content
+      # ---------------------------------------------------------
+      extract_research_content:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {variable: "research_response_raw"}
+          key: {literal: "choices"}
+
+      get_research_first_choice:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items: {node: extract_research_content}
+          index: {literal: 0}
+
+      get_research_message_obj:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {node: get_research_first_choice}
+          key: {literal: "message"}
+
+      get_research_content_str:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {node: get_research_message_obj}
+          key: {literal: "content"}
+
+      save_research_content:
+        opcode: data_set_variable_to
+        next: print_research_done
+        inputs:
+          VARIABLE: {literal: "research_content"}
+          VALUE: {node: get_research_content_str}
+
+      print_research_done:
+        opcode: io_print
+        next: build_formatter_user_prompt
+        inputs:
+          STRING: {literal: "✓ Research completed\n"}
+
+      # ---------------------------------------------------------
+      # 6. Build Formatter Request Body
+      # ---------------------------------------------------------
+      # SECURITY: Using string_replace to mitigate indirect prompt injection
+      build_formatter_user_prompt:
+        opcode: string_replace
+        next: create_formatter_sys_msg
+        inputs:
+          template: {variable: "formatter_user_prompt_template"}
+          replace:
+            research_content: {variable: "research_content"}
+
+      # Messages
+      create_formatter_sys_msg:
+        opcode: dict_create
+        next: create_formatter_usr_msg
+        inputs:
+          key1: {literal: "role"}
+          val1: {literal: "system"}
+          key2: {literal: "content"}
+          val2: {variable: "formatter_system_prompt"}
+
+      create_formatter_usr_msg:
+        opcode: dict_create
+        next: create_formatter_msgs_list
+        inputs:
+          key1: {literal: "role"}
+          val1: {literal: "user"}
+          key2: {literal: "content"}
+          val2: {node: build_formatter_user_prompt}
+
+      create_formatter_msgs_list:
+        opcode: list_create
+        next: create_formatter_body
+        inputs:
+          item1: {node: create_formatter_sys_msg}
+          item2: {node: create_formatter_usr_msg}
+
+      create_formatter_body:
+        opcode: dict_create
+        next: set_formatter_model
+        inputs:
+          key1: {literal: "messages"}
+          val1: {node: create_formatter_msgs_list}
+
+      set_formatter_model:
+        opcode: dict_set
+        next: set_formatter_temp
+        inputs:
+          d: {node: create_formatter_body}
+          key: {literal: "model"}
+          value: {variable: "formatter_model"}
+
+      set_formatter_temp:
+        opcode: dict_set
+        next: save_formatter_body
+        inputs:
+          d: {node: set_formatter_model}
+          key: {literal: "temperature"}
+          value: {literal: 0.1}
+
+      save_formatter_body:
+        opcode: data_set_variable_to
+        next: print_formatter_start
+        inputs:
+          VARIABLE: {literal: "formatter_body"}
+          VALUE: {node: set_formatter_temp}
+
+      # ---------------------------------------------------------
+      # 7. Call Formatter API
+      # ---------------------------------------------------------
+      print_formatter_start:
+        opcode: io_print
+        next: call_formatter_api
+        inputs:
+          STRING: {literal: "\n[2/2] Formatting report...\n"}
+
+      call_formatter_api:
+        opcode: network_http_post
+        next: save_formatter_response
+        isReporter: true
+        inputs:
+          url: {variable: "base_url"}
+          headers: {variable: "headers"}
+          json: {variable: "formatter_body"}
+
+      save_formatter_response:
+        opcode: data_set_variable_to
+        next: print_report
+        inputs:
+          VARIABLE: {literal: "formatter_response_raw"}
+          VALUE: {node: call_formatter_api}
+
+      # ---------------------------------------------------------
+      # 8. Extract & Output Report
+      # ---------------------------------------------------------
+      extract_formatter_content:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {variable: "formatter_response_raw"}
+          key: {literal: "choices"}
+
+      get_formatter_choice:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items: {node: extract_formatter_content}
+          index: {literal: 0}
+
+      get_formatter_msg:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {node: get_formatter_choice}
+          key: {literal: "message"}
+
+      get_formatter_text:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {node: get_formatter_msg}
+          key: {literal: "content"}
+
+      print_report:
+        opcode: io_print
+        next: set_final_report
+        inputs:
+          SEP: {literal: "\n========================================\n"}
+          TITLE: {literal: "COMPETITIVE ANALYSIS REPORT\n"}
+          SEP2: {literal: "========================================\n\n"}
+          REPORT: {node: get_formatter_text}
+          FOOTER: {literal: "\n\n========================================\n"}
+
+      set_final_report:
+        opcode: workflow_end
+        next: null
+        inputs:
+          final_report: {node: get_formatter_text}
