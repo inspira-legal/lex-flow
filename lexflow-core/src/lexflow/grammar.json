@@ -203,13 +203,6 @@
       "prefix": "sync_",
       "color": "#A855F7",
       "icon": "🔒"
-    },
-    {
-      "id": "ai",
-      "prefix": "ai_",
-      "label": "AI",
-      "color": "#10B981",
-      "icon": "🤖"
     }
   ],
   "constructs": [
