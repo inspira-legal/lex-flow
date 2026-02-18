@@ -19,7 +19,6 @@ try:
         _validate_tools_exist,
         _create_tool_wrapper,
         _create_output_model,
-        _tool_call_context,
         _is_workflow_tool,
         _get_workflow_name,
         _validate_workflow_tools_exist,
@@ -186,9 +185,9 @@ class TestPydanticAIOpcodes:
 @pytest.mark.skipif(
     PYDANTIC_AI_AVAILABLE, reason="Test only when pydantic-ai is not installed"
 )
-async def test_import_error_when_not_installed():
-    """Test that helpful error is raised when pydantic-ai is not installed."""
-    with pytest.raises(ImportError, match="pydantic-ai is not installed"):
+async def test_opcodes_not_registered_when_not_installed():
+    """Test that pydantic_ai opcodes are not registered when pydantic-ai is missing."""
+    with pytest.raises(ValueError, match="Unknown opcode"):
         await default_registry.call(
             "pydantic_ai_create_vertex_model", ["gemini-1.5-flash"]
         )
@@ -268,68 +267,35 @@ class TestToolWrapper:
 
     async def test_tool_wrapper_kwargs_to_args(self):
         """Tool wrapper correctly maps kwargs to positional args."""
-        wrapper = _create_tool_wrapper(
-            "operator_add", default_registry, {"operator_add"}
-        )
-
-        # Setup context
         ctx = {"count": 0, "max": 10, "allowlist": {"operator_add"}}
-        token = _tool_call_context.set(ctx)
+        wrapper = _create_tool_wrapper("operator_add", default_registry, ctx)
 
-        try:
-            result = await wrapper(left=5, right=3)
-            assert result == 8
-        finally:
-            _tool_call_context.reset(token)
+        result = await wrapper(left=5, right=3)
+        assert result == 8
 
     async def test_tool_wrapper_permission_denied(self):
         """Tool wrapper raises PermissionError when tool not in allowlist."""
-        wrapper = _create_tool_wrapper(
-            "operator_add",
-            default_registry,
-            {"operator_add"},  # In wrapper's knowledge
-        )
+        ctx = {"count": 0, "max": 10, "allowlist": set()}  # Empty allowlist
+        wrapper = _create_tool_wrapper("operator_add", default_registry, ctx)
 
-        # Setup context with EMPTY allowlist
-        ctx = {"count": 0, "max": 10, "allowlist": set()}  # Not in context allowlist
-        token = _tool_call_context.set(ctx)
-
-        try:
-            with pytest.raises(PermissionError, match="not in allowlist"):
-                await wrapper(left=5, right=3)
-        finally:
-            _tool_call_context.reset(token)
+        with pytest.raises(PermissionError, match="not in allowlist"):
+            await wrapper(left=5, right=3)
 
     async def test_tool_wrapper_max_calls_exceeded(self):
         """Tool wrapper raises RuntimeError when max_tool_calls exceeded."""
-        wrapper = _create_tool_wrapper(
-            "operator_add", default_registry, {"operator_add"}
-        )
-
-        # Setup context with max=1
         ctx = {"count": 1, "max": 1, "allowlist": {"operator_add"}}
-        token = _tool_call_context.set(ctx)
+        wrapper = _create_tool_wrapper("operator_add", default_registry, ctx)
 
-        try:
-            with pytest.raises(RuntimeError, match="Maximum tool calls"):
-                await wrapper(left=5, right=3)
-        finally:
-            _tool_call_context.reset(token)
+        with pytest.raises(RuntimeError, match="Maximum tool calls"):
+            await wrapper(left=5, right=3)
 
     async def test_tool_wrapper_missing_required_param(self):
         """Tool wrapper raises ValueError for missing required parameter."""
-        wrapper = _create_tool_wrapper(
-            "operator_add", default_registry, {"operator_add"}
-        )
-
         ctx = {"count": 0, "max": 10, "allowlist": {"operator_add"}}
-        token = _tool_call_context.set(ctx)
+        wrapper = _create_tool_wrapper("operator_add", default_registry, ctx)
 
-        try:
-            with pytest.raises(ValueError, match="Missing required parameter"):
-                await wrapper(left=5)  # Missing 'right'
-        finally:
-            _tool_call_context.reset(token)
+        with pytest.raises(ValueError, match="Missing required parameter"):
+            await wrapper(left=5)  # Missing 'right'
 
 
 @pytest.mark.skipif(not PYDANTIC_AI_AVAILABLE, reason="pydantic-ai not installed")
@@ -411,7 +377,7 @@ class TestAiAgentWithToolsOpcode:
         mock_agent = MagicMock()
         mock_agent._model = MagicMock()
         mock_agent._instructions = None
-        mock_agent._system_prompt = None
+        mock_agent._system_prompts = None
 
         with (
             patch("pydantic_ai.Agent") as MockAgent,
@@ -439,7 +405,7 @@ class TestAiAgentWithToolsOpcode:
         mock_agent = MagicMock()
         mock_agent._model = MagicMock()
         mock_agent._instructions = None
-        mock_agent._system_prompt = None
+        mock_agent._system_prompts = None
 
         with (
             patch("pydantic_ai.Agent") as MockAgent,
@@ -519,33 +485,22 @@ class TestWorkflowWrapper:
 
     async def test_workflow_wrapper_basic(self):
         """Workflow wrapper correctly calls manager."""
-        # Create mock workflow
         mock_workflow = Mock()
         mock_workflow.params = ["x", "y"]
         mock_workflow.locals = {}
         mock_workflow.description = "Test workflow description"
 
-        # Create mock manager
         mock_manager = AsyncMock()
         mock_manager.call = AsyncMock(return_value=42)
 
+        ctx = {"count": 0, "max": 10, "allowlist": {"test_workflow"}}
         wrapper = _create_workflow_wrapper(
-            "test_workflow",
-            mock_workflow,
-            mock_manager,
-            {"test_workflow"},
+            "test_workflow", mock_workflow, mock_manager, ctx
         )
 
-        # Setup context
-        ctx = {"count": 0, "max": 10, "allowlist": {"test_workflow"}}
-        token = _tool_call_context.set(ctx)
-
-        try:
-            result = await wrapper(x=10, y=20)
-            assert result == 42
-            mock_manager.call.assert_called_once_with("test_workflow", [10, 20])
-        finally:
-            _tool_call_context.reset(token)
+        result = await wrapper(x=10, y=20)
+        assert result == 42
+        mock_manager.call.assert_called_once_with("test_workflow", [10, 20])
 
     async def test_workflow_wrapper_with_defaults(self):
         """Workflow wrapper uses defaults from workflow.locals."""
@@ -557,23 +512,14 @@ class TestWorkflowWrapper:
         mock_manager = AsyncMock()
         mock_manager.call = AsyncMock(return_value=110)
 
+        ctx = {"count": 0, "max": 10, "allowlist": {"test_workflow"}}
         wrapper = _create_workflow_wrapper(
-            "test_workflow",
-            mock_workflow,
-            mock_manager,
-            {"test_workflow"},
+            "test_workflow", mock_workflow, mock_manager, ctx
         )
 
-        ctx = {"count": 0, "max": 10, "allowlist": {"test_workflow"}}
-        token = _tool_call_context.set(ctx)
-
-        try:
-            # Only provide x, y should use default
-            result = await wrapper(x=10)
-            assert result == 110
-            mock_manager.call.assert_called_once_with("test_workflow", [10, 100])
-        finally:
-            _tool_call_context.reset(token)
+        result = await wrapper(x=10)
+        assert result == 110
+        mock_manager.call.assert_called_once_with("test_workflow", [10, 100])
 
     async def test_workflow_wrapper_permission_denied(self):
         """Workflow wrapper raises PermissionError when not in allowlist."""
@@ -584,22 +530,13 @@ class TestWorkflowWrapper:
 
         mock_manager = AsyncMock()
 
+        ctx = {"count": 0, "max": 10, "allowlist": set()}  # Empty allowlist
         wrapper = _create_workflow_wrapper(
-            "test_workflow",
-            mock_workflow,
-            mock_manager,
-            {"test_workflow"},
+            "test_workflow", mock_workflow, mock_manager, ctx
         )
 
-        # Context with empty allowlist
-        ctx = {"count": 0, "max": 10, "allowlist": set()}
-        token = _tool_call_context.set(ctx)
-
-        try:
-            with pytest.raises(PermissionError, match="not in allowlist"):
-                await wrapper(x=10)
-        finally:
-            _tool_call_context.reset(token)
+        with pytest.raises(PermissionError, match="not in allowlist"):
+            await wrapper(x=10)
 
     async def test_workflow_wrapper_max_calls_exceeded(self):
         """Workflow wrapper raises RuntimeError when max_tool_calls exceeded."""
@@ -610,21 +547,13 @@ class TestWorkflowWrapper:
 
         mock_manager = AsyncMock()
 
+        ctx = {"count": 1, "max": 1, "allowlist": {"test_workflow"}}
         wrapper = _create_workflow_wrapper(
-            "test_workflow",
-            mock_workflow,
-            mock_manager,
-            {"test_workflow"},
+            "test_workflow", mock_workflow, mock_manager, ctx
         )
 
-        ctx = {"count": 1, "max": 1, "allowlist": {"test_workflow"}}
-        token = _tool_call_context.set(ctx)
-
-        try:
-            with pytest.raises(RuntimeError, match="Maximum tool calls"):
-                await wrapper(x=10)
-        finally:
-            _tool_call_context.reset(token)
+        with pytest.raises(RuntimeError, match="Maximum tool calls"):
+            await wrapper(x=10)
 
     async def test_workflow_wrapper_missing_required_param(self):
         """Workflow wrapper raises ValueError for missing required parameter."""
@@ -635,21 +564,13 @@ class TestWorkflowWrapper:
 
         mock_manager = AsyncMock()
 
+        ctx = {"count": 0, "max": 10, "allowlist": {"test_workflow"}}
         wrapper = _create_workflow_wrapper(
-            "test_workflow",
-            mock_workflow,
-            mock_manager,
-            {"test_workflow"},
+            "test_workflow", mock_workflow, mock_manager, ctx
         )
 
-        ctx = {"count": 0, "max": 10, "allowlist": {"test_workflow"}}
-        token = _tool_call_context.set(ctx)
-
-        try:
-            with pytest.raises(ValueError, match="Missing required parameter"):
-                await wrapper(x=10)  # Missing 'y'
-        finally:
-            _tool_call_context.reset(token)
+        with pytest.raises(ValueError, match="Missing required parameter"):
+            await wrapper(x=10)  # Missing 'y'
 
     def test_workflow_wrapper_signature(self):
         """Workflow wrapper has correct signature for PydanticAI."""
@@ -660,11 +581,9 @@ class TestWorkflowWrapper:
 
         mock_manager = Mock()
 
+        ctx = {"count": 0, "max": 10, "allowlist": {"my_workflow"}}
         wrapper = _create_workflow_wrapper(
-            "my_workflow",
-            mock_workflow,
-            mock_manager,
-            {"my_workflow"},
+            "my_workflow", mock_workflow, mock_manager, ctx
         )
 
         # Check signature
@@ -689,11 +608,9 @@ class TestWorkflowWrapper:
 
         mock_manager = Mock()
 
+        ctx = {"count": 0, "max": 10, "allowlist": {"my_workflow"}}
         wrapper = _create_workflow_wrapper(
-            "my_workflow",
-            mock_workflow,
-            mock_manager,
-            {"my_workflow"},
+            "my_workflow", mock_workflow, mock_manager, ctx
         )
 
         assert wrapper.__doc__ == "Execute workflow my_workflow"
@@ -708,7 +625,7 @@ class TestAiAgentWithToolsWorkflows:
         mock_agent = MagicMock()
         mock_agent._model = MagicMock()
         mock_agent._instructions = None
-        mock_agent._system_prompt = None
+        mock_agent._system_prompts = None
 
         with (
             patch("pydantic_ai.Agent") as MockAgent,
@@ -748,7 +665,7 @@ class TestAiAgentWithToolsWorkflows:
         mock_agent = MagicMock()
         mock_agent._model = MagicMock()
         mock_agent._instructions = None
-        mock_agent._system_prompt = None
+        mock_agent._system_prompts = None
 
         # Create mock workflow
         mock_workflow = Mock()
@@ -792,7 +709,7 @@ class TestAiAgentWithToolsWorkflows:
         mock_agent = MagicMock()
         mock_agent._model = MagicMock()
         mock_agent._instructions = None
-        mock_agent._system_prompt = None
+        mock_agent._system_prompts = None
 
         # Create mock workflow
         mock_workflow = Mock()
@@ -851,3 +768,127 @@ class TestAiAgentWithToolsWorkflows:
                 )
         finally:
             clear_workflow_manager_injection(default_registry)
+
+
+@pytest.mark.skipif(not PYDANTIC_AI_AVAILABLE, reason="pydantic-ai not installed")
+class TestAiAgentWithToolsEdgeCases:
+    """Tests for edge cases: structured output, exception wrapping, empty tools."""
+
+    async def test_structured_output(self):
+        """Test structured output with output schema."""
+        mock_agent = MagicMock()
+        mock_agent._model = MagicMock()
+        mock_agent._instructions = None
+        mock_agent._system_prompts = None
+
+        with (
+            patch("pydantic_ai.Agent") as MockAgent,
+            patch("pydantic_ai.Tool") as MockTool,
+        ):
+            # Simulate structured output with text and data attrs
+            mock_output = MagicMock()
+            mock_output.text = "Here is the result"
+            mock_output.data = {"value": 42}
+
+            mock_result = MagicMock()
+            mock_result.output = mock_output
+
+            mock_instance = AsyncMock()
+            mock_instance.run = AsyncMock(return_value=mock_result)
+            MockAgent.return_value = mock_instance
+            MockTool.return_value = MagicMock()
+
+            output_schema = {"text": "string", "data": {"value": "int"}}
+            result = await default_registry.call(
+                "ai_agent_with_tools",
+                [
+                    mock_agent,
+                    "Give me structured data",
+                    ["operator_add"],
+                    output_schema,
+                ],
+            )
+
+            assert result["text"] == "Here is the result"
+            assert result["data"] == {"value": 42}
+
+    async def test_generic_exception_wrapping(self):
+        """Test that generic exceptions are wrapped in RuntimeError."""
+        mock_agent = MagicMock()
+        mock_agent._model = MagicMock()
+        mock_agent._instructions = None
+        mock_agent._system_prompts = None
+
+        with (
+            patch("pydantic_ai.Agent") as MockAgent,
+            patch("pydantic_ai.Tool") as MockTool,
+        ):
+            mock_instance = AsyncMock()
+            mock_instance.run = AsyncMock(
+                side_effect=TypeError("unexpected type error")
+            )
+            MockAgent.return_value = mock_instance
+            MockTool.return_value = MagicMock()
+
+            with pytest.raises(
+                RuntimeError, match="Agent error: unexpected type error"
+            ):
+                await default_registry.call(
+                    "ai_agent_with_tools",
+                    [mock_agent, "Test", ["operator_add"]],
+                )
+
+    async def test_empty_tools_list(self):
+        """Test calling with an empty tools list."""
+        mock_agent = MagicMock()
+        mock_agent._model = MagicMock()
+        mock_agent._instructions = None
+        mock_agent._system_prompts = None
+
+        with patch("pydantic_ai.Agent") as MockAgent:
+            mock_result = MagicMock()
+            mock_result.output = "No tools needed"
+
+            mock_instance = AsyncMock()
+            mock_instance.run = AsyncMock(return_value=mock_result)
+            MockAgent.return_value = mock_instance
+
+            result = await default_registry.call(
+                "ai_agent_with_tools",
+                [mock_agent, "Hello", []],
+            )
+
+            assert result["text"] == "No tools needed"
+            # Agent should be created with empty tools list
+            agent_call_kwargs = MockAgent.call_args[1]
+            assert agent_call_kwargs["tools"] == []
+
+    async def test_private_attrs_exist_on_agent(self):
+        """Defensive test: verify pydantic_ai.Agent has expected private attrs."""
+        from pydantic_ai import Agent
+
+        # Patch infer_model to avoid importing optional providers (e.g. openai)
+        with patch("pydantic_ai.agent.models.infer_model", return_value=MagicMock()):
+            agent = Agent(model=MagicMock(), instructions="test", system_prompt="test")
+
+        assert hasattr(agent, "_model"), (
+            "pydantic_ai.Agent no longer has _model attr — "
+            "ai_agent_with_tools needs updating"
+        )
+        assert hasattr(agent, "_instructions"), (
+            "pydantic_ai.Agent no longer has _instructions attr — "
+            "ai_agent_with_tools needs updating"
+        )
+        assert hasattr(agent, "_system_prompts"), (
+            "pydantic_ai.Agent no longer has _system_prompts attr — "
+            "ai_agent_with_tools needs updating"
+        )
+
+
+@pytest.mark.skipif(
+    PYDANTIC_AI_AVAILABLE, reason="Test only when pydantic-ai is not installed"
+)
+async def test_ai_agent_with_tools_not_registered_when_dep_missing():
+    """Test that ai_agent_with_tools is not registered when pydantic-ai is missing."""
+    assert "ai_agent_with_tools" not in default_registry.list_opcodes()
+    assert "pydantic_ai_create_agent" not in default_registry.list_opcodes()

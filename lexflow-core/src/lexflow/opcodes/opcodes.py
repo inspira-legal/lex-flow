@@ -343,9 +343,17 @@ class OpcodeRegistry:
             "doc": original_func.__doc__,
         }
 
-    def list_opcodes(self) -> list[str]:
-        """List all registered opcodes."""
-        return sorted(self.opcodes.keys())
+    def list_opcodes(self, include_private: bool = False) -> list[str]:
+        """List all registered opcodes.
+
+        Args:
+            include_private: If True, include opcodes prefixed with '_'.
+                            Defaults to False.
+        """
+        keys = self.opcodes.keys()
+        if not include_private:
+            keys = [k for k in keys if not k.startswith("_")]
+        return sorted(keys)
 
     def _register_builtins(self):
         """Register built-in opcodes using the decorator pattern."""

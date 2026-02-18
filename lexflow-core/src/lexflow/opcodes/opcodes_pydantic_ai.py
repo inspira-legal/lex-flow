@@ -3,7 +3,7 @@
 This module provides opcodes for using pydantic_ai agents with Google Vertex AI.
 
 Installation:
-    pip install lexflow[ai]
+    uv add 'lexflow[ai]'
 
 Authentication:
     Vertex AI requires Google Cloud authentication:
@@ -12,7 +12,6 @@ Authentication:
 """
 
 from typing import Any, Callable, List, Optional, Union
-from contextvars import ContextVar
 import asyncio
 import inspect
 
@@ -28,18 +27,14 @@ except ImportError:
     PYDANTIC_AI_AVAILABLE = False
 
 
-# Context var for tracking thread-safe tool calls
-_tool_call_context: ContextVar[dict] = ContextVar("tool_call_context", default=None)
-
-
 def _check_availability():
     """Check if pydantic_ai is available and raise helpful error if not."""
     if not PYDANTIC_AI_AVAILABLE:
         raise ImportError(
             "pydantic-ai is not installed. Install it with:\n"
-            "  pip install lexflow[ai]\n"
+            "  uv add 'lexflow[ai]'\n"
             "or:\n"
-            "  pip install 'pydantic-ai-slim[google]'"
+            "  uv add 'pydantic-ai-slim[google]'"
         )
 
 
@@ -130,7 +125,7 @@ def _create_output_model(output_schema: Optional[dict]):
     return create_model("OutputModel", text=(str, ...), data=(Any, None))
 
 
-def _create_tool_wrapper(opcode_name: str, registry, allowlist: set) -> Callable:
+def _create_tool_wrapper(opcode_name: str, registry, ctx: dict) -> Callable:
     """Create tool wrapper that converts kwargs -> positional args.
 
     PydanticAI calls tools with kwargs (JSON object).
@@ -143,7 +138,7 @@ def _create_tool_wrapper(opcode_name: str, registry, allowlist: set) -> Callable
     Args:
         opcode_name: Name of the opcode
         registry: OpcodeRegistry instance
-        allowlist: Set of allowed opcodes
+        ctx: Shared tracking dict with keys: count, max, allowlist
 
     Returns:
         Async function usable as a tool
@@ -152,17 +147,14 @@ def _create_tool_wrapper(opcode_name: str, registry, allowlist: set) -> Callable
     params_info = interface.get("parameters", [])
 
     async def tool_wrapper(**kwargs) -> Any:
-        # Check tracking context (max_tool_calls)
-        ctx = _tool_call_context.get()
-        if ctx:
-            # Verify allowlist (extra security)
-            if opcode_name not in ctx["allowlist"]:
-                raise PermissionError(f"Tool '{opcode_name}' not in allowlist")
+        # Verify allowlist (extra security)
+        if opcode_name not in ctx["allowlist"]:
+            raise PermissionError(f"Tool '{opcode_name}' not in allowlist")
 
-            # Increment counter
-            ctx["count"] += 1
-            if ctx["count"] > ctx["max"]:
-                raise RuntimeError(f"Maximum tool calls ({ctx['max']}) exceeded")
+        # Increment counter
+        ctx["count"] += 1
+        if ctx["count"] > ctx["max"]:
+            raise RuntimeError(f"Maximum tool calls ({ctx['max']}) exceeded")
 
         # Map kwargs to positional list based on parameter order
         args_list = []
@@ -253,7 +245,7 @@ def _create_workflow_wrapper(
     workflow_name: str,
     workflow,
     manager,
-    allowlist: set,
+    ctx: dict,
 ) -> Callable:
     """Create tool wrapper for a workflow.
 
@@ -264,24 +256,21 @@ def _create_workflow_wrapper(
         workflow_name: Name of the workflow
         workflow: Workflow AST object from manager.workflows
         manager: WorkflowManager instance for executing the workflow
-        allowlist: Set of allowed tool names (opcodes and workflows)
+        ctx: Shared tracking dict with keys: count, max, allowlist
 
     Returns:
         Async function usable as a tool
     """
 
     async def workflow_wrapper(**kwargs) -> Any:
-        # Check tracking context (max_tool_calls)
-        ctx = _tool_call_context.get()
-        if ctx:
-            # Verify allowlist (extra security)
-            if workflow_name not in ctx["allowlist"]:
-                raise PermissionError(f"Workflow '{workflow_name}' not in allowlist")
+        # Verify allowlist (extra security)
+        if workflow_name not in ctx["allowlist"]:
+            raise PermissionError(f"Workflow '{workflow_name}' not in allowlist")
 
-            # Increment counter
-            ctx["count"] += 1
-            if ctx["count"] > ctx["max"]:
-                raise RuntimeError(f"Maximum tool calls ({ctx['max']}) exceeded")
+        # Increment counter
+        ctx["count"] += 1
+        if ctx["count"] > ctx["max"]:
+            raise RuntimeError(f"Maximum tool calls ({ctx['max']}) exceeded")
 
         # Map kwargs to positional args based on workflow.params order
         args_list = []
@@ -477,6 +466,11 @@ def register_pydantic_ai_opcodes():
             Workflow tools require the workflow to be defined in the same file
             or included via --include. The workflow's interface.description
             is used as the tool description for the LLM.
+
+            When tools are provided, the agent is re-created internally.
+            Only model, instructions, and system_prompts are preserved from
+            the original agent. Other config (result_validators, model_settings,
+            etc.) is not carried over.
         """
         _check_availability()
 
@@ -505,27 +499,37 @@ def register_pydantic_ai_opcodes():
         normalized_messages = _normalize_messages(messages)
         prompt = _format_messages_for_prompt(normalized_messages)
 
-        # 5. Create unified allowlist
+        # 5. Create unified allowlist and tracking context
         allowlist = set(opcode_tools) | {_get_workflow_name(t) for t in workflow_tools}
+        ctx = {"count": 0, "max": max_tool_calls, "allowlist": allowlist}
 
         # 6. Create tool wrappers for opcodes
         tool_objects = []
         for tool_name in opcode_tools:
-            wrapper = _create_tool_wrapper(tool_name, default_registry, allowlist)
+            wrapper = _create_tool_wrapper(tool_name, default_registry, ctx)
             tool_objects.append(Tool(wrapper, name=tool_name))
 
         # 7. Create tool wrappers for workflows
         for tool_spec in workflow_tools:
             wf_name = _get_workflow_name(tool_spec)
             workflow = manager.workflows[wf_name]
-            wrapper = _create_workflow_wrapper(wf_name, workflow, manager, allowlist)
+            wrapper = _create_workflow_wrapper(wf_name, workflow, manager, ctx)
             tool_objects.append(Tool(wrapper, name=wf_name))
 
         # 8. Create structured output model (if specified)
         result_type = _create_output_model(output)
 
         # 9. Create new agent with tools
-        # PydanticAI requires tools at Agent creation time
+        # PydanticAI requires tools at Agent creation time, so we must
+        # re-create the agent. We access private attrs (_model, _instructions,
+        # _system_prompts) because pydantic_ai.Agent does not expose public
+        # getters for these. This is fragile — if pydantic_ai renames or
+        # removes these attrs, this code will break. The pydantic-ai version
+        # is pinned in pyproject.toml to mitigate this risk.
+        #
+        # Limitation: only model, instructions, and system_prompt are carried
+        # over. Other Agent config (result_validators, model_settings, etc.)
+        # from the original agent is NOT preserved.
         agent_kwargs = {
             "model": agent._model,
             "tools": tool_objects,
@@ -534,8 +538,8 @@ def register_pydantic_ai_opcodes():
         # Preserve instructions from original agent if present
         if hasattr(agent, "_instructions") and agent._instructions:
             agent_kwargs["instructions"] = agent._instructions
-        if hasattr(agent, "_system_prompt") and agent._system_prompt:
-            agent_kwargs["system_prompt"] = agent._system_prompt
+        if hasattr(agent, "_system_prompts") and agent._system_prompts:
+            agent_kwargs["system_prompt"] = agent._system_prompts
 
         # Add result_type if output schema provided
         if result_type:
@@ -543,16 +547,12 @@ def register_pydantic_ai_opcodes():
 
         agent_with_tools = Agent(**agent_kwargs)
 
-        # 10. Setup tool call tracking context
-        ctx = {"count": 0, "max": max_tool_calls, "allowlist": allowlist}
-        token = _tool_call_context.set(ctx)
-
         try:
-            # 11. Execute with timeout
+            # 10. Execute with timeout
             async with asyncio.timeout(timeout_seconds):
                 result = await agent_with_tools.run(prompt)
 
-            # 12. Format output
+            # 11. Format output
             if result_type and hasattr(result.output, "text"):
                 return {
                     "text": result.output.text,
@@ -572,6 +572,3 @@ def register_pydantic_ai_opcodes():
         except Exception as e:
             # Wrap other exceptions as RuntimeError
             raise RuntimeError(f"Agent error: {e}") from e
-        finally:
-            # Clean up context
-            _tool_call_context.reset(token)

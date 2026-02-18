@@ -119,7 +119,11 @@ class TestPrivilegedOpcodes:
         registry = OpcodeRegistry()
         opcodes = registry.list_opcodes()
         assert "introspect_context" in opcodes
-        assert "_get_workflow_manager" in opcodes
+        # Private opcodes (prefixed with _) are hidden by default
+        assert "_get_workflow_manager" not in opcodes
+        # But visible with include_private=True
+        all_opcodes = registry.list_opcodes(include_private=True)
+        assert "_get_workflow_manager" in all_opcodes
 
     async def test_privileged_opcode_has_interface(self):
         """Privileged opcodes have proper interfaces for documentation."""
