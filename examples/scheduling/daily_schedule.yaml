@@ -1,0 +1,78 @@
+# Daily Schedule Example
+# Demonstrates scheduling a task to run every day at a specific time.
+# This example runs once (max_iterations=1) at 09:00 in Sao Paulo timezone.
+#
+# Run with: lexflow examples/scheduling/daily_schedule.yaml
+#
+# For production use, remove max_iterations to run indefinitely,
+# or combine with control_spawn to run alongside other tasks.
+
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      tick: null
+
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_intro
+        inputs: {}
+
+      print_intro:
+        opcode: io_print
+        next: process_ticks
+        inputs:
+          STRING: { literal: "Waiting for 09:00 AM (America/Sao_Paulo)...\n" }
+
+      create_daily:
+        opcode: schedule_daily
+        isReporter: true
+        inputs:
+          hour: { literal: 9 }
+          minute: { literal: 0 }
+          timezone: { literal: "America/Sao_Paulo" }
+          max_iterations: { literal: 1 }
+
+      process_ticks:
+        opcode: control_async_foreach
+        next: done
+        inputs:
+          VAR: { literal: "tick" }
+          ITERABLE: { node: create_daily }
+          BODY: { branch: execute_daily_task }
+
+      execute_daily_task:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING: { node: format_msg }
+
+      format_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          A: { literal: "Daily task executed at " }
+          B: { node: format_msg_suffix }
+
+      format_msg_suffix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          A: { node: get_time }
+          B: { literal: "\n" }
+
+      get_time:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: { variable: tick }
+          key: { literal: "actual_time" }
+
+      done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING: { literal: "Daily schedule completed.\n" }

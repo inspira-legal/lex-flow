@@ -16,6 +16,7 @@ from .opcodes_rag import register_rag_opcodes
 from . import opcodes_chat  # noqa: F401
 from . import opcodes_cli  # noqa: F401
 from . import opcodes_github  # noqa: F401
+from . import opcodes_schedule  # noqa: F401
 from . import opcodes_tasks  # noqa: F401
 
 # Register optional opcode modules (require external dependencies)
