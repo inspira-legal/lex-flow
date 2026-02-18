@@ -3,6 +3,9 @@
 Provides one-shot delays, recurring intervals, daily timers,
 and cron-based scheduling as async generators for use with
 control_async_foreach.
+
+Installation (for cron support):
+    uv add 'lexflow[schedule]'
 """
 
 from __future__ import annotations
@@ -21,6 +24,8 @@ try:
 except ImportError:
     CRONITER_AVAILABLE = False
 
+MAX_DELAY_SECONDS = 86400 * 365  # 1 year
+
 
 register_category(
     id="schedule",
@@ -30,6 +35,22 @@ register_category(
     icon="⏰",
     order=275,
 )
+
+
+def _validate_seconds(seconds: float) -> None:
+    if seconds <= 0:
+        raise ValueError(f"seconds must be positive, got {seconds}")
+    if seconds > MAX_DELAY_SECONDS:
+        raise ValueError(
+            f"seconds exceeds maximum ({MAX_DELAY_SECONDS}), got {seconds}"
+        )
+
+
+def _validate_timezone(timezone: str) -> ZoneInfo:
+    try:
+        return ZoneInfo(timezone)
+    except (KeyError, Exception):
+        raise ValueError(f"Invalid timezone: '{timezone}'")
 
 
 def _now(tz: ZoneInfo) -> datetime:
@@ -45,13 +66,14 @@ async def schedule_after(seconds: float, timezone: str = "UTC") -> dict:
     """Wait for a delay then return timing info.
 
     Args:
-        seconds: Number of seconds to wait
+        seconds: Number of seconds to wait (must be positive, max 1 year)
         timezone: IANA timezone for timestamps (e.g. "America/Sao_Paulo")
 
     Returns:
         Dict with started_at, completed_at, elapsed_seconds
     """
-    tz = ZoneInfo(timezone)
+    _validate_seconds(seconds)
+    tz = _validate_timezone(timezone)
     started_at = _now(tz)
     await asyncio.sleep(seconds)
     completed_at = _now(tz)
@@ -74,7 +96,7 @@ async def schedule_interval(
     drift accumulation. Use with control_async_foreach.
 
     Args:
-        seconds: Interval between ticks in seconds
+        seconds: Interval between ticks in seconds (must be positive, max 1 year)
         max_iterations: Stop after N iterations (None for infinite)
         timezone: IANA timezone for timestamps
 
@@ -82,7 +104,8 @@ async def schedule_interval(
         Dict with iteration, scheduled_time, actual_time, drift_seconds,
         next_scheduled_time
     """
-    tz = ZoneInfo(timezone)
+    _validate_seconds(seconds)
+    tz = _validate_timezone(timezone)
 
     async def gen():
         start = _now(tz)
@@ -132,7 +155,13 @@ async def schedule_daily(
         Dict with iteration, scheduled_time, actual_time, drift_seconds,
         next_scheduled_time
     """
-    tz = ZoneInfo(timezone)
+    if not (0 <= hour <= 23):
+        raise ValueError(f"hour must be 0-23, got {hour}")
+    if not (0 <= minute <= 59):
+        raise ValueError(f"minute must be 0-59, got {minute}")
+    if not (0 <= second <= 59):
+        raise ValueError(f"second must be 0-59, got {second}")
+    tz = _validate_timezone(timezone)
 
     async def gen():
         now = _now(tz)
@@ -161,7 +190,18 @@ async def schedule_daily(
     return gen()
 
 
-if CRONITER_AVAILABLE:
+def _check_croniter():
+    if not CRONITER_AVAILABLE:
+        raise ImportError(
+            "croniter is required for schedule_cron. "
+            "Install with: uv add 'lexflow[schedule]'"
+        )
+
+
+def register_schedule_opcodes():
+    """Register schedule opcodes that require optional dependencies."""
+    if not CRONITER_AVAILABLE:
+        return
 
     @opcode(category="schedule")
     async def schedule_cron(
@@ -182,7 +222,12 @@ if CRONITER_AVAILABLE:
             Dict with iteration, scheduled_time, actual_time, drift_seconds,
             next_scheduled_time
         """
-        tz = ZoneInfo(timezone)
+        _check_croniter()
+        tz = _validate_timezone(timezone)
+        try:
+            croniter(expression)
+        except (ValueError, KeyError) as e:
+            raise ValueError(f"Invalid cron expression: '{expression}' ({e})")
 
         async def gen():
             now = _now(tz)
@@ -195,7 +240,6 @@ if CRONITER_AVAILABLE:
                     await asyncio.sleep(delay)
                 actual = _now(tz)
                 drift = (actual - target).total_seconds()
-                # Peek at next scheduled time with a separate iterator
                 peek = croniter(expression, target)
                 next_target = peek.get_next(datetime)
                 yield {
