@@ -311,8 +311,8 @@ class TestAiAgentWithToolsOpcode:
 
         # Mock Agent and Tool at pydantic_ai level (where they're imported from)
         with (
-            patch("pydantic_ai.Agent") as MockAgent,
-            patch("pydantic_ai.Tool") as MockTool,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Agent") as MockAgent,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Tool") as MockTool,
         ):
             mock_result = MagicMock()
             mock_result.output = "Test response"
@@ -336,8 +336,8 @@ class TestAiAgentWithToolsOpcode:
         mock_agent._model = MagicMock()
 
         with (
-            patch("pydantic_ai.Agent") as MockAgent,
-            patch("pydantic_ai.Tool") as MockTool,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Agent") as MockAgent,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Tool") as MockTool,
         ):
 
             async def slow_run(prompt):
@@ -380,8 +380,8 @@ class TestAiAgentWithToolsOpcode:
         mock_agent._system_prompts = None
 
         with (
-            patch("pydantic_ai.Agent") as MockAgent,
-            patch("pydantic_ai.Tool") as MockTool,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Agent") as MockAgent,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Tool") as MockTool,
         ):
             mock_result = MagicMock()
             mock_result.output = "Response"
@@ -408,8 +408,8 @@ class TestAiAgentWithToolsOpcode:
         mock_agent._system_prompts = None
 
         with (
-            patch("pydantic_ai.Agent") as MockAgent,
-            patch("pydantic_ai.Tool") as MockTool,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Agent") as MockAgent,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Tool") as MockTool,
         ):
             mock_result = MagicMock()
             mock_result.output = "Response"
@@ -628,8 +628,8 @@ class TestAiAgentWithToolsWorkflows:
         mock_agent._system_prompts = None
 
         with (
-            patch("pydantic_ai.Agent") as MockAgent,
-            patch("pydantic_ai.Tool") as MockTool,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Agent") as MockAgent,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Tool") as MockTool,
         ):
             mock_result = MagicMock()
             mock_result.output = "Response"
@@ -682,8 +682,8 @@ class TestAiAgentWithToolsWorkflows:
 
         try:
             with (
-                patch("pydantic_ai.Agent") as MockAgent,
-                patch("pydantic_ai.Tool") as MockTool,
+                patch("lexflow.opcodes.opcodes_pydantic_ai.Agent") as MockAgent,
+                patch("lexflow.opcodes.opcodes_pydantic_ai.Tool") as MockTool,
             ):
                 mock_result = MagicMock()
                 mock_result.output = "Response"
@@ -724,8 +724,8 @@ class TestAiAgentWithToolsWorkflows:
 
         try:
             with (
-                patch("pydantic_ai.Agent") as MockAgent,
-                patch("pydantic_ai.Tool") as MockTool,
+                patch("lexflow.opcodes.opcodes_pydantic_ai.Agent") as MockAgent,
+                patch("lexflow.opcodes.opcodes_pydantic_ai.Tool") as MockTool,
             ):
                 mock_result = MagicMock()
                 mock_result.output = "Response"
@@ -782,8 +782,8 @@ class TestAiAgentWithToolsEdgeCases:
         mock_agent._system_prompts = None
 
         with (
-            patch("pydantic_ai.Agent") as MockAgent,
-            patch("pydantic_ai.Tool") as MockTool,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Agent") as MockAgent,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Tool") as MockTool,
         ):
             # Simulate structured output with text and data attrs
             mock_output = MagicMock()
@@ -820,8 +820,8 @@ class TestAiAgentWithToolsEdgeCases:
         mock_agent._system_prompts = None
 
         with (
-            patch("pydantic_ai.Agent") as MockAgent,
-            patch("pydantic_ai.Tool") as MockTool,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Agent") as MockAgent,
+            patch("lexflow.opcodes.opcodes_pydantic_ai.Tool") as MockTool,
         ):
             mock_instance = AsyncMock()
             mock_instance.run = AsyncMock(
@@ -845,7 +845,7 @@ class TestAiAgentWithToolsEdgeCases:
         mock_agent._instructions = None
         mock_agent._system_prompts = None
 
-        with patch("pydantic_ai.Agent") as MockAgent:
+        with patch("lexflow.opcodes.opcodes_pydantic_ai.Agent") as MockAgent:
             mock_result = MagicMock()
             mock_result.output = "No tools needed"
 
@@ -892,3 +892,12 @@ async def test_ai_agent_with_tools_not_registered_when_dep_missing():
     """Test that ai_agent_with_tools is not registered when pydantic-ai is missing."""
     assert "ai_agent_with_tools" not in default_registry.list_opcodes()
     assert "pydantic_ai_create_agent" not in default_registry.list_opcodes()
+
+
+@pytest.mark.skipif(
+    PYDANTIC_AI_AVAILABLE, reason="Test only when pydantic-ai is not installed"
+)
+async def test_ai_agent_with_tools_not_registered_when_not_installed():
+    """Test that ai_agent_with_tools raises ValueError when pydantic-ai is absent."""
+    with pytest.raises(ValueError, match="Unknown opcode"):
+        await default_registry.call("ai_agent_with_tools", [None, "test", []])

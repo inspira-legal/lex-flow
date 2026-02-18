@@ -150,7 +150,9 @@ class OpcodeRegistry:
         """List all registered categories sorted by order."""
         return sorted(self.categories.values(), key=lambda c: (c.order, c.id))
 
-    def register(self, name: str = None, *, category: str = None, privileged: bool = False):
+    def register(
+        self, name: str = None, *, category: str = None, privileged: bool = False
+    ):
         """
         Decorator to register an opcode with automatic argument unpacking.
 

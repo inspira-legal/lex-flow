@@ -99,7 +99,7 @@ class Engine:
                 "opcodes": self.opcodes.list_opcodes(),
             }
 
-        async def get_workflow_manager():
+        async def get_workflow_manager() -> Any:
             return self.workflows
 
         self.opcodes.inject("introspect_context", get_context)

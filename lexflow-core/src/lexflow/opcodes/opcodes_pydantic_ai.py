@@ -15,10 +15,11 @@ from typing import Any, Callable, List, Optional, Union
 import asyncio
 import inspect
 
-from .opcodes import opcode, register_category
+from .opcodes import opcode, register_category, default_registry
 
 try:
-    from pydantic_ai import Agent
+    from pydantic import create_model
+    from pydantic_ai import Agent, Tool
     from pydantic_ai.models.google import GoogleModel
     from pydantic_ai.providers.google import GoogleProvider
 
@@ -28,7 +29,7 @@ except ImportError:
 
 
 def _check_availability():
-    """Check if pydantic_ai is available and raise helpful error if not."""
+    """Raise ImportError if pydantic_ai is not installed."""
     if not PYDANTIC_AI_AVAILABLE:
         raise ImportError(
             "pydantic-ai is not installed. Install it with:\n"
@@ -39,28 +40,14 @@ def _check_availability():
 
 
 def _normalize_messages(messages: Union[str, List[dict]]) -> List[dict]:
-    """Normalize messages to list format.
-
-    Args:
-        messages: String (user prompt) or list of {role, content}
-
-    Returns:
-        List of dicts with role and content
-    """
+    """Normalize string or list messages to list of {role, content} dicts."""
     if isinstance(messages, str):
         return [{"role": "user", "content": messages}]
     return messages
 
 
 def _format_messages_for_prompt(messages: List[dict]) -> str:
-    """Format message history as prompt string.
-
-    Args:
-        messages: List of {role, content}
-
-    Returns:
-        Formatted string for the agent
-    """
+    """Format list of message dicts as a single prompt string."""
     lines = []
     for msg in messages:
         role = msg.get("role", "user").capitalize()
@@ -70,15 +57,7 @@ def _format_messages_for_prompt(messages: List[dict]) -> str:
 
 
 def _validate_tools_exist(tools: List[str], registry) -> None:
-    """Validate that all tools exist in the registry.
-
-    Args:
-        tools: List of opcode names
-        registry: OpcodeRegistry instance
-
-    Raises:
-        ValueError: If any tool doesn't exist
-    """
+    """Raise ValueError if any tool name is not in the registry."""
     available = set(registry.list_opcodes())
     missing = set(tools) - available
     if missing:
@@ -86,18 +65,9 @@ def _validate_tools_exist(tools: List[str], registry) -> None:
 
 
 def _create_output_model(output_schema: Optional[dict]):
-    """Create Pydantic model from output schema.
-
-    Args:
-        output_schema: Dict with {text: "string", data: {...}} or None
-
-    Returns:
-        Pydantic model class or None
-    """
+    """Create a Pydantic model from an output schema dict, or return None."""
     if not output_schema:
         return None
-
-    from pydantic import create_model
 
     type_mapping = {
         "string": str,
@@ -126,22 +96,9 @@ def _create_output_model(output_schema: Optional[dict]):
 
 
 def _create_tool_wrapper(opcode_name: str, registry, ctx: dict) -> Callable:
-    """Create tool wrapper that converts kwargs -> positional args.
+    """Create an async tool wrapper that maps PydanticAI kwargs to registry positional args.
 
-    PydanticAI calls tools with kwargs (JSON object).
-    registry.call() expects positional args (list).
-    This wrapper does the conversion using get_interface().
-
-    The wrapper is given a proper __signature__ so PydanticAI can
-    introspect the expected parameters and tell the LLM about them.
-
-    Args:
-        opcode_name: Name of the opcode
-        registry: OpcodeRegistry instance
-        ctx: Shared tracking dict with keys: count, max, allowlist
-
-    Returns:
-        Async function usable as a tool
+    Sets a proper __signature__ so PydanticAI can introspect parameters for the LLM.
     """
     interface = registry.get_interface(opcode_name)
     params_info = interface.get("parameters", [])
@@ -201,39 +158,17 @@ def _create_tool_wrapper(opcode_name: str, registry, ctx: dict) -> Callable:
 
 
 def _is_workflow_tool(tool: Union[str, dict]) -> bool:
-    """Check if tool spec is a workflow reference.
-
-    Args:
-        tool: Tool specification (string for opcode, dict for workflow)
-
-    Returns:
-        True if tool is a workflow reference
-    """
+    """Return True if tool spec is a workflow reference dict."""
     return isinstance(tool, dict) and "workflow" in tool
 
 
 def _get_workflow_name(tool: dict) -> str:
-    """Extract workflow name from tool spec.
-
-    Args:
-        tool: Dict with {"workflow": "name"}
-
-    Returns:
-        Workflow name string
-    """
+    """Extract workflow name from a workflow tool spec dict."""
     return tool["workflow"]
 
 
 def _validate_workflow_tools_exist(tools: List[dict], manager) -> None:
-    """Validate that all workflows exist in manager.
-
-    Args:
-        tools: List of workflow tool specs (dicts with "workflow" key)
-        manager: WorkflowManager instance
-
-    Raises:
-        ValueError: If any workflow doesn't exist
-    """
+    """Raise ValueError if any workflow tool spec references a missing workflow."""
     available = set(manager.workflows.keys())
     requested = {_get_workflow_name(t) for t in tools}
     missing = requested - available
@@ -247,19 +182,9 @@ def _create_workflow_wrapper(
     manager,
     ctx: dict,
 ) -> Callable:
-    """Create tool wrapper for a workflow.
+    """Create an async tool wrapper that maps PydanticAI kwargs to workflow positional args.
 
-    This wrapper allows workflows to be called as tools by AI agents.
-    It maps kwargs from the LLM to positional args for the workflow.
-
-    Args:
-        workflow_name: Name of the workflow
-        workflow: Workflow AST object from manager.workflows
-        manager: WorkflowManager instance for executing the workflow
-        ctx: Shared tracking dict with keys: count, max, allowlist
-
-    Returns:
-        Async function usable as a tool
+    Sets a proper __signature__ so PydanticAI can introspect parameters for the LLM.
     """
 
     async def workflow_wrapper(**kwargs) -> Any:
@@ -472,9 +397,8 @@ def register_pydantic_ai_opcodes():
             the original agent. Other config (result_validators, model_settings,
             etc.) is not carried over.
         """
+        # Defense-in-depth: verify availability even though registration is guarded
         _check_availability()
-
-        from pydantic_ai import Agent, Tool
 
         # 1. Separate tools by type
         opcode_tools = [t for t in tools if isinstance(t, str)]
