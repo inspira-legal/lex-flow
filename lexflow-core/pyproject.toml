@@ -20,6 +20,7 @@ ai = ["pydantic-ai-slim[google]"]
 file = ["pymupdf"]
 gcs = ["gcloud-aio-storage"]
 pubsub = ["gcloud-aio-pubsub"]
+slack = ["slack-sdk>=3.0.0"]
 dev = ["pytest", "pytest-asyncio"]
 
 [tool.hatch.build.targets.wheel]
