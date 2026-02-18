@@ -2,6 +2,82 @@
 
 <!-- version list -->
 
+## v1.6.0 (2026-02-18)
+
+### Bug Fixes
+
+- **ai**: Address code review findings — imports, types, tests, style
+  ([#8](https://github.com/inspira-legal/lex-flow/pull/8),
+  [`b43b38b`](https://github.com/inspira-legal/lex-flow/commit/b43b38b53739d04e89560ff1dca4b942d77da776))
+
+- **ai**: Address PR #8 review — remove ContextVar, fix private attrs, add tests
+  ([#8](https://github.com/inspira-legal/lex-flow/pull/8),
+  [`b43b38b`](https://github.com/inspira-legal/lex-flow/commit/b43b38b53739d04e89560ff1dca4b942d77da776))
+
+- **docs**: Add hardcoded secrets warning to security section in code review guide
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- **docs**: Correct exception type and private attribute in code review guide examples
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- **docs**: Fix inconsistent abbreviation, fictional exception, and inaccurate pattern ref in code
+  review guide ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- **docs**: Fix link text, commit types, and hardcoded line ref in code review guide
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- **docs**: Remove fictional references and soften overstated rules in code review guide
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- **docs**: Resolve undefined rule ID prefixes in code review guide
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- **examples**: Fix typo and add debug prints to workflow_as_tools
+  ([#8](https://github.com/inspira-legal/lex-flow/pull/8),
+  [`b43b38b`](https://github.com/inspira-legal/lex-flow/commit/b43b38b53739d04e89560ff1dca4b942d77da776))
+
+### Chores
+
+- **web**: Build frontend library [skip ci]
+  ([`c765070`](https://github.com/inspira-legal/lex-flow/commit/c7650708687c5322e88c6bc2f8fbd44f8bfaf4c0))
+
+- **web**: Release 1.10.0
+  ([`833b8b7`](https://github.com/inspira-legal/lex-flow/commit/833b8b7529d2dd5a8ff026f59580215ad23f3545))
+
+### Documentation
+
+- Add code review guide and Gemini styleguide for automated PR reviews
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- Add code review guide and styleguide for automated PR reviews
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`b4c9b1d`](https://github.com/inspira-legal/lex-flow/commit/b4c9b1d840beab82d96e0030fb4e33cb8e6f6e9b))
+
+### Features
+
+- **ai**: Add ai_agent_with_tools opcode for agentic workflows
+  ([#8](https://github.com/inspira-legal/lex-flow/pull/8),
+  [`b43b38b`](https://github.com/inspira-legal/lex-flow/commit/b43b38b53739d04e89560ff1dca4b942d77da776))
+
+- **ai**: Allow workflows as tools in ai_agent_with_tools
+  ([#8](https://github.com/inspira-legal/lex-flow/pull/8),
+  [`b43b38b`](https://github.com/inspira-legal/lex-flow/commit/b43b38b53739d04e89560ff1dca4b942d77da776))
+
+- **core**: Add privileged opcode injection system
+  ([#8](https://github.com/inspira-legal/lex-flow/pull/8),
+  [`b43b38b`](https://github.com/inspira-legal/lex-flow/commit/b43b38b53739d04e89560ff1dca4b942d77da776))
+
+
 ## v1.5.0 (2026-02-07)
 
 ### Bug Fixes
