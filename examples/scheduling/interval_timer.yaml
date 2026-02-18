@@ -1,0 +1,93 @@
+# Interval Timer Example
+# Prints a message every 2 seconds, stopping after 5 iterations.
+#
+# Run with: lexflow examples/scheduling/interval_timer.yaml
+
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      tick: null
+
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_intro
+        inputs: {}
+
+      print_intro:
+        opcode: io_print
+        next: process_ticks
+        inputs:
+          STRING: { literal: "Starting interval timer (every 2s, 5 iterations)...\n\n" }
+
+      create_interval:
+        opcode: schedule_interval
+        isReporter: true
+        inputs:
+          seconds: { literal: 2 }
+          max_iterations: { literal: 5 }
+
+      process_ticks:
+        opcode: control_async_foreach
+        next: done
+        inputs:
+          VAR: { literal: "tick" }
+          ITERABLE: { node: create_interval }
+          BODY: { branch: print_tick }
+
+      print_tick:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING: { node: format_tick }
+
+      format_tick:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          A: { literal: "Tick #" }
+          B: { node: format_tick_suffix }
+
+      format_tick_suffix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          A: { node: get_iteration }
+          B: { node: format_time_part }
+
+      get_iteration:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: { variable: tick }
+          key: { literal: "iteration" }
+
+      format_time_part:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          A: { literal: " at " }
+          B: { node: format_time_suffix }
+
+      format_time_suffix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          A: { node: get_actual_time }
+          B: { literal: "\n" }
+
+      get_actual_time:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: { variable: tick }
+          key: { literal: "actual_time" }
+
+      done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING: { literal: "\nTimer complete!\n" }

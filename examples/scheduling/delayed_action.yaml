@@ -1,0 +1,70 @@
+# Delayed Action Example
+# Waits for a specified delay before executing an action.
+#
+# Run with: lexflow examples/scheduling/delayed_action.yaml
+
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      timing: null
+
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_waiting
+        inputs: {}
+
+      print_waiting:
+        opcode: io_print
+        next: store_timing
+        inputs:
+          STRING: { literal: "Waiting 3 seconds...\n" }
+
+      delay:
+        opcode: schedule_after
+        isReporter: true
+        inputs:
+          seconds: { literal: 3 }
+
+      store_timing:
+        opcode: data_set_variable_to
+        next: print_done
+        inputs:
+          VARIABLE: { literal: "timing" }
+          VALUE: { node: delay }
+
+      print_done:
+        opcode: io_print
+        next: print_elapsed
+        inputs:
+          STRING: { literal: "Action executed!\n" }
+
+      print_elapsed:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING: { node: format_elapsed }
+
+      format_elapsed:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          A: { literal: "Elapsed: " }
+          B: { node: format_elapsed_suffix }
+
+      format_elapsed_suffix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          A: { node: get_elapsed }
+          B: { literal: " seconds\n" }
+
+      get_elapsed:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: { variable: timing }
+          key: { literal: "elapsed_seconds" }
