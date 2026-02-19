@@ -1,0 +1,219 @@
+# Book Ingestion Publisher - Test utility for Vault Pub/Sub Pipeline
+#
+# Publishes a book ingestion message to the Pub/Sub emulator.
+# The message is consumed by ingest_book_consumer.yaml.
+#
+# Setup:
+#   cd examples/integrations/pubsub/emulator && ./setup.sh docker
+#   export PUBSUB_EMULATOR_HOST=localhost:8085
+#   ./examples/showcase/vault/setup_emulator.sh
+#
+# Usage:
+#   PUBSUB_EMULATOR_HOST=localhost:8085 lexflow examples/showcase/vault/publish_book.yaml \
+#     --input bucket=mvp-personal-vault \
+#     --input objeto=solar_system.pdf \
+#     --input livro_id=test-001 \
+#     --input projeto_gcp=inspira-development \
+#     --input workspace_id=ws-abc123 \
+#     --input folder_id=folder-xyz789
+
+workflows:
+  - name: main
+    interface:
+      inputs: [bucket, objeto, livro_id, projeto_gcp, workspace_id, folder_id, project_id, topic_id]
+      outputs: []
+    variables:
+      # Message fields
+      bucket: ""
+      objeto: ""
+      livro_id: ""
+      projeto_gcp: ""
+      workspace_id: ""
+      folder_id: ""
+      # Pub/Sub config
+      project_id: "test-project"
+      topic_id: "vault-ingest"
+      # State
+      publisher: null
+      message_data: ""
+      message_id: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      print_header:
+        opcode: io_print
+        next: store_publisher
+        inputs:
+          STRING:
+            literal: "=== Vault Book Publisher ===\n\n"
+
+      # Create publisher
+      create_publisher:
+        opcode: pubsub_create_publisher
+        isReporter: true
+        inputs: {}
+
+      store_publisher:
+        opcode: data_set_variable_to
+        next: build_message
+        inputs:
+          VARIABLE:
+            literal: "publisher"
+          VALUE:
+            node: create_publisher
+
+      # Build JSON message from inputs
+      msg_base:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      msg_with_bucket:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: msg_base
+          key:
+            literal: "bucket"
+          value:
+            variable: bucket
+
+      msg_with_objeto:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: msg_with_bucket
+          key:
+            literal: "objeto"
+          value:
+            variable: objeto
+
+      msg_with_livro_id:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: msg_with_objeto
+          key:
+            literal: "livro_id"
+          value:
+            variable: livro_id
+
+      msg_with_projeto_gcp:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: msg_with_livro_id
+          key:
+            literal: "projeto_gcp"
+          value:
+            variable: projeto_gcp
+
+      msg_with_workspace_id:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: msg_with_projeto_gcp
+          key:
+            literal: "workspace_id"
+          value:
+            variable: workspace_id
+
+      msg_with_folder_id:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: msg_with_workspace_id
+          key:
+            literal: "folder_id"
+          value:
+            variable: folder_id
+
+      do_stringify:
+        opcode: json_stringify
+        isReporter: true
+        inputs:
+          obj:
+            node: msg_with_folder_id
+
+      build_message:
+        opcode: data_set_variable_to
+        next: publish_message
+        inputs:
+          VARIABLE:
+            literal: "message_data"
+          VALUE:
+            node: do_stringify
+
+      # Publish message
+      do_publish:
+        opcode: pubsub_publish_message
+        isReporter: true
+        inputs:
+          publisher:
+            variable: publisher
+          project_id:
+            variable: project_id
+          topic_id:
+            variable: topic_id
+          data:
+            variable: message_data
+
+      publish_message:
+        opcode: data_set_variable_to
+        next: print_published
+        inputs:
+          VARIABLE:
+            literal: "message_id"
+          VALUE:
+            node: do_publish
+
+      # Print result
+      format_published_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "Publicado: {0}\nLivro: {1}\nSource: gs://{2}/{3}\nWorkspace: {4}\nFolder: {5}\n"
+          VALUES:
+            variable: message_id
+          VALUE_1:
+            variable: livro_id
+          VALUE_2:
+            variable: bucket
+          VALUE_3:
+            variable: objeto
+          VALUE_4:
+            variable: workspace_id
+          VALUE_5:
+            variable: folder_id
+
+      print_published:
+        opcode: io_print
+        next: close_publisher
+        inputs:
+          STRING:
+            node: format_published_msg
+
+      # Cleanup
+      close_publisher:
+        opcode: pubsub_close_publisher
+        next: print_done
+        inputs:
+          publisher:
+            variable: publisher
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\nDone!\n"

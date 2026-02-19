@@ -20,6 +20,7 @@ from . import opcodes_chat  # noqa: F401
 from . import opcodes_cli  # noqa: F401
 from . import opcodes_github  # noqa: F401
 from . import opcodes_tasks  # noqa: F401
+from . import opcodes_util  # noqa: F401
 
 # Register optional opcode modules (require external dependencies)
 register_gcs_opcodes()

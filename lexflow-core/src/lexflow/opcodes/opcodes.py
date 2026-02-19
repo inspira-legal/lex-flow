@@ -562,6 +562,11 @@ class OpcodeRegistry:
             """Check if string ends with suffix."""
             return str(text).endswith(suffix)
 
+        @self.register()
+        async def string_format(template: str, *values) -> str:
+            """Format string with positional placeholders ({0}, {1}, ...)."""
+            return template.format(*values)
+
         # ============ List Operations ============
         @self.register()
         async def list_length(items: list) -> int:
@@ -591,6 +596,16 @@ class OpcodeRegistry:
             if stop is None:
                 return list(range(int(start)))
             return list(range(int(start), int(stop), int(step)))
+
+        @self.register()
+        async def list_pluck(items: list, key: str) -> list:
+            """Extract a field from each dict in a list."""
+            return [item[key] for item in items]
+
+        @self.register()
+        async def list_enumerate(items: list, start: int = 0) -> list:
+            """Create index-value pairs from a list."""
+            return [[i, item] for i, item in enumerate(items, start=int(start))]
 
         # ============ Dictionary Operations ============
         @self.register()

@@ -19,6 +19,7 @@ dependencies = [
 ai = ["pydantic-ai-slim[google]>=0.1,<1.0"]
 file = ["pymupdf"]
 pgvector = ["asyncpg", "pgvector"]
+rag = ["pymupdf", "pypdf", "google-cloud-aiplatform", "qdrant-client", "bm25s"]
 gcs = ["gcloud-aio-storage"]
 pubsub = ["gcloud-aio-pubsub"]
 sheets = ["google-auth", "google-auth-oauthlib", "google-api-python-client"]

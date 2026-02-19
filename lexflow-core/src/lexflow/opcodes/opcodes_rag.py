@@ -1,7 +1,7 @@
 """RAG (Retrieval Augmented Generation) opcodes for LexFlow.
 
 This module provides opcodes for building RAG pipelines:
-- PDF text extraction (requires pypdf)
+- PDF text extraction (requires pymupdf or pypdf)
 - Text chunking (no dependencies)
 - Vertex AI embeddings (requires google-cloud-aiplatform)
 - Qdrant vector database operations (requires qdrant-client)
@@ -10,10 +10,20 @@ Installation:
     pip install lexflow[rag]
 """
 
+import asyncio
+import bisect
+import random
 import re
 from typing import Any, Dict, List, Optional
 
 from .opcodes import opcode, register_category
+
+try:
+    import pymupdf
+
+    HAS_PYMUPDF = True
+except ImportError:
+    HAS_PYMUPDF = False
 
 try:
     from pypdf import PdfReader
@@ -22,9 +32,11 @@ try:
 except ImportError:
     PYPDF_AVAILABLE = False
 
+PDF_AVAILABLE = HAS_PYMUPDF or PYPDF_AVAILABLE
+
 try:
     import vertexai
-    from vertexai.language_models import TextEmbeddingModel
+    from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
 
     VERTEXAI_AVAILABLE = True
 except ImportError:
@@ -161,27 +173,36 @@ def register_rag_opcodes():
         if overlap >= chunk_size:
             raise ValueError("overlap must be less than chunk_size")
 
-        char_positions: List[tuple] = []
+        boundaries: List[tuple] = []  # (char_offset, page, line)
         full_text_parts = []
+        offset = 0
 
         for page_num, page_text in enumerate(pages, start=1):
             if not page_text:
                 continue
             lines = page_text.split("\n")
             for line_num, line in enumerate(lines, start=1):
-                for char in line:
-                    char_positions.append((page_num, line_num))
-                    full_text_parts.append(char)
+                boundaries.append((offset, page_num, line_num))
+                offset += len(line)
+                full_text_parts.append(line)
                 if line_num < len(lines):
-                    char_positions.append((page_num, line_num))
+                    offset += 1
                     full_text_parts.append("\n")
             if page_num < len(pages):
-                char_positions.append((page_num, line_num if lines else 1))
+                offset += 1
                 full_text_parts.append("\n")
 
         full_text = "".join(full_text_parts)
         if not full_text:
             return []
+
+        boundary_offsets = [b[0] for b in boundaries]
+
+        def get_position(char_idx: int) -> tuple:
+            idx = bisect.bisect_right(boundary_offsets, char_idx) - 1
+            if idx < 0:
+                return (1, 1)
+            return (boundaries[idx][1], boundaries[idx][2])
 
         chunks = []
         start = 0
@@ -191,12 +212,8 @@ def register_rag_opcodes():
             end = min(start + chunk_size, text_len)
             chunk_text = full_text[start:end]
 
-            start_pos = char_positions[start] if start < len(char_positions) else (1, 1)
-            end_pos = (
-                char_positions[end - 1]
-                if end - 1 < len(char_positions)
-                else char_positions[-1]
-            )
+            start_pos = get_position(start)
+            end_pos = get_position(end - 1)
 
             chunks.append(
                 {
@@ -244,27 +261,36 @@ def register_rag_opcodes():
         if overlap >= chunk_size:
             raise ValueError("overlap must be less than chunk_size")
 
-        char_positions: List[tuple] = []
+        boundaries: List[tuple] = []  # (char_offset, page, line)
         full_text_parts = []
+        offset = 0
 
         for page_num, page_text in enumerate(pages, start=1):
             if not page_text:
                 continue
             lines = page_text.split("\n")
             for line_num, line in enumerate(lines, start=1):
-                for char in line:
-                    char_positions.append((page_num, line_num))
-                    full_text_parts.append(char)
+                boundaries.append((offset, page_num, line_num))
+                offset += len(line)
+                full_text_parts.append(line)
                 if line_num < len(lines):
-                    char_positions.append((page_num, line_num))
+                    offset += 1
                     full_text_parts.append("\n")
             if page_num < len(pages):
-                char_positions.append((page_num, line_num if lines else 1))
+                offset += 1
                 full_text_parts.append("\n")
 
         full_text = "".join(full_text_parts)
         if not full_text:
             return []
+
+        boundary_offsets = [b[0] for b in boundaries]
+
+        def get_position(char_idx: int) -> tuple:
+            idx = bisect.bisect_right(boundary_offsets, char_idx) - 1
+            if idx < 0:
+                return (1, 1)
+            return (boundaries[idx][1], boundaries[idx][2])
 
         def find_break_point(text: str, target: int, min_pos: int) -> int:
             if target >= len(text):
@@ -301,11 +327,9 @@ def register_rag_opcodes():
             chunk_text = full_text[start:end].strip()
 
             if chunk_text:
-                start_pos = (
-                    char_positions[start] if start < len(char_positions) else (1, 1)
-                )
-                end_idx = min(end - 1, len(char_positions) - 1)
-                end_pos = char_positions[end_idx] if end_idx >= 0 else (1, 1)
+                start_pos = get_position(start)
+                end_idx = min(end - 1, len(full_text) - 1)
+                end_pos = get_position(end_idx)
 
                 chunks.append(
                     {
@@ -324,6 +348,44 @@ def register_rag_opcodes():
             start = find_break_point(full_text, overlap_start, overlap_start)
 
         return chunks
+
+    @opcode(category="rag")
+    async def rag_build_chunk_payloads(
+        chunks: List[Dict[str, Any]],
+        metadata: Dict[str, Any] = None,
+        id_prefix: int = None,
+    ) -> Dict[str, Any]:
+        """Build point IDs and payloads from text chunks for vector DB upsert.
+
+        Args:
+            chunks: List of chunk dicts with 'text', 'page_start', 'page_end'
+            metadata: Extra fields merged into every payload (e.g., source, livro_id)
+            id_prefix: Base for generating point IDs. If None, uses random int.
+                IDs: id_prefix * 1000 + chunk_index
+
+        Returns:
+            Dict with 'ids' (List[int]) and 'payloads' (List[Dict])
+        """
+        if id_prefix is None:
+            id_prefix = random.randint(100000, 999999)
+
+        base = int(id_prefix) * 1000
+        ids = []
+        payloads = []
+
+        for i, chunk in enumerate(chunks):
+            ids.append(base + i)
+            payload = {
+                "text": chunk.get("text", ""),
+                "chunk_index": i,
+                "page_start": chunk.get("page_start"),
+                "page_end": chunk.get("page_end"),
+            }
+            if metadata:
+                payload.update(metadata)
+            payloads.append(payload)
+
+        return {"ids": ids, "payloads": payloads}
 
     @opcode(category="rag")
     async def bm25_rerank(
@@ -402,52 +464,62 @@ def register_rag_opcodes():
         return reranked[:top_k]
 
     # =========================================================================
-    # PDF Operations (require pypdf)
+    # PDF Operations (prefer pymupdf ~12x faster, fallback to pypdf)
     # =========================================================================
 
-    if PYPDF_AVAILABLE:
+    if PDF_AVAILABLE:
 
         @opcode(category="rag")
         async def pdf_extract_text(file_path: str) -> str:
             """Extract all text from a PDF file.
 
+            Uses PyMuPDF when available (~12x faster), falls back to pypdf.
+
             Args:
                 file_path: Path to the PDF file
 
             Returns:
                 Extracted text from all pages concatenated
             """
+            if HAS_PYMUPDF:
+                doc = pymupdf.open(file_path)
+                return "\n\n".join(page.get_text() for page in doc if page.get_text())
             reader = PdfReader(file_path)
-            text_parts = []
-            for page in reader.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text_parts.append(page_text)
-            return "\n\n".join(text_parts)
+            return "\n\n".join(
+                page.extract_text() for page in reader.pages if page.extract_text()
+            )
 
         @opcode(category="rag")
         async def pdf_extract_pages(file_path: str) -> List[str]:
             """Extract text from a PDF file page by page.
 
+            Uses PyMuPDF when available (~12x faster), falls back to pypdf.
+
             Args:
                 file_path: Path to the PDF file
 
             Returns:
                 List of strings, one per page
             """
-            reader = PdfReader(file_path)
-            pages = []
-            for page in reader.pages:
-                page_text = page.extract_text()
-                pages.append(page_text if page_text else "")
-            return pages
+            if HAS_PYMUPDF:
+
+                def _extract(path: str) -> List[str]:
+                    doc = pymupdf.open(path)
+                    return [page.get_text() or "" for page in doc]
+            else:
+
+                def _extract(path: str) -> List[str]:
+                    reader = PdfReader(path)
+                    return [page.extract_text() or "" for page in reader.pages]
+
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, _extract, file_path)
 
         @opcode(category="rag")
         async def pdf_extract_text_from_bytes(data: bytes) -> str:
             """Extract all text from PDF bytes.
 
-            Useful for processing PDFs downloaded from GCS or other sources
-            without writing to disk.
+            Uses PyMuPDF when available (~12x faster), falls back to pypdf.
 
             Args:
                 data: PDF content as bytes
@@ -457,17 +529,29 @@ def register_rag_opcodes():
             """
             import io
 
-            reader = PdfReader(io.BytesIO(data))
-            text_parts = []
-            for page in reader.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text_parts.append(page_text)
-            return "\n\n".join(text_parts)
+            if HAS_PYMUPDF:
+
+                def _extract(pdf_data: bytes) -> str:
+                    doc = pymupdf.open(stream=pdf_data, filetype="pdf")
+                    return "\n\n".join(
+                        page.get_text() for page in doc if page.get_text()
+                    )
+            else:
+
+                def _extract(pdf_data: bytes) -> str:
+                    reader = PdfReader(io.BytesIO(pdf_data))
+                    return "\n\n".join(
+                        page.extract_text() or "" for page in reader.pages
+                    )
+
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, _extract, data)
 
         @opcode(category="rag")
         async def pdf_extract_pages_from_bytes(data: bytes) -> List[str]:
             """Extract text from PDF bytes page by page.
+
+            Uses PyMuPDF when available (~12x faster), falls back to pypdf.
 
             Args:
                 data: PDF content as bytes
@@ -477,16 +561,25 @@ def register_rag_opcodes():
             """
             import io
 
-            reader = PdfReader(io.BytesIO(data))
-            pages = []
-            for page in reader.pages:
-                page_text = page.extract_text()
-                pages.append(page_text if page_text else "")
-            return pages
+            if HAS_PYMUPDF:
+
+                def _extract(pdf_data: bytes) -> List[str]:
+                    doc = pymupdf.open(stream=pdf_data, filetype="pdf")
+                    return [page.get_text() or "" for page in doc]
+            else:
+
+                def _extract(pdf_data: bytes) -> List[str]:
+                    reader = PdfReader(io.BytesIO(pdf_data))
+                    return [page.extract_text() or "" for page in reader.pages]
+
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, _extract, data)
 
         @opcode(category="rag")
         async def pdf_page_count(file_path: str) -> int:
             """Get the number of pages in a PDF file.
+
+            Uses PyMuPDF when available, falls back to pypdf.
 
             Args:
                 file_path: Path to the PDF file
@@ -494,6 +587,9 @@ def register_rag_opcodes():
             Returns:
                 Number of pages in the PDF
             """
+            if HAS_PYMUPDF:
+                doc = pymupdf.open(file_path)
+                return len(doc)
             reader = PdfReader(file_path)
             return len(reader.pages)
 
@@ -509,6 +605,7 @@ def register_rag_opcodes():
             project: str,
             location: str = "us-central1",
             model: str = "text-embedding-004",
+            task_type: str = "RETRIEVAL_DOCUMENT",
         ) -> List[float]:
             """Create an embedding vector for a single text.
 
@@ -517,13 +614,16 @@ def register_rag_opcodes():
                 project: Google Cloud project ID
                 location: Google Cloud region (default: "us-central1")
                 model: Embedding model name (default: "text-embedding-004")
+                task_type: Embedding task type (default: "RETRIEVAL_DOCUMENT").
+                    Use "RETRIEVAL_QUERY" for search queries.
 
             Returns:
                 List of floats representing the embedding vector
             """
             vertexai.init(project=project, location=location)
             embedding_model = TextEmbeddingModel.from_pretrained(model)
-            embeddings = embedding_model.get_embeddings([text])
+            inputs = [TextEmbeddingInput(text=text, task_type=task_type)]
+            embeddings = embedding_model.get_embeddings(inputs)
             return embeddings[0].values
 
         @opcode(category="rag")
@@ -532,6 +632,7 @@ def register_rag_opcodes():
             project: str,
             location: str = "us-central1",
             model: str = "text-embedding-004",
+            task_type: str = "RETRIEVAL_DOCUMENT",
         ) -> List[List[float]]:
             """Create embedding vectors for multiple texts (more efficient).
 
@@ -540,6 +641,8 @@ def register_rag_opcodes():
                 project: Google Cloud project ID
                 location: Google Cloud region (default: "us-central1")
                 model: Embedding model name (default: "text-embedding-004")
+                task_type: Embedding task type (default: "RETRIEVAL_DOCUMENT").
+                    Use "RETRIEVAL_QUERY" for search queries.
 
             Returns:
                 List of embedding vectors (each is a list of floats)
@@ -551,14 +654,31 @@ def register_rag_opcodes():
             embedding_model = TextEmbeddingModel.from_pretrained(model)
 
             batch_size = 50
-            all_embeddings = []
+            max_concurrent = 5
+            batches = [
+                texts[i : i + batch_size] for i in range(0, len(texts), batch_size)
+            ]
 
-            for i in range(0, len(texts), batch_size):
-                batch = texts[i : i + batch_size]
-                embeddings = embedding_model.get_embeddings(batch)
-                all_embeddings.extend([e.values for e in embeddings])
+            loop = asyncio.get_event_loop()
+            all_embeddings: List[List[float]] = [[] for _ in batches]
+            semaphore = asyncio.Semaphore(max_concurrent)
 
-            return all_embeddings
+            async def process_batch(idx: int, batch: List[str]):
+                inputs = [
+                    TextEmbeddingInput(text=t, task_type=task_type) for t in batch
+                ]
+                async with semaphore:
+                    embeddings = await loop.run_in_executor(
+                        None, embedding_model.get_embeddings, inputs
+                    )
+                    all_embeddings[idx] = [e.values for e in embeddings]
+
+            await asyncio.gather(*[process_batch(i, b) for i, b in enumerate(batches)])
+
+            result = []
+            for batch_result in all_embeddings:
+                result.extend(batch_result)
+            return result
 
     # =========================================================================
     # Qdrant Operations (require qdrant-client)
@@ -567,16 +687,19 @@ def register_rag_opcodes():
     if QDRANT_AVAILABLE:
 
         @opcode(category="rag")
-        async def qdrant_connect(url: str = "http://localhost:6333") -> Any:
+        async def qdrant_connect(
+            url: str = "http://localhost:6333", prefer_grpc: bool = False
+        ) -> Any:
             """Create a Qdrant client connection.
 
             Args:
                 url: Qdrant server URL (default: "http://localhost:6333")
+                prefer_grpc: Use gRPC for better performance (default: False)
 
             Returns:
                 QdrantClient instance
             """
-            return QdrantClient(url=url)
+            return QdrantClient(url=url, prefer_grpc=prefer_grpc)
 
         @opcode(category="rag")
         async def qdrant_create_collection(
@@ -666,6 +789,8 @@ def register_rag_opcodes():
         ) -> bool:
             """Insert or update multiple points in a Qdrant collection.
 
+            Uses Qdrant's upload_points for efficient internal batching.
+
             Args:
                 client: QdrantClient instance
                 collection: Collection name
@@ -683,11 +808,23 @@ def register_rag_opcodes():
 
             points = [
                 PointStruct(
-                    id=pid, vector=vector, payload=payloads[i] if payloads else {}
+                    id=pid,
+                    vector=vector,
+                    payload=payloads[i] if payloads else {},
                 )
                 for i, (pid, vector) in enumerate(zip(point_ids, vectors))
             ]
-            client.upsert(collection_name=collection, points=points)
+
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None,
+                lambda: client.upload_points(
+                    collection_name=collection,
+                    points=points,
+                    batch_size=256,
+                    parallel=4,
+                ),
+            )
             return True
 
         @opcode(category="rag")

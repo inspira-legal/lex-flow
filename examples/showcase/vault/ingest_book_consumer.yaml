@@ -1,0 +1,1204 @@
+# Book Ingestion Consumer - Vault / Pub/Sub Pipeline
+#
+# Listens to a Pub/Sub topic (emulator) and processes book ingestion messages.
+# Each message triggers: download PDF -> extract text -> chunk -> embed -> upsert to Qdrant.
+#
+# Message format (JSON in data field):
+#   {
+#     "bucket": "mvp-personal-vault",
+#     "objeto": "path/to/book.pdf",
+#     "livro_id": "book-001",
+#     "projeto_gcp": "inspira-development",
+#     "workspace_id": "ws-abc123",
+#     "folder_id": "folder-xyz789"
+#   }
+#
+# Setup:
+#   cd examples/integrations/pubsub/emulator && ./setup.sh docker
+#   export PUBSUB_EMULATOR_HOST=localhost:8085
+#   ./examples/showcase/vault/setup_emulator.sh
+#   docker run -d -p 6333:6333 qdrant/qdrant
+#
+# Run:
+#   PUBSUB_EMULATOR_HOST=localhost:8085 lexflow examples/showcase/vault/ingest_book_consumer.yaml
+#
+# Requirements:
+#   pip install lexflow[rag,gcs,pubsub]
+
+workflows:
+  - name: main
+    interface:
+      inputs: [project_id, subscription_id, qdrant_url, collection, chunk_size, overlap]
+      outputs: []
+    variables:
+      # Configuration
+      project_id: "test-project"
+      subscription_id: "vault-ingest-sub"
+      qdrant_url: "http://localhost:6333"
+      collection: "livros"
+      chunk_size: 1000
+      overlap: 200
+      # Clients (created once, reused)
+      subscriber: null
+      gcs_client: null
+      qdrant_client: null
+      # Per-message state
+      msg: null
+      params: null
+      bucket: ""
+      objeto: ""
+      livro_id: ""
+      projeto_gcp: ""
+      workspace_id: ""
+      folder_id: ""
+      source_path: ""
+      pdf_bytes: null
+      pdf_pages: []
+      chunks: []
+      chunk_count: 0
+      embeddings: []
+      ids: []
+      payloads: []
+      metadata: {}
+      build_result: {}
+      error_msg: ""
+      # Timing
+      step_t0: 0
+      step_t1: 0
+      msg_t0: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      # ======================================================================
+      # HEADER
+      # ======================================================================
+      print_header:
+        opcode: io_print
+        next: print_title
+        inputs:
+          STRING:
+            literal: "\n================================================================================\n"
+
+      print_title:
+        opcode: io_print
+        next: print_separator
+        inputs:
+          STRING:
+            literal: "              VAULT - BOOK INGESTION CONSUMER (Pub/Sub)\n"
+
+      print_separator:
+        opcode: io_print
+        next: print_sub_info
+        inputs:
+          STRING:
+            literal: "================================================================================\n\n"
+
+      format_sub_info:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "Subscription: {0}\nQdrant:       {1}\nCollection:   {2}\n\n"
+          VALUES:
+            variable: subscription_id
+          VALUE_1:
+            variable: qdrant_url
+          VALUE_2:
+            variable: collection
+
+      print_sub_info:
+        opcode: io_print
+        next: init_clients
+        inputs:
+          STRING:
+            node: format_sub_info
+
+      # ======================================================================
+      # CREATE CLIENTS (parallel via control_fork)
+      # ======================================================================
+      init_clients:
+        opcode: control_fork
+        next: print_init_done
+        inputs:
+          BRANCH1:
+            branch: init_subscriber_branch
+          BRANCH2:
+            branch: init_gcs_branch
+          BRANCH3:
+            branch: init_qdrant_branch
+
+      # --- Subscriber branch ---
+      create_subscriber:
+        opcode: pubsub_create_subscriber
+        isReporter: true
+        inputs: {}
+
+      init_subscriber_branch:
+        opcode: data_set_variable_to
+        next: print_subscriber_ok
+        inputs:
+          VARIABLE:
+            literal: "subscriber"
+          VALUE:
+            node: create_subscriber
+
+      print_subscriber_ok:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "[init] Subscriber criado\n"
+
+      # --- GCS branch ---
+      do_create_gcs_client:
+        opcode: gcs_create_client
+        isReporter: true
+        inputs: {}
+
+      init_gcs_branch:
+        opcode: data_set_variable_to
+        next: print_gcs_ok
+        inputs:
+          VARIABLE:
+            literal: "gcs_client"
+          VALUE:
+            node: do_create_gcs_client
+
+      print_gcs_ok:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "[init] Cliente GCS criado\n"
+
+      # --- Qdrant branch ---
+      do_connect_qdrant:
+        opcode: qdrant_connect
+        isReporter: true
+        inputs:
+          url:
+            variable: qdrant_url
+          prefer_grpc:
+            literal: true
+
+      init_qdrant_branch:
+        opcode: data_set_variable_to
+        next: print_qdrant_ok
+        inputs:
+          VARIABLE:
+            literal: "qdrant_client"
+          VALUE:
+            node: do_connect_qdrant
+
+      print_qdrant_ok:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "[init] Qdrant conectado (gRPC)\n"
+
+      print_init_done:
+        opcode: io_print
+        next: ensure_collection
+        inputs:
+          STRING:
+            literal: "[init] Todos os clientes prontos\n"
+
+      # Ensure collection exists
+      do_create_collection:
+        opcode: qdrant_create_collection
+        isReporter: true
+        inputs:
+          client:
+            variable: qdrant_client
+          name:
+            variable: collection
+          vector_size:
+            literal: 768
+
+      ensure_collection:
+        opcode: control_if_else
+        next: print_waiting
+        inputs:
+          CONDITION:
+            node: do_create_collection
+          THEN:
+            branch: print_collection_created
+          ELSE:
+            branch: print_collection_exists
+
+      print_collection_created:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "[init] Collection criada\n"
+
+      print_collection_exists:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "[init] Collection ja existe\n"
+
+      print_waiting:
+        opcode: io_print
+        next: process_messages
+        inputs:
+          STRING:
+            literal: "\nAguardando mensagens...\n\n"
+
+      # ======================================================================
+      # SUBSCRIBE & PROCESS LOOP
+      # ======================================================================
+      subscribe_stream:
+        opcode: pubsub_subscribe_stream
+        isReporter: true
+        inputs:
+          subscriber:
+            variable: subscriber
+          project_id:
+            variable: project_id
+          subscription_id:
+            variable: subscription_id
+          timeout:
+            literal: null
+          max_messages:
+            literal: null
+          batch_size:
+            literal: 10
+          min_poll_interval:
+            literal: 0.1
+          max_poll_interval:
+            literal: 2.0
+
+      process_messages:
+        opcode: control_async_foreach
+        next: done
+        inputs:
+          VAR:
+            literal: "msg"
+          ITERABLE:
+            node: subscribe_stream
+          BODY:
+            branch: parse_message
+
+      # ======================================================================
+      # PER-MESSAGE: Parse JSON data
+      # ======================================================================
+      get_msg_data:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: msg
+          key:
+            literal: "data"
+
+      do_parse_json:
+        opcode: json_parse
+        isReporter: true
+        inputs:
+          text:
+            node: get_msg_data
+
+      parse_message:
+        opcode: data_set_variable_to
+        next: extract_bucket
+        inputs:
+          VARIABLE:
+            literal: "params"
+          VALUE:
+            node: do_parse_json
+
+      # Extract fields from params
+      get_bucket:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: params
+          key:
+            literal: "bucket"
+
+      extract_bucket:
+        opcode: data_set_variable_to
+        next: extract_objeto
+        inputs:
+          VARIABLE:
+            literal: "bucket"
+          VALUE:
+            node: get_bucket
+
+      get_objeto:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: params
+          key:
+            literal: "objeto"
+
+      extract_objeto:
+        opcode: data_set_variable_to
+        next: extract_livro_id
+        inputs:
+          VARIABLE:
+            literal: "objeto"
+          VALUE:
+            node: get_objeto
+
+      get_livro_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: params
+          key:
+            literal: "livro_id"
+
+      extract_livro_id:
+        opcode: data_set_variable_to
+        next: extract_projeto_gcp
+        inputs:
+          VARIABLE:
+            literal: "livro_id"
+          VALUE:
+            node: get_livro_id
+
+      get_projeto_gcp:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: params
+          key:
+            literal: "projeto_gcp"
+
+      extract_projeto_gcp:
+        opcode: data_set_variable_to
+        next: extract_workspace_id
+        inputs:
+          VARIABLE:
+            literal: "projeto_gcp"
+          VALUE:
+            node: get_projeto_gcp
+
+      get_workspace_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: params
+          key:
+            literal: "workspace_id"
+
+      extract_workspace_id:
+        opcode: data_set_variable_to
+        next: extract_folder_id
+        inputs:
+          VARIABLE:
+            literal: "workspace_id"
+          VALUE:
+            node: get_workspace_id
+
+      get_folder_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: params
+          key:
+            literal: "folder_id"
+
+      extract_folder_id:
+        opcode: data_set_variable_to
+        next: build_source_path
+        inputs:
+          VARIABLE:
+            literal: "folder_id"
+          VALUE:
+            node: get_folder_id
+
+      # Build source path: gs://bucket/objeto
+      source_path_prefix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "gs://"
+          right:
+            variable: bucket
+
+      source_path_full:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: source_path_prefix
+          right:
+            node: source_path_suffix
+
+      source_path_suffix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "/"
+          right:
+            variable: objeto
+
+      build_source_path:
+        opcode: data_set_variable_to
+        next: save_msg_t0
+        inputs:
+          VARIABLE:
+            literal: "source_path"
+          VALUE:
+            node: source_path_full
+
+      # Save message start time
+      get_msg_t0:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_msg_t0:
+        opcode: data_set_variable_to
+        next: print_processing
+        inputs:
+          VARIABLE:
+            literal: "msg_t0"
+          VALUE:
+            node: get_msg_t0
+
+      # Print processing message
+      format_processing_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "[{0}] Processando {1}...\n"
+          VALUES:
+            variable: livro_id
+          VALUE_1:
+            variable: source_path
+
+      print_processing:
+        opcode: io_print
+        next: try_ingest
+        inputs:
+          STRING:
+            node: format_processing_msg
+
+      # ======================================================================
+      # TRY/CATCH per message
+      # ======================================================================
+      try_ingest:
+        opcode: control_try
+        next: null
+        inputs:
+          TRY:
+            branch: step_download_start
+          CATCH1:
+            exception_type: "Exception"
+            var: "error_msg"
+            body:
+              branch: handle_error
+
+      # ======================================================================
+      # STEP 1: Download PDF
+      # ======================================================================
+      get_step_t0_download:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      step_download_start:
+        opcode: data_set_variable_to
+        next: download_pdf
+        inputs:
+          VARIABLE:
+            literal: "step_t0"
+          VALUE:
+            node: get_step_t0_download
+
+      do_download_pdf:
+        opcode: gcs_download_object_as_bytes
+        isReporter: true
+        inputs:
+          client:
+            variable: gcs_client
+          bucket_name:
+            variable: bucket
+          object_name:
+            variable: objeto
+
+      download_pdf:
+        opcode: data_set_variable_to
+        next: save_step_t1_download
+        inputs:
+          VARIABLE:
+            literal: "pdf_bytes"
+          VALUE:
+            node: do_download_pdf
+
+      get_step_t1_download:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step_t1_download:
+        opcode: data_set_variable_to
+        next: print_download_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step_t1_download
+
+      dur_download:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step_t0
+          end:
+            variable: step_t1
+
+      fmt_download:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "  Download PDF:        OK ({0})\n"
+          VALUES:
+            node: dur_download
+
+      print_download_done:
+        opcode: io_print
+        next: step_extract_start
+        inputs:
+          STRING:
+            node: fmt_download
+
+      # ======================================================================
+      # STEP 2: Extract pages
+      # ======================================================================
+      get_step_t0_extract:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      step_extract_start:
+        opcode: data_set_variable_to
+        next: extract_pdf
+        inputs:
+          VARIABLE:
+            literal: "step_t0"
+          VALUE:
+            node: get_step_t0_extract
+
+      do_extract_pdf:
+        opcode: pdf_extract_pages_from_bytes
+        isReporter: true
+        inputs:
+          data:
+            variable: pdf_bytes
+
+      extract_pdf:
+        opcode: data_set_variable_to
+        next: save_step_t1_extract
+        inputs:
+          VARIABLE:
+            literal: "pdf_pages"
+          VALUE:
+            node: do_extract_pdf
+
+      get_step_t1_extract:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step_t1_extract:
+        opcode: data_set_variable_to
+        next: print_extract_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step_t1_extract
+
+      dur_extract:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step_t0
+          end:
+            variable: step_t1
+
+      fmt_extract:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "  Extract pages:       OK ({0})\n"
+          VALUES:
+            node: dur_extract
+
+      print_extract_done:
+        opcode: io_print
+        next: step_chunk_start
+        inputs:
+          STRING:
+            node: fmt_extract
+
+      # ======================================================================
+      # STEP 3: Chunk text
+      # ======================================================================
+      get_step_t0_chunk:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      step_chunk_start:
+        opcode: data_set_variable_to
+        next: chunk_text
+        inputs:
+          VARIABLE:
+            literal: "step_t0"
+          VALUE:
+            node: get_step_t0_chunk
+
+      do_chunk_pages:
+        opcode: text_chunk_pages_smart
+        isReporter: true
+        inputs:
+          pages:
+            variable: pdf_pages
+          chunk_size:
+            variable: chunk_size
+          overlap:
+            variable: overlap
+
+      chunk_text:
+        opcode: data_set_variable_to
+        next: store_chunk_count
+        inputs:
+          VARIABLE:
+            literal: "chunks"
+          VALUE:
+            node: do_chunk_pages
+
+      get_chunk_count:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          items:
+            variable: chunks
+
+      store_chunk_count:
+        opcode: data_set_variable_to
+        next: save_step_t1_chunk
+        inputs:
+          VARIABLE:
+            literal: "chunk_count"
+          VALUE:
+            node: get_chunk_count
+
+      get_step_t1_chunk:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step_t1_chunk:
+        opcode: data_set_variable_to
+        next: print_chunk_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step_t1_chunk
+
+      dur_chunk:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step_t0
+          end:
+            variable: step_t1
+
+      fmt_chunk:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "  Chunk text:          OK ({0})\n"
+          VALUES:
+            node: dur_chunk
+
+      print_chunk_done:
+        opcode: io_print
+        next: step_embed_start
+        inputs:
+          STRING:
+            node: fmt_chunk
+
+      # ======================================================================
+      # STEP 4: Generate embeddings
+      # ======================================================================
+      get_step_t0_embed:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      step_embed_start:
+        opcode: data_set_variable_to
+        next: generate_embeddings
+        inputs:
+          VARIABLE:
+            literal: "step_t0"
+          VALUE:
+            node: get_step_t0_embed
+
+      do_extract_chunk_texts:
+        opcode: list_pluck
+        isReporter: true
+        inputs:
+          items:
+            variable: chunks
+          key:
+            literal: "text"
+
+      do_generate_embeddings:
+        opcode: embedding_create_batch
+        isReporter: true
+        inputs:
+          texts:
+            node: do_extract_chunk_texts
+          project:
+            variable: projeto_gcp
+          location:
+            literal: "us-central1"
+          model:
+            literal: "text-multilingual-embedding-002"
+          task_type:
+            literal: "RETRIEVAL_DOCUMENT"
+
+      generate_embeddings:
+        opcode: data_set_variable_to
+        next: save_step_t1_embed
+        inputs:
+          VARIABLE:
+            literal: "embeddings"
+          VALUE:
+            node: do_generate_embeddings
+
+      get_step_t1_embed:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step_t1_embed:
+        opcode: data_set_variable_to
+        next: print_embed_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step_t1_embed
+
+      dur_embed:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step_t0
+          end:
+            variable: step_t1
+
+      fmt_embed:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "  Generate embeddings: OK ({0})\n"
+          VALUES:
+            node: dur_embed
+
+      print_embed_done:
+        opcode: io_print
+        next: step_build_start
+        inputs:
+          STRING:
+            node: fmt_embed
+
+      # ======================================================================
+      # STEP 5: Build payloads (single opcode replaces ~240 lines)
+      # ======================================================================
+      get_step_t0_build:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      step_build_start:
+        opcode: data_set_variable_to
+        next: build_metadata
+        inputs:
+          VARIABLE:
+            literal: "step_t0"
+          VALUE:
+            node: get_step_t0_build
+
+      # Build metadata dict
+      metadata_base:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      metadata_with_source:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: metadata_base
+          key:
+            literal: "source"
+          value:
+            variable: source_path
+
+      metadata_with_livro_id:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: metadata_with_source
+          key:
+            literal: "livro_id"
+          value:
+            variable: livro_id
+
+      metadata_with_workspace_id:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: metadata_with_livro_id
+          key:
+            literal: "workspace_id"
+          value:
+            variable: workspace_id
+
+      metadata_with_folder_id:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: metadata_with_workspace_id
+          key:
+            literal: "folder_id"
+          value:
+            variable: folder_id
+
+      build_metadata:
+        opcode: data_set_variable_to
+        next: do_build_payloads
+        inputs:
+          VARIABLE:
+            literal: "metadata"
+          VALUE:
+            node: metadata_with_folder_id
+
+      # Call rag_build_chunk_payloads
+      do_rag_build:
+        opcode: rag_build_chunk_payloads
+        isReporter: true
+        inputs:
+          chunks:
+            variable: chunks
+          metadata:
+            variable: metadata
+
+      do_build_payloads:
+        opcode: data_set_variable_to
+        next: extract_ids
+        inputs:
+          VARIABLE:
+            literal: "build_result"
+          VALUE:
+            node: do_rag_build
+
+      # Extract ids and payloads from result
+      get_built_ids:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: build_result
+          key:
+            literal: "ids"
+
+      extract_ids:
+        opcode: data_set_variable_to
+        next: extract_payloads
+        inputs:
+          VARIABLE:
+            literal: "ids"
+          VALUE:
+            node: get_built_ids
+
+      get_built_payloads:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: build_result
+          key:
+            literal: "payloads"
+
+      extract_payloads:
+        opcode: data_set_variable_to
+        next: save_step_t1_build
+        inputs:
+          VARIABLE:
+            literal: "payloads"
+          VALUE:
+            node: get_built_payloads
+
+      get_step_t1_build:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step_t1_build:
+        opcode: data_set_variable_to
+        next: print_build_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step_t1_build
+
+      dur_build:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step_t0
+          end:
+            variable: step_t1
+
+      fmt_build:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "  Build payloads:      OK ({0})\n"
+          VALUES:
+            node: dur_build
+
+      print_build_done:
+        opcode: io_print
+        next: step_upsert_start
+        inputs:
+          STRING:
+            node: fmt_build
+
+      # ======================================================================
+      # STEP 6: Upsert to Qdrant
+      # ======================================================================
+      get_step_t0_upsert:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      step_upsert_start:
+        opcode: data_set_variable_to
+        next: do_upsert
+        inputs:
+          VARIABLE:
+            literal: "step_t0"
+          VALUE:
+            node: get_step_t0_upsert
+
+      do_upsert:
+        opcode: qdrant_upsert_batch
+        next: save_step_t1_upsert
+        inputs:
+          client:
+            variable: qdrant_client
+          collection:
+            variable: collection
+          point_ids:
+            variable: ids
+          vectors:
+            variable: embeddings
+          payloads:
+            variable: payloads
+
+      get_step_t1_upsert:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step_t1_upsert:
+        opcode: data_set_variable_to
+        next: print_upsert_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step_t1_upsert
+
+      dur_upsert:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step_t0
+          end:
+            variable: step_t1
+
+      fmt_upsert:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "  Upsert Qdrant:       OK ({0})\n"
+          VALUES:
+            node: dur_upsert
+
+      print_upsert_done:
+        opcode: io_print
+        next: ack_message
+        inputs:
+          STRING:
+            node: fmt_upsert
+
+      # ======================================================================
+      # ACK message + timing summary
+      # ======================================================================
+      ack_message:
+        opcode: pubsub_ack_message
+        next: print_total
+        inputs:
+          subscriber:
+            variable: subscriber
+          project_id:
+            variable: project_id
+          subscription_id:
+            variable: subscription_id
+          message:
+            variable: msg
+
+      # Total message time
+      get_msg_end:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      dur_total:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: msg_t0
+          end:
+            node: get_msg_end
+
+      chunk_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: chunk_count
+
+      fmt_total:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "  ── Total:            {0} ── {1} chunks indexados\n\n"
+          VALUES:
+            node: dur_total
+          VALUE_1:
+            node: chunk_count_str
+
+      print_total:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: fmt_total
+
+      # ======================================================================
+      # CATCH: nack message and log error
+      # ======================================================================
+      handle_error:
+        opcode: pubsub_nack_message
+        next: print_error
+        inputs:
+          subscriber:
+            variable: subscriber
+          project_id:
+            variable: project_id
+          subscription_id:
+            variable: subscription_id
+          message:
+            variable: msg
+
+      format_error_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "[{0}] ERRO: {1}\n\n"
+          VALUES:
+            variable: livro_id
+          VALUE_1:
+            variable: error_msg
+
+      print_error:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: format_error_msg
+
+      # ======================================================================
+      # CLEANUP
+      # ======================================================================
+      done:
+        opcode: pubsub_close_subscriber
+        next: close_gcs
+        inputs:
+          subscriber:
+            variable: subscriber
+
+      do_close_gcs:
+        opcode: gcs_close_client
+        isReporter: true
+        inputs:
+          client:
+            variable: gcs_client
+
+      close_gcs:
+        opcode: data_set_variable_to
+        next: print_done
+        inputs:
+          VARIABLE:
+            literal: "gcs_client"
+          VALUE:
+            node: do_close_gcs
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\nConsumer encerrado.\n"

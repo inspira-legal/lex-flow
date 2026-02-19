@@ -1398,6 +1398,7 @@ pygame = [
 rag = [
     { name = "bm25s" },
     { name = "google-cloud-aiplatform" },
+    { name = "pymupdf" },
     { name = "pypdf" },
     { name = "qdrant-client" },
 ]
@@ -1438,6 +1439,7 @@ requires-dist = [
     { name = "pydantic-ai-slim", extras = ["google"], marker = "extra == 'ai'" },
     { name = "pygame", marker = "extra == 'pygame'", specifier = ">=2.6.1" },
     { name = "pymupdf", marker = "extra == 'file'" },
+    { name = "pymupdf", marker = "extra == 'rag'" },
     { name = "pypdf", marker = "extra == 'rag'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-asyncio", marker = "extra == 'dev'" },
