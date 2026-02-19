@@ -18,6 +18,7 @@ dependencies = [
 [project.optional-dependencies]
 ai = ["pydantic-ai-slim[google]"]
 file = ["pymupdf"]
+rag = ["pymupdf", "pypdf", "google-cloud-aiplatform", "qdrant-client", "bm25s"]
 gcs = ["gcloud-aio-storage"]
 pubsub = ["gcloud-aio-pubsub"]
 dev = ["pytest", "pytest-asyncio"]

@@ -50,9 +50,18 @@ workflows:
       embeddings: []
       ids: []
       payloads: []
-      current_index: 0
-      current_chunk: null
+      metadata: {}
+      build_result: {}
       source_path: ""
+      # Timing variables
+      pipeline_t0: 0
+      step1_t0: 0
+      step2_t0: 0
+      step3_t0: 0
+      step4_t0: 0
+      step5_t0: 0
+      step6_t0: 0
+      step_t1: 0
     nodes:
       start:
         opcode: workflow_start
@@ -89,12 +98,29 @@ workflows:
 
       build_source_path:
         opcode: data_set_variable_to
-        next: print_header
+        next: save_pipeline_start
         inputs:
           VARIABLE:
             literal: "source_path"
           VALUE:
             node: source_path_full
+
+      # ========================================================================
+      # PIPELINE START TIME
+      # ========================================================================
+      get_pipeline_start:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_pipeline_start:
+        opcode: data_set_variable_to
+        next: print_header
+        inputs:
+          VARIABLE:
+            literal: "pipeline_t0"
+          VALUE:
+            node: get_pipeline_start
 
       # ========================================================================
       # HEADER
@@ -223,7 +249,7 @@ workflows:
 
       print_collection:
         opcode: io_print
-        next: print_step1
+        next: save_step1_start
         inputs:
           STRING:
             node: format_collection
@@ -231,6 +257,20 @@ workflows:
       # ========================================================================
       # STEP 1: Create GCS Client
       # ========================================================================
+      get_step1_start:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step1_start:
+        opcode: data_set_variable_to
+        next: print_step1
+        inputs:
+          VARIABLE:
+            literal: "step1_t0"
+          VALUE:
+            node: get_step1_start
+
       print_step1:
         opcode: io_print
         next: create_gcs_client
@@ -245,23 +285,69 @@ workflows:
 
       create_gcs_client:
         opcode: data_set_variable_to
-        next: print_step1_done
+        next: save_step1_end
         inputs:
           VARIABLE:
             literal: "gcs_client"
           VALUE:
             node: do_create_gcs_client
 
+      get_step1_end:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step1_end:
+        opcode: data_set_variable_to
+        next: print_step1_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step1_end
+
+      step1_duration:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step1_t0
+          end:
+            variable: step_t1
+
+      step1_done_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "OK ({0})\n"
+          VALUES:
+            node: step1_duration
+
       print_step1_done:
         opcode: io_print
-        next: print_step2
+        next: save_step2_start
         inputs:
           STRING:
-            literal: "OK\n"
+            node: step1_done_msg
 
       # ========================================================================
       # STEP 2: Download PDF from GCS
       # ========================================================================
+      get_step2_start:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step2_start:
+        opcode: data_set_variable_to
+        next: print_step2
+        inputs:
+          VARIABLE:
+            literal: "step2_t0"
+          VALUE:
+            node: get_step2_start
+
       print_step2:
         opcode: io_print
         next: download_pdf
@@ -282,23 +368,69 @@ workflows:
 
       download_pdf:
         opcode: data_set_variable_to
-        next: print_step2_done
+        next: save_step2_end
         inputs:
           VARIABLE:
             literal: "pdf_bytes"
           VALUE:
             node: do_download_pdf
 
+      get_step2_end:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step2_end:
+        opcode: data_set_variable_to
+        next: print_step2_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step2_end
+
+      step2_duration:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step2_t0
+          end:
+            variable: step_t1
+
+      step2_done_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "OK ({0})\n"
+          VALUES:
+            node: step2_duration
+
       print_step2_done:
         opcode: io_print
-        next: print_step3
+        next: save_step3_start
         inputs:
           STRING:
-            literal: "OK\n"
+            node: step2_done_msg
 
       # ========================================================================
       # STEP 3: Connect to Qdrant
       # ========================================================================
+      get_step3_start:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step3_start:
+        opcode: data_set_variable_to
+        next: print_step3
+        inputs:
+          VARIABLE:
+            literal: "step3_t0"
+          VALUE:
+            node: get_step3_start
+
       print_step3:
         opcode: io_print
         next: connect_qdrant
@@ -315,29 +447,75 @@ workflows:
 
       connect_qdrant:
         opcode: data_set_variable_to
-        next: print_step3_done
+        next: save_step3_end
         inputs:
           VARIABLE:
             literal: "qdrant_client"
           VALUE:
             node: do_connect_qdrant
 
+      get_step3_end:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step3_end:
+        opcode: data_set_variable_to
+        next: print_step3_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step3_end
+
+      step3_duration:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step3_t0
+          end:
+            variable: step_t1
+
+      step3_done_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "OK ({0})\n"
+          VALUES:
+            node: step3_duration
+
       print_step3_done:
         opcode: io_print
-        next: print_step4
+        next: save_step4_start
         inputs:
           STRING:
-            literal: "OK\n"
+            node: step3_done_msg
 
       # ========================================================================
       # STEP 4: Create Collection (if not exists)
       # ========================================================================
+      get_step4_start:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step4_start:
+        opcode: data_set_variable_to
+        next: print_step4
+        inputs:
+          VARIABLE:
+            literal: "step4_t0"
+          VALUE:
+            node: get_step4_start
+
       print_step4:
         opcode: io_print
         next: create_collection
         inputs:
           STRING:
-            literal: "[4/6] Criando collection (se necessário)... "
+            literal: "[4/6] Criando collection (se necessario)... "
 
       do_create_collection:
         opcode: qdrant_create_collection
@@ -352,32 +530,112 @@ workflows:
 
       create_collection:
         opcode: control_if_else
-        next: print_step5
+        next: save_step5_start
         inputs:
           CONDITION:
             node: do_create_collection
           THEN:
-            branch: print_created
+            branch: save_step4_end_created
           ELSE:
-            branch: print_exists
+            branch: save_step4_end_exists
+
+      # Branch: Collection was created
+      get_step4_end_created:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step4_end_created:
+        opcode: data_set_variable_to
+        next: print_created
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step4_end_created
+
+      step4_duration_created:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step4_t0
+          end:
+            variable: step_t1
+
+      step4_created_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "Criada ({0})\n"
+          VALUES:
+            node: step4_duration_created
 
       print_created:
         opcode: io_print
         next: null
         inputs:
           STRING:
-            literal: "Criada\n"
+            node: step4_created_msg
+
+      # Branch: Collection already exists
+      get_step4_end_exists:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step4_end_exists:
+        opcode: data_set_variable_to
+        next: print_exists
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step4_end_exists
+
+      step4_duration_exists:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step4_t0
+          end:
+            variable: step_t1
+
+      step4_exists_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "Ja existe ({0})\n"
+          VALUES:
+            node: step4_duration_exists
 
       print_exists:
         opcode: io_print
         next: null
         inputs:
           STRING:
-            literal: "Já existe\n"
+            node: step4_exists_msg
 
       # ========================================================================
       # STEP 5: Extract text from PDF bytes (per page)
       # ========================================================================
+      get_step5_start:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step5_start:
+        opcode: data_set_variable_to
+        next: print_step5
+        inputs:
+          VARIABLE:
+            literal: "step5_t0"
+          VALUE:
+            node: get_step5_start
+
       print_step5:
         opcode: io_print
         next: extract_pdf
@@ -394,12 +652,26 @@ workflows:
 
       extract_pdf:
         opcode: data_set_variable_to
-        next: print_step5_done
+        next: save_step5_end
         inputs:
           VARIABLE:
             literal: "pdf_pages"
           VALUE:
             node: do_extract_pdf
+
+      get_step5_end:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step5_end:
+        opcode: data_set_variable_to
+        next: print_step5_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step5_end
 
       page_count:
         opcode: list_length
@@ -415,14 +687,25 @@ workflows:
           value:
             node: page_count
 
-      step5_done_msg:
-        opcode: operator_add
+      step5_duration:
+        opcode: util_format_duration
         isReporter: true
         inputs:
-          left:
+          start:
+            variable: step5_t0
+          end:
+            variable: step_t1
+
+      step5_done_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "{0} paginas extraidas ({1})\n"
+          VALUES:
             node: page_count_str
-          right:
-            literal: " páginas extraídas\n"
+          VALUE_1:
+            node: step5_duration
 
       print_step5_done:
         opcode: io_print
@@ -470,53 +753,24 @@ workflows:
           VALUE:
             node: get_chunk_count
 
-      # Extract text strings from chunk dicts for embedding
-      extract_chunk_texts:
-        opcode: data_set_variable_to
-        next: extract_texts_loop
-        inputs:
-          VARIABLE:
-            literal: "chunk_texts"
-          VALUE:
-            literal: []
-
-      extract_texts_loop:
-        opcode: control_foreach
-        next: generate_embeddings
-        inputs:
-          VAR:
-            literal: "current_chunk"
-          ITERABLE:
-            variable: chunks
-          BODY:
-            branch: extract_text_body
-
-      extract_text_body:
-        opcode: data_set_variable_to
-        next: null
-        inputs:
-          VARIABLE:
-            literal: "chunk_texts"
-          VALUE:
-            node: append_chunk_text
-
-      get_chunk_text:
-        opcode: dict_get
-        isReporter: true
-        inputs:
-          d:
-            variable: current_chunk
-          key:
-            literal: "text"
-
-      append_chunk_text:
-        opcode: list_append
+      # Extract text strings from chunk dicts for embedding using list_pluck
+      do_extract_chunk_texts:
+        opcode: list_pluck
         isReporter: true
         inputs:
           items:
-            variable: chunk_texts
-          value:
-            node: get_chunk_text
+            variable: chunks
+          key:
+            literal: "text"
+
+      extract_chunk_texts:
+        opcode: data_set_variable_to
+        next: generate_embeddings
+        inputs:
+          VARIABLE:
+            literal: "chunk_texts"
+          VALUE:
+            node: do_extract_chunk_texts
 
       do_generate_embeddings:
         opcode: embedding_create_batch
@@ -530,246 +784,130 @@ workflows:
             literal: "us-central1"
           model:
             literal: "text-multilingual-embedding-002"
+          task_type:
+            literal: "RETRIEVAL_DOCUMENT"
 
       generate_embeddings:
         opcode: data_set_variable_to
-        next: init_build_loop
+        next: save_step6_start
         inputs:
           VARIABLE:
             literal: "embeddings"
           VALUE:
             node: do_generate_embeddings
 
-      # Generate a base ID from random number
-      base_id:
-        opcode: math_random
+      get_step6_start:
+        opcode: util_time_now
         isReporter: true
-        inputs:
-          min_val:
-            literal: 100000
-          max_val:
-            literal: 999999
+        inputs: {}
 
-      init_build_loop:
-        opcode: data_set_variable_to
-        next: reset_ids
-        inputs:
-          VARIABLE:
-            literal: "current_index"
-          VALUE:
-            literal: 0
-
-      reset_ids:
-        opcode: data_set_variable_to
-        next: reset_payloads
-        inputs:
-          VARIABLE:
-            literal: "ids"
-          VALUE:
-            literal: []
-
-      reset_payloads:
+      save_step6_start:
         opcode: data_set_variable_to
         next: print_step6
         inputs:
           VARIABLE:
-            literal: "payloads"
+            literal: "step6_t0"
           VALUE:
-            literal: []
+            node: get_step6_start
 
       print_step6:
         opcode: io_print
-        next: build_loop
+        next: build_metadata
         inputs:
           STRING:
-            literal: "[6/6] Gerando embeddings e salvando no Qdrant... "
+            literal: "[6/6] Construindo payloads e salvando no Qdrant... "
 
-      build_loop:
-        opcode: control_foreach
-        next: do_upsert
-        inputs:
-          VAR:
-            literal: "current_chunk"
-          ITERABLE:
-            variable: chunks
-          BODY:
-            branch: build_loop_body
-
-      # Build loop body: append ID and payload for current chunk
-      build_loop_body:
-        opcode: data_set_variable_to
-        next: build_payload
-        inputs:
-          VARIABLE:
-            literal: "ids"
-          VALUE:
-            node: append_id
-
-      # Generate unique ID: base_id * 1000 + current_index
-      current_id:
-        opcode: operator_add
-        isReporter: true
-        inputs:
-          left:
-            node: base_id_scaled
-          right:
-            variable: current_index
-
-      base_id_scaled:
-        opcode: operator_multiply
-        isReporter: true
-        inputs:
-          left:
-            node: base_id
-          right:
-            literal: 1000
-
-      append_id:
-        opcode: list_append
-        isReporter: true
-        inputs:
-          items:
-            variable: ids
-          value:
-            node: current_id
-
-      # Build payload dict for current chunk
-      build_payload:
-        opcode: data_set_variable_to
-        next: increment_index
-        inputs:
-          VARIABLE:
-            literal: "payloads"
-          VALUE:
-            node: append_payload
-
-      # Extract metadata from current_chunk dict
-      get_payload_text:
-        opcode: dict_get
-        isReporter: true
-        inputs:
-          d:
-            variable: current_chunk
-          key:
-            literal: "text"
-
-      get_page_start:
-        opcode: dict_get
-        isReporter: true
-        inputs:
-          d:
-            variable: current_chunk
-          key:
-            literal: "page_start"
-
-      get_page_end:
-        opcode: dict_get
-        isReporter: true
-        inputs:
-          d:
-            variable: current_chunk
-          key:
-            literal: "page_end"
-
-      # Create payload dictionary with text, source, livro_id, and page metadata
-      payload_base:
+      # Build metadata dict for rag_build_chunk_payloads
+      metadata_base:
         opcode: dict_create
         isReporter: true
         inputs: {}
 
-      payload_with_text:
+      metadata_with_source:
         opcode: dict_set
         isReporter: true
         inputs:
           d:
-            node: payload_base
-          key:
-            literal: "text"
-          value:
-            node: get_payload_text
-
-      payload_with_source:
-        opcode: dict_set
-        isReporter: true
-        inputs:
-          d:
-            node: payload_with_text
+            node: metadata_base
           key:
             literal: "source"
           value:
             variable: source_path
 
-      payload_with_livro_id:
+      metadata_with_livro_id:
         opcode: dict_set
         isReporter: true
         inputs:
           d:
-            node: payload_with_source
+            node: metadata_with_source
           key:
             literal: "livro_id"
           value:
             variable: livro_id
 
-      payload_with_index:
-        opcode: dict_set
-        isReporter: true
-        inputs:
-          d:
-            node: payload_with_livro_id
-          key:
-            literal: "chunk_index"
-          value:
-            variable: current_index
-
-      payload_with_page_start:
-        opcode: dict_set
-        isReporter: true
-        inputs:
-          d:
-            node: payload_with_index
-          key:
-            literal: "page_start"
-          value:
-            node: get_page_start
-
-      payload_with_page_end:
-        opcode: dict_set
-        isReporter: true
-        inputs:
-          d:
-            node: payload_with_page_start
-          key:
-            literal: "page_end"
-          value:
-            node: get_page_end
-
-      append_payload:
-        opcode: list_append
-        isReporter: true
-        inputs:
-          items:
-            variable: payloads
-          value:
-            node: payload_with_page_end
-
-      # Increment index for next iteration
-      increment_index:
+      build_metadata:
         opcode: data_set_variable_to
-        next: null
+        next: do_build_payloads
         inputs:
           VARIABLE:
-            literal: "current_index"
+            literal: "metadata"
           VALUE:
-            node: next_index
+            node: metadata_with_livro_id
 
-      next_index:
-        opcode: operator_add
+      # Call rag_build_chunk_payloads (replaces ~240-line build loop)
+      do_rag_build:
+        opcode: rag_build_chunk_payloads
         isReporter: true
         inputs:
-          left:
-            variable: current_index
-          right:
-            literal: 1
+          chunks:
+            variable: chunks
+          metadata:
+            variable: metadata
+
+      do_build_payloads:
+        opcode: data_set_variable_to
+        next: extract_ids
+        inputs:
+          VARIABLE:
+            literal: "build_result"
+          VALUE:
+            node: do_rag_build
+
+      get_built_ids:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: build_result
+          key:
+            literal: "ids"
+
+      extract_ids:
+        opcode: data_set_variable_to
+        next: extract_payloads
+        inputs:
+          VARIABLE:
+            literal: "ids"
+          VALUE:
+            node: get_built_ids
+
+      get_built_payloads:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: build_result
+          key:
+            literal: "payloads"
+
+      extract_payloads:
+        opcode: data_set_variable_to
+        next: do_upsert
+        inputs:
+          VARIABLE:
+            literal: "payloads"
+          VALUE:
+            node: get_built_payloads
 
       # ========================================================================
       # Perform batch upsert to Qdrant
@@ -790,29 +928,114 @@ workflows:
             variable: payloads
 
       do_upsert:
-        opcode: control_if
-        next: print_footer
+        opcode: control_if_else
+        next: close_qdrant
         inputs:
           CONDITION:
             node: do_qdrant_upsert
           THEN:
-            branch: print_upsert_done
+            branch: save_step6_end_ok
           ELSE:
-            branch: print_upsert_failed
+            branch: save_step6_end_fail
+
+      # Branch: Upsert succeeded
+      get_step6_end_ok:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step6_end_ok:
+        opcode: data_set_variable_to
+        next: print_upsert_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step6_end_ok
+
+      step6_duration_ok:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step6_t0
+          end:
+            variable: step_t1
+
+      step6_ok_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "OK ({0})\n"
+          VALUES:
+            node: step6_duration_ok
 
       print_upsert_done:
         opcode: io_print
         next: null
         inputs:
           STRING:
-            literal: "OK\n"
+            node: step6_ok_msg
+
+      # Branch: Upsert failed
+      get_step6_end_fail:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step6_end_fail:
+        opcode: data_set_variable_to
+        next: print_upsert_failed
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step6_end_fail
+
+      step6_duration_fail:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step6_t0
+          end:
+            variable: step_t1
+
+      step6_fail_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "FALHOU! ({0})\n"
+          VALUES:
+            node: step6_duration_fail
 
       print_upsert_failed:
         opcode: io_print
         next: null
         inputs:
           STRING:
-            literal: "FALHOU!\n"
+            node: step6_fail_msg
+
+      # ========================================================================
+      # CLEANUP - Close clients
+      # ========================================================================
+      do_close_gcs:
+        opcode: gcs_close_client
+        isReporter: true
+        inputs:
+          client:
+            variable: gcs_client
+
+      close_qdrant:
+        opcode: data_set_variable_to
+        next: print_footer
+        inputs:
+          VARIABLE:
+            literal: "gcs_client"
+          VALUE:
+            node: do_close_gcs
 
       # ========================================================================
       # FOOTER
@@ -887,10 +1110,41 @@ workflows:
 
       print_success:
         opcode: io_print
-        next: print_final_separator
+        next: print_total_time
         inputs:
           STRING:
             node: success_msg
+
+      # Total pipeline time
+      get_pipeline_end:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      total_duration:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: pipeline_t0
+          end:
+            node: get_pipeline_end
+
+      total_time_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "Tempo total: {0}\n"
+          VALUES:
+            node: total_duration
+
+      print_total_time:
+        opcode: io_print
+        next: print_final_separator
+        inputs:
+          STRING:
+            node: total_time_msg
 
       print_final_separator:
         opcode: io_print

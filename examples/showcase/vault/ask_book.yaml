@@ -132,7 +132,7 @@ workflows:
           VALUE:
             node: connect_qdrant
 
-      # Create embedding for the question
+      # Create embedding for the question (RETRIEVAL_QUERY for search)
       create_question_embedding:
         opcode: embedding_create
         isReporter: true
@@ -145,6 +145,8 @@ workflows:
             literal: "us-central1"
           model:
             literal: "text-multilingual-embedding-002"
+          task_type:
+            literal: "RETRIEVAL_QUERY"
 
       store_question_embedding:
         opcode: data_set_variable_to
