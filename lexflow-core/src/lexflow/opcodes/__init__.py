@@ -11,6 +11,7 @@ from .opcodes_pubsub import register_pubsub_opcodes
 from .opcodes_pydantic_ai import register_pydantic_ai_opcodes
 from .opcodes_pygame import register_pygame_opcodes
 from .opcodes_rag import register_rag_opcodes
+from .opcodes_intercom import register_intercom_opcodes
 
 # Import opcodes that register via @opcode() decorator (no external dependencies)
 from . import opcodes_chat  # noqa: F401
@@ -25,6 +26,7 @@ register_pubsub_opcodes()
 register_pydantic_ai_opcodes()
 register_pygame_opcodes()
 register_rag_opcodes()
+register_intercom_opcodes()
 
 __all__ = [
     "CategoryInfo",
