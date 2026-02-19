@@ -475,7 +475,7 @@ export const WorkflowNode = memo(function WorkflowNode({
       <rect
         x={0}
         y={0}
-        width={totalWidth + 30}
+        width={totalWidth + 40}
         height={totalHeight}
         fill="transparent"
         style={{ pointerEvents: 'all' }}
@@ -622,6 +622,14 @@ export const WorkflowNode = memo(function WorkflowNode({
           onMouseLeave={() => setIsAddButtonHovered(false)}
           style={{ cursor: 'pointer' }}
         >
+          {/* Larger invisible hit target for easier clicking */}
+          <circle
+            cx={totalWidth + 16}
+            cy={NODE_HEIGHT / 2}
+            r={20}
+            fill="transparent"
+            style={{ pointerEvents: 'all' }}
+          />
           <circle
             cx={totalWidth + 16}
             cy={NODE_HEIGHT / 2}
