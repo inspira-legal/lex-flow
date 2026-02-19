@@ -338,3 +338,23 @@ export const expandToggleIconStyle: CSSProperties = {
   dominantBaseline: "central",
   pointerEvents: "none",
 }
+
+// Add node button styles
+export function getAddButtonStyle(isHovered: boolean): CSSProperties {
+  return {
+    fill: "var(--color-accent-primary)",
+    transition: "all 0.15s ease",
+    opacity: isHovered ? 1 : 0.9,
+    transform: isHovered ? "scale(1.1)" : "scale(1)",
+    filter: isHovered ? "drop-shadow(0 2px 6px rgba(59, 130, 246, 0.4))" : "none",
+  }
+}
+
+export const addButtonTextStyle: CSSProperties = {
+  fontSize: "14px",
+  fontWeight: "bold",
+  fill: "white",
+  textAnchor: "middle",
+  dominantBaseline: "central",
+  pointerEvents: "none",
+}
