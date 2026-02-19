@@ -76,7 +76,7 @@ workflows:
         inputs:
           client: { variable: client }
           spreadsheet_id: { variable: spreadsheet_id }
-          range: { variable: full_range }
+          range_notation: { variable: full_range }
 
       store_data:
         opcode: data_set_variable_to
