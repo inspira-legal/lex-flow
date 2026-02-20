@@ -10,14 +10,9 @@ Authentication:
 
 from typing import Any, Dict, List, Optional
 
+import aiohttp
+
 from .opcodes import opcode, register_category
-
-try:
-    import aiohttp
-
-    HUBSPOT_AVAILABLE = True
-except ImportError:
-    HUBSPOT_AVAILABLE = False
 
 
 # Valid HubSpot object types (for path validation)
@@ -50,8 +45,8 @@ ASSOCIATION_TYPE_IDS = {
     ("tickets", "companies"): 26,
     ("companies", "tickets"): 27,
     # ticket ↔ deal
-    ("tickets", "deals"): 27,
-    ("deals", "tickets"): 28,
+    ("tickets", "deals"): 28,
+    ("deals", "tickets"): 27,
 }
 
 
@@ -173,9 +168,6 @@ class HubSpotClient:
 
 def register_hubspot_opcodes():
     """Register HubSpot opcodes to the default registry."""
-    if not HUBSPOT_AVAILABLE:
-        return
-
     register_category(
         id="hubspot",
         label="HubSpot Operations",
@@ -207,6 +199,19 @@ def register_hubspot_opcodes():
         """
 
         return HubSpotClient(access_token)
+
+    @opcode(category="hubspot")
+    async def hubspot_close_client(client: HubSpotClient) -> bool:
+        """Close a HubSpot client and release its resources.
+
+        Args:
+            client: HubSpotClient to close
+
+        Returns:
+            True when the client session is closed
+        """
+        await client._session.close()
+        return True
 
     # ============================================================================
     # Contacts
