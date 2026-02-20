@@ -1,12 +1,7 @@
 """HubSpot CRM opcodes for LexFlow.
 
 This module provides opcodes for interacting with HubSpot CRM API,
-enabling CRM automation workflows similar to n8n/Zapier.
-
-Installation:
-    pip install lexflow[hubspot]
-    or:
-    pip install aiohttp
+enabling CRM automation workflows.
 
 Authentication:
     HubSpot uses OAuth2 access tokens. Generate a private app token at:
@@ -23,17 +18,6 @@ try:
     HUBSPOT_AVAILABLE = True
 except ImportError:
     HUBSPOT_AVAILABLE = False
-
-
-def _check_hubspot():
-    """Check if HubSpot dependencies are available."""
-    if not HUBSPOT_AVAILABLE:
-        raise ImportError(
-            "HubSpot dependencies not installed. Install with:\n"
-            "  pip install lexflow[hubspot]\n"
-            "or:\n"
-            "  pip install aiohttp"
-        )
 
 
 # Valid HubSpot object types (for path validation)
@@ -82,7 +66,7 @@ def _validate_object_type(object_type: str) -> str:
     return normalized
 
 
-def _validate_id(value: str, name: str = "id") -> str:
+def _validate_id(value: str, name: str = "id") -> None:
     """Validate that an ID is safe for use in URL paths (alphanumeric only)."""
     str_value = str(value)
     if not str_value.isalnum():
@@ -118,6 +102,12 @@ class HubSpotClient:
     def __init__(self, access_token: str):
         self.access_token = access_token
         self.base_url = HUBSPOT_API_BASE_URL
+        self._session = aiohttp.ClientSession(
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+        )
 
     async def _request(
         self,
@@ -128,37 +118,29 @@ class HubSpotClient:
     ) -> Dict[str, Any]:
         """Make an HTTP request to HubSpot API."""
         url = f"{self.base_url}{endpoint}"
-        headers = {
-            "Authorization": f"Bearer {self.access_token}",
-            "Content-Type": "application/json",
-        }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.request(
-                method, url, params=params, json=json_data, headers=headers
-            ) as response:
-                if response.status == 204:
-                    return {}
+        async with self._session.request(
+            method, url, params=params, json=json_data
+        ) as response:
+            if response.status == 204:
+                return {}
 
-                data = await response.json()
+            data = await response.json()
 
-                if response.status >= 400:
-                    # Only extract safe error fields to avoid leaking PII
-                    error_msg = data.get("message", "Unknown error")
-                    category = data.get("category", "")
-                    correlation_id = data.get("correlationId", "")
+            if response.status >= 400:
+                error_msg = data.get("message", "Unknown error")
+                category = data.get("category", "")
+                correlation_id = data.get("correlationId", "")
 
-                    error_parts = [
-                        f"HubSpot API error ({response.status}): {error_msg}"
-                    ]
-                    if category:
-                        error_parts.append(f"Category: {category}")
-                    if correlation_id:
-                        error_parts.append(f"CorrelationId: {correlation_id}")
+                error_parts = [f"HubSpot API error ({response.status}): {error_msg}"]
+                if category:
+                    error_parts.append(f"Category: {category}")
+                if correlation_id:
+                    error_parts.append(f"CorrelationId: {correlation_id}")
 
-                    raise ValueError(". ".join(error_parts))
+                raise ValueError(". ".join(error_parts))
 
-                return data
+            return data
 
     async def get(
         self, endpoint: str, params: Optional[Dict[str, Any]] = None
@@ -200,7 +182,7 @@ def register_hubspot_opcodes():
         prefix="hubspot_",
         color="#FF7A59",
         icon="hubspot",
-        requires="hubspot",
+        requires="http",
         order=215,
     )
 
@@ -223,7 +205,7 @@ def register_hubspot_opcodes():
         Example:
             access_token: "pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         """
-        _check_hubspot()
+
         return HubSpotClient(access_token)
 
     # ============================================================================
@@ -251,7 +233,7 @@ def register_hubspot_opcodes():
             contact_id: "12345"
             properties: ["firstname", "lastname", "email"]
         """
-        _check_hubspot()
+
         _validate_id(contact_id, "contact_id")
 
         params = {}
@@ -288,7 +270,6 @@ def register_hubspot_opcodes():
             properties: ["firstname", "lastname", "email"]
             limit: 10
         """
-        _check_hubspot()
 
         body: Dict[str, Any] = {
             "filterGroups": [{"filters": filters}],
@@ -320,7 +301,6 @@ def register_hubspot_opcodes():
               lastname: "Doe"
               email: "john.doe@example.com"
         """
-        _check_hubspot()
 
         body = {"properties": properties}
         return await client.post("/crm/v3/objects/contacts", json_data=body)
@@ -348,7 +328,7 @@ def register_hubspot_opcodes():
               firstname: "Jane"
               phone: "+1234567890"
         """
-        _check_hubspot()
+
         _validate_id(contact_id, "contact_id")
 
         body = {"properties": properties}
@@ -374,7 +354,7 @@ def register_hubspot_opcodes():
             client: { node: create_client }
             contact_id: "12345"
         """
-        _check_hubspot()
+
         _validate_id(contact_id, "contact_id")
 
         await client.delete(f"/crm/v3/objects/contacts/{contact_id}")
@@ -405,7 +385,7 @@ def register_hubspot_opcodes():
             company_id: "67890"
             properties: ["name", "domain", "industry"]
         """
-        _check_hubspot()
+
         _validate_id(company_id, "company_id")
 
         params = {}
@@ -444,7 +424,6 @@ def register_hubspot_opcodes():
             properties: ["name", "domain", "industry"]
             limit: 10
         """
-        _check_hubspot()
 
         body: Dict[str, Any] = {
             "filterGroups": [{"filters": filters}],
@@ -476,7 +455,6 @@ def register_hubspot_opcodes():
               domain: "acme.com"
               industry: "Technology"
         """
-        _check_hubspot()
 
         body = {"properties": properties}
         return await client.post("/crm/v3/objects/companies", json_data=body)
@@ -504,7 +482,7 @@ def register_hubspot_opcodes():
               industry: "Software"
               numberofemployees: "100"
         """
-        _check_hubspot()
+
         _validate_id(company_id, "company_id")
 
         body = {"properties": properties}
@@ -537,7 +515,7 @@ def register_hubspot_opcodes():
             deal_id: "11111"
             properties: ["dealname", "amount", "dealstage"]
         """
-        _check_hubspot()
+
         _validate_id(deal_id, "deal_id")
 
         params = {}
@@ -574,7 +552,6 @@ def register_hubspot_opcodes():
             properties: ["dealname", "amount", "dealstage"]
             limit: 10
         """
-        _check_hubspot()
 
         body: Dict[str, Any] = {
             "filterGroups": [{"filters": filters}],
@@ -606,7 +583,6 @@ def register_hubspot_opcodes():
               amount: "10000"
               dealstage: "appointmentscheduled"
         """
-        _check_hubspot()
 
         body = {"properties": properties}
         return await client.post("/crm/v3/objects/deals", json_data=body)
@@ -634,7 +610,7 @@ def register_hubspot_opcodes():
               amount: "15000"
               dealstage: "closedwon"
         """
-        _check_hubspot()
+
         _validate_id(deal_id, "deal_id")
 
         body = {"properties": properties}
@@ -686,7 +662,6 @@ def register_hubspot_opcodes():
             to_id: "12345"
             association_type: 3
         """
-        _check_hubspot()
 
         # Validate object types (prevents path traversal)
         from_type = _validate_object_type(from_type)
@@ -731,7 +706,7 @@ def register_hubspot_opcodes():
             client: { node: create_client }
             object_type: "contacts"
         """
-        _check_hubspot()
+
         object_type = _validate_object_type(object_type)
 
         response = await client.get(f"/crm/v3/properties/{object_type}")
@@ -752,7 +727,6 @@ def register_hubspot_opcodes():
         Example:
             client: { node: create_client }
         """
-        _check_hubspot()
 
         # Test by fetching contact properties (lightweight call)
         await client.get("/crm/v3/properties/contacts")
