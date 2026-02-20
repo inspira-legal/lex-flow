@@ -146,6 +146,7 @@ wheels = [
 [[package]]
 name = "lexflow-web"
 version = "1.7.0"
+version = "1.6.2"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },

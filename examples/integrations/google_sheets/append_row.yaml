@@ -1,0 +1,104 @@
+# Append a row to a Google Sheet
+#
+# Usage:
+#   lexflow examples/integrations/google_sheets/append_row.yaml \
+#     --input spreadsheet_id=YOUR_SPREADSHEET_ID \
+#     --input sheet_name=Sheet1 \
+#     --input range=A:Z
+#
+# Note: Edit the 'row_values' variable to match your sheet columns
+#
+# Authentication:
+#   Set GOOGLE_APPLICATION_CREDENTIALS environment variable to your service account JSON file
+#   Or use: gcloud auth application-default login
+
+workflows:
+  - name: main
+    interface:
+      inputs: [spreadsheet_id, sheet_name, range]
+      outputs: []
+    variables:
+      spreadsheet_id: ""
+      sheet_name: "Sheet1"
+      range: "A:Z"
+      client: null
+      full_range: ""
+      # Edit this to match your columns - this is a 2D array (list of rows)
+      row_values: [["Value1", "Value2", "Value3"]]
+      result: null
+    nodes:
+      start:
+        opcode: workflow_start
+        next: build_sheet_prefix
+        inputs: {}
+
+      # Build full range string (e.g., "Sheet1!A:Z")
+      sheet_prefix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { variable: sheet_name }
+          right: { literal: "!" }
+
+      build_sheet_prefix:
+        opcode: data_set_variable_to
+        next: build_full_range
+        inputs:
+          VARIABLE: { literal: "full_range" }
+          VALUE: { node: sheet_prefix }
+
+      concat_range:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { variable: full_range }
+          right: { variable: range }
+
+      build_full_range:
+        opcode: data_set_variable_to
+        next: store_client
+        inputs:
+          VARIABLE: { literal: "full_range" }
+          VALUE: { node: concat_range }
+
+      # Create client
+      create_client:
+        opcode: sheets_create_client
+        isReporter: true
+
+      store_client:
+        opcode: data_set_variable_to
+        next: store_result
+        inputs:
+          VARIABLE: { literal: "client" }
+          VALUE: { node: create_client }
+
+      # Append to sheet
+      append_result:
+        opcode: sheets_append
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          range_notation: { variable: full_range }
+          values: { variable: row_values }
+
+      store_result:
+        opcode: data_set_variable_to
+        next: print_success
+        inputs:
+          VARIABLE: { literal: "result" }
+          VALUE: { node: append_result }
+
+      # Print result
+      print_success:
+        opcode: io_print
+        next: print_result
+        inputs:
+          MESSAGE: { literal: "Row appended successfully!" }
+
+      print_result:
+        opcode: io_print
+        next: null
+        inputs:
+          MESSAGE: { variable: result }
