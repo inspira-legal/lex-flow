@@ -7,6 +7,7 @@ from .opcodes import (
 )
 from .opcodes_gcs import register_gcs_opcodes
 from .opcodes_http import register_http_opcodes
+from .opcodes_pgvector import register_pgvector_opcodes
 from .opcodes_pubsub import register_pubsub_opcodes
 from .opcodes_pydantic_ai import register_pydantic_ai_opcodes
 from .opcodes_pygame import register_pygame_opcodes
@@ -22,6 +23,7 @@ from . import opcodes_tasks  # noqa: F401
 # Register optional opcode modules (require external dependencies)
 register_gcs_opcodes()
 register_http_opcodes()
+register_pgvector_opcodes()
 register_pubsub_opcodes()
 register_pydantic_ai_opcodes()
 register_pygame_opcodes()

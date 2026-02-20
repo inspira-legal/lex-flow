@@ -28,6 +28,7 @@ Quick reference for all available opcodes in LexFlow.
 - [☁️ Cloud Storage](#cloud-storage) *(requires `lexflow[gcs]`)*
 - [🎮 Pygame Operations](#pygame-operations) *(requires `lexflow[pygame]`)*
 - [🔍 RAG Operations](#rag-operations) *(requires `lexflow[rag]`)*
+- [🐘 PgVector Operations](#pgvector-operations) *(requires `lexflow[pgvector]`)*
 - [💬 Chat Operations](#chat-operations)
 - [💻 CLI Operations](#cli-operations)
 - [🐙 GitHub Operations](#github-operations)
@@ -406,6 +407,11 @@ Check if string starts with prefix.
 ### `string_substring(text, start, end=None)`
 
 Extract substring from start to end index.
+
+Args:
+    text: Source string
+    start: Start index (0-based)
+    end: End index (exclusive), or None for rest of string
 
 Args:
     text: Source string
@@ -2557,6 +2563,8 @@ Args:
     project: Google Cloud project ID
     location: Google Cloud region (default: "us-central1")
     model: Embedding model name (default: "text-embedding-004")
+    task_type: Embedding task type (default: "RETRIEVAL_DOCUMENT").
+        Use "RETRIEVAL_QUERY" for search queries.
 
 Returns:
     List of floats representing the embedding vector
@@ -2582,6 +2590,8 @@ Args:
     project: Google Cloud project ID
     location: Google Cloud region (default: "us-central1")
     model: Embedding model name (default: "text-embedding-004")
+    task_type: Embedding task type (default: "RETRIEVAL_DOCUMENT").
+        Use "RETRIEVAL_QUERY" for search queries.
 
 Returns:
     List of embedding vectors (each is a list of floats)
@@ -2602,6 +2612,8 @@ Returns:
 
 Extract text from a PDF file page by page.
 
+Uses PyMuPDF when available (~12x faster), falls back to pypdf.
+
 Args:
     file_path: Path to the PDF file
 
@@ -2616,6 +2628,8 @@ Returns:
 ### `pdf_extract_pages_from_bytes(data)`
 
 Extract text from PDF bytes page by page.
+
+Uses PyMuPDF when available (~12x faster), falls back to pypdf.
 
 Args:
     data: PDF content as bytes
@@ -2632,6 +2646,8 @@ Returns:
 
 Extract all text from a PDF file.
 
+Uses PyMuPDF when available (~12x faster), falls back to pypdf.
+
 Args:
     file_path: Path to the PDF file
 
@@ -2647,8 +2663,7 @@ Returns:
 
 Extract all text from PDF bytes.
 
-Useful for processing PDFs downloaded from GCS or other sources
-without writing to disk.
+Uses PyMuPDF when available (~12x faster), falls back to pypdf.
 
 Args:
     data: PDF content as bytes
@@ -2664,6 +2679,8 @@ Returns:
 ### `pdf_page_count(file_path)`
 
 Get the number of pages in a PDF file.
+
+Uses PyMuPDF when available, falls back to pypdf.
 
 Args:
     file_path: Path to the PDF file
@@ -2703,6 +2720,7 @@ Create a Qdrant client connection.
 
 Args:
     url: Qdrant server URL (default: "http://localhost:6333")
+    prefer_grpc: Use gRPC for better performance (default: False)
 
 Returns:
     QdrantClient instance
@@ -2835,6 +2853,8 @@ Returns:
 
 Insert or update multiple points in a Qdrant collection.
 
+Uses Qdrant's upload_points for efficient internal batching.
+
 Args:
     client: QdrantClient instance
     collection: Collection name
@@ -2855,6 +2875,30 @@ Returns:
 - `payloads` (Optional, optional, default: `None`)
 
 **Returns:** `bool`
+
+---
+
+### `rag_build_chunk_payloads(chunks, metadata=None, id_prefix=None)`
+
+Build point IDs and payloads from text chunks for vector DB upsert.
+
+Args:
+    chunks: List of chunk dicts with 'text', 'page_start', 'page_end'
+    metadata: Extra fields merged into every payload (e.g., source, livro_id)
+    id_prefix: Base for generating point IDs. If None, uses random int.
+        IDs: id_prefix * 1000 + chunk_index
+
+Returns:
+    Dict with 'ids' (List[int]) and 'payloads' (List[Dict])
+
+
+**Parameters:**
+
+- `chunks` (List, required)
+- `metadata` (Dict, optional, default: `None`)
+- `id_prefix` (int, optional, default: `None`)
+
+**Returns:** `Dict`
 
 ---
 
@@ -2954,6 +2998,219 @@ Returns:
 - `min_chunk_size` (int, optional, default: `100`)
 
 **Returns:** `List`
+
+---
+
+## 🐘 PgVector Operations
+
+> **Requires:** `pip install lexflow[pgvector]`
+
+### `pgvector_collection_exists(pool, name)`
+
+Check if a pgvector collection (table) exists.
+
+Args:
+    pool: asyncpg.Pool instance
+    name: Collection (table) name to check
+
+Returns:
+    True if collection exists
+
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `name` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `pgvector_connect(dsn="postgresql://localhost/lexflow", min_size=1, max_size=10)`
+
+Create an asyncpg connection pool with pgvector support.
+
+Args:
+    dsn: PostgreSQL connection string (default: "postgresql://localhost/lexflow")
+    min_size: Minimum pool connections (default: 1)
+    max_size: Maximum pool connections (default: 10)
+
+Returns:
+    asyncpg.Pool instance with pgvector type registered
+
+
+**Parameters:**
+
+- `dsn` (str, optional, default: `"postgresql://localhost/lexflow"`)
+- `min_size` (int, optional, default: `1`)
+- `max_size` (int, optional, default: `10`)
+
+**Returns:** `Any`
+
+---
+
+### `pgvector_create_collection(pool, name, vector_size=768)`
+
+Create a pgvector collection (table) if it doesn't exist.
+
+Creates the pgvector extension and a table with id, embedding, and payload columns.
+
+Args:
+    pool: asyncpg.Pool instance
+    name: Collection (table) name
+    vector_size: Dimension of embedding vectors (default: 768)
+
+Returns:
+    True if created, False if already existed
+
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `name` (str, required)
+- `vector_size` (int, optional, default: `768`)
+
+**Returns:** `bool`
+
+---
+
+### `pgvector_delete(pool, collection, point_ids)`
+
+Delete points from a pgvector collection by IDs.
+
+Args:
+    pool: asyncpg.Pool instance
+    collection: Collection (table) name
+    point_ids: List of point IDs to delete
+
+Returns:
+    True if deletion was successful
+
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `collection` (str, required)
+- `point_ids` (List, required)
+
+**Returns:** `bool`
+
+---
+
+### `pgvector_delete_collection(pool, name)`
+
+Delete a pgvector collection (table).
+
+Args:
+    pool: asyncpg.Pool instance
+    name: Collection (table) name to delete
+
+Returns:
+    True if deletion was successful
+
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `name` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `pgvector_disconnect(pool)`
+
+Close a pgvector connection pool.
+
+Args:
+    pool: asyncpg.Pool instance to close
+
+Returns:
+    True if pool was closed successfully
+
+
+**Returns:** `bool`
+
+---
+
+### `pgvector_search(pool, collection, query_vector, limit=5)`
+
+Search for similar vectors in a pgvector collection.
+
+Uses cosine distance (<=> operator) for similarity ranking.
+
+Args:
+    pool: asyncpg.Pool instance
+    collection: Collection (table) name
+    query_vector: Embedding vector to search for
+    limit: Maximum number of results (default: 5)
+
+Returns:
+    List of dicts with keys: id, score, payload
+
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `collection` (str, required)
+- `query_vector` (List, required)
+- `limit` (int, optional, default: `5`)
+
+**Returns:** `List`
+
+---
+
+### `pgvector_upsert(pool, collection, point_id, vector, payload=None)`
+
+Insert or update a single vector point in a pgvector collection.
+
+Args:
+    pool: asyncpg.Pool instance
+    collection: Collection (table) name
+    point_id: Unique identifier for the point
+    vector: Embedding vector
+    payload: Optional metadata dict
+
+Returns:
+    True if upsert was successful
+
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `collection` (str, required)
+- `point_id` (int, required)
+- `vector` (List, required)
+- `payload` (Optional, optional, default: `None`)
+
+**Returns:** `bool`
+
+---
+
+### `pgvector_upsert_batch(pool, collection, point_ids, vectors, payloads=None)`
+
+Insert or update multiple vector points in a pgvector collection.
+
+Args:
+    pool: asyncpg.Pool instance
+    collection: Collection (table) name
+    point_ids: List of unique identifiers
+    vectors: List of embedding vectors
+    payloads: Optional list of metadata dicts
+
+Returns:
+    True if upsert was successful
+
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `collection` (str, required)
+- `point_ids` (List, required)
+- `vectors` (List, required)
+- `payloads` (Optional, optional, default: `None`)
+
+**Returns:** `bool`
 
 ---
 
@@ -4265,7 +4522,7 @@ Args:
 
 ## Summary
 
-**Total opcodes:** 237
+**Total opcodes:** 246
 
 ### Categories
 
@@ -4292,7 +4549,8 @@ Args:
 | 📋 JSON Operations | 2 | - |
 | ☁️ Cloud Storage | 11 | `lexflow[gcs]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
-| 🔍 RAG Operations | 20 | `lexflow[rag]` |
+| 🔍 RAG Operations | 21 | `lexflow[rag]` |
+| 🐘 PgVector Operations | 9 | `lexflow[pgvector]` |
 | 💬 Chat Operations | 10 | - |
 | 💻 CLI Operations | 10 | - |
 | 🐙 GitHub Operations | 7 | - |
