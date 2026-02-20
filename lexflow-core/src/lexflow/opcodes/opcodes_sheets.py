@@ -208,9 +208,8 @@ def register_sheets_opcodes():
             spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
             sheet_name: "Sheet1"
         """
-        range_notation = f"{sheet_name}!A:A"
         request = client.spreadsheets.values().get(
-            spreadsheetId=spreadsheet_id, range=range_notation
+            spreadsheetId=spreadsheet_id, range=sheet_name
         )
         result = await asyncio.to_thread(request.execute)
         values = result.get("values", [])
