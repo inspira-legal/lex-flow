@@ -334,7 +334,7 @@ def register_pydantic_ai_opcodes():
         result = await agent.run(prompt)
         return result.output
 
-    @default_registry.register()
+    @opcode(category="pydantic_ai")
     async def ai_agent_with_tools(
         agent: Any,
         messages: Union[str, List[dict]],
