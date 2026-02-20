@@ -9,6 +9,7 @@ Installation:
 Requires a PostgreSQL instance with pgvector extension installed.
 """
 
+import asyncio
 import json
 import re
 from typing import Any, Dict, List, Optional
@@ -55,24 +56,24 @@ def register_pgvector_opcodes():
         dsn: str = "postgresql://localhost/lexflow",
         min_size: int = 1,
         max_size: int = 10,
+        ensure_extension: bool = True,
     ) -> Any:
         """Create an asyncpg connection pool with pgvector support.
-
-        Automatically creates the pgvector extension if not present.
 
         Args:
             dsn: PostgreSQL connection string (default: "postgresql://localhost/lexflow")
             min_size: Minimum pool connections (default: 1)
             max_size: Maximum pool connections (default: 10)
+            ensure_extension: Run CREATE EXTENSION IF NOT EXISTS vector (default: True).
+                Set to False if the extension is pre-configured or the user lacks privileges.
 
         Returns:
             asyncpg.Pool instance with pgvector type registered
         """
-        # Ensure pgvector extension exists before creating pool,
-        # otherwise register_vector fails on unknown type 'vector'
-        conn = await asyncpg.connect(dsn)
-        await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        await conn.close()
+        if ensure_extension:
+            conn = await asyncio.wait_for(asyncpg.connect(dsn), timeout=10.0)
+            await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            await conn.close()
 
         async def _init_connection(conn):
             await register_vector(conn)
