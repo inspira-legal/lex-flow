@@ -17,10 +17,13 @@ Authentication:
         Then call sheets_create_client() without arguments
 """
 
-import asyncio
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
 
-from .opcodes import opcode, register_category
+import asyncio
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from google.auth.credentials import Credentials
 
 try:
     from google.oauth2.service_account import Credentials
@@ -34,18 +37,19 @@ except ImportError:
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 
-class SheetsClient:
-    """Reusable Google Sheets client."""
-
-    def __init__(self, service):
-        self.service = service
-        self.spreadsheets = service.spreadsheets()
-
-
 def register_sheets_opcodes():
     """Register Google Sheets opcodes to the default registry."""
     if not SHEETS_AVAILABLE:
         return
+
+    from .opcodes import opcode, register_category
+
+    class SheetsClient:
+        """Reusable Google Sheets client."""
+
+        def __init__(self, service):
+            self.service = service
+            self.spreadsheets = service.spreadsheets()
 
     register_category(
         id="sheets",
