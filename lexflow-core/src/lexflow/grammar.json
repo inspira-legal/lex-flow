@@ -163,6 +163,14 @@
       "requires": "rag"
     },
     {
+      "id": "pgvector",
+      "label": "PgVector Operations",
+      "prefix": "pgvector_",
+      "color": "#336791",
+      "icon": "🐘",
+      "requires": "pgvector"
+    },
+    {
       "id": "chat",
       "label": "Chat Operations",
       "prefix": "chat_",

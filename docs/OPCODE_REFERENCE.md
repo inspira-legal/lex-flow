@@ -413,11 +413,6 @@ Args:
     start: Start index (0-based)
     end: End index (exclusive), or None for rest of string
 
-Args:
-    text: Source string
-    start: Start index (0-based)
-    end: End index (exclusive), or None for rest of string
-
 
 **Parameters:**
 
@@ -2563,8 +2558,6 @@ Args:
     project: Google Cloud project ID
     location: Google Cloud region (default: "us-central1")
     model: Embedding model name (default: "text-embedding-004")
-    task_type: Embedding task type (default: "RETRIEVAL_DOCUMENT").
-        Use "RETRIEVAL_QUERY" for search queries.
 
 Returns:
     List of floats representing the embedding vector
@@ -2590,8 +2583,6 @@ Args:
     project: Google Cloud project ID
     location: Google Cloud region (default: "us-central1")
     model: Embedding model name (default: "text-embedding-004")
-    task_type: Embedding task type (default: "RETRIEVAL_DOCUMENT").
-        Use "RETRIEVAL_QUERY" for search queries.
 
 Returns:
     List of embedding vectors (each is a list of floats)
@@ -2612,8 +2603,6 @@ Returns:
 
 Extract text from a PDF file page by page.
 
-Uses PyMuPDF when available (~12x faster), falls back to pypdf.
-
 Args:
     file_path: Path to the PDF file
 
@@ -2628,8 +2617,6 @@ Returns:
 ### `pdf_extract_pages_from_bytes(data)`
 
 Extract text from PDF bytes page by page.
-
-Uses PyMuPDF when available (~12x faster), falls back to pypdf.
 
 Args:
     data: PDF content as bytes
@@ -2646,8 +2633,6 @@ Returns:
 
 Extract all text from a PDF file.
 
-Uses PyMuPDF when available (~12x faster), falls back to pypdf.
-
 Args:
     file_path: Path to the PDF file
 
@@ -2663,7 +2648,8 @@ Returns:
 
 Extract all text from PDF bytes.
 
-Uses PyMuPDF when available (~12x faster), falls back to pypdf.
+Useful for processing PDFs downloaded from GCS or other sources
+without writing to disk.
 
 Args:
     data: PDF content as bytes
@@ -2679,8 +2665,6 @@ Returns:
 ### `pdf_page_count(file_path)`
 
 Get the number of pages in a PDF file.
-
-Uses PyMuPDF when available, falls back to pypdf.
 
 Args:
     file_path: Path to the PDF file
@@ -2720,7 +2704,6 @@ Create a Qdrant client connection.
 
 Args:
     url: Qdrant server URL (default: "http://localhost:6333")
-    prefer_grpc: Use gRPC for better performance (default: False)
 
 Returns:
     QdrantClient instance
@@ -2853,8 +2836,6 @@ Returns:
 
 Insert or update multiple points in a Qdrant collection.
 
-Uses Qdrant's upload_points for efficient internal batching.
-
 Args:
     client: QdrantClient instance
     collection: Collection name
@@ -2875,30 +2856,6 @@ Returns:
 - `payloads` (Optional, optional, default: `None`)
 
 **Returns:** `bool`
-
----
-
-### `rag_build_chunk_payloads(chunks, metadata=None, id_prefix=None)`
-
-Build point IDs and payloads from text chunks for vector DB upsert.
-
-Args:
-    chunks: List of chunk dicts with 'text', 'page_start', 'page_end'
-    metadata: Extra fields merged into every payload (e.g., source, livro_id)
-    id_prefix: Base for generating point IDs. If None, uses random int.
-        IDs: id_prefix * 1000 + chunk_index
-
-Returns:
-    Dict with 'ids' (List[int]) and 'payloads' (List[Dict])
-
-
-**Parameters:**
-
-- `chunks` (List, required)
-- `metadata` (Dict, optional, default: `None`)
-- `id_prefix` (int, optional, default: `None`)
-
-**Returns:** `Dict`
 
 ---
 
@@ -3026,14 +2983,16 @@ Returns:
 
 ---
 
-### `pgvector_connect(dsn="postgresql://localhost/lexflow", min_size=1, max_size=10)`
+### `pgvector_connect(dsn, min_size=1, max_size=10, ensure_extension=True)`
 
 Create an asyncpg connection pool with pgvector support.
 
 Args:
-    dsn: PostgreSQL connection string (default: "postgresql://localhost/lexflow")
+    dsn: PostgreSQL connection string
     min_size: Minimum pool connections (default: 1)
     max_size: Maximum pool connections (default: 10)
+    ensure_extension: Run CREATE EXTENSION IF NOT EXISTS vector (default: True).
+        Set to False if the extension is pre-configured or the user lacks privileges.
 
 Returns:
     asyncpg.Pool instance with pgvector type registered
@@ -3041,9 +3000,10 @@ Returns:
 
 **Parameters:**
 
-- `dsn` (str, optional, default: `"postgresql://localhost/lexflow"`)
+- `dsn` (str, required)
 - `min_size` (int, optional, default: `1`)
 - `max_size` (int, optional, default: `10`)
+- `ensure_extension` (bool, optional, default: `True`)
 
 **Returns:** `Any`
 
@@ -4549,7 +4509,7 @@ Args:
 | 📋 JSON Operations | 2 | - |
 | ☁️ Cloud Storage | 11 | `lexflow[gcs]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
-| 🔍 RAG Operations | 21 | `lexflow[rag]` |
+| 🔍 RAG Operations | 20 | `lexflow[rag]` |
 | 🐘 PgVector Operations | 9 | `lexflow[pgvector]` |
 | 💬 Chat Operations | 10 | - |
 | 💻 CLI Operations | 10 | - |
