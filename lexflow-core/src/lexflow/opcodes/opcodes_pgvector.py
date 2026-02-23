@@ -24,6 +24,15 @@ try:
 except ImportError:
     PGVECTOR_AVAILABLE = False
 
+def _check_pgvector():
+    """Raise ImportError if asyncpg/pgvector are not installed."""
+    if not PGVECTOR_AVAILABLE:
+        raise ImportError(
+            "asyncpg and pgvector are required. Install with:\n"
+            "  uv add 'lexflow[pgvector]'"
+        )
+
+
 _VALID_TABLE_NAME = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
@@ -53,7 +62,7 @@ def register_pgvector_opcodes():
 
     @opcode(category="pgvector")
     async def pgvector_connect(
-        dsn: str = "postgresql://localhost/lexflow",
+        dsn: str,
         min_size: int = 1,
         max_size: int = 10,
         ensure_extension: bool = True,
@@ -61,7 +70,7 @@ def register_pgvector_opcodes():
         """Create an asyncpg connection pool with pgvector support.
 
         Args:
-            dsn: PostgreSQL connection string (default: "postgresql://localhost/lexflow")
+            dsn: PostgreSQL connection string
             min_size: Minimum pool connections (default: 1)
             max_size: Maximum pool connections (default: 10)
             ensure_extension: Run CREATE EXTENSION IF NOT EXISTS vector (default: True).
@@ -109,9 +118,8 @@ def register_pgvector_opcodes():
             if exists:
                 return False
 
-            await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
             await conn.execute(
-                f"CREATE TABLE {table} ("
+                f'CREATE TABLE "{table}" ('
                 f"  id BIGINT PRIMARY KEY,"
                 f"  embedding vector({int(vector_size)}),"
                 f"  payload JSONB DEFAULT '{{}}'::jsonb"
@@ -151,7 +159,7 @@ def register_pgvector_opcodes():
         """
         table = _validate_table_name(name)
         async with pool.acquire() as conn:
-            await conn.execute(f"DROP TABLE IF EXISTS {table}")
+            await conn.execute(f'DROP TABLE IF EXISTS "{table}"')
         return True
 
     @opcode(category="pgvector")
@@ -177,7 +185,7 @@ def register_pgvector_opcodes():
         table = _validate_table_name(collection)
         async with pool.acquire() as conn:
             await conn.execute(
-                f"INSERT INTO {table} (id, embedding, payload) "
+                f'INSERT INTO "{table}" (id, embedding, payload) '
                 f"VALUES ($1, $2, $3) "
                 f"ON CONFLICT (id) DO UPDATE SET "
                 f"embedding = EXCLUDED.embedding, payload = EXCLUDED.payload",
@@ -225,7 +233,7 @@ def register_pgvector_opcodes():
         async with pool.acquire() as conn:
             async with conn.transaction():
                 await conn.executemany(
-                    f"INSERT INTO {table} (id, embedding, payload) "
+                    f'INSERT INTO "{table}" (id, embedding, payload) '
                     f"VALUES ($1, $2, $3) "
                     f"ON CONFLICT (id) DO UPDATE SET "
                     f"embedding = EXCLUDED.embedding, payload = EXCLUDED.payload",
@@ -256,8 +264,8 @@ def register_pgvector_opcodes():
         table = _validate_table_name(collection)
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                f"SELECT id, 1 - (embedding <=> $1) AS score, payload "
-                f"FROM {table} "
+                f'SELECT id, 1 - (embedding <=> $1) AS score, payload '
+                f'FROM "{table}" '
                 f"ORDER BY embedding <=> $1 "
                 f"LIMIT $2",
                 query_vector,
@@ -287,7 +295,7 @@ def register_pgvector_opcodes():
         table = _validate_table_name(collection)
         async with pool.acquire() as conn:
             await conn.execute(
-                f"DELETE FROM {table} WHERE id = ANY($1)",
+                f'DELETE FROM "{table}" WHERE id = ANY($1)',
                 point_ids,
             )
         return True
