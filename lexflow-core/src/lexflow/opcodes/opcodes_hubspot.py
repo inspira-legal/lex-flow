@@ -8,11 +8,16 @@ Authentication:
     https://developers.hubspot.com/docs/api/private-apps
 """
 
-from typing import Any, Dict, List, Optional
-
-import aiohttp
+from typing import Any, Dict, List, Optional, Union
 
 from .opcodes import opcode, register_category
+
+try:
+    import aiohttp
+
+    HUBSPOT_AVAILABLE = True
+except ImportError:
+    HUBSPOT_AVAILABLE = False
 
 
 # Valid HubSpot object types (for path validation)
@@ -46,7 +51,7 @@ ASSOCIATION_TYPE_IDS = {
     ("companies", "tickets"): 27,
     # ticket ↔ deal
     ("tickets", "deals"): 28,
-    ("deals", "tickets"): 27,
+    ("deals", "tickets"): 28,
 }
 
 
@@ -109,7 +114,7 @@ class HubSpotClient:
         method: str,
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
+        json_data: Optional[Union[Dict[str, Any], List[Any]]] = None,
     ) -> Dict[str, Any]:
         """Make an HTTP request to HubSpot API."""
         url = f"{self.base_url}{endpoint}"
@@ -144,13 +149,17 @@ class HubSpotClient:
         return await self._request("GET", endpoint, params=params)
 
     async def post(
-        self, endpoint: str, json_data: Optional[Dict[str, Any]] = None
+        self,
+        endpoint: str,
+        json_data: Optional[Union[Dict[str, Any], List[Any]]] = None,
     ) -> Dict[str, Any]:
         """Make a POST request."""
         return await self._request("POST", endpoint, json_data=json_data)
 
     async def patch(
-        self, endpoint: str, json_data: Optional[Dict[str, Any]] = None
+        self,
+        endpoint: str,
+        json_data: Optional[Union[Dict[str, Any], List[Any]]] = None,
     ) -> Dict[str, Any]:
         """Make a PATCH request."""
         return await self._request("PATCH", endpoint, json_data=json_data)
@@ -160,7 +169,9 @@ class HubSpotClient:
         return await self._request("DELETE", endpoint)
 
     async def put(
-        self, endpoint: str, json_data: Optional[Dict[str, Any]] = None
+        self,
+        endpoint: str,
+        json_data: Optional[Union[Dict[str, Any], List[Any]]] = None,
     ) -> Dict[str, Any]:
         """Make a PUT request."""
         return await self._request("PUT", endpoint, json_data=json_data)
@@ -168,6 +179,9 @@ class HubSpotClient:
 
 def register_hubspot_opcodes():
     """Register HubSpot opcodes to the default registry."""
+    if not HUBSPOT_AVAILABLE:
+        return
+
     register_category(
         id="hubspot",
         label="HubSpot Operations",
@@ -197,6 +211,11 @@ def register_hubspot_opcodes():
         Example:
             access_token: "pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         """
+        if not access_token:
+            raise ValueError(
+                "access_token is required. "
+                "Generate one at: https://developers.hubspot.com/docs/api/private-apps"
+            )
 
         return HubSpotClient(access_token)
 

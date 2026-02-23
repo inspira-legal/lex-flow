@@ -68,7 +68,7 @@ class TestGetAssociationTypeId:
         assert _get_association_type_id("companies", "contacts") == 2
         assert _get_association_type_id("deals", "contacts") == 3
         assert _get_association_type_id("tickets", "deals") == 28
-        assert _get_association_type_id("deals", "tickets") == 27
+        assert _get_association_type_id("deals", "tickets") == 28
 
     def test_unknown_pair_raises(self):
         with pytest.raises(ValueError, match="Unknown association type"):
@@ -224,6 +224,10 @@ class TestHubSpotCreateClient:
             )
         assert isinstance(client, HubSpotClient)
         assert client.access_token == "test-token"
+
+    async def test_empty_token_raises(self):
+        with pytest.raises(ValueError, match="access_token is required"):
+            await default_registry.call("hubspot_create_client", [""])
 
 
 class TestHubSpotCloseClient:

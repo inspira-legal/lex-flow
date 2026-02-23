@@ -24,7 +24,7 @@ Quick reference for all available opcodes in LexFlow.
 - [🌐 HTTP Operations](#http-operations) *(requires `lexflow[http]`)*
 - [📄 HTML Operations](#html-operations) *(requires `lexflow[http]`)*
 - [📋 JSON Operations](#json-operations)
-- [hubspot HubSpot Operations](#hubspot-operations) *(requires `lexflow[hubspot]`)*
+- [hubspot HubSpot Operations](#hubspot-operations) *(requires `lexflow[http]`)*
 - [🎮 Pygame Operations](#pygame-operations) *(requires `lexflow[pygame]`)*
 - [🔍 RAG Operations](#rag-operations) *(requires `lexflow[rag]`)*
 - [🐘 PgVector Operations](#pgvector-operations) *(requires `lexflow[pgvector]`)*
@@ -1139,6 +1139,76 @@ Execute body with timeout, optionally running on_timeout if exceeded.
 
 > **Requires:** `pip install lexflow[ai]`
 
+### `ai_agent_with_tools(agent, messages, tools, output=None, max_tool_calls=10, timeout_seconds=300.0)`
+
+Run an AI agent with access to LexFlow opcodes and workflows as tools.
+
+This opcode enables agentic workflows where the LLM can reason about
+and call LexFlow opcodes or workflows to accomplish tasks.
+
+Args:
+    agent: Pre-created agent from pydantic_ai_create_agent
+    messages: String prompt or list of {role, content} message dicts.
+             If string, normalizes to [{role: "user", content: <string>}]
+    tools: List of tools the agent is allowed to call. Can be:
+           - String: opcode name (e.g., "operator_add")
+           - Dict: workflow reference (e.g., {"workflow": "my_workflow"})
+    output: Optional schema for structured output: {text: "string", data: {...}}
+    max_tool_calls: Maximum number of tool calls allowed (default: 10)
+    timeout_seconds: Timeout for entire operation in seconds (default: 300)
+
+Returns:
+    Dict with {text: str, data: Any} containing the agent's response
+
+Raises:
+    PermissionError: If agent tries to call a tool not in the allowlist
+    ValueError: If tools don't exist or messages format is invalid
+    TimeoutError: If execution exceeds timeout_seconds
+    RuntimeError: If max_tool_calls exceeded, LLM/tool error, or
+                 workflow tools used without WorkflowManager context
+
+Example YAML:
+    agent_call:
+      opcode: ai_agent_with_tools
+      isReporter: true
+      inputs:
+        agent: {variable: "my_agent"}
+        messages: {literal: "Calculate 15 * 23"}
+        tools:
+          literal:
+            - operator_multiply
+            - operator_add
+            - {workflow: "custom_calculation"}
+        max_tool_calls: {literal: 5}
+        timeout_seconds: {literal: 30}
+
+Note:
+    This is a reporter opcode (isReporter: true, no next).
+    To avoid re-execution, store the result in a variable immediately.
+
+    Workflow tools require the workflow to be defined in the same file
+    or included via --include. The workflow's interface.description
+    is used as the tool description for the LLM.
+
+    When tools are provided, the agent is re-created internally.
+    Only model, instructions, and system_prompts are preserved from
+    the original agent. Other config (result_validators, model_settings,
+    etc.) is not carried over.
+
+
+**Parameters:**
+
+- `agent` (Any, required)
+- `messages` (Union, required)
+- `tools` (List, required)
+- `output` (Optional, optional, default: `None`)
+- `max_tool_calls` (int, optional, default: `10`)
+- `timeout_seconds` (float, optional, default: `300.0`)
+
+**Returns:** `dict`
+
+---
+
 ### `pydantic_ai_create_agent(model, instructions="", system_prompt="")`
 
 Create a pydantic_ai Agent.
@@ -1583,7 +1653,7 @@ Raises:
 
 ## hubspot HubSpot Operations
 
-> **Requires:** `pip install lexflow[hubspot]`
+> **Requires:** `pip install lexflow[http]`
 
 ### `hubspot_associate(client, from_type, from_id, to_type, to_id, association_type=None)`
 
@@ -1631,6 +1701,21 @@ Example - Associate with explicit type ID:
 - `association_type` (Optional, optional, default: `None`)
 
 **Returns:** `Dict`
+
+---
+
+### `hubspot_close_client(client)`
+
+Close a HubSpot client and release its resources.
+
+Args:
+    client: HubSpotClient to close
+
+Returns:
+    True when the client session is closed
+
+
+**Returns:** `bool`
 
 ---
 
@@ -3925,11 +4010,11 @@ Args:
 | 📦 Data Operations | 2 | - |
 | ↻ Control Flow | 11 | - |
 | ⏱ Async Operations | 3 | - |
-| 🤖 AI Operations (Pydantic AI) | 4 | `lexflow[ai]` |
+| 🤖 AI Operations (Pydantic AI) | 5 | `lexflow[ai]` |
 | 🌐 HTTP Operations | 8 | `lexflow[http]` |
 | 📄 HTML Operations | 5 | `lexflow[http]` |
 | 📋 JSON Operations | 2 | - |
-| hubspot HubSpot Operations | 17 | `lexflow[hubspot]` |
+| hubspot HubSpot Operations | 18 | `lexflow[http]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
 | 🔍 RAG Operations | 20 | `lexflow[rag]` |
 | 🐘 PgVector Operations | 9 | `lexflow[pgvector]` |
