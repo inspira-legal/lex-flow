@@ -2,6 +2,71 @@
 
 <!-- version list -->
 
+## v1.7.0 (2026-02-23)
+
+### Bug Fixes
+
+- **sheets**: Address PR review feedback for async and parameter naming
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **sheets**: Address PR review — sheet name quoting, path validation, and lock file
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **sheets**: Query full sheet range in sheets_get_last_row
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **sheets**: Strengthen path traversal protection in sheets_create_client
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+### Chores
+
+- Add CODEOWNERS file ([#19](https://github.com/inspira-legal/lex-flow/pull/19),
+  [`815c882`](https://github.com/inspira-legal/lex-flow/commit/815c8828759365eca4fb5da1fe18f9d2aca4e2fe))
+
+- **deps**: Bump cryptography from 46.0.4 to 46.0.5
+  ([#19](https://github.com/inspira-legal/lex-flow/pull/19),
+  [`815c882`](https://github.com/inspira-legal/lex-flow/commit/815c8828759365eca4fb5da1fe18f9d2aca4e2fe))
+
+- **deps**: Bump cryptography from 46.0.4 to 46.0.5 in /lexflow-core
+  ([#20](https://github.com/inspira-legal/lex-flow/pull/20),
+  [`c670e49`](https://github.com/inspira-legal/lex-flow/commit/c670e49d77918cf17581943b2587e682fbf1c832))
+
+- **deps**: Bump pydantic-ai-slim from 1.0.1 to 1.56.0
+  ([#17](https://github.com/inspira-legal/lex-flow/pull/17),
+  [`7de030f`](https://github.com/inspira-legal/lex-flow/commit/7de030f124f2cd5e8797dd46d4f4d0c234fbf45f))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`e47d536`](https://github.com/inspira-legal/lex-flow/commit/e47d536f7413c72ce2f7705a96abe33325eaa4a9))
+
+### Features
+
+- **pr-template**: Add pull request template for consistent PR submissions
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **sheets**: Add examples for appending and reading data from Google Sheets
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **sheets**: Add Google Sheets integration with opcodes and examples
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **sheets**: Add Google Sheets operations and update dependencies
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **sheets**: Add unit tests, fix optional dependency pattern, and add integration test workflow
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+
 ## v1.6.0 (2026-02-18)
 
 ### Bug Fixes
