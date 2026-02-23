@@ -2,6 +2,49 @@
 
 <!-- version list -->
 
+## v1.8.0 (2026-02-23)
+
+### Bug Fixes
+
+- **core**: Improve pgvector opcodes safety and test coverage
+  ([#28](https://github.com/inspira-legal/lex-flow/pull/28),
+  [`e26d6f9`](https://github.com/inspira-legal/lex-flow/commit/e26d6f9f69c3e81b1049bc0f73c97cec569711e9))
+
+### Chores
+
+- Add PR Multi Reviewers Claude Code skill
+  ([#28](https://github.com/inspira-legal/lex-flow/pull/28),
+  [`e26d6f9`](https://github.com/inspira-legal/lex-flow/commit/e26d6f9f69c3e81b1049bc0f73c97cec569711e9))
+
+- Add PR Multi Reviewers Claude Code skill
+  ([#29](https://github.com/inspira-legal/lex-flow/pull/29),
+  [`cfd8d36`](https://github.com/inspira-legal/lex-flow/commit/cfd8d368afc69363443b95ed698546aa6376e4de))
+
+- Add smart agent selection to PR review skill
+  ([#28](https://github.com/inspira-legal/lex-flow/pull/28),
+  [`e26d6f9`](https://github.com/inspira-legal/lex-flow/commit/e26d6f9f69c3e81b1049bc0f73c97cec569711e9))
+
+- Add smart agent selection to PR review skill
+  ([#29](https://github.com/inspira-legal/lex-flow/pull/29),
+  [`cfd8d36`](https://github.com/inspira-legal/lex-flow/commit/cfd8d368afc69363443b95ed698546aa6376e4de))
+
+- **web**: Build frontend library [skip ci]
+  ([`357050e`](https://github.com/inspira-legal/lex-flow/commit/357050e0de72e609b26a60ad49699ca2eacbade1))
+
+- **web**: Release 1.11.0
+  ([`6075580`](https://github.com/inspira-legal/lex-flow/commit/6075580cd8d7973d8ba3863c2df2e249cba9243f))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`f172262`](https://github.com/inspira-legal/lex-flow/commit/f1722629ef05deeca1b24177cb9d6dd9ff6c237a))
+
+### Features
+
+- **opcodes**: Creates pgvector opcodes ([#28](https://github.com/inspira-legal/lex-flow/pull/28),
+  [`e26d6f9`](https://github.com/inspira-legal/lex-flow/commit/e26d6f9f69c3e81b1049bc0f73c97cec569711e9))
+
+
 ## v1.7.0 (2026-02-23)
 
 ### Bug Fixes
