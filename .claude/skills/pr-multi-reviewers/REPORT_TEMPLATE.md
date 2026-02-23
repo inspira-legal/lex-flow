@@ -5,7 +5,8 @@
 | **Type** | PR #XXX / Branch `branch-name` |
 | **Target** | `main` |
 | **Date** | YYYY-MM-DD |
-| **Agents** | Commits, Patterns, Tests, Opcodes, Security |
+| **Active Agents** | Commits, Patterns, Tests *(list only those selected)* |
+| **Skipped Agents** | Opcodes, Security *(reason: no relevant files changed)* |
 
 ---
 
@@ -63,7 +64,7 @@ The following domains had **no issues** found:
 | Category | Status | Rules Checked |
 |----------|--------|---------------|
 | Commits & Versioning | PASS/FAIL | H1, H4-H7, M9 |
-| Code Patterns & Architecture | PASS/FAIL | M2-M5, M7-M8, L2, L4 |
-| Tests & Validation | PASS/FAIL | H2, M6, L1 |
-| Opcodes & Dependencies | PASS/FAIL | H3, H8-H11, M1 |
-| Security & Contracts | PASS/FAIL | M10, L3, L5 |
+| Code Patterns & Architecture | PASS/FAIL/SKIPPED | M2-M5, M7-M8, L2, L4 |
+| Tests & Validation | PASS/FAIL/SKIPPED | H2, M6, L1 |
+| Opcodes & Dependencies | PASS/FAIL/SKIPPED | H3, H8-H11, M1 |
+| Security & Contracts | PASS/FAIL/SKIPPED | M10, L3, L5 |

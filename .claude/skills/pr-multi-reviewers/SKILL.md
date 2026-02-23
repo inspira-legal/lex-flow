@@ -21,7 +21,8 @@ Before proceeding, verify:
 - **Objective**: Catch issues before they reach production by systematically validating changes against the project's review standards.
 - **Key Capabilities**:
     - **Context Detection**: Automatically detect whether reviewing a PR or a branch.
-    - **Parallel Review**: Spawn 5 specialized subagents, each focused on a review domain.
+    - **Smart Agent Selection**: Analyze changed file categories to spawn only relevant review agents, saving tokens and time.
+    - **Parallel Review**: Spawn specialized subagents in parallel, each focused on a review domain.
     - **Consolidation**: Merge all agent findings into a single, severity-ranked report.
     - **Actionable Output**: Offer to post the review as a GitHub PR comment.
 
@@ -45,44 +46,69 @@ Determine what to review:
 
 Read the project's `CODE_REVIEW_GUIDE.md` to load the current rules. Do NOT rely on cached or embedded versions — always read fresh.
 
-### Step 3 — Gather Changed Files
+### Step 3 — Gather & Categorize Changed Files
 
-Collect the list of changed files and categorize them:
-- Python source files
-- Test files
-- Config files (pyproject.toml, .pre-commit-config.yaml, etc.)
-- Workflow/YAML files
-- Documentation files
+Collect the list of changed files and classify each into one or more categories:
 
-### Step 4 — Spawn Parallel Review Agents
+| Category | File patterns |
+|----------|--------------|
+| `python_source` | `*.py` files under `src/`, `lexflow-*/src/` (excluding tests) |
+| `test` | `*.py` files under `tests/` |
+| `opcode` | `**/opcodes*.py`, `**/opcodes_*.py` |
+| `api` | `**/api.py`, `**/app.py`, `**/routes*.py` |
+| `init_exports` | `**/__init__.py` |
+| `config` | `pyproject.toml`, `.pre-commit-config.yaml`, `setup.cfg`, etc. |
+| `workflow_yaml` | `*.yaml`, `*.yml` under `examples/` |
+| `docs_only` | `*.md`, `.claude/**`, non-code files exclusively |
 
-Launch **5 subagents in parallel** using the `Task` tool with `subagent_type: "general-purpose"`. Each agent receives:
+### Step 3.5 — Select Applicable Agents (CRITICAL — Cost Optimization)
+
+Based on the file categories present, determine which agents to spawn. **Only launch agents whose trigger categories are matched.** This avoids wasting tokens on domains with zero relevance.
+
+**Agent activation matrix:**
+
+| Agent | Trigger categories | Skip when ONLY these categories present |
+|-------|-------------------|------------------------------------------|
+| 1 — Commits & Versioning | **Always active** (commit messages always need checking) | *(never skipped)* |
+| 2 — Code Patterns & Architecture | `python_source`, `config`, `api`, `opcode` | `docs_only`, `workflow_yaml`, `test` (alone) |
+| 3 — Tests & Validation | `python_source`, `test`, `opcode` | `docs_only`, `config`, `workflow_yaml` |
+| 4 — Opcodes & Dependencies | `opcode`, `init_exports`, `python_source` (new modules) | `docs_only`, `test`, `config`, `workflow_yaml`, `api` |
+| 5 — Security & Contracts | `api`, `python_source` (file I/O or env vars in diff) | `docs_only`, `test`, `config`, `workflow_yaml`, `opcode` (alone) |
+
+**Decision logic:**
+1. If the PR contains **only** `docs_only` files (markdown, `.claude/` config, etc.): spawn **only Agent 1** (Commits & Versioning). Mark all other domains as "Skipped — no relevant files changed" in the report.
+2. Otherwise, evaluate each agent against the matrix. An agent is spawned if **any** of its trigger categories is present in the changed files.
+3. Log which agents were selected and why in the report header (e.g., "Agents: Commits, Patterns, Tests (Opcodes and Security skipped — no relevant files)").
+
+### Step 4 — Spawn Selected Review Agents
+
+Launch the **selected agents in parallel** using the `Task` tool with `subagent_type: "general-purpose"`. Each agent receives:
 - The full diff (or relevant subset for their domain)
 - The relevant rules from CODE_REVIEW_GUIDE.md
 - The list of changed files
 - Instructions to output findings in the report template format
 
-**Agent 1 — Commits & Versioning**
+**Agent 1 — Commits & Versioning** *(always active)*
 - Rules: H1, H4, H5, H6, H7, M9
 - Checks: Conventional Commits format, scope tags, breaking change annotations, backward compatibility of changed signatures/exports.
 - Input: `git log` output + diff of `__init__.py` and opcode files.
 
-**Agent 2 — Code Patterns & Architecture**
+**Agent 2 — Code Patterns & Architecture** *(requires: python_source, config, api, or opcode)*
 - Rules: M2, M3, M4, M5, M7, M8, L2, L4
 - Checks: Pydantic v2 patterns, FastAPI factory pattern, ContextVar usage, ruff compliance, single-responsibility, no deployment assumptions.
 - Input: Full diff of Python source files (excluding tests).
 
-**Agent 3 — Tests & Validation**
+**Agent 3 — Tests & Validation** *(requires: python_source, test, or opcode)*
 - Rules: H2, M6, L1
 - Checks: Test coverage for new code (happy path + error paths + corner cases), async test patterns, graceful degradation tests for optional deps.
 - Input: Diff of test files + list of new functions/classes in source files.
 
-**Agent 4 — Opcodes & Dependencies**
+**Agent 4 — Opcodes & Dependencies** *(requires: opcode, init_exports, or new python_source modules)*
 - Rules: H3, H8, H9, H10, H11, M1
 - Checks: Opcode conventions (async, typed, docstring, @opcode()), optional dependency pattern, core boundary decisions.
 - Input: Diff of opcode files + any new module files.
 
-**Agent 5 — Security & Contracts**
+**Agent 5 — Security & Contracts** *(requires: api, or python_source with file I/O / env vars)*
 - Rules: M10, L3, L5 + Security section
 - Checks: Path traversal in file-reading endpoints, SSRF risks, hardcoded secrets, API error handling patterns, exception conventions.
 - Input: Full diff focusing on API endpoints, file I/O, and environment variable usage.
@@ -98,11 +124,12 @@ NO_ISSUES: <list of rules checked with no issues found>
 
 ### Step 5 — Consolidate Report
 
-Once all agents complete, merge their findings into the report template (see `REPORT_TEMPLATE.md`):
+Once all **selected** agents complete, merge their findings into the report template (see `REPORT_TEMPLATE.md`):
 1. Group findings by severity (HIGH → MEDIUM → LOW).
 2. Within each severity, group by domain.
 3. Add a summary with counts: X HIGH, Y MEDIUM, Z LOW.
-4. Add a verdict: APPROVED / CHANGES REQUESTED / NEEDS DISCUSSION.
+4. List skipped agents with reason (e.g., "Opcodes & Dependencies — skipped, no opcode files changed").
+5. Add a verdict: APPROVED / CHANGES REQUESTED / NEEDS DISCUSSION.
 
 Verdict logic:
 - **APPROVED**: 0 HIGH, 0 MEDIUM findings.
@@ -138,36 +165,45 @@ The review produces a structured markdown report following `REPORT_TEMPLATE.md`.
 
 ## 6. Example Scenarios
 
-**Scenario 1 — Review an open PR**
+**Scenario 1 — Full PR with source code changes**
 
 **User**: "Review PR #42"
 **Agent**:
 1. Runs `gh pr diff 42` and `gh pr view 42 --json title,body,files`.
-2. Reads `CODE_REVIEW_GUIDE.md` from the project.
-3. Spawns 5 parallel subagents with the diff and rules.
-4. Consolidates findings:
+2. Reads `CODE_REVIEW_GUIDE.md`.
+3. Categorizes files: `python_source`, `opcode`, `test` → selects Agents 1-5 (all relevant).
+4. Spawns 5 parallel subagents.
+5. Consolidates findings:
    - 1 HIGH: H1 — Commit `updated stuff` doesn't follow Conventional Commits.
    - 1 MEDIUM: M1 — New opcode module missing `*_AVAILABLE` flag pattern.
    - 1 LOW: L1 — No graceful degradation test for optional dep.
-5. Verdict: **CHANGES REQUESTED**.
-6. Asks: "Would you like me to post this as a PR comment?"
+6. Verdict: **CHANGES REQUESTED**.
+7. Asks: "Would you like me to post this as a PR comment?"
 
-**Scenario 2 — Review branch before opening PR**
+**Scenario 2 — Docs-only PR (smart selection)**
+
+**User**: "Review this PR"
+**Agent**:
+1. Detects PR #60. Gets diff: only `.md` and `.claude/` files changed.
+2. Categorizes files: `docs_only` → selects **only Agent 1** (Commits & Versioning).
+3. Spawns 1 agent (skips Patterns, Tests, Opcodes, Security).
+4. Consolidates: 0 findings. Report notes "4 agents skipped — no relevant files changed."
+5. Verdict: **APPROVED**.
+
+**Scenario 3 — Branch with API changes (partial selection)**
 
 **User**: "Review my changes before I open a PR"
 **Agent**:
-1. Detects current branch `feature/new-opcode`, base branch `main`.
-2. Runs `git diff main...HEAD` and `git log main...HEAD --oneline`.
-3. Reads `CODE_REVIEW_GUIDE.md`.
-4. Spawns 5 parallel subagents.
-5. Consolidates: 0 HIGH, 0 MEDIUM, 2 LOW (nits).
-6. Verdict: **APPROVED**.
-7. Notes: "Your branch looks good! You can open the PR confidently."
+1. Detects branch `feature/new-endpoint`, base `main`.
+2. Categorizes files: `python_source`, `api`, `test` → selects Agents 1, 2, 3, 5 (skips Agent 4 — no opcode files).
+3. Spawns 4 parallel subagents.
+4. Consolidates: 0 HIGH, 1 MEDIUM (M10 — POST endpoint using HTTPException instead of body error).
+5. Verdict: **NEEDS DISCUSSION**.
 
-**Scenario 3 — Auto-detect context**
+**Scenario 4 — Auto-detect context**
 
 **User**: "Can you review this?"
 **Agent**:
 1. Checks `gh pr view --json number` — finds PR #55 for current branch.
 2. Proceeds in PR mode with PR #55.
-3. Delivers report as in Scenario 1.
+3. Applies smart agent selection based on changed file categories.
