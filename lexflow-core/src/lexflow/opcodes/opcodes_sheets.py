@@ -96,11 +96,17 @@ def register_sheets_opcodes():
             # No arguments needed
         """
         if credentials_path:
+            if ".." in os.path.normpath(credentials_path).split(os.sep):
+                raise ValueError(
+                    "credentials_path must not contain '..' path components"
+                )
             resolved = os.path.realpath(credentials_path)
             if not resolved.endswith(".json"):
                 raise ValueError("credentials_path must be a .json file")
+            if not os.path.isfile(resolved):
+                raise ValueError(f"credentials file not found: {credentials_path}")
             credentials = await asyncio.to_thread(
-                Credentials.from_service_account_file, credentials_path, scopes=SCOPES
+                Credentials.from_service_account_file, resolved, scopes=SCOPES
             )
         else:
             credentials, _ = await asyncio.to_thread(google_auth_default, scopes=SCOPES)

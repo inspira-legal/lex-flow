@@ -59,10 +59,23 @@ class TestSheetsCreateClient:
         with pytest.raises(ValueError, match="credentials_path must be a .json file"):
             await default_registry.call("sheets_create_client", ["/etc/passwd"])
 
+    async def test_create_client_rejects_path_traversal(self):
+        with pytest.raises(ValueError, match="must not contain '..'"):
+            await default_registry.call(
+                "sheets_create_client", ["../../etc/secrets/creds.json"]
+            )
+
+    async def test_create_client_rejects_nonexistent_file(self):
+        with pytest.raises(ValueError, match="credentials file not found"):
+            await default_registry.call(
+                "sheets_create_client", ["/nonexistent/path/creds.json"]
+            )
+
     async def test_create_client_with_service_account(self):
         mock_creds = Mock()
         with (
             patch("asyncio.to_thread", side_effect=fake_to_thread),
+            patch("os.path.isfile", return_value=True),
             patch(
                 "lexflow.opcodes.opcodes_sheets.Credentials.from_service_account_file",
                 return_value=mock_creds,
