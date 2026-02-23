@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   deleteNode,
   addNode,
+  addNodeAndConnect,
   duplicateNode,
   updateNodeInput,
   connectNodes,
@@ -124,6 +125,84 @@ describe("WorkflowService", () => {
       const result = addNode(baseSource, mockOpcode, "nonexistent");
 
       expect(result.nodeId).toBeNull();
+    });
+  });
+
+  describe("addNodeAndConnect", () => {
+    const mockOpcode: OpcodeInterface = {
+      name: "io_print",
+      description: "Print a message",
+      return_type: undefined,
+      parameters: [
+        { name: "message", type: "str", required: true, default: "" },
+      ],
+    };
+
+    it("adds a node and connects it to source node", () => {
+      const result = addNodeAndConnect(baseSource, mockOpcode, "start", "main");
+
+      expect(result.success).toBe(true);
+      expect(result.nodeId).toBeDefined();
+      expect(result.nodeId).toContain("io_");
+      expect(result.source).toContain(result.nodeId);
+      expect(result.source).toContain("opcode: io_print");
+
+      // Verify connection
+      const lines = result.source.split("\n");
+      const startNodeLines = lines.filter((l) => l.includes("next:") && lines[lines.indexOf(l) - 1]?.includes("start:"));
+      expect(startNodeLines.some((l) => l.includes(result.nodeId!))).toBe(true);
+    });
+
+    it("replaces existing connection when source already has next", () => {
+      // baseSource has start pointing to hello
+      const result = addNodeAndConnect(baseSource, mockOpcode, "start", "main");
+
+      expect(result.success).toBe(true);
+      expect(result.nodeId).toBeDefined();
+
+      // start should now point to the new node, not hello
+      const lines = result.source.split("\n");
+      const startIndex = lines.findIndex((l) => l.includes("start:"));
+      const nextLine = lines[startIndex + 1];
+      expect(nextLine).toContain(result.nodeId!);
+      expect(nextLine).not.toContain("hello");
+    });
+
+    it("returns failure when source node does not exist", () => {
+      const result = addNodeAndConnect(baseSource, mockOpcode, "nonexistent", "main");
+
+      expect(result.success).toBe(false);
+      expect(result.nodeId).toBeNull();
+    });
+
+    it("returns failure when workflow does not exist", () => {
+      const result = addNodeAndConnect(baseSource, mockOpcode, "start", "nonexistent");
+
+      expect(result.success).toBe(false);
+      expect(result.nodeId).toBeNull();
+    });
+
+    it("creates node with correct inputs and connection", () => {
+      const result = addNodeAndConnect(baseSource, mockOpcode, "hello", "main");
+
+      expect(result.success).toBe(true);
+      expect(result.nodeId).toBeDefined();
+
+      // Check inputs are present
+      expect(result.source).toContain("MESSAGE:");
+
+      // Check connection from hello to new node
+      const lines = result.source.split("\n");
+      const helloIndex = lines.findIndex((l) => l.trim() === "hello:");
+      let foundNext = false;
+      for (let i = helloIndex + 1; i < lines.length; i++) {
+        if (lines[i].includes("next:") && lines[i].includes(result.nodeId!)) {
+          foundNext = true;
+          break;
+        }
+        if (lines[i].trim() && !lines[i].startsWith("  ")) break;
+      }
+      expect(foundNext).toBe(true);
     });
   });
 

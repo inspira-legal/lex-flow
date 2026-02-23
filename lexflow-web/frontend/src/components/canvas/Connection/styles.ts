@@ -6,18 +6,25 @@ export function calculateBezierPath(
   x2: number,
   y2: number
 ): string {
-  const dx = Math.abs(x2 - x1)
+  const dx = x2 - x1
   const dy = Math.abs(y2 - y1)
-  const isMoreVertical = dy > dx * 0.5
+  const absDx = Math.abs(dx)
+  const isMoreVertical = dy > absDx * 0.5
 
   if (isMoreVertical && y2 > y1) {
     // Vertical/diagonal connection (like branch connections from bottom)
     const controlOffsetY = Math.min(dy / 2, 60)
     return `M ${x1} ${y1} C ${x1} ${y1 + controlOffsetY}, ${x2} ${y2 - controlOffsetY}, ${x2} ${y2}`
-  } else {
-    // Horizontal connection (standard left-to-right)
-    const controlOffsetX = Math.min(dx / 2, 80)
+  } else if (dx >= 0) {
+    // Standard left-to-right horizontal connection
+    const controlOffsetX = Math.min(absDx / 2, 80)
     return `M ${x1} ${y1} C ${x1 + controlOffsetX} ${y1}, ${x2 - controlOffsetX} ${y2}, ${x2} ${y2}`
+  } else {
+    // Backward connection (right-to-left) - curve around
+    const loopOffset = Math.max(50, absDx / 2)
+    const verticalOffset = Math.max(40, dy / 2 + 20)
+    // Go right from source, then down/up, then left to target
+    return `M ${x1} ${y1} C ${x1 + loopOffset} ${y1}, ${x1 + loopOffset} ${y1 + verticalOffset}, ${(x1 + x2) / 2} ${y1 + verticalOffset} S ${x2 - loopOffset} ${y2}, ${x2} ${y2}`
   }
 }
 

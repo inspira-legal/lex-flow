@@ -281,6 +281,37 @@ export function addNode(
   return { source: newLines.join("\n"), nodeId: newId };
 }
 
+// Add a new node and connect it to an existing source node
+export function addNodeAndConnect(
+  source: string,
+  opcode: OpcodeInterface,
+  sourceNodeId: string,
+  workflowName = "main",
+): NodeResult & { success: boolean } {
+  // Step 1: Add the new node
+  const addResult = addNode(source, opcode, workflowName);
+  if (!addResult.nodeId) {
+    return { source, nodeId: null, success: false };
+  }
+
+  // Step 2: Connect source node's next to the new node
+  const connectResult = connectNodes(
+    addResult.source,
+    sourceNodeId,
+    addResult.nodeId,
+    workflowName
+  );
+  if (!connectResult.success) {
+    return { source, nodeId: null, success: false };
+  }
+
+  return {
+    source: connectResult.source,
+    nodeId: addResult.nodeId,
+    success: true,
+  };
+}
+
 // Duplicate an existing node
 export function duplicateNode(source: string, nodeId: string): NodeResult {
   const range = findNodeLineRange(source, nodeId);
@@ -2408,6 +2439,7 @@ export const workflowService = {
   generateUniqueNodeId,
   deleteNode,
   addNode,
+  addNodeAndConnect,
   addWorkflowCallNode,
   duplicateNode,
   updateNodeInput,

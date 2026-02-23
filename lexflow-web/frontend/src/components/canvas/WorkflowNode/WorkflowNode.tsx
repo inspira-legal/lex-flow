@@ -35,6 +35,8 @@ import {
   branchLabelStyle,
   getReporterBadgeStyle,
   reporterBadgeTextStyle,
+  getAddButtonStyle,
+  addButtonTextStyle,
 } from "./styles"
 import type { WorkflowNodeProps } from "./types"
 
@@ -96,6 +98,9 @@ const REPORTER_PADDING = 12 // Padding inside parent container
 const REPORTER_GAP = 8 // Gap between siblings
 const REPORTER_LABEL_HEIGHT = 16 // Height for input key label
 const INPUT_SLOT_HEIGHT = 28 // Height for literal/variable input slots
+
+// UI timing constants
+const HIDE_ADD_BUTTON_DELAY_MS = 2000 // Delay before hiding the add button after mouse leave
 
 // Calculate nested reporter dimensions recursively
 // expandedReporters: Record of compositeId (workflowName::nodeId) -> boolean for expansion state
@@ -220,6 +225,7 @@ export const WorkflowNode = memo(function WorkflowNode({
     unregisterSlotPositions,
     showContextMenu,
     expandedReporters,
+    showAddNodeMenu,
   } = useUiStore()
   const {
     selectedNodeId,
@@ -232,6 +238,32 @@ export const WorkflowNode = memo(function WorkflowNode({
   } = useSelectionStore()
 
   const [isHovered, setIsHovered] = useState(false)
+  const [isAddButtonHovered, setIsAddButtonHovered] = useState(false)
+  const [showAddButton, setShowAddButton] = useState(false)
+  const addButtonTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Handle add button visibility with delay
+  useEffect(() => {
+    if (isHovered || isAddButtonHovered) {
+      // Show immediately when hovering
+      if (addButtonTimeoutRef.current) {
+        clearTimeout(addButtonTimeoutRef.current)
+        addButtonTimeoutRef.current = null
+      }
+      setShowAddButton(true)
+    } else {
+      // Hide after delay
+      addButtonTimeoutRef.current = setTimeout(() => {
+        setShowAddButton(false)
+      }, HIDE_ADD_BUTTON_DELAY_MS)
+    }
+
+    return () => {
+      if (addButtonTimeoutRef.current) {
+        clearTimeout(addButtonTimeoutRef.current)
+      }
+    }
+  }, [isHovered, isAddButtonHovered])
 
   // Composite ID for UI state that needs to be unique across workflows
   const compositeId = `${workflowName}::${node.id}`
@@ -405,6 +437,11 @@ export const WorkflowNode = memo(function WorkflowNode({
     window.addEventListener("mouseup", handleMouseUp)
   }
 
+  const handleAddNodeClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    showAddNodeMenu(e.clientX, e.clientY, node.id, workflowName)
+  }
+
   // Register slot positions using composite ID (workflowName::nodeId)
   useEffect(() => {
     const positions: NodeSlotPositions = {
@@ -434,6 +471,15 @@ export const WorkflowNode = memo(function WorkflowNode({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Invisible hit area extending to add button - prevents hover flicker */}
+      <rect
+        x={0}
+        y={0}
+        width={totalWidth + 40}
+        height={totalHeight}
+        fill="transparent"
+        style={{ pointerEvents: 'all' }}
+      />
       {/* Main card */}
       <rect
         width={totalWidth}
@@ -566,6 +612,39 @@ export const WorkflowNode = memo(function WorkflowNode({
         onMouseDown={handleOutputPortMouseDown}
         onMouseUp={handleOutputPortMouseUp}
       />
+
+      {/* Add node button - shown on hover, not on workflow_start nodes */}
+      {showAddButton && node.opcode !== "workflow_start" && (
+        <g
+          className="add-node-button"
+          onClick={handleAddNodeClick}
+          onMouseEnter={() => setIsAddButtonHovered(true)}
+          onMouseLeave={() => setIsAddButtonHovered(false)}
+          style={{ cursor: 'pointer' }}
+        >
+          {/* Larger invisible hit target for easier clicking */}
+          <circle
+            cx={totalWidth + 16}
+            cy={NODE_HEIGHT / 2}
+            r={20}
+            fill="transparent"
+            style={{ pointerEvents: 'all' }}
+          />
+          <circle
+            cx={totalWidth + 16}
+            cy={NODE_HEIGHT / 2}
+            r={10}
+            style={getAddButtonStyle(isAddButtonHovered)}
+          />
+          <text
+            x={totalWidth + 16}
+            y={NODE_HEIGHT / 2}
+            style={addButtonTextStyle}
+          >
+            +
+          </text>
+        </g>
+      )}
 
       {/* Branch ports */}
       {branchSlots.length > 0 && (
