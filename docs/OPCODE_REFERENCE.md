@@ -22,6 +22,7 @@ Quick reference for all available opcodes in LexFlow.
 - [⏱ Async Operations](#async-operations)
 - [🤖 AI Operations (Pydantic AI)](#ai-operations-pydantic-ai) *(requires `lexflow[ai]`)*
 - [🌐 HTTP Operations](#http-operations) *(requires `lexflow[http]`)*
+- [📊 Google Sheets Operations](#google-sheets-operations) *(requires `lexflow[sheets]`)*
 - [📄 HTML Operations](#html-operations) *(requires `lexflow[http]`)*
 - [📋 JSON Operations](#json-operations)
 - [☁️ Cloud Storage](#cloud-storage) *(requires `lexflow[gcs]`)*
@@ -1429,6 +1430,352 @@ Yields:
 - `timeout` (float, optional, default: `30.0`)
 
 **Returns:** `AsyncGenerator`
+
+---
+
+## 📊 Google Sheets Operations
+
+> **Requires:** `pip install lexflow[sheets]`
+
+### `sheets_append(client, spreadsheet_id, range_notation, values, value_input_option="RAW")`
+
+Append rows to a Google Sheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    range_notation: Range to append after (e.g., "Sheet1!A:D")
+    values: 2D list of values to append (each inner list is a row)
+    value_input_option: "RAW" for raw values, "USER_ENTERED" for formulas
+
+Returns:
+    Response dict with updatedCells, updatedRows, updatedRange
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    range_notation: "Sheet1!A:C"
+    values: [["Alice", 30, "alice@example.com"]]
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `range_notation` (Any, required)
+- `values` (Any, required)
+- `value_input_option` (Any, optional, default: `"RAW"`)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_clear(client, spreadsheet_id, range_notation)`
+
+Clear values from a Google Sheet range.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    range_notation: Range in A1 notation to clear (e.g., "Sheet1!A1:D10")
+
+Returns:
+    Response dict with clearedRange
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    range_notation: "Sheet1!A2:D100"
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `range_notation` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_create_client(credentials_path=None)`
+
+Create a Google Sheets client for API operations.
+
+Args:
+    credentials_path: Path to service account JSON file. If None,
+        uses Application Default Credentials (ADC).
+
+Returns:
+    SheetsClient object to use with other sheets_* opcodes
+
+Example with Service Account:
+    credentials_path: "/path/to/service-account.json"
+
+Example with ADC (after running 'gcloud auth application-default login'):
+    # No arguments needed
+
+
+**Returns:** `Any`
+
+---
+
+### `sheets_create_sheet(client, spreadsheet_id, title)`
+
+Create a new sheet (tab) in a spreadsheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    title: Name for the new sheet
+
+Returns:
+    Dict with sheetId and title of the created sheet
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    title: "New Sheet"
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `title` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_delete_sheet(client, spreadsheet_id, sheet_id)`
+
+Delete a sheet (tab) from a spreadsheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    sheet_id: The sheet ID to delete (from sheets_list_sheets)
+
+Returns:
+    Dict with success status
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    sheet_id: 123456789
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `sheet_id` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_get_column(client, spreadsheet_id, sheet_name, column)`
+
+Read a specific column from a Google Sheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    sheet_name: Name of the sheet (tab)
+    column: Column letter (e.g., "A", "B", "AA")
+
+Returns:
+    List of values in the column (excluding empty trailing cells)
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    sheet_name: "Sheet1"
+    column: "A"
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `sheet_name` (Any, required)
+- `column` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_get_last_row(client, spreadsheet_id, sheet_name)`
+
+Get the number of the last row with data in a sheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    sheet_name: Name of the sheet (tab)
+
+Returns:
+    Last row number with data (0 if sheet is empty)
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    sheet_name: "Sheet1"
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `sheet_name` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_get_row(client, spreadsheet_id, sheet_name, row_number)`
+
+Read a specific row from a Google Sheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    sheet_name: Name of the sheet (tab)
+    row_number: Row number (1-indexed)
+
+Returns:
+    List of values in the row
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    sheet_name: "Sheet1"
+    row_number: 5
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `sheet_name` (Any, required)
+- `row_number` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_get_values(client, spreadsheet_id, range_notation)`
+
+Read values from a Google Sheet range.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    range_notation: Range in A1 notation (e.g., "Sheet1!A1:D10")
+
+Returns:
+    2D list of values (rows x columns). Empty cells are empty strings.
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    range_notation: "Sheet1!A1:D10"
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `range_notation` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_list_sheets(client, spreadsheet_id)`
+
+List all sheets (tabs) in a spreadsheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+
+Returns:
+    List of dicts with sheetId, title, index for each sheet
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_test_connection(client, spreadsheet_id, range_notation="A1:B2")`
+
+Test connection to a Google Sheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    range_notation: Range to test reading (default: "A1:B2")
+
+Returns:
+    True if connection successful, raises exception otherwise
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `range_notation` (Any, optional, default: `"A1:B2"`)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_update(client, spreadsheet_id, range_notation, values, value_input_option="RAW")`
+
+Update values in a Google Sheet range.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    range_notation: Range in A1 notation (e.g., "Sheet1!A1:D10")
+    values: 2D list of values (rows x columns)
+    value_input_option: "RAW" for raw values, "USER_ENTERED" for formulas
+
+Returns:
+    Response dict with updatedCells, updatedRows, updatedColumns
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    range_notation: "Sheet1!A1:C1"
+    values: [["Name", "Age", "Email"]]
+
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `range_notation` (Any, required)
+- `values` (Any, required)
+- `value_input_option` (Any, optional, default: `"RAW"`)
+
+**Returns:** `Any`
 
 ---
 
@@ -3918,7 +4265,7 @@ Args:
 
 ## Summary
 
-**Total opcodes:** 225
+**Total opcodes:** 237
 
 ### Categories
 
@@ -3940,6 +4287,7 @@ Args:
 | ⏱ Async Operations | 3 | - |
 | 🤖 AI Operations (Pydantic AI) | 4 | `lexflow[ai]` |
 | 🌐 HTTP Operations | 8 | `lexflow[http]` |
+| 📊 Google Sheets Operations | 12 | `lexflow[sheets]` |
 | 📄 HTML Operations | 5 | `lexflow[http]` |
 | 📋 JSON Operations | 2 | - |
 | ☁️ Cloud Storage | 11 | `lexflow[gcs]` |

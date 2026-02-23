@@ -116,6 +116,14 @@
       "requires": "http"
     },
     {
+      "id": "sheets",
+      "label": "Google Sheets Operations",
+      "prefix": "sheets_",
+      "color": "#34A853",
+      "icon": "📊",
+      "requires": "sheets"
+    },
+    {
       "id": "html",
       "label": "HTML Operations",
       "prefix": "html_",
