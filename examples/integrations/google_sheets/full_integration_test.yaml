@@ -1,0 +1,516 @@
+# Full integration test for all Google Sheets opcodes
+#
+# Exercises all 12 sheets_* opcodes in a single end-to-end workflow:
+#   1. sheets_create_client    8. sheets_get_values
+#   2. sheets_test_connection  9. sheets_get_row
+#   3. sheets_list_sheets     10. sheets_get_column
+#   4. sheets_create_sheet    11. sheets_get_last_row
+#   5. sheets_list_sheets     12. sheets_clear
+#   6. sheets_update          13. sheets_delete_sheet
+#   7. sheets_append
+#
+# Usage:
+#   lexflow examples/integrations/google_sheets/full_integration_test.yaml \
+#     --input spreadsheet_id=YOUR_SPREADSHEET_ID
+#
+# Authentication:
+#   Set GOOGLE_APPLICATION_CREDENTIALS environment variable to your service account JSON file
+#   Or use: gcloud auth application-default login
+
+workflows:
+  - name: main
+    interface:
+      inputs: [spreadsheet_id]
+      outputs: []
+    variables:
+      spreadsheet_id: ""
+      client: null
+      result: null
+      sheets_list: []
+      create_result: null
+      sheet_id: 0
+      data: []
+      row_data: []
+      column_data: []
+      last_row: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_step_1
+        inputs: {}
+
+      # ===================================================================
+      # Step 1: Create client
+      # ===================================================================
+      print_step_1:
+        opcode: io_print
+        next: store_client
+        inputs:
+          MESSAGE: { literal: "=== Step 1: Creating client... ===" }
+
+      create_client:
+        opcode: sheets_create_client
+        isReporter: true
+
+      store_client:
+        opcode: data_set_variable_to
+        next: print_step_1_ok
+        inputs:
+          VARIABLE: { literal: "client" }
+          VALUE: { node: create_client }
+
+      print_step_1_ok:
+        opcode: io_print
+        next: print_step_2
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 2: Test connection
+      # ===================================================================
+      print_step_2:
+        opcode: io_print
+        next: store_test_connection
+        inputs:
+          MESSAGE: { literal: "\n=== Step 2: Testing connection... ===" }
+
+      test_connection:
+        opcode: sheets_test_connection
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+
+      store_test_connection:
+        opcode: data_set_variable_to
+        next: print_step_2_ok
+        inputs:
+          VARIABLE: { literal: "result" }
+          VALUE: { node: test_connection }
+
+      print_step_2_ok:
+        opcode: io_print
+        next: print_step_3
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 3: List sheets (before creating test sheet)
+      # ===================================================================
+      print_step_3:
+        opcode: io_print
+        next: store_sheets_list
+        inputs:
+          MESSAGE: { literal: "\n=== Step 3: Listing sheets... ===" }
+
+      list_sheets:
+        opcode: sheets_list_sheets
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+
+      store_sheets_list:
+        opcode: data_set_variable_to
+        next: print_sheets_list
+        inputs:
+          VARIABLE: { literal: "sheets_list" }
+          VALUE: { node: list_sheets }
+
+      print_sheets_list:
+        opcode: io_print
+        next: print_step_3_ok
+        inputs:
+          MESSAGE: { variable: sheets_list }
+
+      print_step_3_ok:
+        opcode: io_print
+        next: print_step_4
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 4: Create a new sheet tab called "LexFlowTest"
+      # ===================================================================
+      print_step_4:
+        opcode: io_print
+        next: store_create_result
+        inputs:
+          MESSAGE: { literal: "\n=== Step 4: Creating 'LexFlowTest' sheet... ===" }
+
+      create_sheet:
+        opcode: sheets_create_sheet
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          title: { literal: "LexFlowTest" }
+
+      store_create_result:
+        opcode: data_set_variable_to
+        next: print_create_result
+        inputs:
+          VARIABLE: { literal: "create_result" }
+          VALUE: { node: create_sheet }
+
+      print_create_result:
+        opcode: io_print
+        next: store_sheet_id
+        inputs:
+          MESSAGE: { variable: create_result }
+
+      # Extract sheetId for later deletion
+      extract_sheet_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { variable: create_result }
+          key: { literal: "sheetId" }
+
+      store_sheet_id:
+        opcode: data_set_variable_to
+        next: print_step_4_ok
+        inputs:
+          VARIABLE: { literal: "sheet_id" }
+          VALUE: { node: extract_sheet_id }
+
+      print_step_4_ok:
+        opcode: io_print
+        next: print_step_5
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 5: List sheets again (verify new sheet appears)
+      # ===================================================================
+      print_step_5:
+        opcode: io_print
+        next: store_sheets_list_2
+        inputs:
+          MESSAGE: { literal: "\n=== Step 5: Listing sheets (verify 'LexFlowTest' exists)... ===" }
+
+      list_sheets_2:
+        opcode: sheets_list_sheets
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+
+      store_sheets_list_2:
+        opcode: data_set_variable_to
+        next: print_sheets_list_2
+        inputs:
+          VARIABLE: { literal: "sheets_list" }
+          VALUE: { node: list_sheets_2 }
+
+      print_sheets_list_2:
+        opcode: io_print
+        next: print_step_5_ok
+        inputs:
+          MESSAGE: { variable: sheets_list }
+
+      print_step_5_ok:
+        opcode: io_print
+        next: print_step_6
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 6: Write header row ["Name", "Age", "City"]
+      # ===================================================================
+      print_step_6:
+        opcode: io_print
+        next: store_update_result
+        inputs:
+          MESSAGE: { literal: "\n=== Step 6: Writing header row... ===" }
+
+      update_headers:
+        opcode: sheets_update
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          range_notation: { literal: "LexFlowTest!A1:C1" }
+          values: { literal: [["Name", "Age", "City"]] }
+          value_input_option: { literal: "RAW" }
+
+      store_update_result:
+        opcode: data_set_variable_to
+        next: print_update_result
+        inputs:
+          VARIABLE: { literal: "result" }
+          VALUE: { node: update_headers }
+
+      print_update_result:
+        opcode: io_print
+        next: print_step_6_ok
+        inputs:
+          MESSAGE: { variable: result }
+
+      print_step_6_ok:
+        opcode: io_print
+        next: print_step_7
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 7: Append 3 rows of data
+      # ===================================================================
+      print_step_7:
+        opcode: io_print
+        next: store_append_result
+        inputs:
+          MESSAGE: { literal: "\n=== Step 7: Appending 3 rows of data... ===" }
+
+      append_data:
+        opcode: sheets_append
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          range_notation: { literal: "LexFlowTest!A:C" }
+          values: { literal: [["Alice", 30, "NYC"], ["Bob", 25, "London"], ["Carol", 35, "Tokyo"]] }
+          value_input_option: { literal: "RAW" }
+
+      store_append_result:
+        opcode: data_set_variable_to
+        next: print_append_result
+        inputs:
+          VARIABLE: { literal: "result" }
+          VALUE: { node: append_data }
+
+      print_append_result:
+        opcode: io_print
+        next: print_step_7_ok
+        inputs:
+          MESSAGE: { variable: result }
+
+      print_step_7_ok:
+        opcode: io_print
+        next: print_step_8
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 8: Read back all data from LexFlowTest!A1:C4
+      # ===================================================================
+      print_step_8:
+        opcode: io_print
+        next: store_read_data
+        inputs:
+          MESSAGE: { literal: "\n=== Step 8: Reading all data (A1:C4)... ===" }
+
+      read_all_data:
+        opcode: sheets_get_values
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          range_notation: { literal: "LexFlowTest!A1:C4" }
+
+      store_read_data:
+        opcode: data_set_variable_to
+        next: print_read_data
+        inputs:
+          VARIABLE: { literal: "data" }
+          VALUE: { node: read_all_data }
+
+      print_read_data:
+        opcode: io_print
+        next: print_step_8_ok
+        inputs:
+          MESSAGE: { variable: data }
+
+      print_step_8_ok:
+        opcode: io_print
+        next: print_step_9
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 9: Read row 2 (should be Alice)
+      # ===================================================================
+      print_step_9:
+        opcode: io_print
+        next: store_row_data
+        inputs:
+          MESSAGE: { literal: "\n=== Step 9: Reading row 2 (should be Alice)... ===" }
+
+      get_row_2:
+        opcode: sheets_get_row
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          sheet_name: { literal: "LexFlowTest" }
+          row_number: { literal: 2 }
+
+      store_row_data:
+        opcode: data_set_variable_to
+        next: print_row_data
+        inputs:
+          VARIABLE: { literal: "row_data" }
+          VALUE: { node: get_row_2 }
+
+      print_row_data:
+        opcode: io_print
+        next: print_step_9_ok
+        inputs:
+          MESSAGE: { variable: row_data }
+
+      print_step_9_ok:
+        opcode: io_print
+        next: print_step_10
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 10: Read column A (should be Name, Alice, Bob, Carol)
+      # ===================================================================
+      print_step_10:
+        opcode: io_print
+        next: store_column_data
+        inputs:
+          MESSAGE: { literal: "\n=== Step 10: Reading column A... ===" }
+
+      get_column_a:
+        opcode: sheets_get_column
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          sheet_name: { literal: "LexFlowTest" }
+          column: { literal: "A" }
+
+      store_column_data:
+        opcode: data_set_variable_to
+        next: print_column_data
+        inputs:
+          VARIABLE: { literal: "column_data" }
+          VALUE: { node: get_column_a }
+
+      print_column_data:
+        opcode: io_print
+        next: print_step_10_ok
+        inputs:
+          MESSAGE: { variable: column_data }
+
+      print_step_10_ok:
+        opcode: io_print
+        next: print_step_11
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 11: Get last row number (should be 4)
+      # ===================================================================
+      print_step_11:
+        opcode: io_print
+        next: store_last_row
+        inputs:
+          MESSAGE: { literal: "\n=== Step 11: Getting last row number... ===" }
+
+      get_last_row:
+        opcode: sheets_get_last_row
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          sheet_name: { literal: "LexFlowTest" }
+
+      store_last_row:
+        opcode: data_set_variable_to
+        next: print_last_row
+        inputs:
+          VARIABLE: { literal: "last_row" }
+          VALUE: { node: get_last_row }
+
+      print_last_row:
+        opcode: io_print
+        next: print_step_11_ok
+        inputs:
+          MESSAGE: { variable: last_row }
+
+      print_step_11_ok:
+        opcode: io_print
+        next: print_step_12
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 12: Clear the test data range
+      # ===================================================================
+      print_step_12:
+        opcode: io_print
+        next: store_clear_result
+        inputs:
+          MESSAGE: { literal: "\n=== Step 12: Clearing data range (LexFlowTest!A1:C100)... ===" }
+
+      clear_data:
+        opcode: sheets_clear
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          range_notation: { literal: "LexFlowTest!A1:C100" }
+
+      store_clear_result:
+        opcode: data_set_variable_to
+        next: print_clear_result
+        inputs:
+          VARIABLE: { literal: "result" }
+          VALUE: { node: clear_data }
+
+      print_clear_result:
+        opcode: io_print
+        next: print_step_12_ok
+        inputs:
+          MESSAGE: { variable: result }
+
+      print_step_12_ok:
+        opcode: io_print
+        next: print_step_13
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 13: Delete the test sheet (cleanup)
+      # ===================================================================
+      print_step_13:
+        opcode: io_print
+        next: store_delete_result
+        inputs:
+          MESSAGE: { literal: "\n=== Step 13: Deleting 'LexFlowTest' sheet (cleanup)... ===" }
+
+      delete_sheet:
+        opcode: sheets_delete_sheet
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          sheet_id: { variable: sheet_id }
+
+      store_delete_result:
+        opcode: data_set_variable_to
+        next: print_delete_result
+        inputs:
+          VARIABLE: { literal: "result" }
+          VALUE: { node: delete_sheet }
+
+      print_delete_result:
+        opcode: io_print
+        next: print_step_13_ok
+        inputs:
+          MESSAGE: { variable: result }
+
+      print_step_13_ok:
+        opcode: io_print
+        next: print_done
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          MESSAGE: { literal: "\n=== All 13 steps completed! Test sheet created, used, and cleaned up. ===" }

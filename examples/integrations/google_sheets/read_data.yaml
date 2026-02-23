@@ -1,0 +1,99 @@
+# Read data from a Google Sheet
+#
+# Usage:
+#   lexflow examples/integrations/google_sheets/read_data.yaml \
+#     --input spreadsheet_id=YOUR_SPREADSHEET_ID \
+#     --input sheet_name=Sheet1 \
+#     --input range=A1:Z100
+#
+# Authentication:
+#   Set GOOGLE_APPLICATION_CREDENTIALS environment variable to your service account JSON file
+#   Or use: gcloud auth application-default login
+
+workflows:
+  - name: main
+    interface:
+      inputs: [spreadsheet_id, sheet_name, range]
+      outputs: []
+    variables:
+      spreadsheet_id: ""
+      sheet_name: "Sheet1"
+      range: "A1:Z100"
+      client: null
+      full_range: ""
+      data: []
+    nodes:
+      start:
+        opcode: workflow_start
+        next: build_sheet_prefix
+        inputs: {}
+
+      # Build full range string (e.g., "Sheet1!A1:Z100")
+      sheet_prefix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { variable: sheet_name }
+          right: { literal: "!" }
+
+      build_sheet_prefix:
+        opcode: data_set_variable_to
+        next: build_full_range
+        inputs:
+          VARIABLE: { literal: "full_range" }
+          VALUE: { node: sheet_prefix }
+
+      concat_range:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { variable: full_range }
+          right: { variable: range }
+
+      build_full_range:
+        opcode: data_set_variable_to
+        next: store_client
+        inputs:
+          VARIABLE: { literal: "full_range" }
+          VALUE: { node: concat_range }
+
+      # Create client using Application Default Credentials
+      create_client:
+        opcode: sheets_create_client
+        isReporter: true
+
+      store_client:
+        opcode: data_set_variable_to
+        next: store_data
+        inputs:
+          VARIABLE: { literal: "client" }
+          VALUE: { node: create_client }
+
+      # Read values from range
+      read_data:
+        opcode: sheets_get_values
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          range_notation: { variable: full_range }
+
+      store_data:
+        opcode: data_set_variable_to
+        next: print_header
+        inputs:
+          VARIABLE: { literal: "data" }
+          VALUE: { node: read_data }
+
+      # Print the data
+      print_header:
+        opcode: io_print
+        next: print_data
+        inputs:
+          MESSAGE: { literal: "=== Data from Google Sheet ===" }
+
+      print_data:
+        opcode: io_print
+        next: null
+        inputs:
+          MESSAGE: { variable: data }
