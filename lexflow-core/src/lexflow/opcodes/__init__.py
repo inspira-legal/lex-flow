@@ -11,11 +11,13 @@ from .opcodes_pubsub import register_pubsub_opcodes
 from .opcodes_pydantic_ai import register_pydantic_ai_opcodes
 from .opcodes_pygame import register_pygame_opcodes
 from .opcodes_rag import register_rag_opcodes
+from .opcodes_schedule import register_schedule_opcodes
 
 # Import opcodes that register via @opcode() decorator (no external dependencies)
 from . import opcodes_chat  # noqa: F401
 from . import opcodes_cli  # noqa: F401
 from . import opcodes_github  # noqa: F401
+from . import opcodes_schedule  # noqa: F401
 from . import opcodes_tasks  # noqa: F401
 
 # Register optional opcode modules (require external dependencies)
@@ -25,6 +27,7 @@ register_pubsub_opcodes()
 register_pydantic_ai_opcodes()
 register_pygame_opcodes()
 register_rag_opcodes()
+register_schedule_opcodes()
 
 __all__ = [
     "CategoryInfo",
