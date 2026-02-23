@@ -1,12 +1,13 @@
 # Full integration test for all Google Sheets opcodes
 #
 # Exercises all 12 sheets_* opcodes in a single end-to-end workflow:
-#   1. sheets_create_client    7. sheets_append
-#   2. sheets_test_connection  8. sheets_get_values
-#   3. sheets_list_sheets      9. sheets_get_row
-#   4. sheets_create_sheet    10. sheets_get_column
-#   5. sheets_update          11. sheets_get_last_row
-#   6. sheets_clear           12. sheets_delete_sheet
+#   1. sheets_create_client    8. sheets_get_values
+#   2. sheets_test_connection  9. sheets_get_row
+#   3. sheets_list_sheets     10. sheets_get_column
+#   4. sheets_create_sheet    11. sheets_get_last_row
+#   5. sheets_list_sheets     12. sheets_clear
+#   6. sheets_update          13. sheets_delete_sheet
+#   7. sheets_append
 #
 # Usage:
 #   lexflow examples/integrations/google_sheets/full_integration_test.yaml \
@@ -432,6 +433,78 @@ workflows:
 
       print_step_11_ok:
         opcode: io_print
+        next: print_step_12
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 12: Clear the test data range
+      # ===================================================================
+      print_step_12:
+        opcode: io_print
+        next: store_clear_result
+        inputs:
+          MESSAGE: { literal: "\n=== Step 12: Clearing data range (LexFlowTest!A1:C100)... ===" }
+
+      clear_data:
+        opcode: sheets_clear
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          range_notation: { literal: "LexFlowTest!A1:C100" }
+
+      store_clear_result:
+        opcode: data_set_variable_to
+        next: print_clear_result
+        inputs:
+          VARIABLE: { literal: "result" }
+          VALUE: { node: clear_data }
+
+      print_clear_result:
+        opcode: io_print
+        next: print_step_12_ok
+        inputs:
+          MESSAGE: { variable: result }
+
+      print_step_12_ok:
+        opcode: io_print
+        next: print_step_13
+        inputs:
+          MESSAGE: { literal: "OK" }
+
+      # ===================================================================
+      # Step 13: Delete the test sheet (cleanup)
+      # ===================================================================
+      print_step_13:
+        opcode: io_print
+        next: store_delete_result
+        inputs:
+          MESSAGE: { literal: "\n=== Step 13: Deleting 'LexFlowTest' sheet (cleanup)... ===" }
+
+      delete_sheet:
+        opcode: sheets_delete_sheet
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          sheet_id: { variable: sheet_id }
+
+      store_delete_result:
+        opcode: data_set_variable_to
+        next: print_delete_result
+        inputs:
+          VARIABLE: { literal: "result" }
+          VALUE: { node: delete_sheet }
+
+      print_delete_result:
+        opcode: io_print
+        next: print_step_13_ok
+        inputs:
+          MESSAGE: { variable: result }
+
+      print_step_13_ok:
+        opcode: io_print
         next: print_done
         inputs:
           MESSAGE: { literal: "OK" }
@@ -440,4 +513,4 @@ workflows:
         opcode: io_print
         next: null
         inputs:
-          MESSAGE: { literal: "\n=== All 11 steps completed! Data is in the 'LexFlowTest' tab. ===" }
+          MESSAGE: { literal: "\n=== All 13 steps completed! Test sheet created, used, and cleaned up. ===" }

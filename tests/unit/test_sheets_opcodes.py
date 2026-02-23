@@ -55,6 +55,10 @@ class TestSheetsCreateClient:
             assert hasattr(result, "service")
             assert hasattr(result, "spreadsheets")
 
+    async def test_create_client_rejects_non_json_path(self):
+        with pytest.raises(ValueError, match="credentials_path must be a .json file"):
+            await default_registry.call("sheets_create_client", ["/etc/passwd"])
+
     async def test_create_client_with_service_account(self):
         mock_creds = Mock()
         with (
@@ -344,6 +348,78 @@ class TestSheetsUtility:
             pytest.raises(Exception, match="403 Forbidden"),
         ):
             await default_registry.call("sheets_test_connection", [client, "sid"])
+
+
+@pytest.mark.skipif(
+    not SHEETS_AVAILABLE, reason="google-api-python-client not installed"
+)
+class TestSheetsSheetNameQuoting:
+    """Verify sheet names with spaces/special chars are quoted in A1 ranges."""
+
+    async def test_get_row_quotes_sheet_name_with_spaces(self):
+        client = create_mock_client()
+        client.spreadsheets.values().get.return_value.execute.return_value = {
+            "values": [["a", "b"]]
+        }
+        with patch("asyncio.to_thread", side_effect=fake_to_thread):
+            await default_registry.call(
+                "sheets_get_row", [client, "sid", "My Sheet", 5]
+            )
+        client.spreadsheets.values().get.assert_called_with(
+            spreadsheetId="sid", range="'My Sheet'!5:5"
+        )
+
+    async def test_get_column_quotes_sheet_name_with_spaces(self):
+        client = create_mock_client()
+        client.spreadsheets.values().get.return_value.execute.return_value = {
+            "values": [["a"]]
+        }
+        with patch("asyncio.to_thread", side_effect=fake_to_thread):
+            await default_registry.call(
+                "sheets_get_column", [client, "sid", "My Sheet", "A"]
+            )
+        client.spreadsheets.values().get.assert_called_with(
+            spreadsheetId="sid", range="'My Sheet'!A:A"
+        )
+
+    async def test_get_last_row_quotes_sheet_name_with_spaces(self):
+        client = create_mock_client()
+        client.spreadsheets.values().get.return_value.execute.return_value = {
+            "values": [["a"]]
+        }
+        with patch("asyncio.to_thread", side_effect=fake_to_thread):
+            await default_registry.call(
+                "sheets_get_last_row", [client, "sid", "My Sheet"]
+            )
+        client.spreadsheets.values().get.assert_called_with(
+            spreadsheetId="sid", range="'My Sheet'"
+        )
+
+    async def test_sheet_name_with_single_quotes_escaped(self):
+        client = create_mock_client()
+        client.spreadsheets.values().get.return_value.execute.return_value = {
+            "values": [["a"]]
+        }
+        with patch("asyncio.to_thread", side_effect=fake_to_thread):
+            await default_registry.call(
+                "sheets_get_row", [client, "sid", "John's Data", 1]
+            )
+        client.spreadsheets.values().get.assert_called_with(
+            spreadsheetId="sid", range="'John''s Data'!1:1"
+        )
+
+    async def test_simple_sheet_name_not_quoted(self):
+        client = create_mock_client()
+        client.spreadsheets.values().get.return_value.execute.return_value = {
+            "values": [["a"]]
+        }
+        with patch("asyncio.to_thread", side_effect=fake_to_thread):
+            await default_registry.call(
+                "sheets_get_row", [client, "sid", "Sheet1", 1]
+            )
+        client.spreadsheets.values().get.assert_called_with(
+            spreadsheetId="sid", range="Sheet1!1:1"
+        )
 
 
 @pytest.mark.skipif(SHEETS_AVAILABLE, reason="google-api-python-client IS installed")

@@ -20,6 +20,7 @@ Authentication:
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
@@ -61,6 +62,16 @@ def register_sheets_opcodes():
         order=210,
     )
 
+    import re
+
+    _NEEDS_QUOTING = re.compile(r"[^A-Za-z0-9_]")
+
+    def _quote_sheet_name(name: str) -> str:
+        """Quote a sheet name for A1 notation if it contains special characters."""
+        if _NEEDS_QUOTING.search(name):
+            return "'" + name.replace("'", "''") + "'"
+        return name
+
     # ============================================================================
     # Authentication
     # ============================================================================
@@ -85,6 +96,9 @@ def register_sheets_opcodes():
             # No arguments needed
         """
         if credentials_path:
+            resolved = os.path.realpath(credentials_path)
+            if not resolved.endswith(".json"):
+                raise ValueError("credentials_path must be a .json file")
             credentials = await asyncio.to_thread(
                 Credentials.from_service_account_file, credentials_path, scopes=SCOPES
             )
@@ -151,7 +165,8 @@ def register_sheets_opcodes():
             sheet_name: "Sheet1"
             row_number: 5
         """
-        range_notation = f"{sheet_name}!{row_number}:{row_number}"
+        quoted = _quote_sheet_name(sheet_name)
+        range_notation = f"{quoted}!{row_number}:{row_number}"
         request = client.spreadsheets.values().get(
             spreadsheetId=spreadsheet_id, range=range_notation
         )
@@ -183,7 +198,8 @@ def register_sheets_opcodes():
             sheet_name: "Sheet1"
             column: "A"
         """
-        range_notation = f"{sheet_name}!{column}:{column}"
+        quoted = _quote_sheet_name(sheet_name)
+        range_notation = f"{quoted}!{column}:{column}"
         request = client.spreadsheets.values().get(
             spreadsheetId=spreadsheet_id, range=range_notation
         )
@@ -212,8 +228,9 @@ def register_sheets_opcodes():
             spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
             sheet_name: "Sheet1"
         """
+        quoted = _quote_sheet_name(sheet_name)
         request = client.spreadsheets.values().get(
-            spreadsheetId=spreadsheet_id, range=sheet_name
+            spreadsheetId=spreadsheet_id, range=quoted
         )
         result = await asyncio.to_thread(request.execute)
         values = result.get("values", [])
