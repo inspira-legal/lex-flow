@@ -24,6 +24,7 @@ try:
 except ImportError:
     PGVECTOR_AVAILABLE = False
 
+
 def _check_pgvector():
     """Raise ImportError if asyncpg/pgvector are not installed."""
     if not PGVECTOR_AVAILABLE:
@@ -264,7 +265,7 @@ def register_pgvector_opcodes():
         table = _validate_table_name(collection)
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                f'SELECT id, 1 - (embedding <=> $1) AS score, payload '
+                f"SELECT id, 1 - (embedding <=> $1) AS score, payload "
                 f'FROM "{table}" '
                 f"ORDER BY embedding <=> $1 "
                 f"LIMIT $2",
