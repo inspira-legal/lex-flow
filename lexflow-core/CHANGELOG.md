@@ -2,6 +2,28 @@
 
 <!-- version list -->
 
+## v1.9.1 (2026-02-24)
+
+### Bug Fixes
+
+- **core**: Address PR #25 review findings
+  ([#25](https://github.com/inspira-legal/lex-flow/pull/25),
+  [`6a1ccff`](https://github.com/inspira-legal/lex-flow/commit/6a1ccff35a856303d61d992d392ab5767b5407ea))
+
+- **core**: Preserve generic type parameters in docs generation
+  ([#25](https://github.com/inspira-legal/lex-flow/pull/25),
+  [`6a1ccff`](https://github.com/inspira-legal/lex-flow/commit/6a1ccff35a856303d61d992d392ab5767b5407ea))
+
+- **core**: Resolve race condition in release workflow
+  ([#31](https://github.com/inspira-legal/lex-flow/pull/31),
+  [`b1e58dc`](https://github.com/inspira-legal/lex-flow/commit/b1e58dcbf36851204639d57d557c78c80d9f87af))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`cf68617`](https://github.com/inspira-legal/lex-flow/commit/cf686173121691212b5683485afe7204482c6f47))
+
+
 ## v1.9.0 (2026-02-24)
 
 ### Bug Fixes

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexflow"
-version = "1.9.0"
+version = "1.9.1"
 description = "A stack-based visual programming workflow interpreter - Core Engine"
 requires-python = ">=3.10"
 dependencies = [
