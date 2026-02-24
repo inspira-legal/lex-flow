@@ -1,0 +1,114 @@
+# HubSpot: Test Connection
+# Testa a conexão com HubSpot (somente leitura)
+#
+# Uso:
+#   lexflow test_connection.yaml --input token=$HUBSPOT_TOKEN
+
+workflows:
+  - name: main
+    interface:
+      inputs: [token]
+      outputs: []
+    variables:
+      token: ""
+      client: null
+      props_count: 0
+      contacts_total: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_start
+        inputs: {}
+
+      print_start:
+        opcode: io_print
+        next: store_client
+        inputs:
+          MESSAGE: { literal: "Conectando ao HubSpot..." }
+
+      create_client:
+        opcode: hubspot_create_client
+        isReporter: true
+        inputs:
+          access_token: { variable: token }
+
+      store_client:
+        opcode: data_set_variable_to
+        next: test_conn
+        inputs:
+          VARIABLE: { literal: "client" }
+          VALUE: { node: create_client }
+
+      test_conn:
+        opcode: hubspot_test_connection
+        next: print_connected
+        inputs:
+          client: { variable: client }
+
+      print_connected:
+        opcode: io_print
+        next: store_props_count
+        inputs:
+          MESSAGE: { literal: "✓ Conexão OK!" }
+
+      list_props:
+        opcode: hubspot_list_properties
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          object_type: { literal: "contacts" }
+
+      count_props:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          list: { node: list_props }
+
+      store_props_count:
+        opcode: data_set_variable_to
+        next: print_props
+        inputs:
+          VARIABLE: { literal: "props_count" }
+          VALUE: { node: count_props }
+
+      print_props:
+        opcode: io_print
+        next: store_contacts_total
+        inputs:
+          MESSAGE: { variable: props_count }
+
+      search_contacts:
+        opcode: hubspot_search_contacts
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          filters: []
+          properties:
+            - "email"
+          limit: 1
+
+      get_total:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { node: search_contacts }
+          key: { literal: "total" }
+
+      store_contacts_total:
+        opcode: data_set_variable_to
+        next: print_contacts
+        inputs:
+          VARIABLE: { literal: "contacts_total" }
+          VALUE: { node: get_total }
+
+      print_contacts:
+        opcode: io_print
+        next: print_done
+        inputs:
+          MESSAGE: { variable: contacts_total }
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          MESSAGE: { literal: "Teste concluído!" }

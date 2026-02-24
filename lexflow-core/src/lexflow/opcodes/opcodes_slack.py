@@ -20,9 +20,17 @@ Required Scopes (depending on opcodes used):
     Reactions: reactions:read, reactions:write
 """
 
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from urllib.parse import urlparse
+
+import aiohttp
 
 from .opcodes import opcode, register_category
+
+if TYPE_CHECKING:
+    from slack_sdk.web.async_client import AsyncWebClient
 
 try:
     from slack_sdk.web.async_client import AsyncWebClient
@@ -31,15 +39,13 @@ try:
     SLACK_AVAILABLE = True
 except ImportError:
     SLACK_AVAILABLE = False
-    AsyncWebClient = Any  # Type stub for when not installed
-    SlackApiError = Exception  # Fallback
+    SlackApiError = Exception
 
 
 def register_slack_opcodes():
     """Register Slack opcodes to the default registry."""
-    if not SLACK_AVAILABLE:
-        return
 
+    # Register webhook opcode outside SLACK_AVAILABLE guard (only needs aiohttp)
     register_category(
         id="slack",
         label="Slack",
@@ -49,6 +55,59 @@ def register_slack_opcodes():
         requires="slack",
         order=280,
     )
+
+    @opcode(category="slack")
+    async def slack_send_webhook(
+        url: str,
+        text: str,
+        blocks: Optional[List[Dict[str, Any]]] = None,
+        username: Optional[str] = None,
+        icon_emoji: Optional[str] = None,
+        icon_url: Optional[str] = None,
+        timeout: float = 30.0,
+    ) -> bool:
+        """Send a message via incoming webhook.
+
+        Args:
+            url: Incoming webhook URL (must be https://hooks.slack.com/...)
+            text: Message text (required, used as fallback)
+            blocks: Optional Block Kit blocks
+            username: Optional custom username
+            icon_emoji: Optional emoji for bot icon (e.g., ":robot_face:")
+            icon_url: Optional URL for bot icon
+            timeout: Request timeout in seconds (default: 30)
+
+        Returns:
+            True if successful
+
+        Note: Does not require a Slack client, uses webhook directly
+        """
+        parsed = urlparse(url)
+        if parsed.scheme != "https":
+            raise ValueError("Webhook URL must use HTTPS")
+        if parsed.hostname != "hooks.slack.com":
+            raise ValueError(f"Webhook URL host not allowed: {parsed.hostname}")
+
+        payload = {"text": text}
+        if blocks:
+            payload["blocks"] = blocks
+        if username:
+            payload["username"] = username
+        if icon_emoji:
+            payload["icon_emoji"] = icon_emoji
+        if icon_url:
+            payload["icon_url"] = icon_url
+
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=timeout)
+        ) as session:
+            async with session.post(url, json=payload) as response:
+                if response.status != 200:
+                    raise RuntimeError(f"Webhook failed with status {response.status}")
+                return True
+
+    if not SLACK_AVAILABLE:
+        return
 
     # =========================================================================
     # Client Management
@@ -79,16 +138,18 @@ def register_slack_opcodes():
         channel: str,
         text: str,
         thread_ts: Optional[str] = None,
+        broadcast: bool = False,
         unfurl_links: bool = True,
         unfurl_media: bool = True,
     ) -> Dict[str, Any]:
-        """Send a message to a channel or user.
+        """Send a message to a channel, user, or thread.
 
         Args:
             client: Slack client (from slack_create_client)
             channel: Channel ID, channel name, or user ID
             text: Message text (supports Slack markdown)
             thread_ts: Optional thread timestamp to reply in thread
+            broadcast: Whether to also post to channel when replying in thread (default: False)
             unfurl_links: Whether to unfurl URLs (default: True)
             unfurl_media: Whether to unfurl media (default: True)
 
@@ -98,13 +159,18 @@ def register_slack_opcodes():
         Required scopes: chat:write, chat:write.public (for public channels)
         """
         try:
-            response = await client.chat_postMessage(
-                channel=channel,
-                text=text,
-                thread_ts=thread_ts,
-                unfurl_links=unfurl_links,
-                unfurl_media=unfurl_media,
-            )
+            kwargs = {
+                "channel": channel,
+                "text": text,
+                "unfurl_links": unfurl_links,
+                "unfurl_media": unfurl_media,
+            }
+            if thread_ts is not None:
+                kwargs["thread_ts"] = thread_ts
+            if broadcast:
+                kwargs["reply_broadcast"] = broadcast
+
+            response = await client.chat_postMessage(**kwargs)
             return {
                 "ok": response["ok"],
                 "channel": response["channel"],
@@ -112,7 +178,7 @@ def register_slack_opcodes():
                 "message": response.get("message", {}),
             }
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_send_blocks(
@@ -139,12 +205,15 @@ def register_slack_opcodes():
         See: https://api.slack.com/block-kit
         """
         try:
-            response = await client.chat_postMessage(
-                channel=channel,
-                blocks=blocks,
-                text=text,
-                thread_ts=thread_ts,
-            )
+            kwargs = {
+                "channel": channel,
+                "blocks": blocks,
+                "text": text,
+            }
+            if thread_ts is not None:
+                kwargs["thread_ts"] = thread_ts
+
+            response = await client.chat_postMessage(**kwargs)
             return {
                 "ok": response["ok"],
                 "channel": response["channel"],
@@ -152,7 +221,7 @@ def register_slack_opcodes():
                 "message": response.get("message", {}),
             }
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_update_message(
@@ -191,7 +260,7 @@ def register_slack_opcodes():
                 "message": response.get("message", {}),
             }
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_delete_message(
@@ -219,7 +288,7 @@ def register_slack_opcodes():
                 "ts": response["ts"],
             }
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_schedule_message(
@@ -244,12 +313,15 @@ def register_slack_opcodes():
         Required scopes: chat:write
         """
         try:
-            response = await client.chat_scheduleMessage(
-                channel=channel,
-                text=text,
-                post_at=post_at,
-                thread_ts=thread_ts,
-            )
+            kwargs = {
+                "channel": channel,
+                "text": text,
+                "post_at": post_at,
+            }
+            if thread_ts is not None:
+                kwargs["thread_ts"] = thread_ts
+
+            response = await client.chat_scheduleMessage(**kwargs)
             return {
                 "ok": response["ok"],
                 "channel": response["channel"],
@@ -257,45 +329,7 @@ def register_slack_opcodes():
                 "post_at": response["post_at"],
             }
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
-
-    @opcode(category="slack")
-    async def slack_reply_in_thread(
-        client: AsyncWebClient,
-        channel: str,
-        thread_ts: str,
-        text: str,
-        broadcast: bool = False,
-    ) -> Dict[str, Any]:
-        """Reply to a message in a thread.
-
-        Args:
-            client: Slack client (from slack_create_client)
-            channel: Channel ID where the thread exists
-            thread_ts: Timestamp of the parent message
-            text: Reply text
-            broadcast: Whether to also post to channel (default: False)
-
-        Returns:
-            Dict with: ok, channel, ts, message
-
-        Required scopes: chat:write
-        """
-        try:
-            response = await client.chat_postMessage(
-                channel=channel,
-                text=text,
-                thread_ts=thread_ts,
-                reply_broadcast=broadcast,
-            )
-            return {
-                "ok": response["ok"],
-                "channel": response["channel"],
-                "ts": response["ts"],
-                "message": response.get("message", {}),
-            }
-        except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     # =========================================================================
     # Channel Operations
@@ -339,7 +373,7 @@ def register_slack_opcodes():
                 )
             return channels
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_create_channel(
@@ -372,7 +406,7 @@ def register_slack_opcodes():
                 "created": ch.get("created", 0),
             }
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_archive_channel(
@@ -394,7 +428,7 @@ def register_slack_opcodes():
             await client.conversations_archive(channel=channel)
             return True
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_get_channel_info(
@@ -426,7 +460,7 @@ def register_slack_opcodes():
                 "created": ch.get("created", 0),
             }
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_invite_to_channel(
@@ -453,7 +487,7 @@ def register_slack_opcodes():
             )
             return True
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_leave_channel(
@@ -475,7 +509,7 @@ def register_slack_opcodes():
             await client.conversations_leave(channel=channel)
             return True
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_get_channel_members(
@@ -502,7 +536,7 @@ def register_slack_opcodes():
             )
             return response.get("members", [])
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     # =========================================================================
     # User Operations
@@ -540,7 +574,7 @@ def register_slack_opcodes():
                 )
             return users
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_get_user_info(
@@ -574,7 +608,7 @@ def register_slack_opcodes():
                 "tz": u.get("tz", ""),
             }
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_get_user_presence(
@@ -601,7 +635,7 @@ def register_slack_opcodes():
                 "manual_away": response.get("manual_away", False),
             }
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     # =========================================================================
     # File Operations
@@ -648,7 +682,7 @@ def register_slack_opcodes():
                 "permalink": file_info.get("permalink", ""),
             }
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_list_files(
@@ -656,7 +690,7 @@ def register_slack_opcodes():
         channel: Optional[str] = None,
         user: Optional[str] = None,
         types: Optional[str] = None,
-        count: int = 100,
+        limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """List files in the workspace.
 
@@ -665,7 +699,7 @@ def register_slack_opcodes():
             channel: Optional channel ID to filter by
             user: Optional user ID to filter by
             types: Optional comma-separated file types (spaces, snippets, images, etc.)
-            count: Number of files to return (default: 100)
+            limit: Number of files to return (default: 100)
 
         Returns:
             List of file dicts with: id, name, title, filetype, size, user, created
@@ -673,7 +707,7 @@ def register_slack_opcodes():
         Required scopes: files:read
         """
         try:
-            kwargs = {"count": count}
+            kwargs = {"count": limit}
             if channel:
                 kwargs["channel"] = channel
             if user:
@@ -697,7 +731,7 @@ def register_slack_opcodes():
                 )
             return files
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_delete_file(
@@ -719,7 +753,7 @@ def register_slack_opcodes():
             await client.files_delete(file=file_id)
             return True
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     # =========================================================================
     # Reaction Operations
@@ -749,7 +783,7 @@ def register_slack_opcodes():
             await client.reactions_add(channel=channel, timestamp=ts, name=emoji)
             return True
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_remove_reaction(
@@ -775,7 +809,7 @@ def register_slack_opcodes():
             await client.reactions_remove(channel=channel, timestamp=ts, name=emoji)
             return True
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_get_reactions(
@@ -809,7 +843,7 @@ def register_slack_opcodes():
                 )
             return reactions
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     # =========================================================================
     # Conversation History
@@ -858,7 +892,7 @@ def register_slack_opcodes():
                 )
             return messages
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     @opcode(category="slack")
     async def slack_get_thread_replies(
@@ -898,54 +932,7 @@ def register_slack_opcodes():
                 )
             return messages
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
-
-    # =========================================================================
-    # Webhook Operations
-    # =========================================================================
-
-    @opcode(category="slack")
-    async def slack_send_webhook(
-        url: str,
-        text: str,
-        blocks: Optional[List[Dict[str, Any]]] = None,
-        username: Optional[str] = None,
-        icon_emoji: Optional[str] = None,
-        icon_url: Optional[str] = None,
-    ) -> bool:
-        """Send a message via incoming webhook.
-
-        Args:
-            url: Incoming webhook URL
-            text: Message text (required, used as fallback)
-            blocks: Optional Block Kit blocks
-            username: Optional custom username
-            icon_emoji: Optional emoji for bot icon (e.g., ":robot_face:")
-            icon_url: Optional URL for bot icon
-
-        Returns:
-            True if successful
-
-        Note: Does not require a Slack client, uses webhook directly
-        """
-        import aiohttp
-
-        payload = {"text": text}
-        if blocks:
-            payload["blocks"] = blocks
-        if username:
-            payload["username"] = username
-        if icon_emoji:
-            payload["icon_emoji"] = icon_emoji
-        if icon_url:
-            payload["icon_url"] = icon_url
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload) as response:
-                if response.status != 200:
-                    text_response = await response.text()
-                    raise RuntimeError(f"Webhook failed: {text_response}")
-                return True
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")
 
     # =========================================================================
     # Utility Operations
@@ -1016,4 +1003,4 @@ def register_slack_opcodes():
                 "bot_id": response.get("bot_id"),
             }
         except SlackApiError as e:
-            raise RuntimeError(f"Slack API error: {e.response['error']}")
+            raise RuntimeError(f"Slack API error: {e.response.get('error', str(e))}")

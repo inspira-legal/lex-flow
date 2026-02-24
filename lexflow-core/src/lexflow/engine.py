@@ -69,6 +69,42 @@ class Engine:
         self.executor.opcodes = self.opcodes
         self.executor.tasks = self.tasks
 
+        # Setup privileged opcodes with engine-internal access
+        self._setup_privileged_opcodes()
+
+    def _setup_privileged_opcodes(self) -> None:
+        """Inject implementations for privileged opcodes that need engine access."""
+
+        async def get_context() -> dict:
+            return {
+                "program": {
+                    "globals": dict(self.program.globals),
+                    "main": {
+                        "name": self.program.main.name,
+                        "params": list(self.program.main.params),
+                    },
+                    "externals": {
+                        name: {"name": wf.name, "params": list(wf.params)}
+                        for name, wf in self.program.externals.items()
+                    },
+                },
+                "workflows": {
+                    name: {
+                        "name": wf.name,
+                        "params": list(wf.params),
+                        "locals": dict(wf.locals),
+                    }
+                    for name, wf in self.workflows.workflows.items()
+                },
+                "opcodes": self.opcodes.list_opcodes(),
+            }
+
+        async def get_workflow_manager() -> Any:
+            return self.workflows
+
+        self.opcodes.inject("introspect_context", get_context)
+        self.opcodes.inject("_get_workflow_manager", get_workflow_manager)
+
     async def run(self, inputs: Optional[dict[str, Any]] = None) -> Any:
         """Run program to completion with optional output redirection and inputs.
 

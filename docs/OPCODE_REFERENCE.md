@@ -22,13 +22,17 @@ Quick reference for all available opcodes in LexFlow.
 - [⏱ Async Operations](#async-operations)
 - [🤖 AI Operations (Pydantic AI)](#ai-operations-pydantic-ai) *(requires `lexflow[ai]`)*
 - [🌐 HTTP Operations](#http-operations) *(requires `lexflow[http]`)*
+- [📊 Google Sheets Operations](#google-sheets-operations) *(requires `lexflow[sheets]`)*
 - [📄 HTML Operations](#html-operations) *(requires `lexflow[http]`)*
 - [📋 JSON Operations](#json-operations)
+- [hubspot HubSpot Operations](#hubspot-operations) *(requires `lexflow[http]`)*
+- [☁️ Cloud Storage](#cloud-storage) *(requires `lexflow[gcs]`)*
 - [🎮 Pygame Operations](#pygame-operations) *(requires `lexflow[pygame]`)*
 - [🔍 RAG Operations](#rag-operations) *(requires `lexflow[rag]`)*
 - [💬 Chat Operations](#chat-operations)
 - [💻 CLI Operations](#cli-operations)
 - [🐙 GitHub Operations](#github-operations)
+- [📨 Pub/Sub](#pub/sub) *(requires `lexflow[pubsub]`)*
 - [⚡ Task Operations](#task-operations)
 - [📡 Channel Operations](#channel-operations)
 - [🔒 Sync Primitives](#sync-primitives)
@@ -384,7 +388,7 @@ Split string by delimiter.
 - `text` (str, required)
 - `delimiter` (str, optional, default: `" "`)
 
-**Returns:** `list`
+**Returns:** `list[str]`
 
 ---
 
@@ -409,7 +413,6 @@ Args:
     text: Source string
     start: Start index (0-based)
     end: End index (exclusive), or None for rest of string
-
 
 **Parameters:**
 
@@ -496,7 +499,7 @@ Create a range as list.
 - `stop` (int, optional, default: `None`)
 - `step` (int, optional, default: `1`)
 
-**Returns:** `list`
+**Returns:** `list[int]`
 
 ---
 
@@ -685,7 +688,7 @@ Get property value with optional default.
 
 **Parameters:**
 
-- `obj` (Union, required)
+- `obj` (Union[types.SimpleNamespace, dict], required)
 - `key` (str, required)
 - `default` (Any, optional, default: `None`)
 
@@ -699,7 +702,7 @@ Check if object has property.
 
 **Parameters:**
 
-- `obj` (Union, required)
+- `obj` (Union[types.SimpleNamespace, dict], required)
 - `key` (str, required)
 
 **Returns:** `bool`
@@ -720,10 +723,10 @@ Remove property (returns object for chaining).
 
 **Parameters:**
 
-- `obj` (Union, required)
+- `obj` (Union[types.SimpleNamespace, dict], required)
 - `key` (str, required)
 
-**Returns:** `Union`
+**Returns:** `Union[types.SimpleNamespace, dict]`
 
 ---
 
@@ -733,11 +736,11 @@ Set property value (returns object for chaining).
 
 **Parameters:**
 
-- `obj` (Union, required)
+- `obj` (Union[types.SimpleNamespace, dict], required)
 - `key` (str, required)
 - `value` (Any, required)
 
-**Returns:** `Union`
+**Returns:** `Union[types.SimpleNamespace, dict]`
 
 ---
 
@@ -787,7 +790,7 @@ Get length of a value.
 
 Create a range as list.
 
-**Returns:** `list`
+**Returns:** `list[int]`
 
 ---
 
@@ -1082,13 +1085,12 @@ Args:
 Yields:
     Each item from the list
 
-
 **Parameters:**
 
-- `items` (List, required)
+- `items` (List[Any], required)
 - `delay` (float, optional, default: `0`)
 
-**Returns:** `AsyncGenerator`
+**Returns:** `AsyncGenerator[Any, NoneType]`
 
 ---
 
@@ -1108,7 +1110,6 @@ Args:
 Yields:
     Integers in the range
 
-
 **Parameters:**
 
 - `start` (int, required)
@@ -1116,7 +1117,7 @@ Yields:
 - `step` (int, optional, default: `1`)
 - `delay` (float, optional, default: `0`)
 
-**Returns:** `AsyncGenerator`
+**Returns:** `AsyncGenerator[int, NoneType]`
 
 ---
 
@@ -1138,6 +1139,75 @@ Execute body with timeout, optionally running on_timeout if exceeded.
 
 > **Requires:** `pip install lexflow[ai]`
 
+### `ai_agent_with_tools(agent, messages, tools, output=None, max_tool_calls=10, timeout_seconds=300.0)`
+
+Run an AI agent with access to LexFlow opcodes and workflows as tools.
+
+This opcode enables agentic workflows where the LLM can reason about
+and call LexFlow opcodes or workflows to accomplish tasks.
+
+Args:
+    agent: Pre-created agent from pydantic_ai_create_agent
+    messages: String prompt or list of {role, content} message dicts.
+             If string, normalizes to [{role: "user", content: <string>}]
+    tools: List of tools the agent is allowed to call. Can be:
+           - String: opcode name (e.g., "operator_add")
+           - Dict: workflow reference (e.g., {"workflow": "my_workflow"})
+    output: Optional schema for structured output: {text: "string", data: {...}}
+    max_tool_calls: Maximum number of tool calls allowed (default: 10)
+    timeout_seconds: Timeout for entire operation in seconds (default: 300)
+
+Returns:
+    Dict with {text: str, data: Any} containing the agent's response
+
+Raises:
+    PermissionError: If agent tries to call a tool not in the allowlist
+    ValueError: If tools don't exist or messages format is invalid
+    TimeoutError: If execution exceeds timeout_seconds
+    RuntimeError: If max_tool_calls exceeded, LLM/tool error, or
+                 workflow tools used without WorkflowManager context
+
+Example YAML:
+    agent_call:
+      opcode: ai_agent_with_tools
+      isReporter: true
+      inputs:
+        agent: {variable: "my_agent"}
+        messages: {literal: "Calculate 15 * 23"}
+        tools:
+          literal:
+            - operator_multiply
+            - operator_add
+            - {workflow: "custom_calculation"}
+        max_tool_calls: {literal: 5}
+        timeout_seconds: {literal: 30}
+
+Note:
+    This is a reporter opcode (isReporter: true, no next).
+    To avoid re-execution, store the result in a variable immediately.
+
+    Workflow tools require the workflow to be defined in the same file
+    or included via --include. The workflow's interface.description
+    is used as the tool description for the LLM.
+
+    When tools are provided, the agent is re-created internally.
+    Only model, instructions, and system_prompts are preserved from
+    the original agent. Other config (result_validators, model_settings,
+    etc.) is not carried over.
+
+**Parameters:**
+
+- `agent` (Any, required)
+- `messages` (Union[str, List[dict]], required)
+- `tools` (List[Union[str, dict]], required)
+- `output` (Optional[dict], optional, default: `None`)
+- `max_tool_calls` (int, optional, default: `10`)
+- `timeout_seconds` (float, optional, default: `300.0`)
+
+**Returns:** `dict`
+
+---
+
 ### `pydantic_ai_create_agent(model, instructions="", system_prompt="")`
 
 Create a pydantic_ai Agent.
@@ -1149,7 +1219,6 @@ Args:
 
 Returns:
     Agent instance ready to use
-
 
 **Parameters:**
 
@@ -1173,12 +1242,11 @@ Args:
 Returns:
     GoogleModel instance configured for Vertex AI
 
-
 **Parameters:**
 
 - `model_name` (str, required)
-- `project` (Optional, optional, default: `None`)
-- `location` (Optional, optional, default: `None`)
+- `project` (Optional[str], optional, default: `None`)
+- `location` (Optional[str], optional, default: `None`)
 
 **Returns:** `Any`
 
@@ -1194,7 +1262,6 @@ Args:
 
 Returns:
     String output from the agent
-
 
 **Parameters:**
 
@@ -1215,7 +1282,6 @@ Args:
 
 Returns:
     String output from the agent
-
 
 **Parameters:**
 
@@ -1242,14 +1308,13 @@ Args:
 Returns:
     Response dict with keys: status, headers, text, json
 
-
 **Parameters:**
 
 - `url` (str, required)
-- `headers` (Optional, optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 - `timeout` (float, optional, default: `30.0`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -1267,16 +1332,15 @@ Args:
 Returns:
     Response dict with keys: status, headers, text, json
 
-
 **Parameters:**
 
 - `url` (str, required)
-- `data` (Optional, optional, default: `None`)
-- `json` (Optional, optional, default: `None`)
-- `headers` (Optional, optional, default: `None`)
+- `data` (Optional[Dict[str, Any]], optional, default: `None`)
+- `json` (Optional[Dict[str, Any]], optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 - `timeout` (float, optional, default: `30.0`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -1295,17 +1359,16 @@ Args:
 Returns:
     Response dict with keys: status, headers, text, json
 
-
 **Parameters:**
 
 - `method` (str, required)
 - `url` (str, required)
-- `data` (Optional, optional, default: `None`)
-- `json` (Optional, optional, default: `None`)
-- `headers` (Optional, optional, default: `None`)
+- `data` (Optional[Dict[str, Any]], optional, default: `None`)
+- `json` (Optional[Dict[str, Any]], optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 - `timeout` (float, optional, default: `30.0`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -1320,11 +1383,10 @@ Args:
 Returns:
     HTTPSession object (use with control_with)
 
-
 **Parameters:**
 
 - `timeout` (float, optional, default: `30.0`)
-- `headers` (Optional, optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 
 **Returns:** `HTTPSession`
 
@@ -1342,14 +1404,13 @@ Args:
 Returns:
     Response dict (same as http_get)
 
-
 **Parameters:**
 
 - `session` (HTTPSession, required)
 - `url` (str, required)
-- `headers` (Optional, optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -1367,16 +1428,15 @@ Args:
 Returns:
     Response dict (same as http_post)
 
-
 **Parameters:**
 
 - `session` (HTTPSession, required)
 - `url` (str, required)
-- `data` (Optional, optional, default: `None`)
-- `json` (Optional, optional, default: `None`)
-- `headers` (Optional, optional, default: `None`)
+- `data` (Optional[Dict[str, Any]], optional, default: `None`)
+- `json` (Optional[Dict[str, Any]], optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -1393,15 +1453,14 @@ Args:
 Yields:
     Byte chunks from the response
 
-
 **Parameters:**
 
 - `url` (str, required)
 - `chunk_size` (int, optional, default: `8192`)
-- `headers` (Optional, optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 - `timeout` (float, optional, default: `30.0`)
 
-**Returns:** `AsyncGenerator`
+**Returns:** `AsyncGenerator[bytes, NoneType]`
 
 ---
 
@@ -1420,14 +1479,347 @@ Args:
 Yields:
     Each line from the response (stripped of newlines)
 
-
 **Parameters:**
 
 - `url` (str, required)
-- `headers` (Optional, optional, default: `None`)
+- `headers` (Optional[Dict[str, str]], optional, default: `None`)
 - `timeout` (float, optional, default: `30.0`)
 
-**Returns:** `AsyncGenerator`
+**Returns:** `AsyncGenerator[str, NoneType]`
+
+---
+
+## 📊 Google Sheets Operations
+
+> **Requires:** `pip install lexflow[sheets]`
+
+### `sheets_append(client, spreadsheet_id, range_notation, values, value_input_option="RAW")`
+
+Append rows to a Google Sheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    range_notation: Range to append after (e.g., "Sheet1!A:D")
+    values: 2D list of values to append (each inner list is a row)
+    value_input_option: "RAW" for raw values, "USER_ENTERED" for formulas
+
+Returns:
+    Response dict with updatedCells, updatedRows, updatedRange
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    range_notation: "Sheet1!A:C"
+    values: [["Alice", 30, "alice@example.com"]]
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `range_notation` (Any, required)
+- `values` (Any, required)
+- `value_input_option` (Any, optional, default: `"RAW"`)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_clear(client, spreadsheet_id, range_notation)`
+
+Clear values from a Google Sheet range.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    range_notation: Range in A1 notation to clear (e.g., "Sheet1!A1:D10")
+
+Returns:
+    Response dict with clearedRange
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    range_notation: "Sheet1!A2:D100"
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `range_notation` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_create_client(credentials_path=None)`
+
+Create a Google Sheets client for API operations.
+
+Args:
+    credentials_path: Path to service account JSON file. If None,
+        uses Application Default Credentials (ADC).
+
+Returns:
+    SheetsClient object to use with other sheets_* opcodes
+
+Example with Service Account:
+    credentials_path: "/path/to/service-account.json"
+
+Example with ADC (after running 'gcloud auth application-default login'):
+    # No arguments needed
+
+**Returns:** `Any`
+
+---
+
+### `sheets_create_sheet(client, spreadsheet_id, title)`
+
+Create a new sheet (tab) in a spreadsheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    title: Name for the new sheet
+
+Returns:
+    Dict with sheetId and title of the created sheet
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    title: "New Sheet"
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `title` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_delete_sheet(client, spreadsheet_id, sheet_id)`
+
+Delete a sheet (tab) from a spreadsheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    sheet_id: The sheet ID to delete (from sheets_list_sheets)
+
+Returns:
+    Dict with success status
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    sheet_id: 123456789
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `sheet_id` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_get_column(client, spreadsheet_id, sheet_name, column)`
+
+Read a specific column from a Google Sheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    sheet_name: Name of the sheet (tab)
+    column: Column letter (e.g., "A", "B", "AA")
+
+Returns:
+    List of values in the column (excluding empty trailing cells)
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    sheet_name: "Sheet1"
+    column: "A"
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `sheet_name` (Any, required)
+- `column` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_get_last_row(client, spreadsheet_id, sheet_name)`
+
+Get the number of the last row with data in a sheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    sheet_name: Name of the sheet (tab)
+
+Returns:
+    Last row number with data (0 if sheet is empty)
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    sheet_name: "Sheet1"
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `sheet_name` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_get_row(client, spreadsheet_id, sheet_name, row_number)`
+
+Read a specific row from a Google Sheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    sheet_name: Name of the sheet (tab)
+    row_number: Row number (1-indexed)
+
+Returns:
+    List of values in the row
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    sheet_name: "Sheet1"
+    row_number: 5
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `sheet_name` (Any, required)
+- `row_number` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_get_values(client, spreadsheet_id, range_notation)`
+
+Read values from a Google Sheet range.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    range_notation: Range in A1 notation (e.g., "Sheet1!A1:D10")
+
+Returns:
+    2D list of values (rows x columns). Empty cells are empty strings.
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    range_notation: "Sheet1!A1:D10"
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `range_notation` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_list_sheets(client, spreadsheet_id)`
+
+List all sheets (tabs) in a spreadsheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+
+Returns:
+    List of dicts with sheetId, title, index for each sheet
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_test_connection(client, spreadsheet_id, range_notation="A1:B2")`
+
+Test connection to a Google Sheet.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    range_notation: Range to test reading (default: "A1:B2")
+
+Returns:
+    True if connection successful, raises exception otherwise
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `range_notation` (Any, optional, default: `"A1:B2"`)
+
+**Returns:** `Any`
+
+---
+
+### `sheets_update(client, spreadsheet_id, range_notation, values, value_input_option="RAW")`
+
+Update values in a Google Sheet range.
+
+Args:
+    client: SheetsClient from sheets_create_client
+    spreadsheet_id: The spreadsheet ID (from URL)
+    range_notation: Range in A1 notation (e.g., "Sheet1!A1:D10")
+    values: 2D list of values (rows x columns)
+    value_input_option: "RAW" for raw values, "USER_ENTERED" for formulas
+
+Returns:
+    Response dict with updatedCells, updatedRows, updatedColumns
+
+Example:
+    client: { node: create_client }
+    spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    range_notation: "Sheet1!A1:C1"
+    values: [["Name", "Age", "Email"]]
+
+**Parameters:**
+
+- `client` (Any, required)
+- `spreadsheet_id` (Any, required)
+- `range_notation` (Any, required)
+- `values` (Any, required)
+- `value_input_option` (Any, optional, default: `"RAW"`)
+
+**Returns:** `Any`
 
 ---
 
@@ -1447,14 +1839,13 @@ Args:
 Returns:
     Attribute value as string, or default if not found
 
-
 **Parameters:**
 
 - `element` (Any, required)
 - `attr` (str, required)
-- `default` (Optional, optional, default: `None`)
+- `default` (Optional[str], optional, default: `None`)
 
-**Returns:** `Optional`
+**Returns:** `Optional[str]`
 
 ---
 
@@ -1468,7 +1859,6 @@ Args:
 
 Returns:
     Text content of the element
-
 
 **Parameters:**
 
@@ -1489,7 +1879,6 @@ Args:
 Returns:
     BeautifulSoup object for use with html_select* opcodes
 
-
 **Returns:** `Any`
 
 ---
@@ -1505,13 +1894,12 @@ Args:
 Returns:
     List of matching elements (may be empty)
 
-
 **Parameters:**
 
 - `soup` (Any, required)
 - `selector` (str, required)
 
-**Returns:** `List`
+**Returns:** `List[Any]`
 
 ---
 
@@ -1526,13 +1914,12 @@ Args:
 Returns:
     First matching element, or None if no match
 
-
 **Parameters:**
 
 - `soup` (Any, required)
 - `selector` (str, required)
 
-**Returns:** `Optional`
+**Returns:** `Optional[Any]`
 
 ---
 
@@ -1550,7 +1937,6 @@ Returns:
 
 Raises:
     ValueError: If the string is not valid JSON
-
 
 **Returns:** `Any`
 
@@ -1570,13 +1956,827 @@ Returns:
 Raises:
     TypeError: If the object is not JSON serializable
 
-
 **Parameters:**
 
 - `obj` (Any, required)
-- `indent` (Optional, optional, default: `None`)
+- `indent` (Optional[int], optional, default: `None`)
 
 **Returns:** `str`
+
+---
+
+## hubspot HubSpot Operations
+
+> **Requires:** `pip install lexflow[http]`
+
+### `hubspot_associate(client, from_type, from_id, to_type, to_id, association_type=None)`
+
+Create an association between two HubSpot objects.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    from_type: Source object type (contacts, companies, deals, tickets)
+    from_id: Source object ID
+    to_type: Target object type (contacts, companies, deals, tickets)
+    to_id: Target object ID
+    association_type: Integer association type ID (HubSpot v4 API).
+        If not provided, auto-inferred from object types.
+        Common IDs: contacts→companies=1, companies→contacts=2,
+        deals→contacts=3, contacts→deals=4, deals→companies=5,
+        companies→deals=6, tickets→contacts=15, contacts→tickets=16.
+        See: https://developers.hubspot.com/docs/api/crm/associations
+
+Returns:
+    Association response object
+
+Example - Associate contact with company (auto-inferred):
+    client: { node: create_client }
+    from_type: "contacts"
+    from_id: "12345"
+    to_type: "companies"
+    to_id: "67890"
+
+Example - Associate with explicit type ID:
+    client: { node: create_client }
+    from_type: "deals"
+    from_id: "11111"
+    to_type: "contacts"
+    to_id: "12345"
+    association_type: 3
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `from_type` (str, required)
+- `from_id` (str, required)
+- `to_type` (str, required)
+- `to_id` (str, required)
+- `association_type` (Optional[int], optional, default: `None`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `hubspot_close_client(client)`
+
+Close a HubSpot client and release its resources.
+
+Args:
+    client: HubSpotClient to close
+
+Returns:
+    True when the client session is closed
+
+**Returns:** `bool`
+
+---
+
+### `hubspot_create_client(access_token)`
+
+Create a HubSpot API client for CRM operations.
+
+Args:
+    access_token: HubSpot private app access token
+
+Returns:
+    HubSpotClient object to use with other hubspot_* opcodes
+
+Example:
+    access_token: "pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+**Returns:** `HubSpotClient`
+
+---
+
+### `hubspot_create_company(client, properties)`
+
+Create a new company in HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    properties: Dict of company properties (e.g., name, domain, industry)
+
+Returns:
+    Created company object with id, properties, createdAt
+
+Example:
+    client: { node: create_client }
+    properties:
+      name: "Acme Corp"
+      domain: "acme.com"
+      industry: "Technology"
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `properties` (Dict[str, Any], required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `hubspot_create_contact(client, properties)`
+
+Create a new contact in HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    properties: Dict of contact properties (e.g., firstname, lastname, email)
+
+Returns:
+    Created contact object with id, properties, createdAt
+
+Example:
+    client: { node: create_client }
+    properties:
+      firstname: "John"
+      lastname: "Doe"
+      email: "john.doe@example.com"
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `properties` (Dict[str, Any], required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `hubspot_create_deal(client, properties)`
+
+Create a new deal in HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    properties: Dict of deal properties (e.g., dealname, amount, dealstage)
+
+Returns:
+    Created deal object with id, properties, createdAt
+
+Example:
+    client: { node: create_client }
+    properties:
+      dealname: "New Business Deal"
+      amount: "10000"
+      dealstage: "appointmentscheduled"
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `properties` (Dict[str, Any], required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `hubspot_delete_contact(client, contact_id)`
+
+Delete a contact from HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    contact_id: The HubSpot contact ID
+
+Returns:
+    True if deletion was successful
+
+Example:
+    client: { node: create_client }
+    contact_id: "12345"
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `contact_id` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `hubspot_get_company(client, company_id, properties=None)`
+
+Get a company by ID from HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    company_id: The HubSpot company ID
+    properties: List of property names to return (default: all)
+
+Returns:
+    Company object with id, properties, createdAt, updatedAt
+
+Example:
+    client: { node: create_client }
+    company_id: "67890"
+    properties: ["name", "domain", "industry"]
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `company_id` (str, required)
+- `properties` (Optional[List[str]], optional, default: `None`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `hubspot_get_contact(client, contact_id, properties=None)`
+
+Get a contact by ID from HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    contact_id: The HubSpot contact ID
+    properties: List of property names to return (default: all)
+
+Returns:
+    Contact object with id, properties, createdAt, updatedAt
+
+Example:
+    client: { node: create_client }
+    contact_id: "12345"
+    properties: ["firstname", "lastname", "email"]
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `contact_id` (str, required)
+- `properties` (Optional[List[str]], optional, default: `None`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `hubspot_get_deal(client, deal_id, properties=None)`
+
+Get a deal by ID from HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    deal_id: The HubSpot deal ID
+    properties: List of property names to return (default: all)
+
+Returns:
+    Deal object with id, properties, createdAt, updatedAt
+
+Example:
+    client: { node: create_client }
+    deal_id: "11111"
+    properties: ["dealname", "amount", "dealstage"]
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `deal_id` (str, required)
+- `properties` (Optional[List[str]], optional, default: `None`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `hubspot_list_properties(client, object_type)`
+
+List all properties for a HubSpot object type.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    object_type: Object type (contacts, companies, deals)
+
+Returns:
+    List of property objects with name, label, type, description
+
+Example:
+    client: { node: create_client }
+    object_type: "contacts"
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `object_type` (str, required)
+
+**Returns:** `List[Dict[str, Any]]`
+
+---
+
+### `hubspot_search_companies(client, filters, properties=None, limit=100)`
+
+Search companies in HubSpot using filters.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    filters: List of filter objects with propertyName, operator, value.
+        Operators: EQ, NEQ, LT, LTE, GT, GTE, IN, NOT_IN, CONTAINS
+    properties: List of property names to return
+    limit: Maximum number of results (default: 100, max: 100)
+
+Returns:
+    Dict with 'results' list and 'total' count
+
+Example:
+    client: { node: create_client }
+    filters:
+      - propertyName: "domain"
+        operator: "EQ"
+        value: "hubspot.com"
+    properties: ["name", "domain", "industry"]
+    limit: 10
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `filters` (List[Dict[str, Any]], required)
+- `properties` (Optional[List[str]], optional, default: `None`)
+- `limit` (int, optional, default: `100`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `hubspot_search_contacts(client, filters, properties=None, limit=100)`
+
+Search contacts in HubSpot using filters.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    filters: List of filter objects with propertyName, operator, value.
+        Operators: EQ, NEQ, LT, LTE, GT, GTE, IN, NOT_IN, CONTAINS
+    properties: List of property names to return
+    limit: Maximum number of results (default: 100, max: 100)
+
+Returns:
+    Dict with 'results' list and 'total' count
+
+Example:
+    client: { node: create_client }
+    filters:
+      - propertyName: "email"
+        operator: "EQ"
+        value: "test@example.com"
+    properties: ["firstname", "lastname", "email"]
+    limit: 10
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `filters` (List[Dict[str, Any]], required)
+- `properties` (Optional[List[str]], optional, default: `None`)
+- `limit` (int, optional, default: `100`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `hubspot_search_deals(client, filters, properties=None, limit=100)`
+
+Search deals in HubSpot using filters.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    filters: List of filter objects with propertyName, operator, value.
+        Operators: EQ, NEQ, LT, LTE, GT, GTE, IN, NOT_IN, CONTAINS
+    properties: List of property names to return
+    limit: Maximum number of results (default: 100, max: 100)
+
+Returns:
+    Dict with 'results' list and 'total' count
+
+Example:
+    client: { node: create_client }
+    filters:
+      - propertyName: "dealstage"
+        operator: "EQ"
+        value: "closedwon"
+    properties: ["dealname", "amount", "dealstage"]
+    limit: 10
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `filters` (List[Dict[str, Any]], required)
+- `properties` (Optional[List[str]], optional, default: `None`)
+- `limit` (int, optional, default: `100`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `hubspot_test_connection(client)`
+
+Test connection to HubSpot API.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+
+Returns:
+    True if connection successful, raises exception otherwise
+
+Example:
+    client: { node: create_client }
+
+**Returns:** `bool`
+
+---
+
+### `hubspot_update_company(client, company_id, properties)`
+
+Update an existing company in HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    company_id: The HubSpot company ID
+    properties: Dict of company properties to update
+
+Returns:
+    Updated company object
+
+Example:
+    client: { node: create_client }
+    company_id: "67890"
+    properties:
+      industry: "Software"
+      numberofemployees: "100"
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `company_id` (str, required)
+- `properties` (Dict[str, Any], required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `hubspot_update_contact(client, contact_id, properties)`
+
+Update an existing contact in HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    contact_id: The HubSpot contact ID
+    properties: Dict of contact properties to update
+
+Returns:
+    Updated contact object
+
+Example:
+    client: { node: create_client }
+    contact_id: "12345"
+    properties:
+      firstname: "Jane"
+      phone: "+1234567890"
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `contact_id` (str, required)
+- `properties` (Dict[str, Any], required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `hubspot_update_deal(client, deal_id, properties)`
+
+Update an existing deal in HubSpot.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    deal_id: The HubSpot deal ID
+    properties: Dict of deal properties to update
+
+Returns:
+    Updated deal object
+
+Example:
+    client: { node: create_client }
+    deal_id: "11111"
+    properties:
+      amount: "15000"
+      dealstage: "closedwon"
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `deal_id` (str, required)
+- `properties` (Dict[str, Any], required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+## ☁️ Cloud Storage
+
+> **Requires:** `pip install lexflow[gcs]`
+
+### `gcs_close_client(client)`
+
+Close the GCS client and release resources.
+
+Args:
+    client: GCS client instance to close
+
+Returns:
+    True when closed successfully
+
+Example:
+    client: { node: my_client }
+
+**Returns:** `bool`
+
+---
+
+### `gcs_copy_object(client, source_bucket, source_object, dest_bucket, dest_object)`
+
+Copy an object within or between GCS buckets.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    source_bucket: Source bucket name
+    source_object: Source object name/path
+    dest_bucket: Destination bucket name
+    dest_object: Destination object name/path
+
+Returns:
+    Dictionary with copy operation metadata
+
+Example:
+    client: { node: my_client }
+    source_bucket: "source-bucket"
+    source_object: "path/to/file.pdf"
+    dest_bucket: "dest-bucket"
+    dest_object: "backup/file.pdf"
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `source_bucket` (str, required)
+- `source_object` (str, required)
+- `dest_bucket` (str, required)
+- `dest_object` (str, required)
+
+**Returns:** `GCSObjectMetadata`
+
+---
+
+### `gcs_create_client(service_file=None)`
+
+Create a Google Cloud Storage async client.
+
+Args:
+    service_file: Optional path to service account JSON file
+
+Returns:
+    Storage client instance
+
+Example:
+    service_file: "/path/to/service-account.json"
+
+Authentication:
+    Uses Google Cloud authentication in this order:
+    1. service_file parameter (if provided)
+    2. GOOGLE_APPLICATION_CREDENTIALS environment variable
+    3. gcloud auth application-default login
+    4. GCE/GKE metadata server (in cloud environments)
+
+**Returns:** `Storage`
+
+---
+
+### `gcs_delete_object(client, bucket_name, object_name)`
+
+Delete an object from GCS.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object to delete
+
+Returns:
+    True if deletion was successful
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.pdf"
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `gcs_download_object_as_bytes(client, bucket_name, object_name)`
+
+Download an object from GCS as bytes.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object in the bucket
+
+Returns:
+    Object content as bytes
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.pdf"
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+
+**Returns:** `bytes`
+
+---
+
+### `gcs_download_object_as_string(client, bucket_name, object_name, encoding="utf-8")`
+
+Download an object from GCS as a string.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object in the bucket
+    encoding: Text encoding (default: utf-8)
+
+Returns:
+    Object content as string
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.txt"
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+- `encoding` (str, optional, default: `"utf-8"`)
+
+**Returns:** `str`
+
+---
+
+### `gcs_get_object_metadata(client, bucket_name, object_name)`
+
+Get metadata for an object in GCS.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object
+
+Returns:
+    Dictionary with object metadata including:
+    - name: Object name
+    - size: Size in bytes
+    - contentType: MIME type
+    - updated: Last modification timestamp
+    - md5Hash: MD5 hash of content
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.pdf"
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+
+**Returns:** `GCSObjectMetadata`
+
+---
+
+### `gcs_list_objects(client, bucket_name, prefix=None, max_results=None)`
+
+List objects in a GCS bucket.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    prefix: Optional prefix to filter objects
+    max_results: Optional maximum number of results
+
+Returns:
+    List of object metadata dictionaries
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    prefix: "uploads/"
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `prefix` (Optional[str], optional, default: `None`)
+- `max_results` (Optional[int], optional, default: `None`)
+
+**Returns:** `list[lexflow.opcodes.opcodes_gcs.GCSObjectMetadata]`
+
+---
+
+### `gcs_object_exists(client, bucket_name, object_name)`
+
+Check if an object exists in a GCS bucket.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path of the object to check
+
+Returns:
+    True if object exists, False otherwise
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "path/to/file.pdf"
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `gcs_upload_object_from_bytes(client, bucket_name, object_name, data, content_type=None)`
+
+Upload bytes to an object in GCS.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path for the object in the bucket
+    data: Bytes content to upload
+    content_type: Optional MIME type (e.g., "application/pdf")
+
+Returns:
+    Dictionary with upload metadata
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "uploads/document.pdf"
+    data: { variable: pdf_bytes }
+    content_type: "application/pdf"
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+- `data` (bytes, required)
+- `content_type` (Optional[str], optional, default: `None`)
+
+**Returns:** `GCSObjectMetadata`
+
+---
+
+### `gcs_upload_object_from_string(client, bucket_name, object_name, data, content_type="text/plain", encoding="utf-8")`
+
+Upload a string to an object in GCS.
+
+Args:
+    client: GCS client instance (from gcs_create_client)
+    bucket_name: Name of the bucket
+    object_name: Name/path for the object in the bucket
+    data: String content to upload
+    content_type: MIME type (default: "text/plain")
+    encoding: Text encoding (default: utf-8)
+
+Returns:
+    Dictionary with upload metadata
+
+Example:
+    client: { node: my_client }
+    bucket_name: "my-bucket"
+    object_name: "logs/output.txt"
+    data: "Hello, World!"
+
+**Parameters:**
+
+- `client` (Storage, required)
+- `bucket_name` (str, required)
+- `object_name` (str, required)
+- `data` (str, required)
+- `content_type` (str, optional, default: `"text/plain"`)
+- `encoding` (str, optional, default: `"utf-8"`)
+
+**Returns:** `GCSObjectMetadata`
 
 ---
 
@@ -1595,7 +2795,6 @@ Args:
 
 Returns:
     List [r, g, b]
-
 
 **Parameters:**
 
@@ -1619,7 +2818,6 @@ Args:
 Returns:
     pygame.Surface object representing the display
 
-
 **Parameters:**
 
 - `width` (int, required)
@@ -1637,7 +2835,6 @@ Async delay in milliseconds.
 Args:
     milliseconds: Delay duration in milliseconds
 
-
 **Returns:** `NoneType`
 
 ---
@@ -1652,7 +2849,6 @@ Args:
     y: Center Y position
     radius: Circle radius
     color: RGB color as [r, g, b]
-
 
 **Parameters:**
 
@@ -1678,7 +2874,6 @@ Args:
     height: Rectangle height
     color: RGB color as [r, g, b]
     filled: If True, fill; if False, draw outline only
-
 
 **Parameters:**
 
@@ -1706,7 +2901,6 @@ Args:
     font_size: Font size in pixels (default: 48)
     color: RGB color as [r, g, b], defaults to white
 
-
 **Parameters:**
 
 - `screen` (Any, required)
@@ -1728,7 +2922,6 @@ Args:
     screen: The display surface
     color: RGB color as [r, g, b] where each value is 0-255
 
-
 **Parameters:**
 
 - `screen` (Any, required)
@@ -1748,7 +2941,6 @@ Args:
 Returns:
     True if key is pressed, False otherwise
 
-
 **Returns:** `bool`
 
 ---
@@ -1762,7 +2954,6 @@ Args:
 
 Returns:
     Height in pixels
-
 
 **Returns:** `int`
 
@@ -1778,7 +2969,6 @@ Args:
 Returns:
     Width in pixels
 
-
 **Returns:** `int`
 
 ---
@@ -1789,7 +2979,6 @@ Get milliseconds since pygame.init() was called.
 
 Returns:
     Milliseconds elapsed since pygame initialization
-
 
 **Returns:** `int`
 
@@ -1826,7 +3015,6 @@ Check if user wants to quit (clicked X button).
 Returns:
     True if quit event detected, False otherwise
 
-
 **Returns:** `bool`
 
 ---
@@ -1860,16 +3048,15 @@ Args:
 Returns:
     Reranked results with updated 'score' and 'bm25_score' added
 
-
 **Parameters:**
 
 - `query` (str, required)
-- `results` (List, required)
+- `results` (List[Dict[str, Any]], required)
 - `top_k` (int, optional, default: `10`)
 - `text_field` (str, optional, default: `"text"`)
 - `alpha` (float, optional, default: `0.5`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -1886,7 +3073,6 @@ Args:
 Returns:
     List of floats representing the embedding vector
 
-
 **Parameters:**
 
 - `text` (str, required)
@@ -1894,7 +3080,7 @@ Returns:
 - `location` (str, optional, default: `"us-central1"`)
 - `model` (str, optional, default: `"text-embedding-004"`)
 
-**Returns:** `List`
+**Returns:** `List[float]`
 
 ---
 
@@ -1911,15 +3097,14 @@ Args:
 Returns:
     List of embedding vectors (each is a list of floats)
 
-
 **Parameters:**
 
-- `texts` (List, required)
+- `texts` (List[str], required)
 - `project` (str, required)
 - `location` (str, optional, default: `"us-central1"`)
 - `model` (str, optional, default: `"text-embedding-004"`)
 
-**Returns:** `List`
+**Returns:** `List[List[float]]`
 
 ---
 
@@ -1933,8 +3118,7 @@ Args:
 Returns:
     List of strings, one per page
 
-
-**Returns:** `List`
+**Returns:** `List[str]`
 
 ---
 
@@ -1948,8 +3132,7 @@ Args:
 Returns:
     List of strings, one per page
 
-
-**Returns:** `List`
+**Returns:** `List[str]`
 
 ---
 
@@ -1962,7 +3145,6 @@ Args:
 
 Returns:
     Extracted text from all pages concatenated
-
 
 **Returns:** `str`
 
@@ -1981,7 +3163,6 @@ Args:
 Returns:
     Extracted text from all pages concatenated
 
-
 **Returns:** `str`
 
 ---
@@ -1995,7 +3176,6 @@ Args:
 
 Returns:
     Number of pages in the PDF
-
 
 **Returns:** `int`
 
@@ -2011,7 +3191,6 @@ Args:
 
 Returns:
     True if collection exists
-
 
 **Parameters:**
 
@@ -2032,7 +3211,6 @@ Args:
 Returns:
     QdrantClient instance
 
-
 **Returns:** `Any`
 
 ---
@@ -2048,7 +3226,6 @@ Args:
 
 Returns:
     True if created, False if already existed
-
 
 **Parameters:**
 
@@ -2072,12 +3249,11 @@ Args:
 Returns:
     True if deletion was successful
 
-
 **Parameters:**
 
 - `client` (Any, required)
 - `collection` (str, required)
-- `point_ids` (List, required)
+- `point_ids` (List[int], required)
 
 **Returns:** `bool`
 
@@ -2093,7 +3269,6 @@ Args:
 
 Returns:
     True if deletion was successful
-
 
 **Parameters:**
 
@@ -2117,15 +3292,14 @@ Args:
 Returns:
     List of dicts with keys: id, score, payload
 
-
 **Parameters:**
 
 - `client` (Any, required)
 - `collection` (str, required)
-- `query_vector` (List, required)
+- `query_vector` (List[float], required)
 - `limit` (int, optional, default: `5`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -2143,14 +3317,13 @@ Args:
 Returns:
     True if upsert was successful
 
-
 **Parameters:**
 
 - `client` (Any, required)
 - `collection` (str, required)
 - `point_id` (int, required)
-- `vector` (List, required)
-- `payload` (Optional, optional, default: `None`)
+- `vector` (List[float], required)
+- `payload` (Optional[Dict[str, Any]], optional, default: `None`)
 
 **Returns:** `bool`
 
@@ -2170,14 +3343,13 @@ Args:
 Returns:
     True if upsert was successful
 
-
 **Parameters:**
 
 - `client` (Any, required)
 - `collection` (str, required)
-- `point_ids` (List, required)
-- `vectors` (List, required)
-- `payloads` (Optional, optional, default: `None`)
+- `point_ids` (List[int], required)
+- `vectors` (List[List[float]], required)
+- `payloads` (Optional[List[Dict[str, Any]]], optional, default: `None`)
 
 **Returns:** `bool`
 
@@ -2195,14 +3367,13 @@ Args:
 Returns:
     List of text chunks
 
-
 **Parameters:**
 
 - `text` (str, required)
 - `chunk_size` (int, optional, default: `500`)
 - `overlap` (int, optional, default: `50`)
 
-**Returns:** `List`
+**Returns:** `List[str]`
 
 ---
 
@@ -2218,14 +3389,13 @@ Args:
 Returns:
     List of text chunks split at sentence boundaries
 
-
 **Parameters:**
 
 - `text` (str, required)
 - `sentences_per_chunk` (int, optional, default: `5`)
 - `overlap` (int, optional, default: `1`)
 
-**Returns:** `List`
+**Returns:** `List[str]`
 
 ---
 
@@ -2243,14 +3413,13 @@ Args:
 Returns:
     List of dicts with keys: text, page_start, page_end, line_start, line_end
 
-
 **Parameters:**
 
-- `pages` (List, required)
+- `pages` (List[str], required)
 - `chunk_size` (int, optional, default: `500`)
 - `overlap` (int, optional, default: `50`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -2270,15 +3439,14 @@ Args:
 Returns:
     List of dicts with keys: text, page_start, page_end, line_start, line_end
 
-
 **Parameters:**
 
-- `pages` (List, required)
+- `pages` (List[str], required)
 - `chunk_size` (int, optional, default: `1000`)
 - `overlap` (int, optional, default: `200`)
 - `min_chunk_size` (int, optional, default: `100`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -2295,13 +3463,12 @@ Args:
 Returns:
     The updated history
 
-
 **Parameters:**
 
-- `history` (List, required)
+- `history` (List[dict], required)
 - `content` (str, required)
 
-**Returns:** `List`
+**Returns:** `List[dict]`
 
 ---
 
@@ -2320,14 +3487,13 @@ Returns:
 Raises:
     ValueError: If role is not "user" or "assistant"
 
-
 **Parameters:**
 
-- `history` (List, required)
+- `history` (List[dict], required)
 - `role` (str, required)
 - `content` (str, required)
 
-**Returns:** `List`
+**Returns:** `List[dict]`
 
 ---
 
@@ -2342,13 +3508,12 @@ Args:
 Returns:
     The updated history
 
-
 **Parameters:**
 
-- `history` (List, required)
+- `history` (List[dict], required)
 - `content` (str, required)
 
-**Returns:** `List`
+**Returns:** `List[dict]`
 
 ---
 
@@ -2362,8 +3527,7 @@ Args:
 Returns:
     The same list, now empty
 
-
-**Returns:** `List`
+**Returns:** `List[dict]`
 
 ---
 
@@ -2374,8 +3538,7 @@ Create a new empty chat history.
 Returns:
     Empty list ready to store chat messages
 
-
-**Returns:** `List`
+**Returns:** `List[dict]`
 
 ---
 
@@ -2388,7 +3551,6 @@ Args:
 
 Returns:
     Formatted string with each message on its own line
-
 
 **Returns:** `str`
 
@@ -2405,13 +3567,12 @@ Args:
 Returns:
     The last message dict, or None if empty or no match
 
-
 **Parameters:**
 
-- `history` (List, required)
-- `role` (Optional, optional, default: `None`)
+- `history` (List[dict], required)
+- `role` (Optional[str], optional, default: `None`)
 
-**Returns:** `Optional`
+**Returns:** `Optional[dict]`
 
 ---
 
@@ -2424,7 +3585,6 @@ Args:
 
 Returns:
     Number of messages
-
 
 **Returns:** `int`
 
@@ -2439,7 +3599,6 @@ Args:
 
 Returns:
     A formatted string containing the conversation context
-
 
 **Returns:** `str`
 
@@ -2464,11 +3623,10 @@ Args:
 Returns:
     The assistant's response string
 
-
 **Parameters:**
 
 - `agent` (Any, required)
-- `history` (List, required)
+- `history` (List[dict], required)
 - `user_message` (str, required)
 
 **Returns:** `str`
@@ -2527,7 +3685,6 @@ Args:
     message: Optional message to show
     width: Bar width in characters (default: 30)
 
-
 **Parameters:**
 
 - `current` (int, required)
@@ -2546,7 +3703,6 @@ Stop a spinner with failure indicator.
 Args:
     spinner: Spinner object from spinner_start
     message: Error message to display
-
 
 **Parameters:**
 
@@ -2567,7 +3723,6 @@ Args:
 Returns:
     Spinner object (use with spinner_stop, spinner_update)
 
-
 **Returns:** `Spinner`
 
 ---
@@ -2580,7 +3735,6 @@ Args:
     spinner: Spinner object from spinner_start
     message: Final message (empty = original message + "done")
     success: True for checkmark, False for X mark
-
 
 **Parameters:**
 
@@ -2599,7 +3753,6 @@ Update the message of a running spinner.
 Args:
     spinner: Spinner object from spinner_start
     message: New message to display
-
 
 **Parameters:**
 
@@ -2625,7 +3778,6 @@ Args:
 Returns:
     File content as a string (UTF-8 decoded)
 
-
 **Parameters:**
 
 - `owner` (str, required)
@@ -2649,7 +3801,6 @@ Args:
 Returns:
     The PR diff as a string in unified diff format
 
-
 **Parameters:**
 
 - `owner` (str, required)
@@ -2672,14 +3823,13 @@ Args:
 Returns:
     List of dicts with: path, additions, deletions, status
 
-
 **Parameters:**
 
 - `owner` (str, required)
 - `repo` (str, required)
 - `pr_number` (int, required)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -2695,14 +3845,13 @@ Args:
 Returns:
     Dict with: title, body, author, state, base_branch, head_branch, url
 
-
 **Parameters:**
 
 - `owner` (str, required)
 - `repo` (str, required)
 - `pr_number` (int, required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2717,13 +3866,12 @@ Args:
 Returns:
     Dict with: name, full_name, description, default_branch, url, is_private
 
-
 **Parameters:**
 
 - `owner` (str, required)
 - `repo` (str, required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2733,7 +3881,6 @@ Check if GitHub CLI is available and authenticated.
 
 Returns:
     True if gh CLI is installed and authenticated
-
 
 **Returns:** `bool`
 
@@ -2751,14 +3898,405 @@ Args:
 Returns:
     List of comment dicts with: id, author, body, created_at, type
 
-
 **Parameters:**
 
 - `owner` (str, required)
 - `repo` (str, required)
 - `pr_number` (int, required)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
+
+---
+
+## 📨 Pub/Sub
+
+> **Requires:** `pip install lexflow[pubsub]`
+
+### `pubsub_ack_message(subscriber, project_id, subscription_id, message)`
+
+Acknowledge a single message received from pubsub_pull_messages.
+
+Args:
+    subscriber: Subscriber client instance
+    project_id: GCP project ID
+    subscription_id: Subscription ID
+    message: Message dictionary with ack_id from pubsub_pull_messages
+
+Returns:
+    True if acknowledged successfully
+
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    message: { variable: msg }
+
+**Parameters:**
+
+- `subscriber` (SubscriberClient, required)
+- `project_id` (str, required)
+- `subscription_id` (str, required)
+- `message` (dict, required)
+
+**Returns:** `bool`
+
+---
+
+### `pubsub_acknowledge_messages(subscriber, project_id, subscription_id, ack_ids)`
+
+Acknowledge messages that have been processed.
+
+Args:
+    subscriber: Subscriber client instance (from pubsub_create_subscriber)
+    project_id: GCP project ID
+    subscription_id: Subscription ID (not the full path)
+    ack_ids: List of acknowledgment IDs from pulled messages
+
+Returns:
+    True if acknowledgment was successful
+
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    ack_ids: { variable: message_ack_ids }
+
+**Parameters:**
+
+- `subscriber` (SubscriberClient, required)
+- `project_id` (str, required)
+- `subscription_id` (str, required)
+- `ack_ids` (list, required)
+
+**Returns:** `bool`
+
+---
+
+### `pubsub_close_publisher(publisher)`
+
+Close the publisher client and release resources.
+
+Args:
+    publisher: Publisher client instance to close
+
+Returns:
+    True if closed successfully
+
+Example:
+    publisher: { variable: my_publisher }
+
+**Returns:** `bool`
+
+---
+
+### `pubsub_close_subscriber(subscriber)`
+
+Close the subscriber client and release resources.
+
+Args:
+    subscriber: Subscriber client instance to close
+
+Returns:
+    True if closed successfully
+
+Example:
+    subscriber: { variable: my_subscriber }
+
+**Returns:** `bool`
+
+---
+
+### `pubsub_create_publisher()`
+
+Create a Google Cloud Pub/Sub publisher client.
+
+Returns:
+    PublisherClient instance
+
+Example:
+    (no inputs required)
+
+Authentication:
+    Requires Google Cloud authentication via:
+    - gcloud auth application-default login
+    - Or GOOGLE_APPLICATION_CREDENTIALS environment variable
+
+Note:
+    Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
+    When set, authentication is automatically skipped.
+
+**Returns:** `PublisherClient`
+
+---
+
+### `pubsub_create_subscriber()`
+
+Create a Google Cloud Pub/Sub subscriber client.
+
+Returns:
+    SubscriberClient instance
+
+Example:
+    (no inputs required)
+
+Authentication:
+    Requires Google Cloud authentication via:
+    - gcloud auth application-default login
+    - Or GOOGLE_APPLICATION_CREDENTIALS environment variable
+
+Note:
+    Supports PUBSUB_EMULATOR_HOST environment variable for local testing.
+    When set, authentication is automatically skipped.
+
+**Returns:** `SubscriberClient`
+
+---
+
+### `pubsub_nack_message(subscriber, project_id, subscription_id, message)`
+
+Negative-acknowledge a message (return to queue for redelivery).
+
+Args:
+    subscriber: Subscriber client instance
+    project_id: GCP project ID
+    subscription_id: Subscription ID
+    message: Message dictionary with ack_id from pubsub_pull_messages
+
+Returns:
+    True if nack'd successfully
+
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    message: { variable: msg }
+
+**Parameters:**
+
+- `subscriber` (SubscriberClient, required)
+- `project_id` (str, required)
+- `subscription_id` (str, required)
+- `message` (dict, required)
+
+**Returns:** `bool`
+
+---
+
+### `pubsub_publish_batch(publisher, project_id, topic_id, messages)`
+
+Publish multiple messages to a Pub/Sub topic.
+
+Args:
+    publisher: Publisher client instance (from pubsub_create_publisher)
+    project_id: GCP project ID
+    topic_id: Topic ID (not the full path)
+    messages: List of message dictionaries, each with:
+        - data: Message data as string (required)
+        - attributes: Optional dictionary of attributes
+
+Returns:
+    List of message IDs for the published messages
+
+Example:
+    publisher: { variable: my_publisher }
+    project_id: "my-gcp-project"
+    topic_id: "my-topic"
+    messages:
+      - data: "First message"
+        attributes: { "index": "1" }
+      - data: "Second message"
+        attributes: { "index": "2" }
+
+**Parameters:**
+
+- `publisher` (PublisherClient, required)
+- `project_id` (str, required)
+- `topic_id` (str, required)
+- `messages` (list, required)
+
+**Returns:** `list`
+
+---
+
+### `pubsub_publish_message(publisher, project_id, topic_id, data)`
+
+Publish a message to a Pub/Sub topic.
+
+Args:
+    publisher: Publisher client instance (from pubsub_create_publisher)
+    project_id: GCP project ID
+    topic_id: Topic ID (not the full path)
+    data: Message data as string
+
+Returns:
+    Message ID of the published message
+
+Example:
+    publisher: { variable: my_publisher }
+    project_id: "my-gcp-project"
+    topic_id: "my-topic"
+    data: "Hello, Pub/Sub!"
+
+**Parameters:**
+
+- `publisher` (PublisherClient, required)
+- `project_id` (str, required)
+- `topic_id` (str, required)
+- `data` (str, required)
+
+**Returns:** `str`
+
+---
+
+### `pubsub_publish_message_with_attributes(publisher, project_id, topic_id, data, attributes)`
+
+Publish a message with custom attributes to a Pub/Sub topic.
+
+Args:
+    publisher: Publisher client instance (from pubsub_create_publisher)
+    project_id: GCP project ID
+    topic_id: Topic ID (not the full path)
+    data: Message data as string
+    attributes: Dictionary of custom attributes (string keys and values)
+
+Returns:
+    Message ID of the published message
+
+Example:
+    publisher: { variable: my_publisher }
+    project_id: "my-gcp-project"
+    topic_id: "my-topic"
+    data: "Hello with attributes!"
+    attributes: { "type": "greeting", "priority": "high" }
+
+**Parameters:**
+
+- `publisher` (PublisherClient, required)
+- `project_id` (str, required)
+- `topic_id` (str, required)
+- `data` (str, required)
+- `attributes` (dict, required)
+
+**Returns:** `str`
+
+---
+
+### `pubsub_pull_messages(subscriber, project_id, subscription_id, max_messages=10)`
+
+Pull messages from a Pub/Sub subscription.
+
+Args:
+    subscriber: Subscriber client instance (from pubsub_create_subscriber)
+    project_id: GCP project ID
+    subscription_id: Subscription ID (not the full path)
+    max_messages: Maximum number of messages to pull (default: 10)
+
+Returns:
+    List of message dictionaries with keys:
+    - ack_id: Acknowledgment ID (needed for acknowledging)
+    - message_id: Message ID
+    - data: Message data as string
+    - attributes: Message attributes dictionary
+    - publish_time: Publish timestamp as ISO string
+
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    max_messages: 5
+
+**Parameters:**
+
+- `subscriber` (SubscriberClient, required)
+- `project_id` (str, required)
+- `subscription_id` (str, required)
+- `max_messages` (int, optional, default: `10`)
+
+**Returns:** `list`
+
+---
+
+### `pubsub_subscribe_stream(subscriber, project_id, subscription_id, timeout=None, max_messages=None, batch_size=10, min_poll_interval=0.1, max_poll_interval=5.0, max_retries=10)`
+
+Subscribe to a Pub/Sub subscription and stream messages as an async generator.
+
+This opcode returns an async generator that yields messages as they arrive.
+Use with control_async_foreach to process messages continuously.
+
+Uses exponential backoff when no messages are available: starts at
+min_poll_interval and doubles up to max_poll_interval. Resets to
+min_poll_interval when messages are received.
+
+Args:
+    subscriber: Subscriber client instance (from pubsub_create_subscriber)
+    project_id: GCP project ID
+    subscription_id: Subscription ID (not the full path)
+    timeout: Optional timeout in seconds. If None, runs indefinitely.
+    max_messages: Optional max number of messages to receive before stopping.
+    batch_size: Messages to pull per request (default: 10)
+    min_poll_interval: Initial/minimum sleep between polls in seconds (default: 0.1)
+    max_poll_interval: Maximum sleep during backoff in seconds (default: 5.0)
+    max_retries: Maximum consecutive errors before raising (default: 10)
+
+Yields:
+    Message dictionaries with keys:
+    - ack_id: Acknowledgment ID
+    - message_id: Message ID
+    - data: Message data as string
+    - attributes: Message attributes dictionary
+    - publish_time: Publish timestamp as ISO string
+
+Note:
+    The subscriber client is NOT closed by this opcode. Use
+    pubsub_close_subscriber to clean up after streaming completes.
+
+Example:
+    subscriber: { variable: my_subscriber }
+    project_id: "my-gcp-project"
+    subscription_id: "my-subscription"
+    timeout: 60
+    max_messages: 100
+    batch_size: 20
+    min_poll_interval: 0.05
+    max_poll_interval: 10.0
+
+Usage in workflow:
+    create_subscriber:
+      opcode: pubsub_create_subscriber
+      isReporter: true
+
+    subscribe:
+      opcode: pubsub_subscribe_stream
+      isReporter: true
+      inputs:
+        subscriber: { node: create_subscriber }
+        project_id: { variable: project_id }
+        subscription_id: { variable: subscription_id }
+        timeout: { literal: 30 }
+        batch_size: { literal: 20 }
+
+    process_messages:
+      opcode: control_async_foreach
+      inputs:
+        VAR: { literal: "msg" }
+        ITERABLE: { node: subscribe }
+      branches:
+        BODY:
+          - handle_message
+
+**Parameters:**
+
+- `subscriber` (SubscriberClient, required)
+- `project_id` (str, required)
+- `subscription_id` (str, required)
+- `timeout` (Optional[float], optional, default: `None`)
+- `max_messages` (Optional[int], optional, default: `None`)
+- `batch_size` (int, optional, default: `10`)
+- `min_poll_interval` (float, optional, default: `0.1`)
+- `max_poll_interval` (float, optional, default: `5.0`)
+- `max_retries` (int, optional, default: `10`)
+
+**Returns:** `AsyncGenerator[dict, NoneType]`
 
 ---
 
@@ -2779,11 +4317,10 @@ Raises:
     asyncio.TimeoutError: If timeout exceeded
     Exception: If the task raised an exception
 
-
 **Parameters:**
 
 - `task` (Any, required)
-- `timeout` (Optional, optional, default: `None`)
+- `timeout` (Optional[float], optional, default: `None`)
 
 **Returns:** `Any`
 
@@ -2800,13 +4337,12 @@ Args:
 Returns:
     List of results in the same order as tasks
 
-
 **Parameters:**
 
 - `tasks` (List, required)
-- `timeout` (Optional, optional, default: `None`)
+- `timeout` (Optional[float], optional, default: `None`)
 
-**Returns:** `List`
+**Returns:** `List[Any]`
 
 ---
 
@@ -2819,7 +4355,6 @@ Args:
 
 Returns:
     True if cancel was requested
-
 
 **Returns:** `bool`
 
@@ -2835,8 +4370,7 @@ Args:
 Returns:
     Exception message as string, or None if succeeded/not done
 
-
-**Returns:** `Optional`
+**Returns:** `Optional[str]`
 
 ---
 
@@ -2849,7 +4383,6 @@ Args:
 
 Returns:
     The task's unique ID
-
 
 **Returns:** `int`
 
@@ -2865,7 +4398,6 @@ Args:
 Returns:
     True if task is done (completed, cancelled, or failed)
 
-
 **Returns:** `bool`
 
 ---
@@ -2879,7 +4411,6 @@ Args:
 
 Returns:
     The task's name
-
 
 **Returns:** `str`
 
@@ -2898,7 +4429,6 @@ Returns:
 Raises:
     InvalidStateError: If task is not done
 
-
 **Returns:** `Any`
 
 ---
@@ -2909,7 +4439,6 @@ Sleep for the specified number of seconds.
 
 Args:
     seconds: Duration to sleep
-
 
 **Returns:** `NoneType`
 
@@ -2932,7 +4461,6 @@ Close a channel.
 Args:
     channel: The channel to close
 
-
 **Returns:** `NoneType`
 
 ---
@@ -2946,7 +4474,6 @@ Args:
 
 Returns:
     A new Channel object
-
 
 **Returns:** `Channel`
 
@@ -2962,7 +4489,6 @@ Args:
 Returns:
     True if closed
 
-
 **Returns:** `bool`
 
 ---
@@ -2977,7 +4503,6 @@ Args:
 Returns:
     True if empty
 
-
 **Returns:** `bool`
 
 ---
@@ -2991,7 +4516,6 @@ Args:
 
 Returns:
     Number of items in buffer
-
 
 **Returns:** `int`
 
@@ -3014,11 +4538,10 @@ Raises:
     asyncio.TimeoutError: If timeout exceeded
     RuntimeError: If channel is closed and empty
 
-
 **Parameters:**
 
 - `channel` (Channel, required)
-- `timeout` (Optional, optional, default: `None`)
+- `timeout` (Optional[float], optional, default: `None`)
 
 **Returns:** `Any`
 
@@ -3036,7 +4559,6 @@ Args:
 
 Raises:
     RuntimeError: If the channel is closed
-
 
 **Parameters:**
 
@@ -3057,7 +4579,6 @@ Args:
 Returns:
     Dict with keys: value, ok (True if received)
 
-
 **Returns:** `dict`
 
 ---
@@ -3071,7 +4592,6 @@ Clear an event (reset to unset state).
 Args:
     event: The event to clear
 
-
 **Returns:** `NoneType`
 
 ---
@@ -3082,7 +4602,6 @@ Create an event for signaling between tasks.
 
 Returns:
     An asyncio.Event
-
 
 **Returns:** `Event`
 
@@ -3098,7 +4617,6 @@ Args:
 Returns:
     True if set
 
-
 **Returns:** `bool`
 
 ---
@@ -3109,7 +4627,6 @@ Set an event (signal waiting tasks).
 
 Args:
     event: The event to set
-
 
 **Returns:** `NoneType`
 
@@ -3126,11 +4643,10 @@ Args:
 Returns:
     True if event was set, False if timeout
 
-
 **Parameters:**
 
 - `event` (Event, required)
-- `timeout` (Optional, optional, default: `None`)
+- `timeout` (Optional[float], optional, default: `None`)
 
 **Returns:** `bool`
 
@@ -3147,11 +4663,10 @@ Args:
 Returns:
     True if acquired, False if timeout
 
-
 **Parameters:**
 
 - `semaphore` (Semaphore, required)
-- `timeout` (Optional, optional, default: `None`)
+- `timeout` (Optional[float], optional, default: `None`)
 
 **Returns:** `bool`
 
@@ -3167,7 +4682,6 @@ Args:
 Returns:
     An asyncio.Semaphore
 
-
 **Returns:** `Semaphore`
 
 ---
@@ -3178,7 +4692,6 @@ Release a semaphore permit.
 
 Args:
     semaphore: The semaphore to release
-
 
 **Returns:** `NoneType`
 
@@ -3202,7 +4715,6 @@ Returns:
     True if successful
 
 Required scopes: reactions:write
-
 
 **Parameters:**
 
@@ -3228,7 +4740,6 @@ Returns:
 
 Required scopes: channels:manage, groups:write (for private)
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
@@ -3252,14 +4763,13 @@ Returns:
 
 Required scopes: channels:manage, groups:write (for private)
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `name` (str, required)
 - `is_private` (bool, optional, default: `False`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -3275,7 +4785,6 @@ Returns:
 
 Example:
     token: "xoxb-your-bot-token"
-
 
 **Returns:** `AsyncWebClient`
 
@@ -3293,7 +4802,6 @@ Returns:
     True if successful
 
 Required scopes: files:write
-
 
 **Parameters:**
 
@@ -3318,14 +4826,13 @@ Returns:
 
 Required scopes: chat:write
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `channel` (str, required)
 - `ts` (str, required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -3338,7 +4845,6 @@ Args:
 
 Returns:
     Formatted mention string (e.g., "<#C12345678>")
-
 
 **Returns:** `str`
 
@@ -3355,11 +4861,10 @@ Args:
 Returns:
     Formatted link string (e.g., "<https://example.com|Click here>")
 
-
 **Parameters:**
 
 - `url` (str, required)
-- `text` (Optional, optional, default: `None`)
+- `text` (Optional[str], optional, default: `None`)
 
 **Returns:** `str`
 
@@ -3374,7 +4879,6 @@ Args:
 
 Returns:
     Formatted mention string (e.g., "<@U12345678>")
-
 
 **Returns:** `str`
 
@@ -3393,13 +4897,12 @@ Returns:
 
 Required scopes: channels:read, groups:read (for private)
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `channel` (str, required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -3417,14 +4920,13 @@ Returns:
 
 Required scopes: channels:read, groups:read (for private)
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `channel` (str, required)
 - `limit` (int, optional, default: `100`)
 
-**Returns:** `List`
+**Returns:** `List[str]`
 
 ---
 
@@ -3444,16 +4946,15 @@ Returns:
 
 Required scopes: channels:history, groups:history (for private), mpim:history, im:history
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `channel` (str, required)
 - `limit` (int, optional, default: `100`)
-- `oldest` (Optional, optional, default: `None`)
-- `latest` (Optional, optional, default: `None`)
+- `oldest` (Optional[str], optional, default: `None`)
+- `latest` (Optional[str], optional, default: `None`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -3471,14 +4972,13 @@ Returns:
 
 Required scopes: reactions:read
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `channel` (str, required)
 - `ts` (str, required)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -3497,7 +4997,6 @@ Returns:
 
 Required scopes: channels:history, groups:history (for private)
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
@@ -3505,7 +5004,7 @@ Required scopes: channels:history, groups:history (for private)
 - `thread_ts` (str, required)
 - `limit` (int, optional, default: `100`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -3522,13 +5021,12 @@ Returns:
 
 Required scopes: users:read, users:read.email (for email)
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `user` (str, required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -3545,13 +5043,12 @@ Returns:
 
 Required scopes: users:read
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `user` (str, required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -3569,12 +5066,11 @@ Returns:
 
 Required scopes: channels:manage, groups:write (for private)
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `channel` (str, required)
-- `users` (List, required)
+- `users` (List[str], required)
 
 **Returns:** `bool`
 
@@ -3592,7 +5088,6 @@ Returns:
     True if successful
 
 Required scopes: channels:manage, groups:write (for private)
-
 
 **Parameters:**
 
@@ -3618,19 +5113,18 @@ Returns:
 
 Required scopes: channels:read, groups:read (for private), mpim:read, im:read
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
-- `types` (Optional, optional, default: `None`)
+- `types` (Optional[str], optional, default: `None`)
 - `limit` (int, optional, default: `100`)
 - `exclude_archived` (bool, optional, default: `True`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
-### `slack_list_files(client, channel=None, user=None, types=None, count=100)`
+### `slack_list_files(client, channel=None, user=None, types=None, limit=100)`
 
 List files in the workspace.
 
@@ -3639,23 +5133,22 @@ Args:
     channel: Optional channel ID to filter by
     user: Optional user ID to filter by
     types: Optional comma-separated file types (spaces, snippets, images, etc.)
-    count: Number of files to return (default: 100)
+    limit: Number of files to return (default: 100)
 
 Returns:
     List of file dicts with: id, name, title, filetype, size, user, created
 
 Required scopes: files:read
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
-- `channel` (Optional, optional, default: `None`)
-- `user` (Optional, optional, default: `None`)
-- `types` (Optional, optional, default: `None`)
-- `count` (int, optional, default: `100`)
+- `channel` (Optional[str], optional, default: `None`)
+- `user` (Optional[str], optional, default: `None`)
+- `types` (Optional[str], optional, default: `None`)
+- `limit` (int, optional, default: `100`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -3672,13 +5165,12 @@ Returns:
 
 Required scopes: users:read, users:read.email (for email)
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `limit` (int, optional, default: `100`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -3697,7 +5189,6 @@ Returns:
 
 Required scopes: reactions:write
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
@@ -3706,35 +5197,6 @@ Required scopes: reactions:write
 - `emoji` (str, required)
 
 **Returns:** `bool`
-
----
-
-### `slack_reply_in_thread(client, channel, thread_ts, text, broadcast=False)`
-
-Reply to a message in a thread.
-
-Args:
-    client: Slack client (from slack_create_client)
-    channel: Channel ID where the thread exists
-    thread_ts: Timestamp of the parent message
-    text: Reply text
-    broadcast: Whether to also post to channel (default: False)
-
-Returns:
-    Dict with: ok, channel, ts, message
-
-Required scopes: chat:write
-
-
-**Parameters:**
-
-- `client` (AsyncWebClient, required)
-- `channel` (str, required)
-- `thread_ts` (str, required)
-- `text` (str, required)
-- `broadcast` (bool, optional, default: `False`)
-
-**Returns:** `Dict`
 
 ---
 
@@ -3754,16 +5216,15 @@ Returns:
 
 Required scopes: chat:write
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `channel` (str, required)
 - `text` (str, required)
 - `post_at` (int, required)
-- `thread_ts` (Optional, optional, default: `None`)
+- `thread_ts` (Optional[str], optional, default: `None`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -3785,28 +5246,28 @@ Required scopes: chat:write
 
 See: https://api.slack.com/block-kit
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `channel` (str, required)
-- `blocks` (List, required)
+- `blocks` (List[Dict[str, Any]], required)
 - `text` (str, optional, default: `""`)
-- `thread_ts` (Optional, optional, default: `None`)
+- `thread_ts` (Optional[str], optional, default: `None`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
-### `slack_send_message(client, channel, text, thread_ts=None, unfurl_links=True, unfurl_media=True)`
+### `slack_send_message(client, channel, text, thread_ts=None, broadcast=False, unfurl_links=True, unfurl_media=True)`
 
-Send a message to a channel or user.
+Send a message to a channel, user, or thread.
 
 Args:
     client: Slack client (from slack_create_client)
     channel: Channel ID, channel name, or user ID
     text: Message text (supports Slack markdown)
     thread_ts: Optional thread timestamp to reply in thread
+    broadcast: Whether to also post to channel when replying in thread (default: False)
     unfurl_links: Whether to unfurl URLs (default: True)
     unfurl_media: Whether to unfurl media (default: True)
 
@@ -3815,46 +5276,47 @@ Returns:
 
 Required scopes: chat:write, chat:write.public (for public channels)
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `channel` (str, required)
 - `text` (str, required)
-- `thread_ts` (Optional, optional, default: `None`)
+- `thread_ts` (Optional[str], optional, default: `None`)
+- `broadcast` (bool, optional, default: `False`)
 - `unfurl_links` (bool, optional, default: `True`)
 - `unfurl_media` (bool, optional, default: `True`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
-### `slack_send_webhook(url, text, blocks=None, username=None, icon_emoji=None, icon_url=None)`
+### `slack_send_webhook(url, text, blocks=None, username=None, icon_emoji=None, icon_url=None, timeout=30.0)`
 
 Send a message via incoming webhook.
 
 Args:
-    url: Incoming webhook URL
+    url: Incoming webhook URL (must be https://hooks.slack.com/...)
     text: Message text (required, used as fallback)
     blocks: Optional Block Kit blocks
     username: Optional custom username
     icon_emoji: Optional emoji for bot icon (e.g., ":robot_face:")
     icon_url: Optional URL for bot icon
+    timeout: Request timeout in seconds (default: 30)
 
 Returns:
     True if successful
 
 Note: Does not require a Slack client, uses webhook directly
 
-
 **Parameters:**
 
 - `url` (str, required)
 - `text` (str, required)
-- `blocks` (Optional, optional, default: `None`)
-- `username` (Optional, optional, default: `None`)
-- `icon_emoji` (Optional, optional, default: `None`)
-- `icon_url` (Optional, optional, default: `None`)
+- `blocks` (Optional[List[Dict[str, Any]]], optional, default: `None`)
+- `username` (Optional[str], optional, default: `None`)
+- `icon_emoji` (Optional[str], optional, default: `None`)
+- `icon_url` (Optional[str], optional, default: `None`)
+- `timeout` (float, optional, default: `30.0`)
 
 **Returns:** `bool`
 
@@ -3872,8 +5334,7 @@ Returns:
 
 Useful for verifying token validity and getting workspace info.
 
-
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -3893,16 +5354,15 @@ Returns:
 
 Required scopes: chat:write
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
 - `channel` (str, required)
 - `ts` (str, required)
-- `text` (Optional, optional, default: `None`)
-- `blocks` (Optional, optional, default: `None`)
+- `text` (Optional[str], optional, default: `None`)
+- `blocks` (Optional[List[Dict[str, Any]]], optional, default: `None`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -3923,23 +5383,22 @@ Returns:
 
 Required scopes: files:write
 
-
 **Parameters:**
 
 - `client` (AsyncWebClient, required)
-- `channels` (List, required)
+- `channels` (List[str], required)
 - `content` (str, required)
 - `filename` (str, required)
-- `title` (Optional, optional, default: `None`)
-- `initial_comment` (Optional, optional, default: `None`)
+- `title` (Optional[str], optional, default: `None`)
+- `initial_comment` (Optional[str], optional, default: `None`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
 ## Summary
 
-**Total opcodes:** 232
+**Total opcodes:** 285
 
 ### Categories
 
@@ -3959,16 +5418,20 @@ Required scopes: files:write
 | 📦 Data Operations | 2 | - |
 | ↻ Control Flow | 11 | - |
 | ⏱ Async Operations | 3 | - |
-| 🤖 AI Operations (Pydantic AI) | 4 | `lexflow[ai]` |
+| 🤖 AI Operations (Pydantic AI) | 5 | `lexflow[ai]` |
 | 🌐 HTTP Operations | 8 | `lexflow[http]` |
+| 📊 Google Sheets Operations | 12 | `lexflow[sheets]` |
 | 📄 HTML Operations | 5 | `lexflow[http]` |
 | 📋 JSON Operations | 2 | - |
+| hubspot HubSpot Operations | 18 | `lexflow[http]` |
+| ☁️ Cloud Storage | 11 | `lexflow[gcs]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
 | 🔍 RAG Operations | 20 | `lexflow[rag]` |
 | 💬 Chat Operations | 10 | - |
 | 💻 CLI Operations | 10 | - |
 | 🐙 GitHub Operations | 7 | - |
+| 📨 Pub/Sub | 12 | `lexflow[pubsub]` |
 | ⚡ Task Operations | 10 | - |
 | 📡 Channel Operations | 8 | - |
 | 🔒 Sync Primitives | 8 | - |
-| 💬 Slack | 30 | `lexflow[slack]` |
+| 💬 Slack | 29 | `lexflow[slack]` |

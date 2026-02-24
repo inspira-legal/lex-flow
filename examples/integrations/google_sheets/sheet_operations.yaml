@@ -1,0 +1,181 @@
+# Various Google Sheets operations
+#
+# This example demonstrates multiple sheets operations:
+# - Test connection
+# - List all sheets in a spreadsheet
+# - Get last row number
+# - Read specific row and column
+#
+# Usage:
+#   lexflow examples/integrations/google_sheets/sheet_operations.yaml \
+#     --input spreadsheet_id=YOUR_SPREADSHEET_ID \
+#     --input sheet_name=Sheet1
+#
+# Authentication:
+#   Set GOOGLE_APPLICATION_CREDENTIALS environment variable to your service account JSON file
+#   Or use: gcloud auth application-default login
+
+workflows:
+  - name: main
+    interface:
+      inputs: [spreadsheet_id, sheet_name]
+      outputs: []
+    variables:
+      spreadsheet_id: ""
+      sheet_name: "Sheet1"
+      client: null
+      sheets_list: []
+      last_row: 0
+      first_row: []
+      column_a: []
+    nodes:
+      start:
+        opcode: workflow_start
+        next: store_client
+        inputs: {}
+
+      # Create client
+      create_client:
+        opcode: sheets_create_client
+        isReporter: true
+
+      store_client:
+        opcode: data_set_variable_to
+        next: do_test_connection
+        inputs:
+          VARIABLE: { literal: "client" }
+          VALUE: { node: create_client }
+
+      # Test connection first
+      test_connection:
+        opcode: sheets_test_connection
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+
+      do_test_connection:
+        opcode: data_set_variable_to
+        next: print_connected
+        inputs:
+          VARIABLE: { literal: "_" }
+          VALUE: { node: test_connection }
+
+      print_connected:
+        opcode: io_print
+        next: store_sheets_list
+        inputs:
+          MESSAGE: { literal: "Connected to spreadsheet!" }
+
+      # List all sheets
+      list_sheets:
+        opcode: sheets_list_sheets
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+
+      store_sheets_list:
+        opcode: data_set_variable_to
+        next: print_sheets_header
+        inputs:
+          VARIABLE: { literal: "sheets_list" }
+          VALUE: { node: list_sheets }
+
+      print_sheets_header:
+        opcode: io_print
+        next: print_sheets
+        inputs:
+          MESSAGE: { literal: "\n=== Sheets in spreadsheet ===" }
+
+      print_sheets:
+        opcode: io_print
+        next: store_last_row
+        inputs:
+          MESSAGE: { variable: sheets_list }
+
+      # Get last row
+      get_last_row:
+        opcode: sheets_get_last_row
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          sheet_name: { variable: sheet_name }
+
+      store_last_row:
+        opcode: data_set_variable_to
+        next: print_last_row_header
+        inputs:
+          VARIABLE: { literal: "last_row" }
+          VALUE: { node: get_last_row }
+
+      print_last_row_header:
+        opcode: io_print
+        next: print_last_row
+        inputs:
+          MESSAGE: { literal: "\n=== Last row number ===" }
+
+      print_last_row:
+        opcode: io_print
+        next: store_first_row
+        inputs:
+          MESSAGE: { variable: last_row }
+
+      # Read first row (headers)
+      get_first_row:
+        opcode: sheets_get_row
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          sheet_name: { variable: sheet_name }
+          row_number: { literal: 1 }
+
+      store_first_row:
+        opcode: data_set_variable_to
+        next: print_first_row_header
+        inputs:
+          VARIABLE: { literal: "first_row" }
+          VALUE: { node: get_first_row }
+
+      print_first_row_header:
+        opcode: io_print
+        next: print_first_row
+        inputs:
+          MESSAGE: { literal: "\n=== First row (headers) ===" }
+
+      print_first_row:
+        opcode: io_print
+        next: store_column_a
+        inputs:
+          MESSAGE: { variable: first_row }
+
+      # Read column A
+      get_column_a:
+        opcode: sheets_get_column
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          spreadsheet_id: { variable: spreadsheet_id }
+          sheet_name: { variable: sheet_name }
+          column: { literal: "A" }
+
+      store_column_a:
+        opcode: data_set_variable_to
+        next: print_column_header
+        inputs:
+          VARIABLE: { literal: "column_a" }
+          VALUE: { node: get_column_a }
+
+      print_column_header:
+        opcode: io_print
+        next: print_column
+        inputs:
+          MESSAGE: { literal: "\n=== Column A values ===" }
+
+      print_column:
+        opcode: io_print
+        next: null
+        inputs:
+          MESSAGE: { variable: column_a }

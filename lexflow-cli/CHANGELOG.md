@@ -2,6 +2,305 @@
 
 <!-- version list -->
 
+## v1.3.0 (2026-02-24)
+
+### Bug Fixes
+
+- Gemini suggestions security ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+- **ai**: Address code review findings — imports, types, tests, style
+  ([#8](https://github.com/inspira-legal/lex-flow/pull/8),
+  [`b43b38b`](https://github.com/inspira-legal/lex-flow/commit/b43b38b53739d04e89560ff1dca4b942d77da776))
+
+- **ai**: Address PR #8 review — remove ContextVar, fix private attrs, add tests
+  ([#8](https://github.com/inspira-legal/lex-flow/pull/8),
+  [`b43b38b`](https://github.com/inspira-legal/lex-flow/commit/b43b38b53739d04e89560ff1dca4b942d77da776))
+
+- **ci**: Use SSH deploy key for semantic-release push instead of GITHUB_TOKEN
+  ([`d5491b9`](https://github.com/inspira-legal/lex-flow/commit/d5491b92b2f2c7333efa8a908be63387511ab1dd))
+
+- **core**: Add token redaction and graceful degradation test for HubSpot opcodes
+  ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+- **core**: Address code review findings on HubSpot and AI opcodes
+  ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+- **core**: Address PR #25 review findings
+  ([#25](https://github.com/inspira-legal/lex-flow/pull/25),
+  [`6a1ccff`](https://github.com/inspira-legal/lex-flow/commit/6a1ccff35a856303d61d992d392ab5767b5407ea))
+
+- **core**: Address PR review feedback on HubSpot opcodes
+  ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+- **core**: Address PR review findings on HubSpot opcodes
+  ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+- **core**: Improve pgvector opcodes safety and test coverage
+  ([#28](https://github.com/inspira-legal/lex-flow/pull/28),
+  [`e26d6f9`](https://github.com/inspira-legal/lex-flow/commit/e26d6f9f69c3e81b1049bc0f73c97cec569711e9))
+
+- **core**: Preserve generic type parameters in docs generation
+  ([#25](https://github.com/inspira-legal/lex-flow/pull/25),
+  [`6a1ccff`](https://github.com/inspira-legal/lex-flow/commit/6a1ccff35a856303d61d992d392ab5767b5407ea))
+
+- **core**: Resolve race condition in release workflow
+  ([#31](https://github.com/inspira-legal/lex-flow/pull/31),
+  [`b1e58dc`](https://github.com/inspira-legal/lex-flow/commit/b1e58dcbf36851204639d57d557c78c80d9f87af))
+
+- **docs**: Add hardcoded secrets warning to security section in code review guide
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- **docs**: Correct exception type and private attribute in code review guide examples
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- **docs**: Fix inconsistent abbreviation, fictional exception, and inaccurate pattern ref in code
+  review guide ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- **docs**: Fix link text, commit types, and hardcoded line ref in code review guide
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- **docs**: Remove fictional references and soften overstated rules in code review guide
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- **docs**: Resolve undefined rule ID prefixes in code review guide
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- **examples**: Fix typo and add debug prints to workflow_as_tools
+  ([#8](https://github.com/inspira-legal/lex-flow/pull/8),
+  [`b43b38b`](https://github.com/inspira-legal/lex-flow/commit/b43b38b53739d04e89560ff1dca4b942d77da776))
+
+- **gcs**: Use asyncio.to_thread for non-blocking I/O operations
+  ([`60c040f`](https://github.com/inspira-legal/lex-flow/commit/60c040f2dcd53cc74c99d77b517b45def5ac3528))
+
+- **rag**: Fix RAG pipeline workflows and add BM25 reranking
+  ([`4ae28fa`](https://github.com/inspira-legal/lex-flow/commit/4ae28fa73fb14457b9c1d12847287ba26c5e02f4))
+
+- **sheets**: Address PR review feedback for async and parameter naming
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **sheets**: Address PR review — sheet name quoting, path validation, and lock file
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **sheets**: Query full sheet range in sheets_get_last_row
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **sheets**: Strengthen path traversal protection in sheets_create_client
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **web**: Add --no-vcs-release to version step, let publish create GitHub release
+  ([`6f0581e`](https://github.com/inspira-legal/lex-flow/commit/6f0581ed3e0f1756101aae596bfc04e8093b308a))
+
+- **web**: Add missing gcs category to grammar and node palette
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+- **web**: Strip pubsub_ and async_ prefixes in node palette display names
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+### Chores
+
+- Add CODEOWNERS file ([#19](https://github.com/inspira-legal/lex-flow/pull/19),
+  [`815c882`](https://github.com/inspira-legal/lex-flow/commit/815c8828759365eca4fb5da1fe18f9d2aca4e2fe))
+
+- Add PR Multi Reviewers Claude Code skill
+  ([#28](https://github.com/inspira-legal/lex-flow/pull/28),
+  [`e26d6f9`](https://github.com/inspira-legal/lex-flow/commit/e26d6f9f69c3e81b1049bc0f73c97cec569711e9))
+
+- Add PR Multi Reviewers Claude Code skill
+  ([#29](https://github.com/inspira-legal/lex-flow/pull/29),
+  [`cfd8d36`](https://github.com/inspira-legal/lex-flow/commit/cfd8d368afc69363443b95ed698546aa6376e4de))
+
+- Add smart agent selection to PR review skill
+  ([#28](https://github.com/inspira-legal/lex-flow/pull/28),
+  [`e26d6f9`](https://github.com/inspira-legal/lex-flow/commit/e26d6f9f69c3e81b1049bc0f73c97cec569711e9))
+
+- Add smart agent selection to PR review skill
+  ([#29](https://github.com/inspira-legal/lex-flow/pull/29),
+  [`cfd8d36`](https://github.com/inspira-legal/lex-flow/commit/cfd8d368afc69363443b95ed698546aa6376e4de))
+
+- **core**: Release 1.4.0
+  ([`a386b8a`](https://github.com/inspira-legal/lex-flow/commit/a386b8a9efc132247e8cfb81b7809ea6e364508f))
+
+- **core**: Release 1.5.0
+  ([`0ced13d`](https://github.com/inspira-legal/lex-flow/commit/0ced13df9391ba444b53a54594c6c4f4a47bbddb))
+
+- **core**: Release 1.6.0
+  ([`84b88f9`](https://github.com/inspira-legal/lex-flow/commit/84b88f9d3f0c6f76dd457eb5b1b9c686d6729b7b))
+
+- **core**: Release 1.7.0
+  ([`40da529`](https://github.com/inspira-legal/lex-flow/commit/40da529126adc67196c0db8a38ccb1a0816aa403))
+
+- **core**: Release 1.8.0
+  ([`15dfd03`](https://github.com/inspira-legal/lex-flow/commit/15dfd039bca52efcbfdcd8689d7335f100933372))
+
+- **core**: Release 1.9.0
+  ([`5165740`](https://github.com/inspira-legal/lex-flow/commit/51657409510b55f6947ad3c17c9ec7fbfce655f7))
+
+- **core**: Release 1.9.1
+  ([`8953d4f`](https://github.com/inspira-legal/lex-flow/commit/8953d4fccf29d517aad6433397f6a3ebe6094146))
+
+- **deps**: Bump cryptography from 46.0.4 to 46.0.5
+  ([#19](https://github.com/inspira-legal/lex-flow/pull/19),
+  [`815c882`](https://github.com/inspira-legal/lex-flow/commit/815c8828759365eca4fb5da1fe18f9d2aca4e2fe))
+
+- **deps**: Bump cryptography from 46.0.4 to 46.0.5 in /lexflow-core
+  ([#20](https://github.com/inspira-legal/lex-flow/pull/20),
+  [`c670e49`](https://github.com/inspira-legal/lex-flow/commit/c670e49d77918cf17581943b2587e682fbf1c832))
+
+- **deps**: Bump pydantic-ai-slim from 1.0.1 to 1.56.0
+  ([#17](https://github.com/inspira-legal/lex-flow/pull/17),
+  [`7de030f`](https://github.com/inspira-legal/lex-flow/commit/7de030f124f2cd5e8797dd46d4f4d0c234fbf45f))
+
+- **web**: Build frontend library [skip ci]
+  ([`357050e`](https://github.com/inspira-legal/lex-flow/commit/357050e0de72e609b26a60ad49699ca2eacbade1))
+
+- **web**: Build frontend library [skip ci]
+  ([`c765070`](https://github.com/inspira-legal/lex-flow/commit/c7650708687c5322e88c6bc2f8fbd44f8bfaf4c0))
+
+- **web**: Build frontend library [skip ci]
+  ([`35a1ad9`](https://github.com/inspira-legal/lex-flow/commit/35a1ad9f35fbe960317ea0e7632b1bdc0a12b2b1))
+
+- **web**: Build frontend library [skip ci]
+  ([`a559d9a`](https://github.com/inspira-legal/lex-flow/commit/a559d9ae8ad81fefc301d16df8dcca23b0bc7afa))
+
+- **web**: Release 1.10.0
+  ([`833b8b7`](https://github.com/inspira-legal/lex-flow/commit/833b8b7529d2dd5a8ff026f59580215ad23f3545))
+
+- **web**: Release 1.11.0
+  ([`6075580`](https://github.com/inspira-legal/lex-flow/commit/6075580cd8d7973d8ba3863c2df2e249cba9243f))
+
+- **web**: Release 1.7.0
+  ([`e48215a`](https://github.com/inspira-legal/lex-flow/commit/e48215a01541a4020538eba74a264d2f314d5c34))
+
+- **web**: Release 1.8.0
+  ([`9533fb9`](https://github.com/inspira-legal/lex-flow/commit/9533fb97e50d1e0828217d5792f0272c8b1bec05))
+
+- **web**: Release 1.9.0
+  ([`815f888`](https://github.com/inspira-legal/lex-flow/commit/815f888a841d89e454dfd8f57bc74a661faf4ff3))
+
+- **web**: Release 1.9.1
+  ([`7086800`](https://github.com/inspira-legal/lex-flow/commit/70868009964ba347b672af850fa1e3f8d14f56ec))
+
+- **web**: Remove grammar.json from tracking, copy from core at build time
+  ([`0014e93`](https://github.com/inspira-legal/lex-flow/commit/0014e937a2fff95d71a5912fb7d98b51f2d8978c))
+
+### Documentation
+
+- Add code review guide and Gemini styleguide for automated PR reviews
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- Add code review guide and styleguide for automated PR reviews
+  ([#23](https://github.com/inspira-legal/lex-flow/pull/23),
+  [`d1e0f5b`](https://github.com/inspira-legal/lex-flow/commit/d1e0f5b958998c98017c93472b91d383dd5e4751))
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`5191cf3`](https://github.com/inspira-legal/lex-flow/commit/5191cf3a1b9e9dc4f93bf83b54fadaddd9c2ede8))
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`cf68617`](https://github.com/inspira-legal/lex-flow/commit/cf686173121691212b5683485afe7204482c6f47))
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`69e0b3b`](https://github.com/inspira-legal/lex-flow/commit/69e0b3bd4983056872cfa1ec62847db9e1a9ecba))
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`f172262`](https://github.com/inspira-legal/lex-flow/commit/f1722629ef05deeca1b24177cb9d6dd9ff6c237a))
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`e47d536`](https://github.com/inspira-legal/lex-flow/commit/e47d536f7413c72ce2f7705a96abe33325eaa4a9))
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`b4c9b1d`](https://github.com/inspira-legal/lex-flow/commit/b4c9b1d840beab82d96e0030fb4e33cb8e6f6e9b))
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`10d8af6`](https://github.com/inspira-legal/lex-flow/commit/10d8af6b3efd864db1df403ab5a9547b99f16798))
+
+- Regenerate opcode reference after rebase
+  ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+### Features
+
+- **ai**: Add ai_agent_with_tools opcode for agentic workflows
+  ([#8](https://github.com/inspira-legal/lex-flow/pull/8),
+  [`b43b38b`](https://github.com/inspira-legal/lex-flow/commit/b43b38b53739d04e89560ff1dca4b942d77da776))
+
+- **ai**: Allow workflows as tools in ai_agent_with_tools
+  ([#8](https://github.com/inspira-legal/lex-flow/pull/8),
+  [`b43b38b`](https://github.com/inspira-legal/lex-flow/commit/b43b38b53739d04e89560ff1dca4b942d77da776))
+
+- **core**: Add Google Cloud Pub/Sub opcodes
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+- **core**: Add Google Cloud Storage integration
+  ([`f3253da`](https://github.com/inspira-legal/lex-flow/commit/f3253da57f396bfd22c75b4016049aad36ac833d))
+
+- **core**: Add HubSpot CRM integration opcodes
+  ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+- **core**: Add long-running deployment docs to agent instructions
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+- **core**: Add privileged opcode injection system
+  ([#8](https://github.com/inspira-legal/lex-flow/pull/8),
+  [`b43b38b`](https://github.com/inspira-legal/lex-flow/commit/b43b38b53739d04e89560ff1dca4b942d77da776))
+
+- **core**: PubSub Opcodes(#12)
+  ([`4dc265b`](https://github.com/inspira-legal/lex-flow/commit/4dc265bd3fcfd750dcc1292a61c81ce7492e536c))
+
+- **opcodes**: Creates pgvector opcodes ([#28](https://github.com/inspira-legal/lex-flow/pull/28),
+  [`e26d6f9`](https://github.com/inspira-legal/lex-flow/commit/e26d6f9f69c3e81b1049bc0f73c97cec569711e9))
+
+- **pr-template**: Add pull request template for consistent PR submissions
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **rag**: Add GCS ingestion workflow and RAG improvements
+  ([`a1428a0`](https://github.com/inspira-legal/lex-flow/commit/a1428a09e48779d07ad86a6d466bc46184ddc0b1))
+
+- **sheets**: Add examples for appending and reading data from Google Sheets
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **sheets**: Add Google Sheets integration with opcodes and examples
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **sheets**: Add Google Sheets operations and update dependencies
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **sheets**: Add unit tests, fix optional dependency pattern, and add integration test workflow
+  ([#14](https://github.com/inspira-legal/lex-flow/pull/14),
+  [`e8a77b5`](https://github.com/inspira-legal/lex-flow/commit/e8a77b5ae7d46e430f761e8a9f00ee1caf0b412a))
+
+- **web**: Add detailed interface inputs support (name, type, required)
+  ([`d360a6e`](https://github.com/inspira-legal/lex-flow/commit/d360a6e80085a44fa16e8a987bf504b9f354d651))
+
+- **web**: Trigerring new release updated editor
+  ([`72152b8`](https://github.com/inspira-legal/lex-flow/commit/72152b875b6109f549c5da7b84361b29302fb118))
+
+### Refactoring
+
+- **gcs**: Address PR review comments
+  ([`a0e3cca`](https://github.com/inspira-legal/lex-flow/commit/a0e3ccac78edd17f14b0ee5b09e480d27438ead8))
+
+
 ## v1.2.0 (2026-02-04)
 
 ### Bug Fixes

@@ -116,6 +116,14 @@
       "requires": "http"
     },
     {
+      "id": "sheets",
+      "label": "Google Sheets Operations",
+      "prefix": "sheets_",
+      "color": "#34A853",
+      "icon": "📊",
+      "requires": "sheets"
+    },
+    {
       "id": "html",
       "label": "HTML Operations",
       "prefix": "html_",
@@ -129,6 +137,14 @@
       "prefix": "json_",
       "color": "#F59E0B",
       "icon": "📋"
+    },
+    {
+      "id": "hubspot",
+      "label": "HubSpot Operations",
+      "prefix": "hubspot_",
+      "color": "#FF7A59",
+      "icon": "hubspot",
+      "requires": "http"
     },
     {
       "id": "gcs",
@@ -153,6 +169,14 @@
       "color": "#8B5CF6",
       "icon": "🔍",
       "requires": "rag"
+    },
+    {
+      "id": "pgvector",
+      "label": "PgVector Operations",
+      "prefix": "pgvector_",
+      "color": "#336791",
+      "icon": "🐘",
+      "requires": "pgvector"
     },
     {
       "id": "chat",
@@ -607,6 +631,60 @@
       "category": "workflow",
       "description": "Entry point for workflow execution.",
       "inputs": [],
+      "branches": []
+    },
+    {
+      "opcode": "ai_agent_with_tools",
+      "display_name": "AI Agent with Tools",
+      "ast_class": "Opcode",
+      "category": "ai",
+      "description": "Run an AI agent with access to LexFlow opcodes as tools",
+      "inputs": [
+        {
+          "name": "agent",
+          "type": "expression",
+          "label": "Agent",
+          "value_type": "object",
+          "required": true
+        },
+        {
+          "name": "messages",
+          "type": "expression",
+          "label": "Messages",
+          "value_type": "string|list",
+          "required": true
+        },
+        {
+          "name": "tools",
+          "type": "expression",
+          "label": "Tools (opcode names)",
+          "value_type": "list",
+          "required": true
+        },
+        {
+          "name": "output",
+          "type": "expression",
+          "label": "Output Schema",
+          "value_type": "object",
+          "required": false
+        },
+        {
+          "name": "max_tool_calls",
+          "type": "expression",
+          "label": "Max Tool Calls",
+          "value_type": "int",
+          "required": false,
+          "default": 10
+        },
+        {
+          "name": "timeout_seconds",
+          "type": "expression",
+          "label": "Timeout (seconds)",
+          "value_type": "float",
+          "required": false,
+          "default": 300
+        }
+      ],
       "branches": []
     }
   ],

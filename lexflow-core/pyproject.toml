@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexflow"
-version = "1.5.0"
+version = "1.9.1"
 description = "A stack-based visual programming workflow interpreter - Core Engine"
 requires-python = ">=3.10"
 dependencies = [
@@ -16,11 +16,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-ai = ["pydantic-ai-slim[google]"]
+ai = ["pydantic-ai-slim[google]>=0.1,<1.0"]
 file = ["pymupdf"]
+pgvector = ["asyncpg", "pgvector"]
 gcs = ["gcloud-aio-storage"]
 pubsub = ["gcloud-aio-pubsub"]
-slack = ["slack-sdk>=3.0.0"]
+slack = ["slack-sdk>=3.19.0,<4.0.0"]
+sheets = ["google-auth", "google-auth-oauthlib", "google-api-python-client"]
 dev = ["pytest", "pytest-asyncio"]
 
 [tool.hatch.build.targets.wheel]
