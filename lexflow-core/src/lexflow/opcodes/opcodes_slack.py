@@ -124,7 +124,7 @@ def register_slack_opcodes():
             AsyncWebClient instance for use with other Slack opcodes
 
         Example:
-            token: "xoxb-your-bot-token"
+            token: "xoxb-xxxx-xxxx-xxxx"
         """
         return AsyncWebClient(token=token)
 
