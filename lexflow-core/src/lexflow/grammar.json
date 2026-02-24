@@ -139,6 +139,14 @@
       "icon": "📋"
     },
     {
+      "id": "hubspot",
+      "label": "HubSpot Operations",
+      "prefix": "hubspot_",
+      "color": "#FF7A59",
+      "icon": "hubspot",
+      "requires": "http"
+    },
+    {
       "id": "gcs",
       "label": "Cloud Storage",
       "prefix": "gcs_",
