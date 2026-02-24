@@ -297,6 +297,15 @@ class OpcodeRegistry:
         """Check if an opcode is privileged (requires injection)."""
         return name in self._privileged
 
+    @staticmethod
+    def _format_type_hint(type_hint: Any) -> str:
+        """Format a type hint preserving generic parameters."""
+        if getattr(type_hint, "__origin__", None) is not None:
+            return str(type_hint).replace("typing.", "")
+        if hasattr(type_hint, "__name__"):
+            return type_hint.__name__
+        return str(type_hint).replace("typing.", "")
+
     def get_interface(self, name: str) -> dict:
         """Get the interface of an opcode from its signature."""
         if name not in self.signatures:
@@ -316,11 +325,7 @@ class OpcodeRegistry:
         params = []
         for param_name, param in sig.parameters.items():
             param_type = hints.get(param_name, Any)
-            type_name = (
-                param_type.__name__
-                if hasattr(param_type, "__name__")
-                else str(param_type)
-            )
+            type_name = self._format_type_hint(param_type)
 
             param_info = {
                 "name": param_name,
@@ -332,17 +337,15 @@ class OpcodeRegistry:
             params.append(param_info)
 
         return_type = hints.get("return", Any)
-        return_type_name = (
-            return_type.__name__
-            if hasattr(return_type, "__name__")
-            else str(return_type)
-        )
+        return_type_name = self._format_type_hint(return_type)
 
         return {
             "name": name,
             "parameters": params,
             "return_type": return_type_name,
-            "doc": original_func.__doc__,
+            "doc": inspect.cleandoc(original_func.__doc__)
+            if original_func.__doc__
+            else None,
         }
 
     def list_opcodes(self, include_private: bool = False) -> list[str]:

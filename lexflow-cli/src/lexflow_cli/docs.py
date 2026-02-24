@@ -3,8 +3,6 @@
 import inspect
 import json
 from pathlib import Path
-from typing import Any
-
 from lexflow.opcodes import default_registry
 from lexflow.grammar import get_grammar
 
@@ -13,15 +11,6 @@ def _get_control_flow_opcodes() -> dict[str, str]:
     """Get control flow opcodes from grammar schema."""
     grammar = get_grammar()
     return {c["opcode"]: c["description"] for c in grammar["constructs"]}
-
-
-def _format_type(type_hint: Any) -> str:
-    """Format a type hint for display."""
-    if type_hint is None:
-        return "None"
-    if hasattr(type_hint, "__name__"):
-        return type_hint.__name__
-    return str(type_hint).replace("typing.", "")
 
 
 def _format_signature(name: str, params: list, is_varargs: bool = False) -> str:
