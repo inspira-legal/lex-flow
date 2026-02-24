@@ -1,16 +1,24 @@
 """Tests for HubSpot CRM opcodes."""
 
+import importlib.util
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from lexflow import default_registry
-from lexflow.opcodes.opcodes_hubspot import (
-    _validate_object_type,
-    _validate_id,
-    _get_association_type_id,
-    ASSOCIATION_TYPE_IDS,
-    VALID_OBJECT_TYPES,
-    HubSpotClient,
-)
+
+HUBSPOT_AVAILABLE = importlib.util.find_spec("aiohttp") is not None
+
+try:
+    from lexflow.opcodes.opcodes_hubspot import (
+        _validate_object_type,
+        _validate_id,
+        _get_association_type_id,
+        ASSOCIATION_TYPE_IDS,
+        VALID_OBJECT_TYPES,
+        HubSpotClient,
+    )
+except ImportError:
+    pass
 
 pytestmark = pytest.mark.asyncio
 
@@ -540,3 +548,11 @@ class TestOpcodeRegistration:
         ]
         for name in expected:
             assert name in opcodes, f"Opcode '{name}' not registered"
+
+
+@pytest.mark.skipif(HUBSPOT_AVAILABLE, reason="Test only when aiohttp is not installed")
+async def test_hubspot_opcodes_not_registered_when_not_installed():
+    """L1: Graceful degradation when aiohttp is not installed."""
+    opcodes = default_registry.list_opcodes()
+    hubspot_opcodes = [op for op in opcodes if op.startswith("hubspot_")]
+    assert hubspot_opcodes == []

@@ -109,6 +109,9 @@ class HubSpotClient:
             },
         )
 
+    def __repr__(self) -> str:
+        return "HubSpotClient(token=***)"
+
     async def _request(
         self,
         method: str,
