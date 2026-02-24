@@ -1,0 +1,193 @@
+# HubSpot: Calculate Lead Score
+# Busca contato, calcula lead score baseado em fit e engagement, e atualiza
+# Baseado no caso de uso real de lead scoring
+#
+# Uso:
+#   lexflow calculate_lead_score.yaml \
+#     --input token=$HUBSPOT_TOKEN \
+#     --input contact_id=12345
+#
+# Requer:
+#   pip install lexflow[hubspot]
+
+workflows:
+  - name: main
+    interface:
+      inputs: [token, contact_id]
+      outputs: []
+    variables:
+      token: ""
+      contact_id: ""
+      fit_weight: 0.8
+      engagement_weight: 0.2
+      client: null
+      properties: null
+      fit_score: 0
+      engagement_score: 0
+      total_score: 0
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_start
+        inputs: {}
+
+      print_start:
+        opcode: io_print
+        next: store_client
+        inputs:
+          values:
+            - { literal: "Calculating lead score for contact: " }
+            - { variable: contact_id }
+
+      # Criar cliente HubSpot
+      create_client:
+        opcode: hubspot_create_client
+        isReporter: true
+        inputs:
+          access_token: { variable: token }
+
+      store_client:
+        opcode: data_set_variable_to
+        next: store_properties
+        inputs:
+          VARIABLE: { literal: "client" }
+          VALUE: { node: create_client }
+
+      # Buscar contato com propriedades de scoring
+      get_contact:
+        opcode: hubspot_get_contact
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          contact_id: { variable: contact_id }
+          properties:
+            - "email"
+            - "firstname"
+            - "adequacao_de_lead_scoring"
+            - "engajamento_de_lead_scoring"
+
+      # Extrair propriedades
+      extract_properties:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { node: get_contact }
+          key: { literal: "properties" }
+
+      store_properties:
+        opcode: data_set_variable_to
+        next: store_fit_score
+        inputs:
+          VARIABLE: { literal: "properties" }
+          VALUE: { node: extract_properties }
+
+      # Extrair fit score
+      get_fit:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { variable: properties }
+          key: { literal: "adequacao_de_lead_scoring" }
+          default: { literal: "0" }
+
+      fit_to_number:
+        opcode: type_to_float
+        isReporter: true
+        inputs:
+          value: { node: get_fit }
+
+      store_fit_score:
+        opcode: data_set_variable_to
+        next: store_engagement_score
+        inputs:
+          VARIABLE: { literal: "fit_score" }
+          VALUE: { node: fit_to_number }
+
+      # Extrair engagement score
+      get_engagement:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { variable: properties }
+          key: { literal: "engajamento_de_lead_scoring" }
+          default: { literal: "0" }
+
+      engagement_to_number:
+        opcode: type_to_float
+        isReporter: true
+        inputs:
+          value: { node: get_engagement }
+
+      store_engagement_score:
+        opcode: data_set_variable_to
+        next: store_total_score
+        inputs:
+          VARIABLE: { literal: "engagement_score" }
+          VALUE: { node: engagement_to_number }
+
+      # Calcular score total: (fit * 0.8) + (engagement * 0.2)
+      fit_weighted:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          left: { variable: fit_score }
+          right: { variable: fit_weight }
+
+      engagement_weighted:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          left: { variable: engagement_score }
+          right: { variable: engagement_weight }
+
+      sum_scores:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: fit_weighted }
+          right: { node: engagement_weighted }
+
+      round_score:
+        opcode: math_round
+        isReporter: true
+        inputs:
+          number: { node: sum_scores }
+          decimals: 2
+
+      store_total_score:
+        opcode: data_set_variable_to
+        next: do_update
+        inputs:
+          VARIABLE: { literal: "total_score" }
+          VALUE: { node: round_score }
+
+      # Converter para string para enviar ao HubSpot
+      score_as_string:
+        opcode: type_to_str
+        isReporter: true
+        inputs:
+          value: { variable: total_score }
+
+      # Atualizar contato com score calculado
+      do_update:
+        opcode: hubspot_update_contact
+        next: print_result
+        inputs:
+          client: { variable: client }
+          contact_id: { variable: contact_id }
+          properties:
+            total_score: { node: score_as_string }
+
+      # Imprimir resultado
+      print_result:
+        opcode: io_print
+        next: null
+        inputs:
+          values:
+            - { literal: "Lead Score calculated: " }
+            - { variable: total_score }
+            - { literal: " (fit=" }
+            - { variable: fit_score }
+            - { literal: ", engagement=" }
+            - { variable: engagement_score }
+            - { literal: ")" }
