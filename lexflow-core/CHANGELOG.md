@@ -2,6 +2,45 @@
 
 <!-- version list -->
 
+## v1.9.0 (2026-02-24)
+
+### Bug Fixes
+
+- Gemini suggestions security ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+- **core**: Add token redaction and graceful degradation test for HubSpot opcodes
+  ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+- **core**: Address code review findings on HubSpot and AI opcodes
+  ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+- **core**: Address PR review feedback on HubSpot opcodes
+  ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+- **core**: Address PR review findings on HubSpot opcodes
+  ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`69e0b3b`](https://github.com/inspira-legal/lex-flow/commit/69e0b3bd4983056872cfa1ec62847db9e1a9ecba))
+
+- Regenerate opcode reference after rebase
+  ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+### Features
+
+- **core**: Add HubSpot CRM integration opcodes
+  ([#18](https://github.com/inspira-legal/lex-flow/pull/18),
+  [`edca1fa`](https://github.com/inspira-legal/lex-flow/commit/edca1fa8f130cc5294097cf11ea4b528216bce1e))
+
+
 ## v1.8.0 (2026-02-23)
 
 ### Bug Fixes
