@@ -1195,13 +1195,12 @@ Note:
     the original agent. Other config (result_validators, model_settings,
     etc.) is not carried over.
 
-
 **Parameters:**
 
 - `agent` (Any, required)
-- `messages` (Union, required)
-- `tools` (List, required)
-- `output` (Optional, optional, default: `None`)
+- `messages` (Union[str, List[dict]], required)
+- `tools` (List[Union[str, dict]], required)
+- `output` (Optional[dict], optional, default: `None`)
 - `max_tool_calls` (int, optional, default: `10`)
 - `timeout_seconds` (float, optional, default: `300.0`)
 
@@ -1514,7 +1513,6 @@ Example:
     range_notation: "Sheet1!A:C"
     values: [["Alice", 30, "alice@example.com"]]
 
-
 **Parameters:**
 
 - `client` (Any, required)
@@ -1544,7 +1542,6 @@ Example:
     spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
     range_notation: "Sheet1!A2:D100"
 
-
 **Parameters:**
 
 - `client` (Any, required)
@@ -1572,7 +1569,6 @@ Example with Service Account:
 Example with ADC (after running 'gcloud auth application-default login'):
     # No arguments needed
 
-
 **Returns:** `Any`
 
 ---
@@ -1593,7 +1589,6 @@ Example:
     client: { node: create_client }
     spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
     title: "New Sheet"
-
 
 **Parameters:**
 
@@ -1621,7 +1616,6 @@ Example:
     client: { node: create_client }
     spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
     sheet_id: 123456789
-
 
 **Parameters:**
 
@@ -1652,7 +1646,6 @@ Example:
     sheet_name: "Sheet1"
     column: "A"
 
-
 **Parameters:**
 
 - `client` (Any, required)
@@ -1680,7 +1673,6 @@ Example:
     client: { node: create_client }
     spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
     sheet_name: "Sheet1"
-
 
 **Parameters:**
 
@@ -1711,7 +1703,6 @@ Example:
     sheet_name: "Sheet1"
     row_number: 5
 
-
 **Parameters:**
 
 - `client` (Any, required)
@@ -1740,7 +1731,6 @@ Example:
     spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
     range_notation: "Sheet1!A1:D10"
 
-
 **Parameters:**
 
 - `client` (Any, required)
@@ -1766,7 +1756,6 @@ Example:
     client: { node: create_client }
     spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
 
-
 **Parameters:**
 
 - `client` (Any, required)
@@ -1791,7 +1780,6 @@ Returns:
 Example:
     client: { node: create_client }
     spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-
 
 **Parameters:**
 
@@ -1822,7 +1810,6 @@ Example:
     spreadsheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
     range_notation: "Sheet1!A1:C1"
     values: [["Name", "Age", "Email"]]
-
 
 **Parameters:**
 
@@ -2017,7 +2004,6 @@ Example - Associate with explicit type ID:
     to_id: "12345"
     association_type: 3
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
@@ -2025,9 +2011,9 @@ Example - Associate with explicit type ID:
 - `from_id` (str, required)
 - `to_type` (str, required)
 - `to_id` (str, required)
-- `association_type` (Optional, optional, default: `None`)
+- `association_type` (Optional[int], optional, default: `None`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2040,7 +2026,6 @@ Args:
 
 Returns:
     True when the client session is closed
-
 
 **Returns:** `bool`
 
@@ -2058,7 +2043,6 @@ Returns:
 
 Example:
     access_token: "pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
 
 **Returns:** `HubSpotClient`
 
@@ -2082,13 +2066,12 @@ Example:
       domain: "acme.com"
       industry: "Technology"
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
-- `properties` (Dict, required)
+- `properties` (Dict[str, Any], required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2110,13 +2093,12 @@ Example:
       lastname: "Doe"
       email: "john.doe@example.com"
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
-- `properties` (Dict, required)
+- `properties` (Dict[str, Any], required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2138,13 +2120,12 @@ Example:
       amount: "10000"
       dealstage: "appointmentscheduled"
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
-- `properties` (Dict, required)
+- `properties` (Dict[str, Any], required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2162,7 +2143,6 @@ Returns:
 Example:
     client: { node: create_client }
     contact_id: "12345"
-
 
 **Parameters:**
 
@@ -2190,14 +2170,13 @@ Example:
     company_id: "67890"
     properties: ["name", "domain", "industry"]
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
 - `company_id` (str, required)
-- `properties` (Optional, optional, default: `None`)
+- `properties` (Optional[List[str]], optional, default: `None`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2218,14 +2197,13 @@ Example:
     contact_id: "12345"
     properties: ["firstname", "lastname", "email"]
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
 - `contact_id` (str, required)
-- `properties` (Optional, optional, default: `None`)
+- `properties` (Optional[List[str]], optional, default: `None`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2246,14 +2224,13 @@ Example:
     deal_id: "11111"
     properties: ["dealname", "amount", "dealstage"]
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
 - `deal_id` (str, required)
-- `properties` (Optional, optional, default: `None`)
+- `properties` (Optional[List[str]], optional, default: `None`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2272,13 +2249,12 @@ Example:
     client: { node: create_client }
     object_type: "contacts"
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
 - `object_type` (str, required)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -2305,15 +2281,14 @@ Example:
     properties: ["name", "domain", "industry"]
     limit: 10
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
-- `filters` (List, required)
-- `properties` (Optional, optional, default: `None`)
+- `filters` (List[Dict[str, Any]], required)
+- `properties` (Optional[List[str]], optional, default: `None`)
 - `limit` (int, optional, default: `100`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2340,15 +2315,14 @@ Example:
     properties: ["firstname", "lastname", "email"]
     limit: 10
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
-- `filters` (List, required)
-- `properties` (Optional, optional, default: `None`)
+- `filters` (List[Dict[str, Any]], required)
+- `properties` (Optional[List[str]], optional, default: `None`)
 - `limit` (int, optional, default: `100`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2375,15 +2349,14 @@ Example:
     properties: ["dealname", "amount", "dealstage"]
     limit: 10
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
-- `filters` (List, required)
-- `properties` (Optional, optional, default: `None`)
+- `filters` (List[Dict[str, Any]], required)
+- `properties` (Optional[List[str]], optional, default: `None`)
 - `limit` (int, optional, default: `100`)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2399,7 +2372,6 @@ Returns:
 
 Example:
     client: { node: create_client }
-
 
 **Returns:** `bool`
 
@@ -2424,14 +2396,13 @@ Example:
       industry: "Software"
       numberofemployees: "100"
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
 - `company_id` (str, required)
-- `properties` (Dict, required)
+- `properties` (Dict[str, Any], required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2454,14 +2425,13 @@ Example:
       firstname: "Jane"
       phone: "+1234567890"
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
 - `contact_id` (str, required)
-- `properties` (Dict, required)
+- `properties` (Dict[str, Any], required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -2484,14 +2454,13 @@ Example:
       amount: "15000"
       dealstage: "closedwon"
 
-
 **Parameters:**
 
 - `client` (HubSpotClient, required)
 - `deal_id` (str, required)
-- `properties` (Dict, required)
+- `properties` (Dict[str, Any], required)
 
-**Returns:** `Dict`
+**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -3496,7 +3465,6 @@ Args:
 Returns:
     True if collection exists
 
-
 **Parameters:**
 
 - `pool` (Any, required)
@@ -3519,7 +3487,6 @@ Args:
 
 Returns:
     asyncpg.Pool instance with pgvector type registered
-
 
 **Parameters:**
 
@@ -3546,7 +3513,6 @@ Args:
 Returns:
     True if created, False if already existed
 
-
 **Parameters:**
 
 - `pool` (Any, required)
@@ -3569,12 +3535,11 @@ Args:
 Returns:
     True if deletion was successful
 
-
 **Parameters:**
 
 - `pool` (Any, required)
 - `collection` (str, required)
-- `point_ids` (List, required)
+- `point_ids` (List[int], required)
 
 **Returns:** `bool`
 
@@ -3590,7 +3555,6 @@ Args:
 
 Returns:
     True if deletion was successful
-
 
 **Parameters:**
 
@@ -3611,7 +3575,6 @@ Args:
 Returns:
     True if pool was closed successfully
 
-
 **Returns:** `bool`
 
 ---
@@ -3631,15 +3594,14 @@ Args:
 Returns:
     List of dicts with keys: id, score, payload
 
-
 **Parameters:**
 
 - `pool` (Any, required)
 - `collection` (str, required)
-- `query_vector` (List, required)
+- `query_vector` (List[float], required)
 - `limit` (int, optional, default: `5`)
 
-**Returns:** `List`
+**Returns:** `List[Dict[str, Any]]`
 
 ---
 
@@ -3657,14 +3619,13 @@ Args:
 Returns:
     True if upsert was successful
 
-
 **Parameters:**
 
 - `pool` (Any, required)
 - `collection` (str, required)
 - `point_id` (int, required)
-- `vector` (List, required)
-- `payload` (Optional, optional, default: `None`)
+- `vector` (List[float], required)
+- `payload` (Optional[Dict[str, Any]], optional, default: `None`)
 
 **Returns:** `bool`
 
@@ -3684,14 +3645,13 @@ Args:
 Returns:
     True if upsert was successful
 
-
 **Parameters:**
 
 - `pool` (Any, required)
 - `collection` (str, required)
-- `point_ids` (List, required)
-- `vectors` (List, required)
-- `payloads` (Optional, optional, default: `None`)
+- `point_ids` (List[int], required)
+- `vectors` (List[List[float]], required)
+- `payloads` (Optional[List[Dict[str, Any]]], optional, default: `None`)
 
 **Returns:** `bool`
 
