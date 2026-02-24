@@ -1,7 +1,7 @@
 # Book Ingestion Consumer - Vault / Pub/Sub Pipeline
 #
 # Listens to a Pub/Sub topic (emulator) and processes book ingestion messages.
-# Each message triggers: download PDF -> extract text -> chunk -> embed -> upsert to Qdrant.
+# Each message triggers: download PDF -> extract text -> chunk -> embed -> upsert to pgVector.
 #
 # Message format (JSON in data field):
 #   {
@@ -17,31 +17,30 @@
 #   cd examples/integrations/pubsub/emulator && ./setup.sh docker
 #   export PUBSUB_EMULATOR_HOST=localhost:8085
 #   ./examples/showcase/vault/setup_emulator.sh
-#   docker run -d -p 6333:6333 qdrant/qdrant
 #
 # Run:
 #   PUBSUB_EMULATOR_HOST=localhost:8085 lexflow examples/showcase/vault/ingest_book_consumer.yaml
 #
 # Requirements:
-#   pip install lexflow[rag,gcs,pubsub]
+#   pip install lexflow[pgvector,gcs,pubsub]
 
 workflows:
   - name: main
     interface:
-      inputs: [project_id, subscription_id, qdrant_url, collection, chunk_size, overlap]
+      inputs: [project_id, subscription_id, pgvector_dsn, collection, chunk_size, overlap]
       outputs: []
     variables:
       # Configuration
       project_id: "test-project"
       subscription_id: "vault-ingest-sub"
-      qdrant_url: "http://localhost:6333"
+      pgvector_dsn: "postgresql://localhost/vault"
       collection: "livros"
       chunk_size: 1000
       overlap: 200
       # Clients (created once, reused)
       subscriber: null
       gcs_client: null
-      qdrant_client: null
+      pgvector_pool: null
       # Per-message state
       msg: null
       params: null
@@ -101,11 +100,11 @@ workflows:
         isReporter: true
         inputs:
           template:
-            literal: "Subscription: {0}\nQdrant:       {1}\nCollection:   {2}\n\n"
+            literal: "Subscription: {0}\npgVector:     {1}\nCollection:   {2}\n\n"
           VALUES:
             variable: subscription_id
           VALUE_1:
-            variable: qdrant_url
+            variable: pgvector_dsn
           VALUE_2:
             variable: collection
 
@@ -128,7 +127,7 @@ workflows:
           BRANCH2:
             branch: init_gcs_branch
           BRANCH3:
-            branch: init_qdrant_branch
+            branch: init_pgvector_branch
 
       # --- Subscriber branch ---
       create_subscriber:
@@ -174,31 +173,29 @@ workflows:
           STRING:
             literal: "[init] Cliente GCS criado\n"
 
-      # --- Qdrant branch ---
-      do_connect_qdrant:
-        opcode: qdrant_connect
+      # --- pgVector branch ---
+      do_connect_pgvector:
+        opcode: pgvector_connect
         isReporter: true
         inputs:
-          url:
-            variable: qdrant_url
-          prefer_grpc:
-            literal: true
+          dsn:
+            variable: pgvector_dsn
 
-      init_qdrant_branch:
+      init_pgvector_branch:
         opcode: data_set_variable_to
-        next: print_qdrant_ok
+        next: print_pgvector_ok
         inputs:
           VARIABLE:
-            literal: "qdrant_client"
+            literal: "pgvector_pool"
           VALUE:
-            node: do_connect_qdrant
+            node: do_connect_pgvector
 
-      print_qdrant_ok:
+      print_pgvector_ok:
         opcode: io_print
         next: null
         inputs:
           STRING:
-            literal: "[init] Qdrant conectado (gRPC)\n"
+            literal: "[init] pgVector conectado\n"
 
       print_init_done:
         opcode: io_print
@@ -209,11 +206,11 @@ workflows:
 
       # Ensure collection exists
       do_create_collection:
-        opcode: qdrant_create_collection
+        opcode: pgvector_create_collection
         isReporter: true
         inputs:
-          client:
-            variable: qdrant_client
+          pool:
+            variable: pgvector_pool
           name:
             variable: collection
           vector_size:
@@ -1010,7 +1007,7 @@ workflows:
             node: fmt_build
 
       # ======================================================================
-      # STEP 6: Upsert to Qdrant
+      # STEP 6: Upsert to pgVector
       # ======================================================================
       get_step_t0_upsert:
         opcode: util_time_now
@@ -1027,11 +1024,11 @@ workflows:
             node: get_step_t0_upsert
 
       do_upsert:
-        opcode: qdrant_upsert_batch
+        opcode: pgvector_upsert_batch
         next: save_step_t1_upsert
         inputs:
-          client:
-            variable: qdrant_client
+          pool:
+            variable: pgvector_pool
           collection:
             variable: collection
           point_ids:
@@ -1069,7 +1066,7 @@ workflows:
         isReporter: true
         inputs:
           template:
-            literal: "  Upsert Qdrant:       OK ({0})\n"
+            literal: "  Upsert pgVector:     OK ({0})\n"
           VALUES:
             node: dur_upsert
 
@@ -1175,10 +1172,26 @@ workflows:
       # ======================================================================
       done:
         opcode: pubsub_close_subscriber
-        next: close_gcs
+        next: disconnect_pgvector
         inputs:
           subscriber:
             variable: subscriber
+
+      do_disconnect_pgvector:
+        opcode: pgvector_disconnect
+        isReporter: true
+        inputs:
+          pool:
+            variable: pgvector_pool
+
+      disconnect_pgvector:
+        opcode: data_set_variable_to
+        next: close_gcs
+        inputs:
+          VARIABLE:
+            literal: "pgvector_pool"
+          VALUE:
+            node: do_disconnect_pgvector
 
       do_close_gcs:
         opcode: gcs_close_client

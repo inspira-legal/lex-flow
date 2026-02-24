@@ -5,6 +5,7 @@ This module provides opcodes for building RAG pipelines:
 - Text chunking (no dependencies)
 - Vertex AI embeddings (requires google-cloud-aiplatform)
 - Qdrant vector database operations (requires qdrant-client)
+- BM25 reranking (requires bm25s)
 
 Installation:
     pip install lexflow[rag]
@@ -12,6 +13,7 @@ Installation:
 
 import asyncio
 import bisect
+import io
 import random
 import re
 from typing import Any, Dict, List, Optional
@@ -49,6 +51,13 @@ try:
     QDRANT_AVAILABLE = True
 except ImportError:
     QDRANT_AVAILABLE = False
+
+try:
+    import bm25s
+
+    BM25S_AVAILABLE = True
+except ImportError:
+    BM25S_AVAILABLE = False
 
 
 def register_rag_opcodes():
@@ -352,8 +361,8 @@ def register_rag_opcodes():
     @opcode(category="rag")
     async def rag_build_chunk_payloads(
         chunks: List[Dict[str, Any]],
-        metadata: Dict[str, Any] = None,
-        id_prefix: int = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        id_prefix: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Build point IDs and payloads from text chunks for vector DB upsert.
 
@@ -410,7 +419,10 @@ def register_rag_opcodes():
         Returns:
             Reranked results with updated 'score' and 'bm25_score' added
         """
-        import bm25s
+        if not BM25S_AVAILABLE:
+            raise ImportError(
+                "bm25s is required for bm25_rerank. Install with:\n  pip install bm25s"
+            )
 
         if not results:
             return []
@@ -512,7 +524,7 @@ def register_rag_opcodes():
                     reader = PdfReader(path)
                     return [page.extract_text() or "" for page in reader.pages]
 
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             return await loop.run_in_executor(None, _extract, file_path)
 
         @opcode(category="rag")
@@ -527,8 +539,6 @@ def register_rag_opcodes():
             Returns:
                 Extracted text from all pages concatenated
             """
-            import io
-
             if HAS_PYMUPDF:
 
                 def _extract(pdf_data: bytes) -> str:
@@ -544,7 +554,7 @@ def register_rag_opcodes():
                         page.extract_text() or "" for page in reader.pages
                     )
 
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             return await loop.run_in_executor(None, _extract, data)
 
         @opcode(category="rag")
@@ -559,8 +569,6 @@ def register_rag_opcodes():
             Returns:
                 List of strings, one per page
             """
-            import io
-
             if HAS_PYMUPDF:
 
                 def _extract(pdf_data: bytes) -> List[str]:
@@ -572,7 +580,7 @@ def register_rag_opcodes():
                     reader = PdfReader(io.BytesIO(pdf_data))
                     return [page.extract_text() or "" for page in reader.pages]
 
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             return await loop.run_in_executor(None, _extract, data)
 
         @opcode(category="rag")
@@ -659,7 +667,7 @@ def register_rag_opcodes():
                 texts[i : i + batch_size] for i in range(0, len(texts), batch_size)
             ]
 
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             all_embeddings: List[List[float]] = [[] for _ in batches]
             semaphore = asyncio.Semaphore(max_concurrent)
 
@@ -815,7 +823,7 @@ def register_rag_opcodes():
                 for i, (pid, vector) in enumerate(zip(point_ids, vectors))
             ]
 
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             await loop.run_in_executor(
                 None,
                 lambda: client.upload_points(

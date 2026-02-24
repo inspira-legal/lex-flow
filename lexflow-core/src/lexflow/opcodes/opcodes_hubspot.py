@@ -182,9 +182,6 @@ class HubSpotClient:
 
 def register_hubspot_opcodes():
     """Register HubSpot opcodes to the default registry."""
-    if not HUBSPOT_AVAILABLE:
-        return
-
     register_category(
         id="hubspot",
         label="HubSpot Operations",
@@ -194,6 +191,9 @@ def register_hubspot_opcodes():
         requires="http",
         order=215,
     )
+
+    if not HUBSPOT_AVAILABLE:
+        return
 
     # ============================================================================
     # Authentication

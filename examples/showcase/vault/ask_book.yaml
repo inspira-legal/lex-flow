@@ -2,7 +2,7 @@
 #
 # This workflow implements a complete RAG pipeline for book questions:
 # 1. Embeds the user's question
-# 2. Searches Qdrant for relevant book chunks
+# 2. Searches pgVector for relevant book chunks
 # 3. Optionally applies BM25 reranking for hybrid search
 # 4. Uses AI to generate an answer grounded in the retrieved context
 # 5. Returns answer + array of source excerpts (trechos)
@@ -26,14 +26,13 @@
 #   }
 #
 # Requirements:
-#   pip install lexflow[rag,ai]
+#   pip install lexflow[pgvector,ai]
 #   gcloud auth application-default login
-#   docker run -d -p 6333:6333 qdrant/qdrant
 
 workflows:
   - name: main
     interface:
-      inputs: [pergunta, projeto_gcp, collection, num_results, qdrant_url, rerank]
+      inputs: [pergunta, projeto_gcp, collection, num_results, pgvector_dsn, rerank]
       outputs: []
     variables:
       # Input parameters
@@ -41,10 +40,10 @@ workflows:
       projeto_gcp: ""
       collection: "livros"
       num_results: 5
-      qdrant_url: "http://localhost:6333"
+      pgvector_dsn: "postgresql://localhost/vault"
       rerank: true
-      # Qdrant client
-      qdrant_client: null
+      # pgVector client
+      pgvector_pool: null
       # Search results
       question_embedding: null
       search_results: null
@@ -106,31 +105,31 @@ workflows:
             node: format_question_display
 
       # ========================================================================
-      # RETRIEVAL - Connect to Qdrant and search
+      # RETRIEVAL - Connect to pgVector and search
       # ========================================================================
       print_retrieving:
         opcode: io_print
-        next: store_qdrant_client
+        next: store_pgvector_pool
         inputs:
           STRING:
             literal: "[1/3] Buscando contexto relevante...\n"
 
-      # Connect to Qdrant
-      connect_qdrant:
-        opcode: qdrant_connect
+      # Connect to pgVector
+      connect_pgvector:
+        opcode: pgvector_connect
         isReporter: true
         inputs:
-          url:
-            variable: qdrant_url
+          dsn:
+            variable: pgvector_dsn
 
-      store_qdrant_client:
+      store_pgvector_pool:
         opcode: data_set_variable_to
         next: store_question_embedding
         inputs:
           VARIABLE:
-            literal: "qdrant_client"
+            literal: "pgvector_pool"
           VALUE:
-            node: connect_qdrant
+            node: connect_pgvector
 
       # Create embedding for the question (RETRIEVAL_QUERY for search)
       create_question_embedding:
@@ -157,13 +156,13 @@ workflows:
           VALUE:
             node: create_question_embedding
 
-      # Search Qdrant for relevant chunks
-      search_qdrant:
-        opcode: qdrant_search
+      # Search pgVector for relevant chunks
+      search_pgvector:
+        opcode: pgvector_search
         isReporter: true
         inputs:
-          client:
-            variable: qdrant_client
+          pool:
+            variable: pgvector_pool
           collection:
             variable: collection
           query_vector:
@@ -178,7 +177,7 @@ workflows:
           VARIABLE:
             literal: "search_results"
           VALUE:
-            node: search_qdrant
+            node: search_pgvector
 
       # Conditionally apply BM25 reranking
       check_rerank:
@@ -714,10 +713,29 @@ workflows:
       # Footer
       print_footer:
         opcode: io_print
-        next: build_result
+        next: disconnect_pgvector
         inputs:
           STRING:
             literal: "--------------------------------------------------------------------------------\n\n"
+
+      # ========================================================================
+      # CLEANUP - Disconnect pgVector
+      # ========================================================================
+      do_disconnect_pgvector:
+        opcode: pgvector_disconnect
+        isReporter: true
+        inputs:
+          pool:
+            variable: pgvector_pool
+
+      disconnect_pgvector:
+        opcode: data_set_variable_to
+        next: build_result
+        inputs:
+          VARIABLE:
+            literal: "pgvector_pool"
+          VALUE:
+            node: do_disconnect_pgvector
 
       # ========================================================================
       # BUILD FINAL RESULT - Return answer + trechos

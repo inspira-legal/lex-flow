@@ -21,7 +21,10 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from .opcodes import opcode, register_category
 
 if TYPE_CHECKING:
     from google.auth.credentials import Credentials
@@ -43,8 +46,6 @@ def register_sheets_opcodes():
     if not SHEETS_AVAILABLE:
         return
 
-    from .opcodes import opcode, register_category
-
     class SheetsClient:
         """Reusable Google Sheets client."""
 
@@ -61,8 +62,6 @@ def register_sheets_opcodes():
         requires="sheets",
         order=210,
     )
-
-    import re
 
     _NEEDS_QUOTING = re.compile(r"[^A-Za-z0-9_]")
 
@@ -96,7 +95,7 @@ def register_sheets_opcodes():
             # No arguments needed
         """
         if credentials_path:
-            if ".." in os.path.normpath(credentials_path).split(os.sep):
+            if ".." in credentials_path.replace("\\", "/").split("/"):
                 raise ValueError(
                     "credentials_path must not contain '..' path components"
                 )

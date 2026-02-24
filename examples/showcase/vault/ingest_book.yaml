@@ -1,7 +1,7 @@
 # Book Ingestion Workflow - Vault / Book Collection RAG Pipeline
 #
 # Processes a PDF book from Google Cloud Storage: downloads, extracts text,
-# chunks it intelligently, generates embeddings, and stores in Qdrant.
+# chunks it intelligently, generates embeddings, and stores in pgVector.
 #
 # Run via CLI:
 #   lexflow examples/showcase/vault/ingest_book.yaml \
@@ -20,14 +20,13 @@
 #   }
 #
 # Requirements:
-#   pip install lexflow[rag,gcs]
+#   pip install lexflow[pgvector,gcs]
 #   gcloud auth application-default login
-#   docker run -d -p 6333:6333 qdrant/qdrant
 
 workflows:
   - name: main
     interface:
-      inputs: [bucket, objeto, livro_id, projeto_gcp, qdrant_url, collection, chunk_size, overlap]
+      inputs: [bucket, objeto, livro_id, projeto_gcp, pgvector_dsn, collection, chunk_size, overlap]
       outputs: []
     variables:
       # Input parameters
@@ -35,14 +34,14 @@ workflows:
       objeto: ""
       livro_id: ""
       projeto_gcp: ""
-      qdrant_url: "http://localhost:6333"
+      pgvector_dsn: "postgresql://localhost/vault"
       collection: "livros"
       chunk_size: 1000
       overlap: 200
       # State variables
       gcs_client: null
       pdf_bytes: null
-      qdrant_client: null
+      pgvector_pool: null
       pdf_pages: []
       chunks: []
       chunk_texts: []
@@ -415,7 +414,7 @@ workflows:
             node: step2_done_msg
 
       # ========================================================================
-      # STEP 3: Connect to Qdrant
+      # STEP 3: Connect to pgVector
       # ========================================================================
       get_step3_start:
         opcode: util_time_now
@@ -433,26 +432,26 @@ workflows:
 
       print_step3:
         opcode: io_print
-        next: connect_qdrant
+        next: connect_pgvector
         inputs:
           STRING:
-            literal: "[3/6] Conectando ao Qdrant... "
+            literal: "[3/6] Conectando ao pgVector... "
 
-      do_connect_qdrant:
-        opcode: qdrant_connect
+      do_connect_pgvector:
+        opcode: pgvector_connect
         isReporter: true
         inputs:
-          url:
-            variable: qdrant_url
+          dsn:
+            variable: pgvector_dsn
 
-      connect_qdrant:
+      connect_pgvector:
         opcode: data_set_variable_to
         next: save_step3_end
         inputs:
           VARIABLE:
-            literal: "qdrant_client"
+            literal: "pgvector_pool"
           VALUE:
-            node: do_connect_qdrant
+            node: do_connect_pgvector
 
       get_step3_end:
         opcode: util_time_now
@@ -518,11 +517,11 @@ workflows:
             literal: "[4/6] Criando collection (se necessario)... "
 
       do_create_collection:
-        opcode: qdrant_create_collection
+        opcode: pgvector_create_collection
         isReporter: true
         inputs:
-          client:
-            variable: qdrant_client
+          pool:
+            variable: pgvector_pool
           name:
             variable: collection
           vector_size:
@@ -815,7 +814,7 @@ workflows:
         next: build_metadata
         inputs:
           STRING:
-            literal: "[6/6] Construindo payloads e salvando no Qdrant... "
+            literal: "[6/6] Construindo payloads e salvando no pgVector... "
 
       # Build metadata dict for rag_build_chunk_payloads
       metadata_base:
@@ -910,14 +909,14 @@ workflows:
             node: get_built_payloads
 
       # ========================================================================
-      # Perform batch upsert to Qdrant
+      # Perform batch upsert to pgVector
       # ========================================================================
-      do_qdrant_upsert:
-        opcode: qdrant_upsert_batch
+      do_pgvector_upsert:
+        opcode: pgvector_upsert_batch
         isReporter: true
         inputs:
-          client:
-            variable: qdrant_client
+          pool:
+            variable: pgvector_pool
           collection:
             variable: collection
           point_ids:
@@ -929,10 +928,10 @@ workflows:
 
       do_upsert:
         opcode: control_if_else
-        next: close_qdrant
+        next: disconnect_pgvector
         inputs:
           CONDITION:
-            node: do_qdrant_upsert
+            node: do_pgvector_upsert
           THEN:
             branch: save_step6_end_ok
           ELSE:
@@ -1021,6 +1020,22 @@ workflows:
       # ========================================================================
       # CLEANUP - Close clients
       # ========================================================================
+      do_disconnect_pgvector:
+        opcode: pgvector_disconnect
+        isReporter: true
+        inputs:
+          pool:
+            variable: pgvector_pool
+
+      disconnect_pgvector:
+        opcode: data_set_variable_to
+        next: close_gcs
+        inputs:
+          VARIABLE:
+            literal: "pgvector_pool"
+          VALUE:
+            node: do_disconnect_pgvector
+
       do_close_gcs:
         opcode: gcs_close_client
         isReporter: true
@@ -1028,7 +1043,7 @@ workflows:
           client:
             variable: gcs_client
 
-      close_qdrant:
+      close_gcs:
         opcode: data_set_variable_to
         next: print_footer
         inputs:
