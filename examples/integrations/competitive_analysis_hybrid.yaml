@@ -1,0 +1,482 @@
+workflows:
+  - name: main
+    interface:
+      inputs:
+        - name: company_name
+          type: string
+        - name: competitor_name
+          type: string
+        - name: perplexity_api_key
+          type: string
+        - name: openrouter_api_key
+          type: string
+      outputs:
+        - name: final_report
+          type: string
+    variables:
+      # API Configuration
+      perplexity_api_key: ""
+      perplexity_base_url: "https://api.perplexity.ai/chat/completions"
+      perplexity_model: "sonar"  # Real-time search model
+
+      openrouter_api_key: ""
+      openrouter_base_url: "https://openrouter.ai/api/v1/chat/completions"
+      openrouter_model: "google/gemini-2.5-flash-lite"  # Fast formatter
+
+      # Headers
+      perplexity_headers: {}
+      openrouter_headers: {}
+
+      # Research Prompting (Perplexity - Real-time search)
+      research_prompt_template: |
+        You are a competitive intelligence analyst conducting REAL-TIME research on recent activities.
+
+        **IMPORTANT**: Focus ONLY on information from the last 30 days (or most recent available).
+
+        **Company Context (Client)**: {company_name}
+        **Competitor to Research**: {competitor_name}
+
+        **Your Task**:
+        Search and analyze RECENT activities about {competitor_name} that could impact {company_name}'s business.
+
+        **Focus Areas** (prioritize most recent):
+        1. 📱 **Social Media Activity** (Twitter/X, LinkedIn posts from last 30 days)
+        2. 👔 **New Hires & Team Changes** (LinkedIn job postings, announcements)
+        3. 📰 **News & Press Releases** (last 30 days)
+        4. 📝 **Blog Posts & Articles** (company blog, industry publications)
+        5. 💰 **Funding Announcements** (investments, acquisitions)
+        6. 🚀 **Product Launches** (new features, updates)
+        7. 🤝 **Partnerships & Integrations**
+        8. 📊 **Market Positioning** (pricing changes, new segments)
+
+        **Search Strategy**:
+        - Use site:linkedin.com for hiring and company updates
+        - Use site:twitter.com OR site:x.com for social mentions
+        - Search for "{competitor_name} news"
+        - Look for "{competitor_name} linkedin hiring"
+        - Check "{competitor_name} funding announcement"
+
+        **Output Format**:
+        For each finding, include:
+        - Date (when available)
+        - Source (LinkedIn, Twitter, news site, etc.)
+        - Brief description
+        - Potential impact on {company_name}
+
+        If no recent information is found, explicitly state: "No significant recent activity found in the last 30 days."
+
+      research_full_prompt: ""
+      research_messages: []
+      research_body: {}
+      research_response_raw: {}
+      research_content: ""
+
+      # Formatter Prompting (OpenRouter - Fast formatting)
+      formatter_system_prompt: |
+        You are a competitive intelligence specialist who formats research reports for business executives.
+
+        Your task is to transform raw competitive research data into a clear, actionable report.
+
+        **Format Requirements**:
+        - Use *bold* for emphasis (single asterisk)
+        - Use _italic_ for secondary emphasis
+        - Use • for bullet points
+        - Use clear section headers
+        - Keep it concise and actionable
+        - Highlight dates and sources
+        - Focus on business impact
+
+        **Structure**:
+        1. Executive Summary (2-3 sentences)
+        2. Recent Activity (organized by category)
+        3. Key Findings (top 3-5 insights)
+        4. Recommended Actions (3-5 specific steps)
+
+      formatter_user_prompt_template: |
+        Format the following competitive intelligence research into a professional business report.
+
+        Focus on:
+        - Recency (prioritize newest information)
+        - Business impact
+        - Actionable insights
+
+        Raw Research Data:
+        {research_content}
+
+      formatter_full_user_prompt: ""
+      formatter_messages: []
+      formatter_body: {}
+      formatter_response_raw: {}
+
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_start
+        inputs: {}
+
+      print_start:
+        opcode: io_print
+        next: build_perplexity_headers
+        inputs:
+          TITLE: {literal: "\n=== Competitive Intelligence Monitor ===\n"}
+          INFO: {literal: "Real-time competitive analysis powered by Perplexity + OpenRouter\n\n"}
+
+      # ---------------------------------------------------------
+      # 1. Build Perplexity Headers
+      # ---------------------------------------------------------
+      build_perplexity_headers:
+        opcode: dict_create
+        next: add_perplexity_content_type
+        inputs:
+          key1: {literal: "Authorization"}
+          val1: {node: fmt_perplexity_bearer}
+
+      fmt_perplexity_bearer:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: {literal: "Bearer "}
+          right: {variable: "perplexity_api_key"}
+
+      add_perplexity_content_type:
+        opcode: dict_set
+        next: save_perplexity_headers
+        inputs:
+          d: {node: build_perplexity_headers}
+          key: {literal: "Content-Type"}
+          value: {literal: "application/json"}
+
+      save_perplexity_headers:
+        opcode: data_set_variable_to
+        next: build_openrouter_headers
+        inputs:
+          VARIABLE: {literal: "perplexity_headers"}
+          VALUE: {node: add_perplexity_content_type}
+
+      # ---------------------------------------------------------
+      # 2. Build OpenRouter Headers
+      # ---------------------------------------------------------
+      build_openrouter_headers:
+        opcode: dict_create
+        next: add_openrouter_referer
+        inputs:
+          key1: {literal: "Authorization"}
+          val1: {node: fmt_openrouter_bearer}
+
+      fmt_openrouter_bearer:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: {literal: "Bearer "}
+          right: {variable: "openrouter_api_key"}
+
+      add_openrouter_referer:
+        opcode: dict_set
+        next: add_openrouter_title
+        inputs:
+          d: {node: build_openrouter_headers}
+          key: {literal: "HTTP-Referer"}
+          value: {literal: "https://lexflow.dev"}
+
+      add_openrouter_title:
+        opcode: dict_set
+        next: add_openrouter_content_type
+        inputs:
+          d: {node: add_openrouter_referer}
+          key: {literal: "X-Title"}
+          value: {literal: "Lexflow Competitive Intelligence"}
+
+      add_openrouter_content_type:
+        opcode: dict_set
+        next: save_openrouter_headers
+        inputs:
+          d: {node: add_openrouter_title}
+          key: {literal: "Content-Type"}
+          value: {literal: "application/json"}
+
+      save_openrouter_headers:
+        opcode: data_set_variable_to
+        next: build_research_prompt
+        inputs:
+          VARIABLE: {literal: "openrouter_headers"}
+          VALUE: {node: add_openrouter_content_type}
+
+      # ---------------------------------------------------------
+      # 3. Build Research Prompt (with variable substitution)
+      # ---------------------------------------------------------
+      build_research_prompt:
+        opcode: string_replace
+        next: create_research_message
+        inputs:
+          template: {variable: "research_prompt_template"}
+          replace:
+            company_name: {variable: "company_name"}
+            competitor_name: {variable: "competitor_name"}
+
+      # ---------------------------------------------------------
+      # 4. Create Research Request (Perplexity)
+      # ---------------------------------------------------------
+      create_research_message:
+        opcode: dict_create
+        next: create_research_messages_list
+        inputs:
+          key1: {literal: "role"}
+          val1: {literal: "user"}
+          key2: {literal: "content"}
+          val2: {node: build_research_prompt}
+
+      create_research_messages_list:
+        opcode: list_create
+        next: create_research_body
+        inputs:
+          item1: {node: create_research_message}
+
+      create_research_body:
+        opcode: dict_create
+        next: set_research_model
+        inputs:
+          key1: {literal: "messages"}
+          val1: {node: create_research_messages_list}
+
+      set_research_model:
+        opcode: dict_set
+        next: set_research_temp
+        inputs:
+          d: {node: create_research_body}
+          key: {literal: "model"}
+          value: {variable: "perplexity_model"}
+
+      set_research_temp:
+        opcode: dict_set
+        next: set_search_recency
+        inputs:
+          d: {node: set_research_model}
+          key: {literal: "temperature"}
+          value: {literal: 0.2}
+
+      set_search_recency:
+        opcode: dict_set
+        next: save_research_body
+        inputs:
+          d: {node: set_research_temp}
+          key: {literal: "search_recency_filter"}
+          value: {literal: "month"}
+
+      save_research_body:
+        opcode: data_set_variable_to
+        next: print_research_start
+        inputs:
+          VARIABLE: {literal: "research_body"}
+          VALUE: {node: set_search_recency}
+
+      # ---------------------------------------------------------
+      # 5. Call Perplexity API (Real-time search)
+      # ---------------------------------------------------------
+      print_research_start:
+        opcode: io_print
+        next: call_perplexity
+        inputs:
+          STRING: {literal: "[1/2] 🔍 Searching real-time data (Perplexity)...\n"}
+
+      call_perplexity:
+        opcode: network_http_post
+        next: save_research_response
+        isReporter: true
+        inputs:
+          url: {variable: "perplexity_base_url"}
+          headers: {variable: "perplexity_headers"}
+          json: {variable: "research_body"}
+
+      save_research_response:
+        opcode: data_set_variable_to
+        next: save_research_content
+        inputs:
+          VARIABLE: {literal: "research_response_raw"}
+          VALUE: {node: call_perplexity}
+
+      # ---------------------------------------------------------
+      # 6. Extract Research Content
+      # ---------------------------------------------------------
+      extract_research_choices:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {variable: "research_response_raw"}
+          key: {literal: "choices"}
+
+      get_research_first_choice:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items: {node: extract_research_choices}
+          index: {literal: 0}
+
+      get_research_message:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {node: get_research_first_choice}
+          key: {literal: "message"}
+
+      get_research_content:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {node: get_research_message}
+          key: {literal: "content"}
+
+      save_research_content:
+        opcode: data_set_variable_to
+        next: print_research_done
+        inputs:
+          VARIABLE: {literal: "research_content"}
+          VALUE: {node: get_research_content}
+
+      print_research_done:
+        opcode: io_print
+        next: build_formatter_prompt
+        inputs:
+          STRING: {literal: "✓ Real-time research completed\n"}
+
+      # ---------------------------------------------------------
+      # 7. Build Formatter Prompt
+      # ---------------------------------------------------------
+      # SECURITY: Using string_replace to mitigate indirect prompt injection
+      # from the research data.
+      build_formatter_prompt:
+        opcode: string_replace
+        next: create_formatter_system_msg
+        inputs:
+          template: {variable: "formatter_user_prompt_template"}
+          replace:
+            research_content: {variable: "research_content"}
+
+      # ---------------------------------------------------------
+      # 8. Create Formatter Request (OpenRouter)
+      # ---------------------------------------------------------
+      create_formatter_system_msg:
+        opcode: dict_create
+        next: create_formatter_user_msg
+        inputs:
+          key1: {literal: "role"}
+          val1: {literal: "system"}
+          key2: {literal: "content"}
+          val2: {variable: "formatter_system_prompt"}
+
+      create_formatter_user_msg:
+        opcode: dict_create
+        next: create_formatter_messages_list
+        inputs:
+          key1: {literal: "role"}
+          val1: {literal: "user"}
+          key2: {literal: "content"}
+          val2: {node: build_formatter_prompt}
+
+      create_formatter_messages_list:
+        opcode: list_create
+        next: create_formatter_body
+        inputs:
+          item1: {node: create_formatter_system_msg}
+          item2: {node: create_formatter_user_msg}
+
+      create_formatter_body:
+        opcode: dict_create
+        next: set_formatter_model
+        inputs:
+          key1: {literal: "messages"}
+          val1: {node: create_formatter_messages_list}
+
+      set_formatter_model:
+        opcode: dict_set
+        next: set_formatter_temp
+        inputs:
+          d: {node: create_formatter_body}
+          key: {literal: "model"}
+          value: {variable: "openrouter_model"}
+
+      set_formatter_temp:
+        opcode: dict_set
+        next: save_formatter_body
+        inputs:
+          d: {node: set_formatter_model}
+          key: {literal: "temperature"}
+          value: {literal: 0.1}
+
+      save_formatter_body:
+        opcode: data_set_variable_to
+        next: print_formatter_start
+        inputs:
+          VARIABLE: {literal: "formatter_body"}
+          VALUE: {node: set_formatter_temp}
+
+      # ---------------------------------------------------------
+      # 9. Call OpenRouter API (Formatting)
+      # ---------------------------------------------------------
+      print_formatter_start:
+        opcode: io_print
+        next: call_openrouter
+        inputs:
+          STRING: {literal: "\n[2/2] ✨ Formatting report (OpenRouter)...\n"}
+
+      call_openrouter:
+        opcode: network_http_post
+        next: save_formatter_response
+        isReporter: true
+        inputs:
+          url: {variable: "openrouter_base_url"}
+          headers: {variable: "openrouter_headers"}
+          json: {variable: "formatter_body"}
+
+      save_formatter_response:
+        opcode: data_set_variable_to
+        next: print_report
+        inputs:
+          VARIABLE: {literal: "formatter_response_raw"}
+          VALUE: {node: call_openrouter}
+
+      # ---------------------------------------------------------
+      # 10. Extract & Output Report
+      # ---------------------------------------------------------
+      extract_formatter_choices:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {variable: "formatter_response_raw"}
+          key: {literal: "choices"}
+
+      get_formatter_first_choice:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items: {node: extract_formatter_choices}
+          index: {literal: 0}
+
+      get_formatter_message:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {node: get_formatter_first_choice}
+          key: {literal: "message"}
+
+      get_formatter_content:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {node: get_formatter_message}
+          key: {literal: "content"}
+
+      print_report:
+        opcode: io_print
+        next: set_final_report
+        inputs:
+          HEADER: {literal: "\n========================================\n"}
+          TITLE: {literal: "📊 COMPETITIVE INTELLIGENCE REPORT\n"}
+          HEADER2: {literal: "========================================\n\n"}
+          REPORT: {node: get_formatter_content}
+          FOOTER: {literal: "\n\n========================================\n✅ Real-time competitive monitoring complete\n"}
+
+      set_final_report:
+        opcode: workflow_end
+        next: null
+        inputs:
+          final_report: {node: get_formatter_content}

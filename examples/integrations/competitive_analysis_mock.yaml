@@ -1,0 +1,161 @@
+workflows:
+  - name: main
+    interface:
+      inputs:
+        - name: company_name
+          type: string
+        - name: competitor_name
+          type: string
+      outputs:
+        - name: final_report
+          type: string
+    variables:
+      # Mock Data Variables
+      mock_per_response:
+        choices:
+          - message:
+              content: |
+                Recent research on the competitor indicates significant activity in the last 24 hours:
+                1. Product Launch: They just announced 'CyberShield 2.0', a new AI-driven security suite.
+                2. Partnership: Strategic alliance formed with CloudNet to expand infrastructure.
+                3. Financial: Q3 earnings beat expectations by 15%, stock up 5%.
+                
+                Implications for the client:
+                - The new security suite directly competes with your 'SecureCore' product.
+                - Their cloud partnership might lower their latency, challenging your speed advantage.
+      
+      mock_oa_response:
+        choices:
+          - message:
+              content: |
+                `Análise Competitiva: Competitor X`
+
+                *1. Resumo Executivo*
+                O concorrente demonstrou forte atividade recente com o lançamento do *CyberShield 2.0* e uma parceria estratégica com a _CloudNet_, visando expandir sua infraestrutura e portfólio de IA.
+
+                *2. Destaques Recentes*
+                • *Novo Produto*: Lançamento do CyberShield 2.0, focado em segurança via IA.
+                • *Parceria*: Aliança com CloudNet para otimização de infraestrutura.
+                • *Financeiro*: Resultados do Q3 superaram expectativas em 15%.
+
+                *3. Impacto para Sua Empresa*
+                A nova suíte de segurança compete diretamente com o nosso *SecureCore*. Além disso, a melhoria de latência esperada da parceria com a CloudNet pode ameaçar nosso diferencial de velocidade. Recomenda-se análise técnica do CyberShield.
+
+    nodes:
+      start:
+        opcode: workflow_start
+        next: mock_research_step
+        inputs: {}
+
+      # ---------------------------------------------------------
+      # 1. Mock Research Step (Simulating Perplexity)
+      # ---------------------------------------------------------
+      mock_research_step:
+        opcode: io_print
+        next: save_mock_per_response
+        inputs:
+          STRING: {literal: "\n[SIMULATION] Executing Deep Research on Competitor...\n"}
+
+      save_mock_per_response:
+        opcode: data_set_variable_to
+        next: save_per_content
+        inputs:
+          VARIABLE: {literal: "per_response_raw"}
+          VALUE: {variable: "mock_per_response"}
+
+      # ---------------------------------------------------------
+      # 2. Extract Research Content (Same logic as real flow)
+      # ---------------------------------------------------------
+      extract_per_content:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {variable: "per_response_raw"}
+          key: {literal: "choices"}
+
+      get_first_choice:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items: {node: extract_per_content}
+          index: {literal: 0}
+
+      get_message_obj:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {node: get_first_choice}
+          key: {literal: "message"}
+
+      get_content_str:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {node: get_message_obj}
+          key: {literal: "content"}
+
+      save_per_content:
+        opcode: data_set_variable_to
+        next: mock_formatting_step
+        inputs:
+          VARIABLE: {literal: "per_content"}
+          VALUE: {node: get_content_str}
+
+      # ---------------------------------------------------------
+      # 3. Mock Formatting Step (Simulating OpenAI)
+      # ---------------------------------------------------------
+      mock_formatting_step:
+        opcode: io_print
+        next: save_mock_oa_response
+        inputs:
+          STRING: {literal: "[SIMULATION] Formatting Report with LLM...\n"}
+
+      save_mock_oa_response:
+        opcode: data_set_variable_to
+        next: print_report
+        inputs:
+          VARIABLE: {literal: "oa_response_raw"}
+          VALUE: {variable: "mock_oa_response"}
+
+      # ---------------------------------------------------------
+      # 4. Extract & Output Report (Same logic as real flow)
+      # ---------------------------------------------------------
+      extract_oa_content:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {variable: "oa_response_raw"}
+          key: {literal: "choices"}
+
+      get_oa_choice:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items: {node: extract_oa_content}
+          index: {literal: 0}
+
+      get_oa_msg:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {node: get_oa_choice}
+          key: {literal: "message"}
+
+      get_oa_text:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d: {node: get_oa_msg}
+          key: {literal: "content"}
+
+      print_report:
+        opcode: io_print
+        next: set_final_report
+        inputs:
+          REPORT: {node: get_oa_text}
+
+      set_final_report:
+        opcode: workflow_end
+        next: null
+        inputs:
+          final_report: {node: get_oa_text}
