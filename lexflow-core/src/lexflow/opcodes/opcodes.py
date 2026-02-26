@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import asyncio
 import inspect
 import random
+import time
 
 
 @dataclass
@@ -90,6 +91,7 @@ class OpcodeRegistry:
             CategoryInfo(
                 "async", "Async Operations", "async_", "#06B6D4", "⏱", order=130
             ),
+            CategoryInfo("time", "Time Operations", "time_", "#F97316", "⏱", order=85),
         ]
         for cat in builtins:
             self.categories[cat.id] = cat
@@ -455,6 +457,27 @@ class OpcodeRegistry:
         async def operator_not(value: bool) -> bool:
             """Logical NOT."""
             return not bool(value)
+
+        # ============ Time Operations ============
+        @self.register()
+        async def time_now() -> float:
+            """Return current time as seconds since epoch (high resolution)."""
+            return time.perf_counter()
+
+        @self.register()
+        async def time_elapsed(start: float) -> float:
+            """Return elapsed seconds since start timestamp."""
+            return time.perf_counter() - start
+
+        @self.register()
+        async def time_format_elapsed(seconds: float) -> str:
+            """Format elapsed seconds as human-readable string (e.g. '2.34s' or '1m 5.2s')."""
+            s = float(seconds)
+            if s < 60:
+                return f"{s:.2f}s"
+            m = int(s // 60)
+            remainder = s % 60
+            return f"{m}m {remainder:.1f}s"
 
         # ============ Math Operations ============
         @self.register()

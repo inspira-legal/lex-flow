@@ -1,40 +1,64 @@
-# Book Ingestion Consumer - Vault / Pub/Sub Pipeline
+# Vault - PubSub consumer for document ingestion (pgVector + API integration)
 #
-# Listens to a Pub/Sub topic (emulator) and processes book ingestion messages.
-# Each message triggers: download PDF -> extract text -> chunk -> embed -> upsert to pgVector.
+# Long-running process that subscribes to the document-uploaded PubSub topic
+# and processes each document message through the RAG pipeline.
 #
-# Message format (JSON in data field):
+# Message format (from API's load-documents script):
 #   {
-#     "bucket": "mvp-personal-vault",
-#     "objeto": "path/to/book.pdf",
-#     "livro_id": "book-001",
-#     "projeto_gcp": "inspira-development",
-#     "workspace_id": "ws-abc123",
-#     "folder_id": "folder-xyz789"
+#     "type": "document-uploaded",
+#     "version": 1,
+#     "data": {
+#       "documentId": "mongo-object-id",
+#       "workspaceId": "workspace-mongo-id",
+#       "gcsUri": "gs://bucket-name/path/to/file.pdf",
+#       "fileName": "document.pdf",
+#       "mimeType": "application/pdf"
+#     }
 #   }
 #
-# Setup:
-#   cd examples/integrations/pubsub/emulator && ./setup.sh docker
-#   export PUBSUB_EMULATOR_HOST=localhost:8085
-#   ./examples/showcase/vault/setup_emulator.sh
+# For each message:
+#   1. Callback: status -> PROCESSING
+#   2. Download PDF from GCS (parsed from gcsUri)
+#   3. Extract text from PDF
+#   4. Chunk text with overlap
+#   5. Generate embeddings (Vertex AI)
+#   6. Build payloads (with document_id, workspace_id, file_name in metadata)
+#   7. Upsert to pgVector
+#   8. Callback: status -> INDEXED (with totalChunks + totalPages)
+#   9. ACK message
+#   On error: Callback status -> ERROR, NACK message for retry
 #
-# Run:
-#   PUBSUB_EMULATOR_HOST=localhost:8085 lexflow examples/showcase/vault/ingest_book_consumer.yaml
+# Usage:
+#   uv run lexflow examples/showcase/vault/ingest_book_consumer.yaml \
+#     --input api_token=YOUR_JWT_TOKEN
+#
+# Optional:
+#   --input project_id=inspira-development
+#   --input subscription_id=document-uploaded-sub
+#   --input pgvector_dsn=postgresql://vault:vault@localhost/vault
+#   --input collection=documents
+#   --input api_url=http://localhost:4000/graphql
 #
 # Requirements:
 #   pip install lexflow[pgvector,gcs,pubsub]
+#   gcloud auth application-default login
+#   PostgreSQL with pgvector extension running
+#   PubSub subscription created
 
 workflows:
   - name: main
     interface:
-      inputs: [project_id, subscription_id, pgvector_dsn, collection, chunk_size, overlap]
+      inputs: [api_token, project_id, subscription_id, pgvector_dsn, collection, api_url, embedding_model, chunk_size, overlap]
       outputs: []
     variables:
       # Configuration
-      project_id: "test-project"
-      subscription_id: "vault-ingest-sub"
-      pgvector_dsn: "postgresql://localhost/vault"
-      collection: "livros"
+      api_token: ""
+      project_id: "inspira-development"
+      subscription_id: "document-uploaded-sub"
+      pgvector_dsn: "postgresql://vault:vault@localhost/vault"
+      collection: "documents"
+      api_url: "http://localhost:4000/graphql"
+      embedding_model: "text-multilingual-embedding-002"
       chunk_size: 1000
       overlap: 200
       # Clients (created once, reused)
@@ -43,16 +67,17 @@ workflows:
       pgvector_pool: null
       # Per-message state
       msg: null
-      params: null
-      bucket: ""
-      objeto: ""
-      livro_id: ""
-      projeto_gcp: ""
+      inner_data: null
+      document_id: ""
       workspace_id: ""
-      folder_id: ""
+      gcs_uri: ""
+      file_name: ""
+      bucket: ""
+      object_path: ""
       source_path: ""
       pdf_bytes: null
       pdf_pages: []
+      page_count: 0
       chunks: []
       chunk_count: 0
       embeddings: []
@@ -60,6 +85,8 @@ workflows:
       payloads: []
       metadata: {}
       build_result: {}
+      callback_body: {}
+      total_processed: 0
       error_msg: ""
       # Timing
       step_t0: 0
@@ -86,7 +113,7 @@ workflows:
         next: print_separator
         inputs:
           STRING:
-            literal: "              VAULT - BOOK INGESTION CONSUMER (Pub/Sub)\n"
+            literal: "          VAULT - DOCUMENT INGESTION CONSUMER (pgVector + API)\n"
 
       print_separator:
         opcode: io_print
@@ -100,13 +127,15 @@ workflows:
         isReporter: true
         inputs:
           template:
-            literal: "Subscription: {0}\npgVector:     {1}\nCollection:   {2}\n\n"
+            literal: "Subscription: {0}\npgVector:     {1}\nCollection:   {2}\nAPI:          {3}\n\n"
           VALUES:
             variable: subscription_id
           VALUE_1:
             variable: pgvector_dsn
           VALUE_2:
             variable: collection
+          VALUE_3:
+            variable: api_url
 
       print_sub_info:
         opcode: io_print
@@ -270,7 +299,7 @@ workflows:
           min_poll_interval:
             literal: 0.1
           max_poll_interval:
-            literal: 2.0
+            literal: 5.0
 
       process_messages:
         opcode: control_async_foreach
@@ -281,12 +310,13 @@ workflows:
           ITERABLE:
             node: subscribe_stream
           BODY:
-            branch: parse_message
+            branch: parse_message_data
 
       # ======================================================================
-      # PER-MESSAGE: Parse JSON data
+      # MESSAGE HANDLER: Parse API envelope and extract fields
       # ======================================================================
-      get_msg_data:
+      # Step 1: Get raw data string from PubSub message
+      get_msg_data_raw:
         opcode: dict_get
         isReporter: true
         inputs:
@@ -295,132 +325,188 @@ workflows:
           key:
             literal: "data"
 
-      do_parse_json:
+      # Step 2: Parse JSON string into dict
+      parse_msg_json:
         opcode: json_parse
         isReporter: true
         inputs:
           text:
-            node: get_msg_data
+            node: get_msg_data_raw
 
-      parse_message:
-        opcode: data_set_variable_to
-        next: extract_bucket
-        inputs:
-          VARIABLE:
-            literal: "params"
-          VALUE:
-            node: do_parse_json
-
-      # Extract fields from params
-      get_bucket:
+      # Step 3: Get inner "data" from API envelope { type, version, data: {...} }
+      get_inner_data:
         opcode: dict_get
         isReporter: true
         inputs:
           d:
-            variable: params
+            node: parse_msg_json
           key:
-            literal: "bucket"
+            literal: "data"
 
-      extract_bucket:
+      parse_message_data:
         opcode: data_set_variable_to
-        next: extract_objeto
+        next: save_document_id
         inputs:
           VARIABLE:
-            literal: "bucket"
+            literal: "inner_data"
           VALUE:
-            node: get_bucket
+            node: get_inner_data
 
-      get_objeto:
+      # ======================================================================
+      # EXTRACT FIELDS (camelCase from API envelope)
+      # ======================================================================
+      extract_document_id:
         opcode: dict_get
         isReporter: true
         inputs:
           d:
-            variable: params
+            variable: inner_data
           key:
-            literal: "objeto"
+            literal: "documentId"
 
-      extract_objeto:
+      save_document_id:
         opcode: data_set_variable_to
-        next: extract_livro_id
+        next: save_workspace_id
         inputs:
           VARIABLE:
-            literal: "objeto"
+            literal: "document_id"
           VALUE:
-            node: get_objeto
-
-      get_livro_id:
-        opcode: dict_get
-        isReporter: true
-        inputs:
-          d:
-            variable: params
-          key:
-            literal: "livro_id"
-
-      extract_livro_id:
-        opcode: data_set_variable_to
-        next: extract_projeto_gcp
-        inputs:
-          VARIABLE:
-            literal: "livro_id"
-          VALUE:
-            node: get_livro_id
-
-      get_projeto_gcp:
-        opcode: dict_get
-        isReporter: true
-        inputs:
-          d:
-            variable: params
-          key:
-            literal: "projeto_gcp"
-
-      extract_projeto_gcp:
-        opcode: data_set_variable_to
-        next: extract_workspace_id
-        inputs:
-          VARIABLE:
-            literal: "projeto_gcp"
-          VALUE:
-            node: get_projeto_gcp
-
-      get_workspace_id:
-        opcode: dict_get
-        isReporter: true
-        inputs:
-          d:
-            variable: params
-          key:
-            literal: "workspace_id"
+            node: extract_document_id
 
       extract_workspace_id:
-        opcode: data_set_variable_to
-        next: extract_folder_id
-        inputs:
-          VARIABLE:
-            literal: "workspace_id"
-          VALUE:
-            node: get_workspace_id
-
-      get_folder_id:
         opcode: dict_get
         isReporter: true
         inputs:
           d:
-            variable: params
+            variable: inner_data
           key:
-            literal: "folder_id"
+            literal: "workspaceId"
 
-      extract_folder_id:
+      save_workspace_id:
+        opcode: data_set_variable_to
+        next: save_gcs_uri
+        inputs:
+          VARIABLE:
+            literal: "workspace_id"
+          VALUE:
+            node: extract_workspace_id
+
+      extract_gcs_uri:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: inner_data
+          key:
+            literal: "gcsUri"
+
+      save_gcs_uri:
+        opcode: data_set_variable_to
+        next: save_file_name
+        inputs:
+          VARIABLE:
+            literal: "gcs_uri"
+          VALUE:
+            node: extract_gcs_uri
+
+      extract_file_name:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: inner_data
+          key:
+            literal: "fileName"
+
+      save_file_name:
+        opcode: data_set_variable_to
+        next: parse_gcs_uri
+        inputs:
+          VARIABLE:
+            literal: "file_name"
+          VALUE:
+            node: extract_file_name
+
+      # ======================================================================
+      # PARSE GCS URI: gs://bucket/path/to/file -> bucket, path/to/file
+      # ======================================================================
+      # Split "gs://bucket/path/to/file" by "/"
+      # Result: ["gs:", "", "bucket", "path", "to", "file"]
+      # Index 2 = bucket, Index 3+ = object path
+      split_gcs_uri:
+        opcode: string_split
+        isReporter: true
+        inputs:
+          text:
+            variable: gcs_uri
+          delimiter:
+            literal: "/"
+
+      # Get bucket name (index 2)
+      get_bucket_from_uri:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items:
+            node: split_gcs_uri
+          index:
+            literal: 2
+
+      parse_gcs_uri:
+        opcode: data_set_variable_to
+        next: build_object_path
+        inputs:
+          VARIABLE:
+            literal: "bucket"
+          VALUE:
+            node: get_bucket_from_uri
+
+      # Build object path: remove "gs://bucket/" prefix
+      # Start position = 5 (gs://) + bucket_length + 1 (/)
+      get_bucket_length:
+        opcode: string_length
+        isReporter: true
+        inputs:
+          text:
+            variable: bucket
+
+      calc_prefix_length_part1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: 5
+          right:
+            node: get_bucket_length
+
+      calc_prefix_length:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: calc_prefix_length_part1
+          right:
+            literal: 1
+
+      extract_object_path:
+        opcode: string_substring
+        isReporter: true
+        inputs:
+          text:
+            variable: gcs_uri
+          start:
+            node: calc_prefix_length
+
+      build_object_path:
         opcode: data_set_variable_to
         next: build_source_path
         inputs:
           VARIABLE:
-            literal: "folder_id"
+            literal: "object_path"
           VALUE:
-            node: get_folder_id
+            node: extract_object_path
 
-      # Build source path: gs://bucket/objeto
+      # Build display source path: gs://bucket/object_path
       source_path_prefix:
         opcode: operator_add
         isReporter: true
@@ -430,6 +516,15 @@ workflows:
           right:
             variable: bucket
 
+      source_path_suffix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "/"
+          right:
+            variable: object_path
+
       source_path_full:
         opcode: operator_add
         isReporter: true
@@ -438,15 +533,6 @@ workflows:
             node: source_path_prefix
           right:
             node: source_path_suffix
-
-      source_path_suffix:
-        opcode: operator_add
-        isReporter: true
-        inputs:
-          left:
-            literal: "/"
-          right:
-            variable: objeto
 
       build_source_path:
         opcode: data_set_variable_to
@@ -478,11 +564,13 @@ workflows:
         isReporter: true
         inputs:
           template:
-            literal: "[{0}] Processando {1}...\n"
+            literal: "[{0}] Processando {1} ({2})...\n"
           VALUES:
-            variable: livro_id
+            variable: document_id
           VALUE_1:
             variable: source_path
+          VALUE_2:
+            variable: file_name
 
       print_processing:
         opcode: io_print
@@ -499,7 +587,7 @@ workflows:
         next: null
         inputs:
           TRY:
-            branch: step_download_start
+            branch: try_callback_processing
           CATCH1:
             exception_type: "Exception"
             var: "error_msg"
@@ -507,7 +595,153 @@ workflows:
               branch: handle_error
 
       # ======================================================================
-      # STEP 1: Download PDF
+      # AUTH HEADERS (Bearer token, reused by all callbacks)
+      # ======================================================================
+      clean_api_token_newline:
+        opcode: string_replace
+        isReporter: true
+        inputs:
+          text:
+            variable: api_token
+          old:
+            literal: "\n"
+          new:
+            literal: ""
+
+      clean_api_token:
+        opcode: string_replace
+        isReporter: true
+        inputs:
+          text:
+            node: clean_api_token_newline
+          old:
+            literal: "\r"
+          new:
+            literal: ""
+
+      build_auth_header:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Bearer "
+          right:
+            node: clean_api_token
+
+      callback_headers_base:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      callback_headers_with_auth:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: callback_headers_base
+          key:
+            literal: "Authorization"
+          value:
+            node: build_auth_header
+
+      callback_headers:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: callback_headers_with_auth
+          key:
+            literal: "Content-Type"
+          value:
+            literal: "application/json"
+
+      # ======================================================================
+      # STEP 1: Callback PROCESSING
+      # ======================================================================
+      build_processing_query:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: 'mutation { updateDocumentStatus(input: { documentId: "'
+          right:
+            node: pq_2
+
+      pq_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: document_id
+          right:
+            literal: '", status: PROCESSING }) { id status } }'
+
+      empty_dict_processing:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      build_processing_body:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: empty_dict_processing
+          key:
+            literal: "query"
+          value:
+            node: build_processing_query
+
+      do_callback_processing:
+        opcode: http_post
+        isReporter: true
+        inputs:
+          url:
+            variable: api_url
+          data:
+            literal: null
+          json:
+            node: build_processing_body
+          headers:
+            node: callback_headers
+
+      try_callback_processing:
+        opcode: control_try
+        next: step_download_start
+        inputs:
+          TRY:
+            branch: trigger_callback_processing
+          CATCH1:
+            exception_type: "Exception"
+            var: "error_msg"
+            body:
+              branch: warn_callback_processing
+
+      trigger_callback_processing:
+        opcode: data_set_variable_to
+        next: print_callback_processing
+        inputs:
+          VARIABLE:
+            literal: "callback_body"
+          VALUE:
+            node: do_callback_processing
+
+      print_callback_processing:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "  [1/8] Callback: PROCESSING\n"
+
+      warn_callback_processing:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "  [1/8] Callback: PROCESSING (skipped - API unavailable)\n"
+
+      # ======================================================================
+      # STEP 2: Download PDF
       # ======================================================================
       get_step_t0_download:
         opcode: util_time_now
@@ -532,7 +766,7 @@ workflows:
           bucket_name:
             variable: bucket
           object_name:
-            variable: objeto
+            variable: object_path
 
       download_pdf:
         opcode: data_set_variable_to
@@ -571,7 +805,7 @@ workflows:
         isReporter: true
         inputs:
           template:
-            literal: "  Download PDF:        OK ({0})\n"
+            literal: "  [2/8] Download PDF:        OK ({0})\n"
           VALUES:
             node: dur_download
 
@@ -583,7 +817,7 @@ workflows:
             node: fmt_download
 
       # ======================================================================
-      # STEP 2: Extract pages
+      # STEP 3: Extract pages
       # ======================================================================
       get_step_t0_extract:
         opcode: util_time_now
@@ -608,12 +842,28 @@ workflows:
 
       extract_pdf:
         opcode: data_set_variable_to
-        next: save_step_t1_extract
+        next: store_page_count
         inputs:
           VARIABLE:
             literal: "pdf_pages"
           VALUE:
             node: do_extract_pdf
+
+      get_page_count:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          items:
+            variable: pdf_pages
+
+      store_page_count:
+        opcode: data_set_variable_to
+        next: save_step_t1_extract
+        inputs:
+          VARIABLE:
+            literal: "page_count"
+          VALUE:
+            node: get_page_count
 
       get_step_t1_extract:
         opcode: util_time_now
@@ -643,7 +893,7 @@ workflows:
         isReporter: true
         inputs:
           template:
-            literal: "  Extract pages:       OK ({0})\n"
+            literal: "  [3/8] Extract pages:       OK ({0})\n"
           VALUES:
             node: dur_extract
 
@@ -655,7 +905,7 @@ workflows:
             node: fmt_extract
 
       # ======================================================================
-      # STEP 3: Chunk text
+      # STEP 4: Chunk text
       # ======================================================================
       get_step_t0_chunk:
         opcode: util_time_now
@@ -735,7 +985,7 @@ workflows:
         isReporter: true
         inputs:
           template:
-            literal: "  Chunk text:          OK ({0})\n"
+            literal: "  [4/8] Chunk text:          OK ({0})\n"
           VALUES:
             node: dur_chunk
 
@@ -747,7 +997,7 @@ workflows:
             node: fmt_chunk
 
       # ======================================================================
-      # STEP 4: Generate embeddings
+      # STEP 5: Generate embeddings
       # ======================================================================
       get_step_t0_embed:
         opcode: util_time_now
@@ -779,11 +1029,11 @@ workflows:
           texts:
             node: do_extract_chunk_texts
           project:
-            variable: projeto_gcp
+            variable: project_id
           location:
             literal: "us-central1"
           model:
-            literal: "text-multilingual-embedding-002"
+            variable: embedding_model
           task_type:
             literal: "RETRIEVAL_DOCUMENT"
 
@@ -824,7 +1074,7 @@ workflows:
         isReporter: true
         inputs:
           template:
-            literal: "  Generate embeddings: OK ({0})\n"
+            literal: "  [5/8] Generate embeddings: OK ({0})\n"
           VALUES:
             node: dur_embed
 
@@ -836,7 +1086,7 @@ workflows:
             node: fmt_embed
 
       # ======================================================================
-      # STEP 5: Build payloads (single opcode replaces ~240 lines)
+      # STEP 6: Build payloads (with document_id, workspace_id, file_name)
       # ======================================================================
       get_step_t0_build:
         opcode: util_time_now
@@ -852,7 +1102,7 @@ workflows:
           VALUE:
             node: get_step_t0_build
 
-      # Build metadata dict
+      # Build metadata dict with API fields
       metadata_base:
         opcode: dict_create
         isReporter: true
@@ -869,38 +1119,38 @@ workflows:
           value:
             variable: source_path
 
-      metadata_with_livro_id:
+      metadata_with_document_id:
         opcode: dict_set
         isReporter: true
         inputs:
           d:
             node: metadata_with_source
           key:
-            literal: "livro_id"
+            literal: "document_id"
           value:
-            variable: livro_id
+            variable: document_id
 
       metadata_with_workspace_id:
         opcode: dict_set
         isReporter: true
         inputs:
           d:
-            node: metadata_with_livro_id
+            node: metadata_with_document_id
           key:
             literal: "workspace_id"
           value:
             variable: workspace_id
 
-      metadata_with_folder_id:
+      metadata_with_file_name:
         opcode: dict_set
         isReporter: true
         inputs:
           d:
             node: metadata_with_workspace_id
           key:
-            literal: "folder_id"
+            literal: "file_name"
           value:
-            variable: folder_id
+            variable: file_name
 
       build_metadata:
         opcode: data_set_variable_to
@@ -909,7 +1159,7 @@ workflows:
           VARIABLE:
             literal: "metadata"
           VALUE:
-            node: metadata_with_folder_id
+            node: metadata_with_file_name
 
       # Call rag_build_chunk_payloads
       do_rag_build:
@@ -995,7 +1245,7 @@ workflows:
         isReporter: true
         inputs:
           template:
-            literal: "  Build payloads:      OK ({0})\n"
+            literal: "  [6/8] Build payloads:      OK ({0})\n"
           VALUES:
             node: dur_build
 
@@ -1007,7 +1257,7 @@ workflows:
             node: fmt_build
 
       # ======================================================================
-      # STEP 6: Upsert to pgVector
+      # STEP 7: Upsert to pgVector
       # ======================================================================
       get_step_t0_upsert:
         opcode: util_time_now
@@ -1066,23 +1316,158 @@ workflows:
         isReporter: true
         inputs:
           template:
-            literal: "  Upsert pgVector:     OK ({0})\n"
+            literal: "  [7/8] Upsert pgVector:     OK ({0})\n"
           VALUES:
             node: dur_upsert
 
       print_upsert_done:
         opcode: io_print
-        next: ack_message
+        next: try_callback_indexed
         inputs:
           STRING:
             node: fmt_upsert
 
       # ======================================================================
-      # ACK message + timing summary
+      # STEP 8: Callback INDEXED (with totalChunks + totalPages)
+      # ======================================================================
+      chunk_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: chunk_count
+
+      page_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: page_count
+
+      build_indexed_query:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: 'mutation { updateDocumentStatus(input: { documentId: "'
+          right:
+            node: iq_2
+
+      iq_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: document_id
+          right:
+            node: iq_3
+
+      iq_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: '", status: INDEXED, totalChunks: '
+          right:
+            node: iq_4
+
+      iq_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: chunk_count_str
+          right:
+            node: iq_5
+
+      iq_5:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: ", totalPages: "
+          right:
+            node: iq_6
+
+      iq_6:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: page_count_str
+          right:
+            literal: ' }) { id status } }'
+
+      empty_dict_indexed:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      build_indexed_body:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: empty_dict_indexed
+          key:
+            literal: "query"
+          value:
+            node: build_indexed_query
+
+      do_callback_indexed:
+        opcode: http_post
+        isReporter: true
+        inputs:
+          url:
+            variable: api_url
+          data:
+            literal: null
+          json:
+            node: build_indexed_body
+          headers:
+            node: callback_headers
+
+      try_callback_indexed:
+        opcode: control_try
+        next: ack_message
+        inputs:
+          TRY:
+            branch: trigger_callback_indexed
+          CATCH1:
+            exception_type: "Exception"
+            var: "error_msg"
+            body:
+              branch: warn_callback_indexed
+
+      trigger_callback_indexed:
+        opcode: data_set_variable_to
+        next: print_callback_indexed
+        inputs:
+          VARIABLE:
+            literal: "callback_body"
+          VALUE:
+            node: do_callback_indexed
+
+      print_callback_indexed:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "  [8/8] Callback: INDEXED\n"
+
+      warn_callback_indexed:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "  [8/8] Callback: INDEXED (skipped - API unavailable)\n"
+
+      # ======================================================================
+      # ACK message + timing summary + counter
       # ======================================================================
       ack_message:
         opcode: pubsub_ack_message
-        next: print_total
+        next: increment_total
         inputs:
           subscriber:
             variable: subscriber
@@ -1092,6 +1477,24 @@ workflows:
             variable: subscription_id
           message:
             variable: msg
+
+      new_total:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: total_processed
+          right:
+            literal: 1
+
+      increment_total:
+        opcode: data_set_variable_to
+        next: print_total
+        inputs:
+          VARIABLE:
+            literal: "total_processed"
+          VALUE:
+            node: new_total
 
       # Total message time
       get_msg_end:
@@ -1108,23 +1511,25 @@ workflows:
           end:
             node: get_msg_end
 
-      chunk_count_str:
+      total_str:
         opcode: str
         isReporter: true
         inputs:
           value:
-            variable: chunk_count
+            variable: total_processed
 
       fmt_total:
         opcode: string_format
         isReporter: true
         inputs:
           template:
-            literal: "  ── Total:            {0} ── {1} chunks indexados\n\n"
+            literal: "  -- Total: {0} -- {1} chunks indexados (total processed: {2})\n\n"
           VALUES:
             node: dur_total
           VALUE_1:
             node: chunk_count_str
+          VALUE_2:
+            node: total_str
 
       print_total:
         opcode: io_print
@@ -1134,11 +1539,148 @@ workflows:
             node: fmt_total
 
       # ======================================================================
-      # CATCH: nack message and log error
+      # ERROR HANDLER: Callback ERROR + NACK message
       # ======================================================================
       handle_error:
+        opcode: io_print
+        next: print_error_detail
+        inputs:
+          STRING:
+            literal: "  [ERROR] Processing failed: "
+
+      format_error_detail:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: error_msg
+          right:
+            literal: "\n"
+
+      print_error_detail:
+        opcode: io_print
+        next: try_error_callback
+        inputs:
+          STRING:
+            node: format_error_detail
+
+      # Build error mutation
+      build_error_mutation_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: 'mutation { updateDocumentStatus(input: { documentId: "'
+          right:
+            variable: document_id
+
+      build_error_mutation_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: build_error_mutation_1
+          right:
+            literal: '", status: ERROR, errorMessage: "'
+
+      # Escape error message for GraphQL string
+      escape_error_msg:
+        opcode: string_replace
+        isReporter: true
+        inputs:
+          text:
+            variable: error_msg
+          old:
+            literal: "\""
+          new:
+            literal: "\\\""
+
+      build_error_mutation_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: build_error_mutation_2
+          right:
+            node: escape_error_msg
+
+      build_error_mutation:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: build_error_mutation_3
+          right:
+            literal: '" }) { id status } }'
+
+      error_body_base:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      error_body:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: error_body_base
+          key:
+            literal: "query"
+          value:
+            node: build_error_mutation
+
+      do_error_callback:
+        opcode: http_post
+        isReporter: true
+        inputs:
+          url:
+            variable: api_url
+          data:
+            literal: null
+          json:
+            node: error_body
+          headers:
+            node: callback_headers
+
+      try_error_callback:
+        opcode: control_try
+        next: nack_message
+        inputs:
+          TRY:
+            branch: trigger_error_callback
+          CATCH1:
+            exception_type: "Exception"
+            var: "error_msg"
+            body:
+              branch: warn_error_callback
+
+      trigger_error_callback:
+        opcode: data_set_variable_to
+        next: print_error_callback_sent
+        inputs:
+          VARIABLE:
+            literal: "callback_body"
+          VALUE:
+            node: do_error_callback
+
+      print_error_callback_sent:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "  [ERROR] Callback: ERROR status sent\n"
+
+      warn_error_callback:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "  [ERROR] Callback: ERROR status (skipped - API unavailable)\n"
+
+      # NACK message for retry
+      nack_message:
         opcode: pubsub_nack_message
-        next: print_error
+        next: print_nack_done
         inputs:
           subscriber:
             variable: subscriber
@@ -1149,23 +1691,12 @@ workflows:
           message:
             variable: msg
 
-      format_error_msg:
-        opcode: string_format
-        isReporter: true
-        inputs:
-          template:
-            literal: "[{0}] ERRO: {1}\n\n"
-          VALUES:
-            variable: livro_id
-          VALUE_1:
-            variable: error_msg
-
-      print_error:
+      print_nack_done:
         opcode: io_print
         next: null
         inputs:
           STRING:
-            node: format_error_msg
+            literal: "  [NACK] Message returned to queue for retry\n\n"
 
       # ======================================================================
       # CLEANUP

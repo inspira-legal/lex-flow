@@ -419,7 +419,12 @@ def register_pubsub_opcodes():
                         subscription_path, max_messages=effective_batch_size
                     )
                     error_count = 0  # Reset on success
-                except (ClientError, asyncio.TimeoutError) as e:
+                except (ClientError, asyncio.TimeoutError):
+                    # Normal when no messages available (especially with emulator)
+                    await asyncio.sleep(poll_interval)
+                    poll_interval = min(poll_interval * 2, max_poll_interval)
+                    continue
+                except Exception as e:
                     error_count += 1
                     if error_count >= max_retries:
                         logging.error(

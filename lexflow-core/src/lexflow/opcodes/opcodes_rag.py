@@ -389,6 +389,8 @@ def register_rag_opcodes():
                 "chunk_index": i,
                 "page_start": chunk.get("page_start"),
                 "page_end": chunk.get("page_end"),
+                "line_start": chunk.get("line_start"),
+                "line_end": chunk.get("line_end"),
             }
             if metadata:
                 payload.update(metadata)

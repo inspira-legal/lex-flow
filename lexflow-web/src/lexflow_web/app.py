@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 
 from lexflow_web.api import router as api_router
 from lexflow_web.websocket import router as ws_router
+from lexflow_web.workflows import router as workflows_router
 
 
 def create_app() -> FastAPI:
@@ -21,6 +22,7 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(api_router, prefix="/api")
+    app.include_router(workflows_router, prefix="/api/workflows")
     app.include_router(ws_router)
 
     # Static files

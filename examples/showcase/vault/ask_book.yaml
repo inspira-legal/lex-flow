@@ -1,48 +1,50 @@
-# Book Question-Answering Workflow - Vault / Book Collection RAG Pipeline
+# Vault - Document Q&A (RAG Pipeline)
 #
-# This workflow implements a complete RAG pipeline for book questions:
-# 1. Embeds the user's question
-# 2. Searches pgVector for relevant book chunks
+# Semantic search + AI answer for legal documents in the personal vault.
+# 1. Embeds the user's question (RETRIEVAL_QUERY)
+# 2. Searches pgVector with workspace_id filtering
 # 3. Optionally applies BM25 reranking for hybrid search
 # 4. Uses AI to generate an answer grounded in the retrieved context
-# 5. Returns answer + array of source excerpts (trechos)
+# 5. Returns answer + structured highlights with page/line citations
 #
 # Run via CLI:
 #   lexflow examples/showcase/vault/ask_book.yaml \
-#     --input pergunta="Quais planetas existem no sistema solar?" \
-#     --input projeto_gcp=inspira-development
-#
-# Run via Web UI:
-#   Load this file and use inputs:
-#   {
-#     "pergunta": "Quais planetas existem no sistema solar?",
-#     "projeto_gcp": "inspira-development"
-#   }
+#     --input question="Qual a cláusula de rescisão?" \
+#     --input workspace_id=62b9d55915370b1b00a1f86b
 #
 # Output format:
 #   {
 #     "answer": "A resposta gerada pela IA...",
-#     "highlights": ["trecho 1...", "trecho 2...", ...]
+#     "highlights": [
+#       { "text": "...", "file_name": "contrato.pdf", "page_start": 3, "page_end": 3, "line_start": 45, "line_end": 62, "score": 0.87, "document_id": "62b...", "chunk_index": 5 },
+#       ...
+#     ]
 #   }
 #
 # Requirements:
-#   pip install lexflow[pgvector,ai]
+#   pip install lexflow[pgvector,rag,ai]
 #   gcloud auth application-default login
+#   PostgreSQL with pgvector extension
 
 workflows:
   - name: main
     interface:
-      inputs: [pergunta, projeto_gcp, collection, num_results, pgvector_dsn, rerank]
+      inputs: [question, workspace_id, folder_id, num_results, rerank, rerank_alpha]
       outputs: []
     variables:
       # Input parameters
-      pergunta: ""
-      projeto_gcp: ""
-      collection: "livros"
-      num_results: 5
-      pgvector_dsn: "postgresql://localhost/vault"
+      question: ""
+      workspace_id: ""
+      folder_id: ""
+      gcp_project: "inspira-development"
+      collection_name: "documents"
+      num_results: 8
+      pgvector_dsn: "postgresql://vault:vault@localhost/vault"
       rerank: true
-      # pgVector client
+      rerank_alpha: 0.6
+      # Search filters
+      search_filters: null
+      # pgVector pool
       pgvector_pool: null
       # Search results
       question_embedding: null
@@ -50,14 +52,20 @@ workflows:
       results_count: 0
       # Context building
       context_text: ""
-      sources_set: null
       current_index: 0
       current_result: null
       current_payload: null
       current_text: ""
-      current_source: ""
-      # Output - trechos encontrados
-      trechos: []
+      current_file: ""
+      current_page_start: ""
+      current_page_end: ""
+      current_line_start: ""
+      current_line_end: ""
+      current_score: 0
+      current_document_id: ""
+      current_chunk_index: 0
+      # Output - structured highlights
+      highlights: []
       # AI components
       model: null
       rag_agent: null
@@ -79,7 +87,7 @@ workflows:
         next: print_question_header
         inputs:
           STRING:
-            literal: "\n================================================================================\n                   VAULT - BOOK Q&A (RAG)\n================================================================================\n\n"
+            literal: "\n================================================================================\n                   VAULT - DOCUMENT Q&A (RAG)\n================================================================================\n\n"
 
       print_question_header:
         opcode: io_print
@@ -93,7 +101,7 @@ workflows:
         isReporter: true
         inputs:
           left:
-            variable: pergunta
+            variable: question
           right:
             literal: "\n\n"
 
@@ -137,9 +145,9 @@ workflows:
         isReporter: true
         inputs:
           text:
-            variable: pergunta
+            variable: question
           project:
-            variable: projeto_gcp
+            variable: gcp_project
           location:
             literal: "us-central1"
           model:
@@ -149,14 +157,61 @@ workflows:
 
       store_question_embedding:
         opcode: data_set_variable_to
-        next: store_search_results
+        next: build_search_filters
         inputs:
           VARIABLE:
             literal: "question_embedding"
           VALUE:
             node: create_question_embedding
 
-      # Search pgVector for relevant chunks
+      # Build search filters dict (workspace_id + optional folder_id)
+      create_filters_base:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      filters_with_workspace:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: create_filters_base
+          key:
+            literal: "workspace_id"
+          value:
+            variable: workspace_id
+
+      filters_with_folder:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: filters_with_workspace
+          key:
+            literal: "folder_id"
+          value:
+            variable: folder_id
+
+      build_search_filters:
+        opcode: data_set_variable_to
+        next: store_search_results
+        inputs:
+          VARIABLE:
+            literal: "search_filters"
+          VALUE:
+            node: filters_with_folder
+
+      # Compute over-fetch limit (3x num_results) for reranking
+      compute_fetch_limit:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          left:
+            variable: num_results
+          right:
+            literal: 3
+
+      # Search pgVector for relevant chunks (filtered by workspace_id)
       search_pgvector:
         opcode: pgvector_search
         isReporter: true
@@ -164,11 +219,13 @@ workflows:
           pool:
             variable: pgvector_pool
           collection:
-            variable: collection
+            variable: collection_name
           query_vector:
             variable: question_embedding
           limit:
-            variable: num_results
+            node: compute_fetch_limit
+          filters:
+            variable: search_filters
 
       store_search_results:
         opcode: data_set_variable_to
@@ -195,11 +252,13 @@ workflows:
         isReporter: true
         inputs:
           query:
-            variable: pergunta
+            variable: question
           results:
             variable: search_results
           top_k:
             variable: num_results
+          alpha:
+            variable: rerank_alpha
 
       rerank_results:
         opcode: data_set_variable_to
@@ -220,30 +279,24 @@ workflows:
 
       store_results_count:
         opcode: data_set_variable_to
-        next: init_sources_set
+        next: init_context
         inputs:
           VARIABLE:
             literal: "results_count"
           VALUE:
             node: get_results_count
 
-      # Initialize sources set (using a dict to track unique sources)
-      create_sources_set:
-        opcode: dict_create
-        isReporter: true
-        inputs: {}
-
-      init_sources_set:
+      init_context:
         opcode: data_set_variable_to
         next: build_context_loop
         inputs:
           VARIABLE:
-            literal: "sources_set"
+            literal: "current_index"
           VALUE:
-            node: create_sources_set
+            literal: 0
 
       # ========================================================================
-      # BUILD CONTEXT - Loop through results and concatenate
+      # BUILD CONTEXT - Loop through results, extract citations
       # ========================================================================
       build_context_loop:
         opcode: control_while
@@ -301,10 +354,22 @@ workflows:
           key:
             literal: "payload"
 
+      # Extract score
+      get_score:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_result
+          key:
+            literal: "score"
+          default:
+            literal: 0
+
       # Extract text from payload
       extract_text:
         opcode: data_set_variable_to
-        next: add_to_trechos
+        next: extract_metadata
         inputs:
           VARIABLE:
             literal: "current_text"
@@ -322,59 +387,280 @@ workflows:
           default:
             literal: ""
 
-      # Add text to trechos array
-      append_trecho:
-        opcode: list_append
-        isReporter: true
-        inputs:
-          items:
-            variable: trechos
-          value:
-            variable: current_text
-
-      add_to_trechos:
-        opcode: data_set_variable_to
-        next: extract_source
-        inputs:
-          VARIABLE:
-            literal: "trechos"
-          VALUE:
-            node: append_trecho
-
-      # Extract source from payload
-      extract_source:
-        opcode: data_set_variable_to
-        next: add_source_to_set
-        inputs:
-          VARIABLE:
-            literal: "current_source"
-          VALUE:
-            node: get_source
-
-      get_source:
+      # Extract metadata fields
+      get_file_name:
         opcode: dict_get
         isReporter: true
         inputs:
           d:
             variable: current_payload
           key:
-            literal: "source"
+            literal: "file_name"
           default:
-            literal: "unknown"
+            literal: ""
 
-      # Add source to sources set (dict key = source name)
-      add_source_to_set:
-        opcode: dict_set
-        next: append_to_context
+      get_page_start:
+        opcode: dict_get
+        isReporter: true
         inputs:
           d:
-            variable: sources_set
+            variable: current_payload
           key:
-            variable: current_source
-          value:
-            literal: true
+            literal: "page_start"
+          default:
+            literal: ""
 
-      # Append text to context with source attribution
+      get_page_end:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_payload
+          key:
+            literal: "page_end"
+          default:
+            literal: ""
+
+      get_line_start:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_payload
+          key:
+            literal: "line_start"
+          default:
+            literal: ""
+
+      get_line_end:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_payload
+          key:
+            literal: "line_end"
+          default:
+            literal: ""
+
+      get_document_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_payload
+          key:
+            literal: "document_id"
+          default:
+            literal: ""
+
+      get_chunk_index:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_payload
+          key:
+            literal: "chunk_index"
+          default:
+            literal: 0
+
+      extract_metadata:
+        opcode: data_set_variable_to
+        next: store_file
+        inputs:
+          VARIABLE:
+            literal: "current_score"
+          VALUE:
+            node: get_score
+
+      store_file:
+        opcode: data_set_variable_to
+        next: store_page_start
+        inputs:
+          VARIABLE:
+            literal: "current_file"
+          VALUE:
+            node: get_file_name
+
+      store_page_start:
+        opcode: data_set_variable_to
+        next: store_page_end
+        inputs:
+          VARIABLE:
+            literal: "current_page_start"
+          VALUE:
+            node: get_page_start
+
+      store_page_end:
+        opcode: data_set_variable_to
+        next: store_line_start
+        inputs:
+          VARIABLE:
+            literal: "current_page_end"
+          VALUE:
+            node: get_page_end
+
+      store_line_start:
+        opcode: data_set_variable_to
+        next: store_line_end
+        inputs:
+          VARIABLE:
+            literal: "current_line_start"
+          VALUE:
+            node: get_line_start
+
+      store_line_end:
+        opcode: data_set_variable_to
+        next: store_document_id
+        inputs:
+          VARIABLE:
+            literal: "current_line_end"
+          VALUE:
+            node: get_line_end
+
+      store_document_id:
+        opcode: data_set_variable_to
+        next: store_chunk_index
+        inputs:
+          VARIABLE:
+            literal: "current_document_id"
+          VALUE:
+            node: get_document_id
+
+      store_chunk_index:
+        opcode: data_set_variable_to
+        next: build_highlight
+        inputs:
+          VARIABLE:
+            literal: "current_chunk_index"
+          VALUE:
+            node: get_chunk_index
+
+      # Build structured highlight object
+      highlight_base:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      hl_with_text:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: highlight_base
+          key:
+            literal: "text"
+          value:
+            variable: current_text
+
+      hl_with_file:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: hl_with_text
+          key:
+            literal: "file_name"
+          value:
+            variable: current_file
+
+      hl_with_ps:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: hl_with_file
+          key:
+            literal: "page_start"
+          value:
+            variable: current_page_start
+
+      hl_with_pe:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: hl_with_ps
+          key:
+            literal: "page_end"
+          value:
+            variable: current_page_end
+
+      hl_with_ls:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: hl_with_pe
+          key:
+            literal: "line_start"
+          value:
+            variable: current_line_start
+
+      hl_with_le:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: hl_with_ls
+          key:
+            literal: "line_end"
+          value:
+            variable: current_line_end
+
+      hl_with_score:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: hl_with_le
+          key:
+            literal: "score"
+          value:
+            variable: current_score
+
+      hl_with_document_id:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: hl_with_score
+          key:
+            literal: "document_id"
+          value:
+            variable: current_document_id
+
+      hl_with_chunk_index:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: hl_with_document_id
+          key:
+            literal: "chunk_index"
+          value:
+            variable: current_chunk_index
+
+      append_highlight:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          items:
+            variable: highlights
+          value:
+            node: hl_with_chunk_index
+
+      build_highlight:
+        opcode: data_set_variable_to
+        next: append_to_context
+        inputs:
+          VARIABLE:
+            literal: "highlights"
+          VALUE:
+            node: append_highlight
+
+      # Append text to context with file/page/line citation
       append_to_context:
         opcode: data_set_variable_to
         next: increment_context_index
@@ -393,34 +679,135 @@ workflows:
           right:
             node: format_context_entry
 
+      page_start_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: current_page_start
+
+      page_end_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: current_page_end
+
+      line_start_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: current_line_start
+
+      line_end_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: current_line_end
+
+      # Format: [Arquivo: contract.pdf | Páginas 3-4 | Linhas 45-62]
       format_context_entry:
         opcode: operator_add
         isReporter: true
         inputs:
           left:
-            literal: "[Fonte: "
+            literal: "[Arquivo: "
           right:
-            node: format_context_entry_2
+            node: ctx_file_part
 
-      format_context_entry_2:
+      ctx_file_part:
         opcode: operator_add
         isReporter: true
         inputs:
           left:
-            variable: current_source
+            variable: current_file
           right:
-            node: format_context_entry_3
+            node: ctx_page_part
 
-      format_context_entry_3:
+      ctx_page_part:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " | Pág. "
+          right:
+            node: ctx_page_range
+
+      ctx_page_range:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: page_start_str
+          right:
+            node: ctx_page_sep
+
+      ctx_page_sep:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "-"
+          right:
+            node: ctx_line_part
+
+      ctx_line_part:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: page_end_str
+          right:
+            node: ctx_line_label
+
+      ctx_line_label:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: " | Linhas "
+          right:
+            node: ctx_line_range
+
+      ctx_line_range:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: line_start_str
+          right:
+            node: ctx_line_end
+
+      ctx_line_end:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "-"
+          right:
+            node: ctx_closing
+
+      ctx_closing:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: line_end_str
+          right:
+            node: ctx_text_part
+
+      ctx_text_part:
         opcode: operator_add
         isReporter: true
         inputs:
           left:
             literal: "]\n"
           right:
-            node: format_context_entry_4
+            node: ctx_text_content
 
-      format_context_entry_4:
+      ctx_text_content:
         opcode: operator_add
         isReporter: true
         inputs:
@@ -458,34 +845,12 @@ workflows:
           STRING:
             node: format_found_context
 
-      # Get number of unique sources
-      get_sources_keys:
-        opcode: dict_keys
-        isReporter: true
-        inputs:
-          d:
-            variable: sources_set
-
-      get_sources_count:
-        opcode: list_length
-        isReporter: true
-        inputs:
-          items:
-            node: get_sources_keys
-
       results_count_str:
         opcode: str
         isReporter: true
         inputs:
           value:
             variable: results_count
-
-      sources_count_str:
-        opcode: str
-        isReporter: true
-        inputs:
-          value:
-            node: get_sources_count
 
       format_found_context:
         opcode: operator_add
@@ -503,25 +868,7 @@ workflows:
           left:
             node: results_count_str
           right:
-            node: format_found_context_3
-
-      format_found_context_3:
-        opcode: operator_add
-        isReporter: true
-        inputs:
-          left:
-            literal: " trechos relevantes de "
-          right:
-            node: format_found_context_4
-
-      format_found_context_4:
-        opcode: operator_add
-        isReporter: true
-        inputs:
-          left:
-            node: sources_count_str
-          right:
-            literal: " documento(s)\n\n"
+            literal: " trechos relevantes\n\n"
 
       # ========================================================================
       # AI GENERATION - Create agent and generate answer
@@ -541,7 +888,7 @@ workflows:
           model_name:
             literal: "gemini-2.0-flash"
           project:
-            variable: projeto_gcp
+            variable: gcp_project
           location:
             literal: "us-central1"
 
@@ -554,7 +901,7 @@ workflows:
           VALUE:
             node: create_model
 
-      # Create RAG Agent with specialized system prompt
+      # Create RAG Agent with specialized legal system prompt
       create_rag_agent:
         opcode: pydantic_ai_create_agent
         isReporter: true
@@ -563,10 +910,11 @@ workflows:
             variable: model
           instructions:
             literal: |
-              Você é um assistente especializado em responder perguntas sobre livros.
-              Responda apenas com base no contexto fornecido.
+              Você é um assistente jurídico especializado em análise de documentos legais.
+              Responda apenas com base no contexto fornecido (trechos de documentos do acervo pessoal do advogado).
               Se o contexto não contiver informação suficiente, diga honestamente.
-              Seja conciso e cite de qual fonte/documento veio a informação.
+              Sempre cite o arquivo, página e linhas de onde veio a informação (ex: "contrato.pdf, pág. 3, linhas 45-62").
+              Use linguagem técnico-jurídica quando apropriado.
               Responda em português.
 
       store_rag_agent:
@@ -611,9 +959,9 @@ workflows:
         isReporter: true
         inputs:
           left:
-            variable: pergunta
+            variable: question
           right:
-            literal: "\n\nResponda a pergunta baseado apenas no contexto fornecido. Cite suas fontes."
+            literal: "\n\nResponda a pergunta baseado apenas no contexto fornecido. Cite o arquivo, página e linhas."
 
       store_full_prompt:
         opcode: data_set_variable_to
@@ -671,71 +1019,18 @@ workflows:
 
       print_answer:
         opcode: io_print
-        next: print_sources_header
+        next: print_footer
         inputs:
           STRING:
             node: format_answer_output
 
-      # Print sources
-      print_sources_header:
-        opcode: io_print
-        next: print_sources_list
-        inputs:
-          STRING:
-            literal: "\nFontes consultadas: "
-
-      # Join source names
-      join_sources:
-        opcode: string_join
-        isReporter: true
-        inputs:
-          items:
-            node: get_sources_keys
-          separator:
-            literal: ", "
-
-      format_sources_output:
-        opcode: operator_add
-        isReporter: true
-        inputs:
-          left:
-            node: join_sources
-          right:
-            literal: "\n"
-
-      print_sources_list:
-        opcode: io_print
-        next: print_footer
-        inputs:
-          STRING:
-            node: format_sources_output
-
       # Footer
       print_footer:
         opcode: io_print
-        next: disconnect_pgvector
-        inputs:
-          STRING:
-            literal: "--------------------------------------------------------------------------------\n\n"
-
-      # ========================================================================
-      # CLEANUP - Disconnect pgVector
-      # ========================================================================
-      do_disconnect_pgvector:
-        opcode: pgvector_disconnect
-        isReporter: true
-        inputs:
-          pool:
-            variable: pgvector_pool
-
-      disconnect_pgvector:
-        opcode: data_set_variable_to
         next: build_result
         inputs:
-          VARIABLE:
-            literal: "pgvector_pool"
-          VALUE:
-            node: do_disconnect_pgvector
+          STRING:
+            literal: "\n--------------------------------------------------------------------------------\n\n"
 
       # ========================================================================
       # BUILD FINAL RESULT - Return answer + trechos
@@ -765,7 +1060,7 @@ workflows:
           key:
             literal: "highlights"
           value:
-            variable: trechos
+            variable: highlights
 
       build_result:
         opcode: data_set_variable_to
@@ -780,5 +1075,5 @@ workflows:
         opcode: workflow_return
         next: null
         inputs:
-          value:
+          VALUE:
             variable: resultado_final

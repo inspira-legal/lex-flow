@@ -4,7 +4,7 @@
 workflows:
   - name: main
     interface:
-      inputs: ["query", "project", "collection", "limit", "location", "rerank"]
+      inputs: ["query", "project", "collection", "limit", "location", "rerank", "rerank_alpha"]
       outputs: []
     variables:
       query: ""
@@ -13,6 +13,7 @@ workflows:
       limit: 5
       location: "us-central1"
       rerank: true
+      rerank_alpha: 0.6
       client: null
       query_embedding: null
       results: []
@@ -97,6 +98,18 @@ workflows:
             variable: location
           model:
             literal: "text-multilingual-embedding-002"
+          task_type:
+            literal: "RETRIEVAL_QUERY"
+
+      # Compute over-fetch limit (3x limit) for reranking
+      compute_fetch_limit:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          left:
+            variable: limit
+          right:
+            literal: 3
 
       # Search Qdrant
       search_qdrant:
@@ -119,7 +132,7 @@ workflows:
           query_vector:
             variable: query_embedding
           limit:
-            variable: limit
+            node: compute_fetch_limit
 
       # Conditionally rerank results using BM25
       check_rerank:
@@ -142,6 +155,8 @@ workflows:
             variable: results
           top_k:
             variable: limit
+          alpha:
+            variable: rerank_alpha
 
       store_reranked_results:
         opcode: data_set_variable_to
@@ -332,29 +347,101 @@ workflows:
         isReporter: true
         inputs:
           a:
-            node: source_part
+            node: doc_id_part
           b:
-            literal: "\n"
+            node: pages_part_newline
 
-      source_part:
+      doc_id_part:
         opcode: operator_add
         isReporter: true
         inputs:
           a:
-            literal: " | Source: "
+            literal: " | Doc: "
           b:
-            node: get_source
+            node: get_document_id
 
-      get_source:
+      get_document_id:
         opcode: dict_get
         isReporter: true
         inputs:
           d:
             node: get_payload
           key:
-            literal: "source"
+            literal: "document_id"
           default:
             literal: "unknown"
+
+      pages_part_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            node: pages_part
+          b:
+            literal: "\n"
+
+      pages_part:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            literal: " | Pages: "
+          b:
+            node: pages_range
+
+      pages_range:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            node: page_start_str
+          b:
+            node: page_end_with_dash
+
+      page_start_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_page_start
+
+      page_end_with_dash:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          a:
+            literal: "-"
+          b:
+            node: page_end_str
+
+      page_end_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            node: get_page_end
+
+      get_page_start:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            node: get_payload
+          key:
+            literal: "page_start"
+          default:
+            literal: "?"
+
+      get_page_end:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            node: get_payload
+          key:
+            literal: "page_end"
+          default:
+            literal: "?"
 
       get_payload:
         opcode: dict_get

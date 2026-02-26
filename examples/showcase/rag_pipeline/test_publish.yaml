@@ -1,0 +1,290 @@
+# Test Publisher for RAG Pipeline (Local Emulator)
+#
+# Publishes a test message to simulate what the Inspira API sends when a
+# document is uploaded. Use this with the Pub/Sub emulator to test the
+# pubsub_ingest_pipeline.yaml workflow locally.
+#
+# Note: The pipeline will download the PDF from GCS (gs://mvp-personal-vault/...).
+# Make sure the file exists in the bucket or use `gcloud auth application-default login`
+# to authenticate. The Pub/Sub part uses the emulator but GCS uses real credentials.
+#
+# Prerequisites:
+#   docker-compose up -d
+#   export PUBSUB_EMULATOR_HOST=localhost:8085
+#   ./setup_emulator.sh
+#
+# Usage:
+#   export PUBSUB_EMULATOR_HOST=localhost:8085
+#   lexflow examples/showcase/rag_pipeline/test_publish.yaml
+
+workflows:
+  - name: main
+    interface:
+      inputs: [project_id, topic_id]
+      outputs: []
+    variables:
+      project_id: "inspira-development"
+      topic_id: "personal-vault-ingest"
+      metadata: null
+      message_data: null
+      message_json: ""
+      publisher: null
+      message_id: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      # ========================================================================
+      # HEADER
+      # ========================================================================
+      print_header:
+        opcode: io_print
+        next: build_metadata
+        inputs:
+          STRING:
+            literal: "\n=== RAG Pipeline Test Publisher ===\n\n"
+
+      # ========================================================================
+      # STEP 1: Build metadata sub-dict
+      # ========================================================================
+      create_metadata:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      metadata_with_title:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: create_metadata
+          key:
+            literal: "title"
+          value:
+            literal: "Solar System"
+
+      metadata_with_author:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: metadata_with_title
+          key:
+            literal: "author"
+          value:
+            literal: "Vaswani et al."
+
+      metadata_with_category:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: metadata_with_author
+          key:
+            literal: "category"
+          value:
+            literal: "Research"
+
+      metadata_complete:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: metadata_with_category
+          key:
+            literal: "language"
+          value:
+            literal: "english"
+
+      build_metadata:
+        opcode: data_set_variable_to
+        next: build_message_data
+        inputs:
+          VARIABLE:
+            literal: "metadata"
+          VALUE:
+            node: metadata_complete
+
+      # ========================================================================
+      # STEP 2: Build the full message data dict
+      # ========================================================================
+      create_message:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      message_with_doc_id:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: create_message
+          key:
+            literal: "documentId"
+          value:
+            literal: "test-doc-001"
+
+      message_with_workspace_id:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: message_with_doc_id
+          key:
+            literal: "workspaceId"
+          value:
+            literal: "test-workspace-001"
+
+      message_with_gcs_uri:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: message_with_workspace_id
+          key:
+            literal: "gcsUri"
+          value:
+            literal: "gs://mvp-personal-vault/solar_system.pdf"
+
+      message_with_file_name:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: message_with_gcs_uri
+          key:
+            literal: "fileName"
+          value:
+            literal: "solar_system.pdf"
+
+      message_with_mime_type:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: message_with_file_name
+          key:
+            literal: "mimeType"
+          value:
+            literal: "application/pdf"
+
+      message_with_metadata:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: message_with_mime_type
+          key:
+            literal: "metadata"
+          value:
+            variable: metadata
+
+      build_message_data:
+        opcode: data_set_variable_to
+        next: stringify_message
+        inputs:
+          VARIABLE:
+            literal: "message_data"
+          VALUE:
+            node: message_with_metadata
+
+      # ========================================================================
+      # STEP 3: Stringify with json_stringify
+      # ========================================================================
+      do_stringify:
+        opcode: json_stringify
+        isReporter: true
+        inputs:
+          obj:
+            variable: message_data
+
+      stringify_message:
+        opcode: data_set_variable_to
+        next: create_publisher
+        inputs:
+          VARIABLE:
+            literal: "message_json"
+          VALUE:
+            node: do_stringify
+
+      # ========================================================================
+      # STEP 4: Create publisher
+      # ========================================================================
+      do_create_publisher:
+        opcode: pubsub_create_publisher
+        isReporter: true
+        inputs: {}
+
+      create_publisher:
+        opcode: data_set_variable_to
+        next: publish_message
+        inputs:
+          VARIABLE:
+            literal: "publisher"
+          VALUE:
+            node: do_create_publisher
+
+      # ========================================================================
+      # STEP 5: Publish message
+      # ========================================================================
+      do_publish:
+        opcode: pubsub_publish_message
+        isReporter: true
+        inputs:
+          publisher:
+            variable: publisher
+          project_id:
+            variable: project_id
+          topic_id:
+            variable: topic_id
+          data:
+            variable: message_json
+
+      publish_message:
+        opcode: data_set_variable_to
+        next: print_message_id
+        inputs:
+          VARIABLE:
+            literal: "message_id"
+          VALUE:
+            node: do_publish
+
+      # ========================================================================
+      # STEP 6: Print message ID
+      # ========================================================================
+      format_message_id:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Message ID: "
+          right:
+            variable: message_id
+
+      print_message_id:
+        opcode: io_print
+        next: close_publisher
+        inputs:
+          STRING:
+            node: format_message_id
+
+      # ========================================================================
+      # STEP 7: Close publisher
+      # ========================================================================
+      close_publisher:
+        opcode: pubsub_close_publisher
+        next: print_done
+        inputs:
+          publisher:
+            variable: publisher
+
+      # ========================================================================
+      # STEP 8: Print done
+      # ========================================================================
+      print_done:
+        opcode: io_print
+        inputs:
+          STRING:
+            literal: "\nDone!\n"

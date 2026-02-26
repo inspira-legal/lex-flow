@@ -1,0 +1,1498 @@
+# Pub/Sub RAG Ingestion Pipeline
+#
+# Listens to a Google Cloud Pub/Sub subscription for document ingestion messages,
+# processes each PDF (download from GCS, extract text, chunk, embed), and stores
+# vectors in Qdrant for semantic search. Sends status callbacks to the Inspira API.
+#
+# Message format expected from Pub/Sub:
+# {
+#   "documentId": "mongo-object-id",
+#   "workspaceId": "workspace-mongo-id",
+#   "gcsUri": "gs://bucket-name/path/to/file.pdf",
+#   "fileName": "document.pdf",
+#   "mimeType": "application/pdf",
+#   "metadata": { "title": "...", "author": "...", "category": "...", "language": "portuguese" }
+# }
+#
+# Run:
+#   lexflow examples/showcase/rag_pipeline/pubsub_ingest_pipeline.yaml \
+#     --input project=YOUR_GCP_PROJECT
+#
+# Optional:
+#   --input subscription_id=personal-vault-ingest-sub
+#   --input collection=personal-vault
+#   --input chunk_size=1000
+#   --input overlap=200
+#   --input location=us-central1
+#   --input qdrant_url=http://localhost:6333
+#   --input api_url=http://localhost:4000
+#   --input api_token=your-worker-token
+#
+# Requirements:
+#   pip install lexflow[rag,gcs,pubsub,http]
+#   gcloud auth application-default login
+#   docker-compose up -d  (to start Qdrant)
+
+workflows:
+  - name: main
+    interface:
+      inputs: [project, subscription_id, collection, chunk_size, overlap, location, qdrant_url, api_url, api_token]
+      outputs: []
+    variables:
+      # Input parameters
+      project: "inspira-development"
+      subscription_id: "personal-vault-ingest-sub"
+      collection: "personal-vault"
+      chunk_size: 2000
+      overlap: 200
+      location: "us-central1"
+      qdrant_url: "http://localhost:6333"
+      api_url: "http://localhost:4000"
+      api_token: ""
+      # State variables - Clients
+      gcs_client: null
+      qdrant_client: null
+      subscriber: null
+      # State variables - Current message processing
+      msg: null
+      msg_data: null
+      document_id: ""
+      workspace_id: ""
+      gcs_uri: ""
+      file_name: ""
+      metadata: {}
+      bucket: ""
+      object_name: ""
+      # State variables - Processing
+      pdf_bytes: null
+      pdf_pages: []
+      chunks: []
+      chunk_texts: []
+      chunk_count: 0
+      page_count: 0
+      embeddings: []
+      ids: []
+      payloads: []
+      current_index: 0
+      current_chunk: null
+      # Error handling
+      error_message: ""
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_header
+        inputs: {}
+
+      # ========================================================================
+      # HEADER
+      # ========================================================================
+      print_header:
+        opcode: io_print
+        next: print_title
+        inputs:
+          STRING:
+            literal: "\n================================================================================\n"
+
+      print_title:
+        opcode: io_print
+        next: print_separator
+        inputs:
+          STRING:
+            literal: "           PUB/SUB RAG INGESTION PIPELINE\n"
+
+      print_separator:
+        opcode: io_print
+        next: print_settings_header
+        inputs:
+          STRING:
+            literal: "================================================================================\n\n"
+
+      # Print settings
+      print_settings_header:
+        opcode: io_print
+        next: print_project
+        inputs:
+          STRING:
+            literal: "Settings:\n"
+
+      format_project:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Project:      "
+          right:
+            node: project_with_newline
+
+      project_with_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: project
+          right:
+            literal: "\n"
+
+      print_project:
+        opcode: io_print
+        next: print_subscription
+        inputs:
+          STRING:
+            node: format_project
+
+      format_subscription:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Subscription: "
+          right:
+            node: subscription_with_newline
+
+      subscription_with_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: subscription_id
+          right:
+            literal: "\n"
+
+      print_subscription:
+        opcode: io_print
+        next: print_collection
+        inputs:
+          STRING:
+            node: format_subscription
+
+      format_collection:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "  Collection:   "
+          right:
+            node: collection_with_newline
+
+      collection_with_newline:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: collection
+          right:
+            literal: "\n\n"
+
+      print_collection:
+        opcode: io_print
+        next: print_init_step
+        inputs:
+          STRING:
+            node: format_collection
+
+      # ========================================================================
+      # STEP 1: Initialize clients
+      # ========================================================================
+      print_init_step:
+        opcode: io_print
+        next: create_gcs_client
+        inputs:
+          STRING:
+            literal: "[INIT] Creating clients...\n"
+
+      # Create GCS client
+      do_create_gcs_client:
+        opcode: gcs_create_client
+        isReporter: true
+        inputs: {}
+
+      create_gcs_client:
+        opcode: data_set_variable_to
+        next: connect_qdrant
+        inputs:
+          VARIABLE:
+            literal: "gcs_client"
+          VALUE:
+            node: do_create_gcs_client
+
+      # Connect to Qdrant
+      do_connect_qdrant:
+        opcode: qdrant_connect
+        isReporter: true
+        inputs:
+          url:
+            variable: qdrant_url
+
+      connect_qdrant:
+        opcode: data_set_variable_to
+        next: create_collection
+        inputs:
+          VARIABLE:
+            literal: "qdrant_client"
+          VALUE:
+            node: do_connect_qdrant
+
+      # Create collection (if not exists)
+      do_create_collection:
+        opcode: qdrant_create_collection
+        isReporter: true
+        inputs:
+          client:
+            variable: qdrant_client
+          name:
+            variable: collection
+          vector_size:
+            literal: 768
+
+      create_collection:
+        opcode: control_if_else
+        next: create_subscriber
+        inputs:
+          CONDITION:
+            node: do_create_collection
+          THEN:
+            branch: print_collection_created
+          ELSE:
+            branch: print_collection_exists
+
+      print_collection_created:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "  - Qdrant collection created\n"
+
+      print_collection_exists:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "  - Qdrant collection exists\n"
+
+      # Create Pub/Sub subscriber
+      do_create_subscriber:
+        opcode: pubsub_create_subscriber
+        isReporter: true
+        inputs: {}
+
+      create_subscriber:
+        opcode: data_set_variable_to
+        next: print_ready
+        inputs:
+          VARIABLE:
+            literal: "subscriber"
+          VALUE:
+            node: do_create_subscriber
+
+      print_ready:
+        opcode: io_print
+        next: process_messages
+        inputs:
+          STRING:
+            literal: "  - All clients ready\n\n[LISTEN] Waiting for messages...\n\n"
+
+      # ========================================================================
+      # STEP 2: Subscribe and process messages
+      # ========================================================================
+      # Create the streaming subscription (infinite, no timeout)
+      subscribe_stream:
+        opcode: pubsub_subscribe_stream
+        isReporter: true
+        inputs:
+          subscriber:
+            variable: subscriber
+          project_id:
+            variable: project
+          subscription_id:
+            variable: subscription_id
+          timeout:
+            literal: null
+          max_messages:
+            literal: null
+          batch_size:
+            literal: 10
+          min_poll_interval:
+            literal: 0.1
+          max_poll_interval:
+            literal: 5.0
+
+      # Process messages using async foreach
+      process_messages:
+        opcode: control_async_foreach
+        next: shutdown
+        inputs:
+          VAR:
+            literal: "msg"
+          ITERABLE:
+            node: subscribe_stream
+          BODY:
+            branch: store_msg_data
+
+      # ========================================================================
+      # MESSAGE PROCESSING BODY (with try-catch for error handling)
+      # ========================================================================
+      # Parse the message data (JSON string in the data field)
+      get_msg_data_raw:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: msg
+          key:
+            literal: "data"
+
+      parse_msg_data:
+        opcode: json_parse
+        isReporter: true
+        inputs:
+          text:
+            node: get_msg_data_raw
+
+      store_msg_data:
+        opcode: data_set_variable_to
+        next: try_process_document
+        inputs:
+          VARIABLE:
+            literal: "msg_data"
+          VALUE:
+            node: parse_msg_data
+
+      # Wrap processing in try-catch
+      try_process_document:
+        opcode: control_try
+        next: null
+        inputs:
+          TRY:
+            branch: extract_document_id
+          CATCH1:
+            exception_type: "Exception"
+            var: "error_message"
+            body:
+              branch: handle_error
+
+      # ========================================================================
+      # EXTRACT MESSAGE FIELDS
+      # ========================================================================
+      get_document_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: msg_data
+          key:
+            literal: "documentId"
+
+      extract_document_id:
+        opcode: data_set_variable_to
+        next: extract_workspace_id
+        inputs:
+          VARIABLE:
+            literal: "document_id"
+          VALUE:
+            node: get_document_id
+
+      get_workspace_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: msg_data
+          key:
+            literal: "workspaceId"
+
+      extract_workspace_id:
+        opcode: data_set_variable_to
+        next: extract_gcs_uri
+        inputs:
+          VARIABLE:
+            literal: "workspace_id"
+          VALUE:
+            node: get_workspace_id
+
+      get_gcs_uri:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: msg_data
+          key:
+            literal: "gcsUri"
+
+      extract_gcs_uri:
+        opcode: data_set_variable_to
+        next: extract_file_name
+        inputs:
+          VARIABLE:
+            literal: "gcs_uri"
+          VALUE:
+            node: get_gcs_uri
+
+      get_file_name:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: msg_data
+          key:
+            literal: "fileName"
+
+      extract_file_name:
+        opcode: data_set_variable_to
+        next: extract_metadata
+        inputs:
+          VARIABLE:
+            literal: "file_name"
+          VALUE:
+            node: get_file_name
+
+      get_metadata:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: msg_data
+          key:
+            literal: "metadata"
+          default:
+            literal: {}
+
+      extract_metadata:
+        opcode: data_set_variable_to
+        next: parse_gcs_uri
+        inputs:
+          VARIABLE:
+            literal: "metadata"
+          VALUE:
+            node: get_metadata
+
+      # ========================================================================
+      # PARSE GCS URI: gs://bucket/path/to/file -> bucket, path/to/file
+      # ========================================================================
+      # Split "gs://bucket/path/to/file" by "/"
+      # Result: ["gs:", "", "bucket", "path", "to", "file"]
+      # Index 2 = bucket, Index 3+ = object path
+      split_gcs_uri:
+        opcode: string_split
+        isReporter: true
+        inputs:
+          text:
+            variable: gcs_uri
+          delimiter:
+            literal: "/"
+
+      # Get bucket name (index 2)
+      get_bucket_from_uri:
+        opcode: list_get
+        isReporter: true
+        inputs:
+          items:
+            node: split_gcs_uri
+          index:
+            literal: 2
+
+      parse_gcs_uri:
+        opcode: data_set_variable_to
+        next: build_object_path
+        inputs:
+          VARIABLE:
+            literal: "bucket"
+          VALUE:
+            node: get_bucket_from_uri
+
+      # Build object path: join elements from index 3 onwards
+      # First, remove "gs://bucket/" prefix (5 chars for "gs://" + bucket length + 1 for "/")
+      get_uri_length:
+        opcode: string_length
+        isReporter: true
+        inputs:
+          text:
+            variable: gcs_uri
+
+      get_bucket_length:
+        opcode: string_length
+        isReporter: true
+        inputs:
+          text:
+            variable: bucket
+
+      # Start position = 5 (gs://) + bucket_length + 1 (/)
+      calc_prefix_length_part1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: 5
+          right:
+            node: get_bucket_length
+
+      calc_prefix_length:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: calc_prefix_length_part1
+          right:
+            literal: 1
+
+      extract_object_path:
+        opcode: string_substring
+        isReporter: true
+        inputs:
+          text:
+            variable: gcs_uri
+          start:
+            node: calc_prefix_length
+
+      build_object_path:
+        opcode: data_set_variable_to
+        next: print_processing
+        inputs:
+          VARIABLE:
+            literal: "object_name"
+          VALUE:
+            node: extract_object_path
+
+      # ========================================================================
+      # LOG: Processing document
+      # ========================================================================
+      format_processing_msg_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "--------------------------------------------------------------------------------\n[PROCESS] "
+          right:
+            variable: file_name
+
+      format_processing_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: format_processing_msg_1
+          right:
+            literal: " (workspace: "
+
+      format_processing_msg_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: format_processing_msg_2
+          right:
+            variable: workspace_id
+
+      format_processing_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: format_processing_msg_3
+          right:
+            literal: ")\n"
+
+      print_processing:
+        opcode: io_print
+        next: download_pdf
+        inputs:
+          STRING:
+            node: format_processing_msg
+
+      # ========================================================================
+      # STEP 3: Download PDF from GCS
+      # ========================================================================
+      print_step_download:
+        opcode: io_print
+        next: do_download
+        inputs:
+          STRING:
+            literal: "  [1/4] Downloading from GCS... "
+
+      do_download_pdf:
+        opcode: gcs_download_object_as_bytes
+        isReporter: true
+        inputs:
+          client:
+            variable: gcs_client
+          bucket_name:
+            variable: bucket
+          object_name:
+            variable: object_name
+
+      download_pdf:
+        opcode: data_set_variable_to
+        next: print_step_download
+        inputs:
+          VARIABLE:
+            literal: "pdf_bytes"
+          VALUE:
+            node: do_download_pdf
+
+      do_download:
+        opcode: io_print
+        next: extract_pdf
+        inputs:
+          STRING:
+            literal: "Done\n"
+
+      # ========================================================================
+      # STEP 4: Extract text from PDF
+      # ========================================================================
+      print_step_extract:
+        opcode: io_print
+        next: do_extract
+        inputs:
+          STRING:
+            literal: "  [2/4] Extracting text... "
+
+      do_extract_pdf:
+        opcode: pdf_extract_pages_from_bytes
+        isReporter: true
+        inputs:
+          data:
+            variable: pdf_bytes
+
+      extract_pdf:
+        opcode: data_set_variable_to
+        next: store_page_count
+        inputs:
+          VARIABLE:
+            literal: "pdf_pages"
+          VALUE:
+            node: do_extract_pdf
+
+      get_page_count:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          items:
+            variable: pdf_pages
+
+      store_page_count:
+        opcode: data_set_variable_to
+        next: print_step_extract
+        inputs:
+          VARIABLE:
+            literal: "page_count"
+          VALUE:
+            node: get_page_count
+
+      page_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: page_count
+
+      format_extract_done:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: page_count_str
+          right:
+            literal: " pages\n"
+
+      do_extract:
+        opcode: io_print
+        next: chunk_text
+        inputs:
+          STRING:
+            node: format_extract_done
+
+      # ========================================================================
+      # STEP 5: Chunk text with smart sentence boundaries
+      # ========================================================================
+      do_chunk_pages:
+        opcode: text_chunk_pages_smart
+        isReporter: true
+        inputs:
+          pages:
+            variable: pdf_pages
+          chunk_size:
+            variable: chunk_size
+          overlap:
+            variable: overlap
+
+      chunk_text:
+        opcode: data_set_variable_to
+        next: store_chunk_count
+        inputs:
+          VARIABLE:
+            literal: "chunks"
+          VALUE:
+            node: do_chunk_pages
+
+      get_chunk_count:
+        opcode: list_length
+        isReporter: true
+        inputs:
+          items:
+            variable: chunks
+
+      store_chunk_count:
+        opcode: data_set_variable_to
+        next: init_chunk_texts
+        inputs:
+          VARIABLE:
+            literal: "chunk_count"
+          VALUE:
+            node: get_chunk_count
+
+      # Initialize chunk_texts list for embedding
+      init_chunk_texts:
+        opcode: data_set_variable_to
+        next: extract_texts_loop
+        inputs:
+          VARIABLE:
+            literal: "chunk_texts"
+          VALUE:
+            literal: []
+
+      # Extract text strings from chunk dicts
+      extract_texts_loop:
+        opcode: control_foreach
+        next: generate_embeddings
+        inputs:
+          VAR:
+            literal: "current_chunk"
+          ITERABLE:
+            variable: chunks
+          BODY:
+            branch: extract_text_body
+
+      extract_text_body:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "chunk_texts"
+          VALUE:
+            node: append_chunk_text
+
+      get_chunk_text:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_chunk
+          key:
+            literal: "text"
+
+      append_chunk_text:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          items:
+            variable: chunk_texts
+          value:
+            node: get_chunk_text
+
+      # ========================================================================
+      # STEP 6: Generate embeddings
+      # ========================================================================
+      print_step_embed:
+        opcode: io_print
+        next: do_embed
+        inputs:
+          STRING:
+            literal: "  [3/4] Generating embeddings... "
+
+      do_generate_embeddings:
+        opcode: embedding_create_batch
+        isReporter: true
+        inputs:
+          texts:
+            variable: chunk_texts
+          project:
+            variable: project
+          location:
+            variable: location
+          model:
+            literal: "text-multilingual-embedding-002"
+
+      generate_embeddings:
+        opcode: data_set_variable_to
+        next: print_step_embed
+        inputs:
+          VARIABLE:
+            literal: "embeddings"
+          VALUE:
+            node: do_generate_embeddings
+
+      chunk_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: chunk_count
+
+      format_embed_done:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: chunk_count_str
+          right:
+            literal: " chunks\n"
+
+      do_embed:
+        opcode: io_print
+        next: init_build_loop
+        inputs:
+          STRING:
+            node: format_embed_done
+
+      # ========================================================================
+      # STEP 7: Build payloads and upsert to Qdrant
+      # ========================================================================
+      # Generate base ID from random number
+      base_id:
+        opcode: math_random
+        isReporter: true
+        inputs:
+          min_val:
+            literal: 100000
+          max_val:
+            literal: 999999
+
+      init_build_loop:
+        opcode: data_set_variable_to
+        next: reset_ids
+        inputs:
+          VARIABLE:
+            literal: "current_index"
+          VALUE:
+            literal: 0
+
+      reset_ids:
+        opcode: data_set_variable_to
+        next: reset_payloads
+        inputs:
+          VARIABLE:
+            literal: "ids"
+          VALUE:
+            literal: []
+
+      reset_payloads:
+        opcode: data_set_variable_to
+        next: build_loop
+        inputs:
+          VARIABLE:
+            literal: "payloads"
+          VALUE:
+            literal: []
+
+      build_loop:
+        opcode: control_foreach
+        next: print_step_upsert
+        inputs:
+          VAR:
+            literal: "current_chunk"
+          ITERABLE:
+            variable: chunks
+          BODY:
+            branch: build_loop_body
+
+      # Build loop body: append ID and payload for current chunk
+      build_loop_body:
+        opcode: data_set_variable_to
+        next: build_payload
+        inputs:
+          VARIABLE:
+            literal: "ids"
+          VALUE:
+            node: append_id
+
+      # Generate unique ID: base_id * 1000 + current_index
+      current_id:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: base_id_scaled
+          right:
+            variable: current_index
+
+      base_id_scaled:
+        opcode: operator_multiply
+        isReporter: true
+        inputs:
+          left:
+            node: base_id
+          right:
+            literal: 1000
+
+      append_id:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          items:
+            variable: ids
+          value:
+            node: current_id
+
+      # Build payload dict for current chunk
+      build_payload:
+        opcode: data_set_variable_to
+        next: increment_index
+        inputs:
+          VARIABLE:
+            literal: "payloads"
+          VALUE:
+            node: append_payload
+
+      # Extract metadata from current_chunk dict
+      get_payload_text:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_chunk
+          key:
+            literal: "text"
+
+      get_page_start:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_chunk
+          key:
+            literal: "page_start"
+
+      get_page_end:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_chunk
+          key:
+            literal: "page_end"
+
+      get_line_start:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_chunk
+          key:
+            literal: "line_start"
+
+      get_line_end:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          d:
+            variable: current_chunk
+          key:
+            literal: "line_end"
+
+      # Create payload dictionary with all required fields
+      payload_base:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      payload_with_text:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_base
+          key:
+            literal: "text"
+          value:
+            node: get_payload_text
+
+      payload_with_source:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_with_text
+          key:
+            literal: "source"
+          value:
+            variable: gcs_uri
+
+      payload_with_index:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_with_source
+          key:
+            literal: "chunk_index"
+          value:
+            variable: current_index
+
+      payload_with_page_start:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_with_index
+          key:
+            literal: "page_start"
+          value:
+            node: get_page_start
+
+      payload_with_page_end:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_with_page_start
+          key:
+            literal: "page_end"
+          value:
+            node: get_page_end
+
+      payload_with_line_start:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_with_page_end
+          key:
+            literal: "line_start"
+          value:
+            node: get_line_start
+
+      payload_with_line_end:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_with_line_start
+          key:
+            literal: "line_end"
+          value:
+            node: get_line_end
+
+      payload_with_workspace:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_with_line_end
+          key:
+            literal: "workspace_id"
+          value:
+            variable: workspace_id
+
+      payload_with_document:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: payload_with_workspace
+          key:
+            literal: "document_id"
+          value:
+            variable: document_id
+
+      append_payload:
+        opcode: list_append
+        isReporter: true
+        inputs:
+          items:
+            variable: payloads
+          value:
+            node: payload_with_document
+
+      # Increment index for next iteration
+      increment_index:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: "current_index"
+          VALUE:
+            node: next_index
+
+      next_index:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: current_index
+          right:
+            literal: 1
+
+      # ========================================================================
+      # STEP 8: Upsert to Qdrant
+      # ========================================================================
+      print_step_upsert:
+        opcode: io_print
+        next: do_upsert
+        inputs:
+          STRING:
+            literal: "  [4/4] Upserting to Qdrant... "
+
+      do_qdrant_upsert:
+        opcode: qdrant_upsert_batch
+        isReporter: true
+        inputs:
+          client:
+            variable: qdrant_client
+          collection:
+            variable: collection
+          point_ids:
+            variable: ids
+          vectors:
+            variable: embeddings
+          payloads:
+            variable: payloads
+
+      do_upsert:
+        opcode: control_if_else
+        next: send_success_callback
+        inputs:
+          CONDITION:
+            node: do_qdrant_upsert
+          THEN:
+            branch: print_upsert_done
+          ELSE:
+            branch: print_upsert_failed
+
+      print_upsert_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "Done\n"
+
+      print_upsert_failed:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "Failed!\n"
+
+      # ========================================================================
+      # STEP 9: Send success callback to API
+      # ========================================================================
+      # Build GraphQL mutation for success
+      build_graphql_url:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: api_url
+          right:
+            literal: "/graphql"
+
+      # Build authorization header
+      build_auth_header:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Bearer "
+          right:
+            variable: api_token
+
+      # Build headers dict
+      callback_headers_base:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      callback_headers_with_auth:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: callback_headers_base
+          key:
+            literal: "Authorization"
+          value:
+            node: build_auth_header
+
+      callback_headers:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: callback_headers_with_auth
+          key:
+            literal: "Content-Type"
+          value:
+            literal: "application/json"
+
+      # Build success mutation body
+      # mutation { updateDocumentStatus(input: { documentId: "...", status: INDEXED, totalChunks: N, totalPages: N }) { id status } }
+      build_success_mutation_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "mutation { updateDocumentStatus(input: { documentId: \""
+          right:
+            variable: document_id
+
+      build_success_mutation_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: build_success_mutation_1
+          right:
+            literal: "\", status: INDEXED, totalChunks: "
+
+      build_success_mutation_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: build_success_mutation_2
+          right:
+            node: chunk_count_str
+
+      build_success_mutation_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: build_success_mutation_3
+          right:
+            literal: ", totalPages: "
+
+      build_success_mutation_5:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: build_success_mutation_4
+          right:
+            node: page_count_str
+
+      build_success_mutation:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: build_success_mutation_5
+          right:
+            literal: " }) { id status } }"
+
+      # Build JSON body
+      success_body_base:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      success_body:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: success_body_base
+          key:
+            literal: "query"
+          value:
+            node: build_success_mutation
+
+      # Send success callback
+      send_success_callback:
+        opcode: http_post
+        next: print_callback_sent
+        inputs:
+          url:
+            node: build_graphql_url
+          data:
+            literal: null
+          json:
+            node: success_body
+          headers:
+            node: callback_headers
+
+      print_callback_sent:
+        opcode: io_print
+        next: ack_message
+        inputs:
+          STRING:
+            literal: "  [OK] Status callback sent (INDEXED)\n"
+
+      # ========================================================================
+      # STEP 10: Acknowledge message
+      # ========================================================================
+      ack_message:
+        opcode: pubsub_ack_message
+        next: print_ack_done
+        inputs:
+          subscriber:
+            variable: subscriber
+          project_id:
+            variable: project
+          subscription_id:
+            variable: subscription_id
+          message:
+            variable: msg
+
+      print_ack_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "  [ACK] Message acknowledged\n\n"
+
+      # ========================================================================
+      # ERROR HANDLER
+      # ========================================================================
+      handle_error:
+        opcode: io_print
+        next: print_error_detail
+        inputs:
+          STRING:
+            literal: "  [ERROR] Processing failed: "
+
+      print_error_detail:
+        opcode: io_print
+        next: send_error_callback
+        inputs:
+          STRING:
+            node: format_error_msg
+
+      format_error_msg:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: error_message
+          right:
+            literal: "\n"
+
+      # Send error callback to API
+      # Build error mutation
+      build_error_mutation_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "mutation { updateDocumentStatus(input: { documentId: \""
+          right:
+            variable: document_id
+
+      build_error_mutation_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: build_error_mutation_1
+          right:
+            literal: "\", status: ERROR, errorMessage: \""
+
+      # Escape error message for JSON (replace quotes)
+      escape_error_message:
+        opcode: string_replace
+        isReporter: true
+        inputs:
+          text:
+            variable: error_message
+          old:
+            literal: "\""
+          new:
+            literal: "\\\""
+
+      build_error_mutation_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: build_error_mutation_2
+          right:
+            node: escape_error_message
+
+      build_error_mutation:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: build_error_mutation_3
+          right:
+            literal: "\" }) { id status } }"
+
+      # Build error body
+      error_body_base:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      error_body:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: error_body_base
+          key:
+            literal: "query"
+          value:
+            node: build_error_mutation
+
+      send_error_callback:
+        opcode: http_post
+        next: print_error_callback_sent
+        inputs:
+          url:
+            node: build_graphql_url
+          data:
+            literal: null
+          json:
+            node: error_body
+          headers:
+            node: callback_headers
+
+      print_error_callback_sent:
+        opcode: io_print
+        next: nack_message
+        inputs:
+          STRING:
+            literal: "  [OK] Error callback sent (ERROR)\n"
+
+      # NACK message for retry
+      nack_message:
+        opcode: pubsub_nack_message
+        next: print_nack_done
+        inputs:
+          subscriber:
+            variable: subscriber
+          project_id:
+            variable: project
+          subscription_id:
+            variable: subscription_id
+          message:
+            variable: msg
+
+      print_nack_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "  [NACK] Message returned to queue for retry\n\n"
+
+      # ========================================================================
+      # SHUTDOWN (only reached if stream ends)
+      # ========================================================================
+      shutdown:
+        opcode: io_print
+        next: close_subscriber
+        inputs:
+          STRING:
+            literal: "\n[SHUTDOWN] Closing connections...\n"
+
+      close_subscriber:
+        opcode: pubsub_close_subscriber
+        next: print_done
+        inputs:
+          subscriber:
+            variable: subscriber
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "================================================================================\n"

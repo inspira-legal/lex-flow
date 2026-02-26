@@ -192,7 +192,7 @@ def register_pgvector_opcodes():
                 f"embedding = EXCLUDED.embedding, payload = EXCLUDED.payload",
                 point_id,
                 vector,
-                json.dumps(payload or {}),
+                json.dumps(payload or {}).replace("\\u0000", "").replace("\x00", ""),
             )
         return True
 
@@ -226,7 +226,9 @@ def register_pgvector_opcodes():
             (
                 pid,
                 vec,
-                json.dumps(payloads[i] if payloads else {}),
+                json.dumps(payloads[i] if payloads else {})
+                .replace("\\u0000", "")
+                .replace("\x00", ""),
             )
             for i, (pid, vec) in enumerate(zip(point_ids, vectors))
         ]
@@ -248,29 +250,68 @@ def register_pgvector_opcodes():
         collection: str,
         query_vector: List[float],
         limit: int = 5,
+        filter_field: Optional[str] = None,
+        filter_value: Optional[str] = None,
+        filters: Optional[Dict[str, str]] = None,
     ) -> List[Dict[str, Any]]:
         """Search for similar vectors in a pgvector collection.
 
         Uses cosine distance (<=> operator) for similarity ranking.
+        Optionally filters by JSONB payload fields.
 
         Args:
             pool: asyncpg.Pool instance
             collection: Collection (table) name
             query_vector: Embedding vector to search for
             limit: Maximum number of results (default: 5)
+            filter_field: Optional payload field name to filter on (legacy)
+            filter_value: Value the filter_field must match (legacy)
+            filters: Optional dict of payload field->value pairs to filter on.
+                     Empty string values are ignored. Takes precedence over
+                     filter_field/filter_value when provided.
 
         Returns:
             List of dicts with keys: id, score, payload
         """
         table = _validate_table_name(collection)
+
+        # Build WHERE conditions and params
+        # Base params: $1 = query_vector, $2 = limit
+        where_clauses: List[str] = []
+        params: List[Any] = [query_vector, limit]
+        param_idx = 3
+
+        if filters:
+            # New multi-filter mode: build compound WHERE
+            for key, value in filters.items():
+                if value is None or value == "":
+                    continue
+                where_clauses.append(
+                    "payload->>$%d = $%d" % (param_idx, param_idx + 1)
+                )
+                params.append(key)
+                params.append(str(value))
+                param_idx += 2
+        elif filter_field and filter_value is not None:
+            # Legacy single-filter mode (backward compat)
+            where_clauses.append(
+                "payload->>$%d = $%d" % (param_idx, param_idx + 1)
+            )
+            params.append(filter_field)
+            params.append(filter_value)
+
+        where_sql = ""
+        if where_clauses:
+            where_sql = "WHERE " + " AND ".join(where_clauses) + " "
+
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 f"SELECT id, 1 - (embedding <=> $1) AS score, payload "
                 f'FROM "{table}" '
+                f"{where_sql}"
                 f"ORDER BY embedding <=> $1 "
                 f"LIMIT $2",
-                query_vector,
-                limit,
+                *params,
             )
         return [
             {

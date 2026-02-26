@@ -2,22 +2,18 @@
 #
 # Processes a PDF book from Google Cloud Storage: downloads, extracts text,
 # chunks it intelligently, generates embeddings, and stores in pgVector.
+# Sends API callbacks (GraphQL mutations) to update document status.
 #
 # Run via CLI:
 #   lexflow examples/showcase/vault/ingest_book.yaml \
 #     --input bucket=mvp-personal-vault \
 #     --input objeto=solar_system.pdf \
 #     --input livro_id=solar-system-001 \
-#     --input projeto_gcp=inspira-development
-#
-# Run via Web UI:
-#   Load this file and use inputs:
-#   {
-#     "bucket": "mvp-personal-vault",
-#     "objeto": "solar_system.pdf",
-#     "livro_id": "solar-system-001",
-#     "projeto_gcp": "inspira-development"
-#   }
+#     --input projeto_gcp=inspira-development \
+#     --input document_id=6980e6a96e32a63d0a13972c \
+#     --input workspace_id=62b9d55915370b1b00a1f86b \
+#     --input file_name=solar_system.pdf \
+#     --input api_token=YOUR_JWT_TOKEN
 #
 # Requirements:
 #   pip install lexflow[pgvector,gcs]
@@ -26,7 +22,7 @@
 workflows:
   - name: main
     interface:
-      inputs: [bucket, objeto, livro_id, projeto_gcp, pgvector_dsn, collection, chunk_size, overlap]
+      inputs: [bucket, objeto, livro_id, projeto_gcp, pgvector_dsn, collection, chunk_size, overlap, document_id, workspace_id, file_name, api_token, api_url]
       outputs: []
     variables:
       # Input parameters
@@ -34,10 +30,15 @@ workflows:
       objeto: ""
       livro_id: ""
       projeto_gcp: ""
-      pgvector_dsn: "postgresql://localhost/vault"
+      pgvector_dsn: "postgresql://vault:vault@localhost/vault"
       collection: "livros"
       chunk_size: 1000
       overlap: 200
+      document_id: ""
+      workspace_id: ""
+      file_name: ""
+      api_token: ""
+      api_url: "http://localhost:4000/graphql"
       # State variables
       gcs_client: null
       pdf_bytes: null
@@ -46,12 +47,16 @@ workflows:
       chunks: []
       chunk_texts: []
       chunk_count: 0
+      page_count: 0
       embeddings: []
       ids: []
       payloads: []
       metadata: {}
       build_result: {}
       source_path: ""
+      callback_body: ""
+      callback_result: null
+      error_msg: ""
       # Timing variables
       pipeline_t0: 0
       step1_t0: 0
@@ -60,6 +65,8 @@ workflows:
       step4_t0: 0
       step5_t0: 0
       step6_t0: 0
+      step7_t0: 0
+      step8_t0: 0
       step_t1: 0
     nodes:
       start:
@@ -254,7 +261,53 @@ workflows:
             node: format_collection
 
       # ========================================================================
-      # STEP 1: Create GCS Client
+      # Bearer auth headers (reused by PROCESSING and INDEXED callbacks)
+      # ========================================================================
+      clean_api_token:
+        opcode: string_trim
+        isReporter: true
+        inputs:
+          text:
+            variable: api_token
+
+      build_auth_prefix:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: "Bearer "
+          right:
+            node: clean_api_token
+
+      callback_headers_base:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      callback_headers_with_auth:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: callback_headers_base
+          key:
+            literal: "Authorization"
+          value:
+            node: build_auth_prefix
+
+      callback_headers:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: callback_headers_with_auth
+          key:
+            literal: "Content-Type"
+          value:
+            literal: "application/json"
+
+      # ========================================================================
+      # STEP 1: Callback PROCESSING status to API
       # ========================================================================
       get_step1_start:
         opcode: util_time_now
@@ -263,33 +316,95 @@ workflows:
 
       save_step1_start:
         opcode: data_set_variable_to
-        next: print_step1
+        next: try_callback_processing
         inputs:
           VARIABLE:
             literal: "step1_t0"
           VALUE:
             node: get_step1_start
 
-      print_step1:
-        opcode: io_print
-        next: create_gcs_client
+      # Build GraphQL mutation body for PROCESSING status
+      build_processing_query:
+        opcode: operator_add
+        isReporter: true
         inputs:
-          STRING:
-            literal: "[1/6] Criando cliente GCS... "
+          left:
+            literal: 'mutation { updateDocumentStatus(input: { documentId: "'
+          right:
+            node: processing_query_2
 
-      do_create_gcs_client:
-        opcode: gcs_create_client
+      processing_query_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: document_id
+          right:
+            literal: '", status: PROCESSING }) { id status } }'
+
+      empty_dict_processing:
+        opcode: dict_create
         isReporter: true
         inputs: {}
 
-      create_gcs_client:
-        opcode: data_set_variable_to
+      build_processing_body:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: empty_dict_processing
+          key:
+            literal: "query"
+          value:
+            node: build_processing_query
+
+      do_callback_processing:
+        opcode: http_post
+        isReporter: true
+        inputs:
+          url:
+            variable: api_url
+          data:
+            literal: null
+          json:
+            node: build_processing_body
+          headers:
+            node: callback_headers
+
+      try_callback_processing:
+        opcode: control_try
         next: save_step1_end
         inputs:
+          TRY:
+            branch: trigger_callback_processing
+          CATCH1:
+            exception_type: "Exception"
+            var: "error_msg"
+            body:
+              branch: warn_callback_processing
+
+      trigger_callback_processing:
+        opcode: data_set_variable_to
+        next: print_callback_processing_ok
+        inputs:
           VARIABLE:
-            literal: "gcs_client"
+            literal: "callback_result"
           VALUE:
-            node: do_create_gcs_client
+            node: do_callback_processing
+
+      print_callback_processing_ok:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "[1/8] Callback: status -> PROCESSING\n"
+
+      warn_callback_processing:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "[1/8] Callback: status -> PROCESSING (skipped - API unavailable)\n"
 
       get_step1_end:
         opcode: util_time_now
@@ -319,7 +434,7 @@ workflows:
         isReporter: true
         inputs:
           template:
-            literal: "OK ({0})\n"
+            literal: "       ({0})\n"
           VALUES:
             node: step1_duration
 
@@ -331,7 +446,7 @@ workflows:
             node: step1_done_msg
 
       # ========================================================================
-      # STEP 2: Download PDF from GCS
+      # STEP 2: Create GCS Client
       # ========================================================================
       get_step2_start:
         opcode: util_time_now
@@ -349,30 +464,24 @@ workflows:
 
       print_step2:
         opcode: io_print
-        next: download_pdf
+        next: create_gcs_client
         inputs:
           STRING:
-            literal: "[2/6] Baixando PDF do GCS... "
+            literal: "[2/8] Criando cliente GCS... "
 
-      do_download_pdf:
-        opcode: gcs_download_object_as_bytes
+      do_create_gcs_client:
+        opcode: gcs_create_client
         isReporter: true
-        inputs:
-          client:
-            variable: gcs_client
-          bucket_name:
-            variable: bucket
-          object_name:
-            variable: objeto
+        inputs: {}
 
-      download_pdf:
+      create_gcs_client:
         opcode: data_set_variable_to
         next: save_step2_end
         inputs:
           VARIABLE:
-            literal: "pdf_bytes"
+            literal: "gcs_client"
           VALUE:
-            node: do_download_pdf
+            node: do_create_gcs_client
 
       get_step2_end:
         opcode: util_time_now
@@ -414,7 +523,7 @@ workflows:
             node: step2_done_msg
 
       # ========================================================================
-      # STEP 3: Connect to pgVector
+      # STEP 3: Download PDF from GCS
       # ========================================================================
       get_step3_start:
         opcode: util_time_now
@@ -432,26 +541,30 @@ workflows:
 
       print_step3:
         opcode: io_print
-        next: connect_pgvector
+        next: download_pdf
         inputs:
           STRING:
-            literal: "[3/6] Conectando ao pgVector... "
+            literal: "[3/8] Baixando PDF do GCS... "
 
-      do_connect_pgvector:
-        opcode: pgvector_connect
+      do_download_pdf:
+        opcode: gcs_download_object_as_bytes
         isReporter: true
         inputs:
-          dsn:
-            variable: pgvector_dsn
+          client:
+            variable: gcs_client
+          bucket_name:
+            variable: bucket
+          object_name:
+            variable: objeto
 
-      connect_pgvector:
+      download_pdf:
         opcode: data_set_variable_to
         next: save_step3_end
         inputs:
           VARIABLE:
-            literal: "pgvector_pool"
+            literal: "pdf_bytes"
           VALUE:
-            node: do_connect_pgvector
+            node: do_download_pdf
 
       get_step3_end:
         opcode: util_time_now
@@ -493,7 +606,7 @@ workflows:
             node: step3_done_msg
 
       # ========================================================================
-      # STEP 4: Create Collection (if not exists)
+      # STEP 4: Connect to pgVector
       # ========================================================================
       get_step4_start:
         opcode: util_time_now
@@ -511,115 +624,68 @@ workflows:
 
       print_step4:
         opcode: io_print
-        next: create_collection
+        next: connect_pgvector
         inputs:
           STRING:
-            literal: "[4/6] Criando collection (se necessario)... "
+            literal: "[4/8] Conectando ao pgVector... "
 
-      do_create_collection:
-        opcode: pgvector_create_collection
+      do_connect_pgvector:
+        opcode: pgvector_connect
         isReporter: true
         inputs:
-          pool:
-            variable: pgvector_pool
-          name:
-            variable: collection
-          vector_size:
-            literal: 768
+          dsn:
+            variable: pgvector_dsn
 
-      create_collection:
-        opcode: control_if_else
+      connect_pgvector:
+        opcode: data_set_variable_to
+        next: save_step4_end
+        inputs:
+          VARIABLE:
+            literal: "pgvector_pool"
+          VALUE:
+            node: do_connect_pgvector
+
+      get_step4_end:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step4_end:
+        opcode: data_set_variable_to
+        next: print_step4_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step4_end
+
+      step4_duration:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step4_t0
+          end:
+            variable: step_t1
+
+      step4_done_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "OK ({0})\n"
+          VALUES:
+            node: step4_duration
+
+      print_step4_done:
+        opcode: io_print
         next: save_step5_start
         inputs:
-          CONDITION:
-            node: do_create_collection
-          THEN:
-            branch: save_step4_end_created
-          ELSE:
-            branch: save_step4_end_exists
-
-      # Branch: Collection was created
-      get_step4_end_created:
-        opcode: util_time_now
-        isReporter: true
-        inputs: {}
-
-      save_step4_end_created:
-        opcode: data_set_variable_to
-        next: print_created
-        inputs:
-          VARIABLE:
-            literal: "step_t1"
-          VALUE:
-            node: get_step4_end_created
-
-      step4_duration_created:
-        opcode: util_format_duration
-        isReporter: true
-        inputs:
-          start:
-            variable: step4_t0
-          end:
-            variable: step_t1
-
-      step4_created_msg:
-        opcode: string_format
-        isReporter: true
-        inputs:
-          template:
-            literal: "Criada ({0})\n"
-          VALUES:
-            node: step4_duration_created
-
-      print_created:
-        opcode: io_print
-        next: null
-        inputs:
           STRING:
-            node: step4_created_msg
-
-      # Branch: Collection already exists
-      get_step4_end_exists:
-        opcode: util_time_now
-        isReporter: true
-        inputs: {}
-
-      save_step4_end_exists:
-        opcode: data_set_variable_to
-        next: print_exists
-        inputs:
-          VARIABLE:
-            literal: "step_t1"
-          VALUE:
-            node: get_step4_end_exists
-
-      step4_duration_exists:
-        opcode: util_format_duration
-        isReporter: true
-        inputs:
-          start:
-            variable: step4_t0
-          end:
-            variable: step_t1
-
-      step4_exists_msg:
-        opcode: string_format
-        isReporter: true
-        inputs:
-          template:
-            literal: "Ja existe ({0})\n"
-          VALUES:
-            node: step4_duration_exists
-
-      print_exists:
-        opcode: io_print
-        next: null
-        inputs:
-          STRING:
-            node: step4_exists_msg
+            node: step4_done_msg
 
       # ========================================================================
-      # STEP 5: Extract text from PDF bytes (per page)
+      # STEP 5: Create Collection (if not exists)
       # ========================================================================
       get_step5_start:
         opcode: util_time_now
@@ -637,10 +703,136 @@ workflows:
 
       print_step5:
         opcode: io_print
+        next: create_collection
+        inputs:
+          STRING:
+            literal: "[5/8] Criando collection (se necessario)... "
+
+      do_create_collection:
+        opcode: pgvector_create_collection
+        isReporter: true
+        inputs:
+          pool:
+            variable: pgvector_pool
+          name:
+            variable: collection
+          vector_size:
+            literal: 768
+
+      create_collection:
+        opcode: control_if_else
+        next: save_step6_start
+        inputs:
+          CONDITION:
+            node: do_create_collection
+          THEN:
+            branch: save_step5_end_created
+          ELSE:
+            branch: save_step5_end_exists
+
+      # Branch: Collection was created
+      get_step5_end_created:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step5_end_created:
+        opcode: data_set_variable_to
+        next: print_created
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step5_end_created
+
+      step5_duration_created:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step5_t0
+          end:
+            variable: step_t1
+
+      step5_created_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "Criada ({0})\n"
+          VALUES:
+            node: step5_duration_created
+
+      print_created:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: step5_created_msg
+
+      # Branch: Collection already exists
+      get_step5_end_exists:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step5_end_exists:
+        opcode: data_set_variable_to
+        next: print_exists
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step5_end_exists
+
+      step5_duration_exists:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step5_t0
+          end:
+            variable: step_t1
+
+      step5_exists_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "Ja existe ({0})\n"
+          VALUES:
+            node: step5_duration_exists
+
+      print_exists:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            node: step5_exists_msg
+
+      # ========================================================================
+      # STEP 6: Extract text from PDF bytes (per page)
+      # ========================================================================
+      get_step6_start:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step6_start:
+        opcode: data_set_variable_to
+        next: print_step6
+        inputs:
+          VARIABLE:
+            literal: "step6_t0"
+          VALUE:
+            node: get_step6_start
+
+      print_step6:
+        opcode: io_print
         next: extract_pdf
         inputs:
           STRING:
-            literal: "[5/6] Extraindo texto do PDF... "
+            literal: "[6/8] Extraindo texto do PDF... "
 
       do_extract_pdf:
         opcode: pdf_extract_pages_from_bytes
@@ -651,51 +843,67 @@ workflows:
 
       extract_pdf:
         opcode: data_set_variable_to
-        next: save_step5_end
+        next: store_page_count
         inputs:
           VARIABLE:
             literal: "pdf_pages"
           VALUE:
             node: do_extract_pdf
 
-      get_step5_end:
-        opcode: util_time_now
-        isReporter: true
-        inputs: {}
-
-      save_step5_end:
-        opcode: data_set_variable_to
-        next: print_step5_done
-        inputs:
-          VARIABLE:
-            literal: "step_t1"
-          VALUE:
-            node: get_step5_end
-
-      page_count:
+      get_page_count:
         opcode: list_length
         isReporter: true
         inputs:
           items:
             variable: pdf_pages
 
+      store_page_count:
+        opcode: data_set_variable_to
+        next: save_step6_end
+        inputs:
+          VARIABLE:
+            literal: "page_count"
+          VALUE:
+            node: get_page_count
+
+      get_step6_end:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step6_end:
+        opcode: data_set_variable_to
+        next: print_step6_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step6_end
+
       page_count_str:
         opcode: str
         isReporter: true
         inputs:
           value:
-            node: page_count
+            variable: page_count
 
-      step5_duration:
+      chunk_count_str:
+        opcode: str
+        isReporter: true
+        inputs:
+          value:
+            variable: chunk_count
+
+      step6_duration:
         opcode: util_format_duration
         isReporter: true
         inputs:
           start:
-            variable: step5_t0
+            variable: step6_t0
           end:
             variable: step_t1
 
-      step5_done_msg:
+      step6_done_msg:
         opcode: string_format
         isReporter: true
         inputs:
@@ -704,17 +912,17 @@ workflows:
           VALUES:
             node: page_count_str
           VALUE_1:
-            node: step5_duration
+            node: step6_duration
 
-      print_step5_done:
+      print_step6_done:
         opcode: io_print
         next: chunk_text
         inputs:
           STRING:
-            node: step5_done_msg
+            node: step6_done_msg
 
       # ========================================================================
-      # STEP 6: Chunk, embed, and upsert
+      # STEP 7: Chunk, embed, and upsert
       # ========================================================================
       do_chunk_pages:
         opcode: text_chunk_pages_smart
@@ -788,33 +996,33 @@ workflows:
 
       generate_embeddings:
         opcode: data_set_variable_to
-        next: save_step6_start
+        next: save_step7_start
         inputs:
           VARIABLE:
             literal: "embeddings"
           VALUE:
             node: do_generate_embeddings
 
-      get_step6_start:
+      get_step7_start:
         opcode: util_time_now
         isReporter: true
         inputs: {}
 
-      save_step6_start:
+      save_step7_start:
         opcode: data_set_variable_to
-        next: print_step6
+        next: print_step7
         inputs:
           VARIABLE:
-            literal: "step6_t0"
+            literal: "step7_t0"
           VALUE:
-            node: get_step6_start
+            node: get_step7_start
 
-      print_step6:
+      print_step7:
         opcode: io_print
         next: build_metadata
         inputs:
           STRING:
-            literal: "[6/6] Construindo payloads e salvando no pgVector... "
+            literal: "[7/8] Construindo payloads e salvando no pgVector... "
 
       # Build metadata dict for rag_build_chunk_payloads
       metadata_base:
@@ -844,6 +1052,39 @@ workflows:
           value:
             variable: livro_id
 
+      metadata_with_workspace_id:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: metadata_with_livro_id
+          key:
+            literal: "workspace_id"
+          value:
+            variable: workspace_id
+
+      metadata_with_document_id:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: metadata_with_workspace_id
+          key:
+            literal: "document_id"
+          value:
+            variable: document_id
+
+      metadata_with_file_name:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: metadata_with_document_id
+          key:
+            literal: "file_name"
+          value:
+            variable: file_name
+
       build_metadata:
         opcode: data_set_variable_to
         next: do_build_payloads
@@ -851,7 +1092,7 @@ workflows:
           VARIABLE:
             literal: "metadata"
           VALUE:
-            node: metadata_with_livro_id
+            node: metadata_with_file_name
 
       # Call rag_build_chunk_payloads (replaces ~240-line build loop)
       do_rag_build:
@@ -933,89 +1174,89 @@ workflows:
           CONDITION:
             node: do_pgvector_upsert
           THEN:
-            branch: save_step6_end_ok
+            branch: save_step7_end_ok
           ELSE:
-            branch: save_step6_end_fail
+            branch: save_step7_end_fail
 
       # Branch: Upsert succeeded
-      get_step6_end_ok:
+      get_step7_end_ok:
         opcode: util_time_now
         isReporter: true
         inputs: {}
 
-      save_step6_end_ok:
+      save_step7_end_ok:
         opcode: data_set_variable_to
         next: print_upsert_done
         inputs:
           VARIABLE:
             literal: "step_t1"
           VALUE:
-            node: get_step6_end_ok
+            node: get_step7_end_ok
 
-      step6_duration_ok:
+      step7_duration_ok:
         opcode: util_format_duration
         isReporter: true
         inputs:
           start:
-            variable: step6_t0
+            variable: step7_t0
           end:
             variable: step_t1
 
-      step6_ok_msg:
+      step7_ok_msg:
         opcode: string_format
         isReporter: true
         inputs:
           template:
             literal: "OK ({0})\n"
           VALUES:
-            node: step6_duration_ok
+            node: step7_duration_ok
 
       print_upsert_done:
         opcode: io_print
         next: null
         inputs:
           STRING:
-            node: step6_ok_msg
+            node: step7_ok_msg
 
       # Branch: Upsert failed
-      get_step6_end_fail:
+      get_step7_end_fail:
         opcode: util_time_now
         isReporter: true
         inputs: {}
 
-      save_step6_end_fail:
+      save_step7_end_fail:
         opcode: data_set_variable_to
         next: print_upsert_failed
         inputs:
           VARIABLE:
             literal: "step_t1"
           VALUE:
-            node: get_step6_end_fail
+            node: get_step7_end_fail
 
-      step6_duration_fail:
+      step7_duration_fail:
         opcode: util_format_duration
         isReporter: true
         inputs:
           start:
-            variable: step6_t0
+            variable: step7_t0
           end:
             variable: step_t1
 
-      step6_fail_msg:
+      step7_fail_msg:
         opcode: string_format
         isReporter: true
         inputs:
           template:
             literal: "FALHOU! ({0})\n"
           VALUES:
-            node: step6_duration_fail
+            node: step7_duration_fail
 
       print_upsert_failed:
         opcode: io_print
         next: null
         inputs:
           STRING:
-            node: step6_fail_msg
+            node: step7_fail_msg
 
       # ========================================================================
       # CLEANUP - Close clients
@@ -1045,12 +1286,189 @@ workflows:
 
       close_gcs:
         opcode: data_set_variable_to
-        next: print_footer
+        next: save_step8_start
         inputs:
           VARIABLE:
             literal: "gcs_client"
           VALUE:
             node: do_close_gcs
+
+      # ========================================================================
+      # STEP 8: Callback INDEXED status to API
+      # ========================================================================
+      get_step8_start:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step8_start:
+        opcode: data_set_variable_to
+        next: try_callback_indexed
+        inputs:
+          VARIABLE:
+            literal: "step8_t0"
+          VALUE:
+            node: get_step8_start
+
+      # Build GraphQL mutation body for INDEXED status with totalChunks and totalPages
+      # Note: chunk_count_str and page_count_str reporters are defined in step 6 section
+
+      build_indexed_query:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: 'mutation { updateDocumentStatus(input: { documentId: "'
+          right:
+            node: indexed_query_2
+
+      indexed_query_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            variable: document_id
+          right:
+            node: indexed_query_3
+
+      indexed_query_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: '", status: INDEXED, totalChunks: '
+          right:
+            node: indexed_query_4
+
+      indexed_query_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: chunk_count_str
+          right:
+            node: indexed_query_5
+
+      indexed_query_5:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: ", totalPages: "
+          right:
+            node: indexed_query_6
+
+      indexed_query_6:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            node: page_count_str
+          right:
+            literal: ' }) { id status } }'
+
+      empty_dict_indexed:
+        opcode: dict_create
+        isReporter: true
+        inputs: {}
+
+      build_indexed_body:
+        opcode: dict_set
+        isReporter: true
+        inputs:
+          d:
+            node: empty_dict_indexed
+          key:
+            literal: "query"
+          value:
+            node: build_indexed_query
+
+      do_callback_indexed:
+        opcode: http_post
+        isReporter: true
+        inputs:
+          url:
+            variable: api_url
+          data:
+            literal: null
+          json:
+            node: build_indexed_body
+          headers:
+            node: callback_headers
+
+      try_callback_indexed:
+        opcode: control_try
+        next: save_step8_end
+        inputs:
+          TRY:
+            branch: trigger_callback_indexed
+          CATCH1:
+            exception_type: "Exception"
+            var: "error_msg"
+            body:
+              branch: warn_callback_indexed
+
+      trigger_callback_indexed:
+        opcode: data_set_variable_to
+        next: print_callback_indexed_ok
+        inputs:
+          VARIABLE:
+            literal: "callback_result"
+          VALUE:
+            node: do_callback_indexed
+
+      print_callback_indexed_ok:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "[8/8] Callback: status -> INDEXED\n"
+
+      warn_callback_indexed:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "[8/8] Callback: status -> INDEXED (skipped - API unavailable)\n"
+
+      get_step8_end:
+        opcode: util_time_now
+        isReporter: true
+        inputs: {}
+
+      save_step8_end:
+        opcode: data_set_variable_to
+        next: print_step8_done
+        inputs:
+          VARIABLE:
+            literal: "step_t1"
+          VALUE:
+            node: get_step8_end
+
+      step8_duration:
+        opcode: util_format_duration
+        isReporter: true
+        inputs:
+          start:
+            variable: step8_t0
+          end:
+            variable: step_t1
+
+      step8_done_msg:
+        opcode: string_format
+        isReporter: true
+        inputs:
+          template:
+            literal: "       ({0})\n"
+          VALUES:
+            node: step8_duration
+
+      print_step8_done:
+        opcode: io_print
+        next: print_footer
+        inputs:
+          STRING:
+            node: step8_done_msg
 
       # ========================================================================
       # FOOTER
@@ -1061,13 +1479,6 @@ workflows:
         inputs:
           STRING:
             literal: "\n================================================================================\n"
-
-      chunk_count_str:
-        opcode: str
-        isReporter: true
-        inputs:
-          value:
-            variable: chunk_count
 
       success_msg_part1:
         opcode: operator_add
