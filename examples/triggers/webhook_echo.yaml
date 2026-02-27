@@ -1,0 +1,41 @@
+# Simple webhook echo example
+#
+# This workflow registers an HTTP trigger that accepts POST requests
+# and prints the received body. Run with:
+#
+#   lexflow-web -w examples/triggers/webhook_echo.yaml
+#
+# Then test with:
+#
+#   curl -X POST http://localhost:8000/webhooks/echo \
+#     -H "Content-Type: application/json" \
+#     -d '{"message": "hello"}'
+
+workflows:
+  - name: main
+    trigger:
+      type: http
+      method: POST
+      path: /webhooks/echo
+    interface:
+      inputs: [body]
+      outputs: []
+    variables:
+      body: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_received
+        inputs: {}
+      print_received:
+        opcode: io_print
+        next: print_body
+        inputs:
+          STRING:
+            literal: "Webhook received!\n"
+      print_body:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            variable: body
