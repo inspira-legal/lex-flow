@@ -29,6 +29,7 @@ Quick reference for all available opcodes in LexFlow.
 - [☁️ Cloud Storage](#cloud-storage) *(requires `lexflow[gcs]`)*
 - [🎮 Pygame Operations](#pygame-operations) *(requires `lexflow[pygame]`)*
 - [🔍 RAG Operations](#rag-operations) *(requires `lexflow[rag]`)*
+- [🐘 PgVector Operations](#pgvector-operations) *(requires `lexflow[pgvector]`)*
 - [💬 Chat Operations](#chat-operations)
 - [💻 CLI Operations](#cli-operations)
 - [🐙 GitHub Operations](#github-operations)
@@ -3450,6 +3451,213 @@ Returns:
 
 ---
 
+## 🐘 PgVector Operations
+
+> **Requires:** `pip install lexflow[pgvector]`
+
+### `pgvector_collection_exists(pool, name)`
+
+Check if a pgvector collection (table) exists.
+
+Args:
+    pool: asyncpg.Pool instance
+    name: Collection (table) name to check
+
+Returns:
+    True if collection exists
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `name` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `pgvector_connect(dsn, min_size=1, max_size=10, ensure_extension=True)`
+
+Create an asyncpg connection pool with pgvector support.
+
+Args:
+    dsn: PostgreSQL connection string
+    min_size: Minimum pool connections (default: 1)
+    max_size: Maximum pool connections (default: 10)
+    ensure_extension: Run CREATE EXTENSION IF NOT EXISTS vector (default: True).
+        Set to False if the extension is pre-configured or the user lacks privileges.
+
+Returns:
+    asyncpg.Pool instance with pgvector type registered
+
+**Parameters:**
+
+- `dsn` (str, required)
+- `min_size` (int, optional, default: `1`)
+- `max_size` (int, optional, default: `10`)
+- `ensure_extension` (bool, optional, default: `True`)
+
+**Returns:** `Any`
+
+---
+
+### `pgvector_create_collection(pool, name, vector_size=768)`
+
+Create a pgvector collection (table) if it doesn't exist.
+
+Creates the pgvector extension and a table with id, embedding, and payload columns.
+
+Args:
+    pool: asyncpg.Pool instance
+    name: Collection (table) name
+    vector_size: Dimension of embedding vectors (default: 768)
+
+Returns:
+    True if created, False if already existed
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `name` (str, required)
+- `vector_size` (int, optional, default: `768`)
+
+**Returns:** `bool`
+
+---
+
+### `pgvector_delete(pool, collection, point_ids)`
+
+Delete points from a pgvector collection by IDs.
+
+Args:
+    pool: asyncpg.Pool instance
+    collection: Collection (table) name
+    point_ids: List of point IDs to delete
+
+Returns:
+    True if deletion was successful
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `collection` (str, required)
+- `point_ids` (List[int], required)
+
+**Returns:** `bool`
+
+---
+
+### `pgvector_delete_collection(pool, name)`
+
+Delete a pgvector collection (table).
+
+Args:
+    pool: asyncpg.Pool instance
+    name: Collection (table) name to delete
+
+Returns:
+    True if deletion was successful
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `name` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `pgvector_disconnect(pool)`
+
+Close a pgvector connection pool.
+
+Args:
+    pool: asyncpg.Pool instance to close
+
+Returns:
+    True if pool was closed successfully
+
+**Returns:** `bool`
+
+---
+
+### `pgvector_search(pool, collection, query_vector, limit=5)`
+
+Search for similar vectors in a pgvector collection.
+
+Uses cosine distance (<=> operator) for similarity ranking.
+
+Args:
+    pool: asyncpg.Pool instance
+    collection: Collection (table) name
+    query_vector: Embedding vector to search for
+    limit: Maximum number of results (default: 5)
+
+Returns:
+    List of dicts with keys: id, score, payload
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `collection` (str, required)
+- `query_vector` (List[float], required)
+- `limit` (int, optional, default: `5`)
+
+**Returns:** `List[Dict[str, Any]]`
+
+---
+
+### `pgvector_upsert(pool, collection, point_id, vector, payload=None)`
+
+Insert or update a single vector point in a pgvector collection.
+
+Args:
+    pool: asyncpg.Pool instance
+    collection: Collection (table) name
+    point_id: Unique identifier for the point
+    vector: Embedding vector
+    payload: Optional metadata dict
+
+Returns:
+    True if upsert was successful
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `collection` (str, required)
+- `point_id` (int, required)
+- `vector` (List[float], required)
+- `payload` (Optional[Dict[str, Any]], optional, default: `None`)
+
+**Returns:** `bool`
+
+---
+
+### `pgvector_upsert_batch(pool, collection, point_ids, vectors, payloads=None)`
+
+Insert or update multiple vector points in a pgvector collection.
+
+Args:
+    pool: asyncpg.Pool instance
+    collection: Collection (table) name
+    point_ids: List of unique identifiers
+    vectors: List of embedding vectors
+    payloads: Optional list of metadata dicts
+
+Returns:
+    True if upsert was successful
+
+**Parameters:**
+
+- `pool` (Any, required)
+- `collection` (str, required)
+- `point_ids` (List[int], required)
+- `vectors` (List[List[float]], required)
+- `payloads` (Optional[List[Dict[str, Any]]], optional, default: `None`)
+
+**Returns:** `bool`
+
+---
+
 ## 💬 Chat Operations
 
 ### `chat_add_assistant(history, content)`
@@ -4784,7 +4992,7 @@ Returns:
     AsyncWebClient instance for use with other Slack opcodes
 
 Example:
-    token: "xoxb-your-bot-token"
+    token: "xoxb-xxxx-xxxx-xxxx"
 
 **Returns:** `AsyncWebClient`
 
@@ -5398,7 +5606,7 @@ Required scopes: files:write
 
 ## Summary
 
-**Total opcodes:** 285
+**Total opcodes:** 294
 
 ### Categories
 
@@ -5427,6 +5635,7 @@ Required scopes: files:write
 | ☁️ Cloud Storage | 11 | `lexflow[gcs]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
 | 🔍 RAG Operations | 20 | `lexflow[rag]` |
+| 🐘 PgVector Operations | 9 | `lexflow[pgvector]` |
 | 💬 Chat Operations | 10 | - |
 | 💻 CLI Operations | 10 | - |
 | 🐙 GitHub Operations | 7 | - |
