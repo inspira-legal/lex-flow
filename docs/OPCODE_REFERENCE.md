@@ -26,6 +26,7 @@ Quick reference for all available opcodes in LexFlow.
 - [📄 HTML Operations](#html-operations) *(requires `lexflow[http]`)*
 - [📋 JSON Operations](#json-operations)
 - [hubspot HubSpot Operations](#hubspot-operations) *(requires `lexflow[http]`)*
+- [🔍 Web Search](#web-search) *(requires `lexflow[search]`)*
 - [☁️ Cloud Storage](#cloud-storage) *(requires `lexflow[gcs]`)*
 - [🎮 Pygame Operations](#pygame-operations) *(requires `lexflow[pygame]`)*
 - [🔍 RAG Operations](#rag-operations) *(requires `lexflow[rag]`)*
@@ -2460,6 +2461,121 @@ Example:
 - `client` (HubSpotClient, required)
 - `deal_id` (str, required)
 - `properties` (Dict[str, Any], required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+## 🔍 Web Search
+
+> **Requires:** `pip install lexflow[search]`
+
+### `web_search(query, max_results=5, search_depth="basic", include_domains=None, exclude_domains=None, time_range=None)`
+
+Perform a general web search using Tavily API.
+
+Args:
+    query: The search query string
+    max_results: Maximum number of results to return (default: 5)
+    search_depth: Search depth - "basic" for fast results, "advanced" for
+                 more comprehensive results (default: "basic")
+    include_domains: List of domains to include in search (optional)
+    exclude_domains: List of domains to exclude from search (optional)
+    time_range: Time range filter - "day", "week", "month", or "year" (optional)
+
+Returns:
+    Dict with keys:
+    - query: The original query string
+    - results: List of result dicts, each with:
+        - title: Page title
+        - url: Page URL
+        - content: Snippet/content from the page
+        - score: Relevance score (0-1)
+    - response_time: Time taken for the search in seconds
+
+Example:
+    query: "Python 3.12 new features"
+    max_results: 5
+    search_depth: "basic"
+
+**Parameters:**
+
+- `query` (str, required)
+- `max_results` (int, optional, default: `5`)
+- `search_depth` (str, optional, default: `"basic"`)
+- `include_domains` (Optional[List[str]], optional, default: `None`)
+- `exclude_domains` (Optional[List[str]], optional, default: `None`)
+- `time_range` (Optional[str], optional, default: `None`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `web_search_context(query, max_results=5, max_tokens=4000)`
+
+Search the web and return context optimized for RAG/agent prompts.
+
+This opcode returns a plain string (not a dict) of search results ready
+to be injected directly into LLM prompts. It uses Tavily's
+get_search_context() method which is optimized for RAG workflows.
+
+Args:
+    query: The search query string
+    max_results: Maximum number of results to include (default: 5)
+    max_tokens: Maximum tokens in the returned context (default: 4000)
+
+Returns:
+    A formatted string containing search results optimized for use
+    as context in LLM prompts.
+
+Example:
+    query: "quantum computing applications 2024"
+    max_results: 5
+    max_tokens: 4000
+
+**Parameters:**
+
+- `query` (str, required)
+- `max_results` (int, optional, default: `5`)
+- `max_tokens` (int, optional, default: `4000`)
+
+**Returns:** `str`
+
+---
+
+### `web_search_news(query, max_results=5, time_range="week")`
+
+Search for news articles using Tavily API.
+
+This is a specialized search focused on news content with a default
+time range of one week for recent news.
+
+Args:
+    query: The search query string
+    max_results: Maximum number of results to return (default: 5)
+    time_range: Time range filter - "day", "week", "month", or "year"
+               (default: "week")
+
+Returns:
+    Dict with keys:
+    - query: The original query string
+    - results: List of result dicts, each with:
+        - title: Article title
+        - url: Article URL
+        - content: Snippet/content from the article
+        - score: Relevance score (0-1)
+    - response_time: Time taken for the search in seconds
+
+Example:
+    query: "artificial intelligence breakthroughs"
+    max_results: 5
+    time_range: "week"
+
+**Parameters:**
+
+- `query` (str, required)
+- `max_results` (int, optional, default: `5`)
+- `time_range` (str, optional, default: `"week"`)
 
 **Returns:** `Dict[str, Any]`
 
@@ -5606,7 +5722,7 @@ Required scopes: files:write
 
 ## Summary
 
-**Total opcodes:** 294
+**Total opcodes:** 297
 
 ### Categories
 
@@ -5632,6 +5748,7 @@ Required scopes: files:write
 | 📄 HTML Operations | 5 | `lexflow[http]` |
 | 📋 JSON Operations | 2 | - |
 | hubspot HubSpot Operations | 18 | `lexflow[http]` |
+| 🔍 Web Search | 3 | `lexflow[search]` |
 | ☁️ Cloud Storage | 11 | `lexflow[gcs]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
 | 🔍 RAG Operations | 20 | `lexflow[rag]` |

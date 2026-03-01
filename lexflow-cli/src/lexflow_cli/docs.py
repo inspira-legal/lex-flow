@@ -118,7 +118,7 @@ def generate_opcode_reference() -> str:
             lines.append("")
 
             if op["doc"]:
-                lines.append(op["doc"])
+                lines.append(inspect.cleandoc(op["doc"]))
                 lines.append("")
 
             # Parameters table if multiple params

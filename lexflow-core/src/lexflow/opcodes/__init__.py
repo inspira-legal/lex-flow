@@ -15,6 +15,7 @@ from .opcodes_pygame import register_pygame_opcodes
 from .opcodes_rag import register_rag_opcodes
 from .opcodes_sheets import register_sheets_opcodes
 from .opcodes_slack import register_slack_opcodes
+from .opcodes_web_search import register_web_search_opcodes
 
 # Import opcodes that register via @opcode() decorator (no external dependencies)
 from . import opcodes_chat  # noqa: F401
@@ -33,6 +34,7 @@ register_pygame_opcodes()
 register_rag_opcodes()
 register_sheets_opcodes()
 register_slack_opcodes()
+register_web_search_opcodes()
 
 __all__ = [
     "CategoryInfo",
