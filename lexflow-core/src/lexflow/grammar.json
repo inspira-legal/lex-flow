@@ -227,6 +227,14 @@
       "prefix": "sync_",
       "color": "#A855F7",
       "icon": "🔒"
+    },
+    {
+      "id": "slack",
+      "label": "Slack",
+      "prefix": "slack_",
+      "color": "#4A154B",
+      "icon": "💬",
+      "requires": "slack"
     }
   ],
   "constructs": [
