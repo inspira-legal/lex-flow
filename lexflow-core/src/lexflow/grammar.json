@@ -147,6 +147,14 @@
       "requires": "http"
     },
     {
+      "id": "web_search",
+      "label": "Web Search",
+      "prefix": "web_search",
+      "color": "#8B5CF6",
+      "icon": "🔍",
+      "requires": "search"
+    },
+    {
       "id": "gcs",
       "label": "Cloud Storage",
       "prefix": "gcs_",
