@@ -2,6 +2,45 @@
 
 <!-- version list -->
 
+## v1.10.0 (2026-03-01)
+
+### Bug Fixes
+
+- **core**: Add slack-sdk to root pyproject.toml optional dependencies
+  ([#21](https://github.com/inspira-legal/lex-flow/pull/21),
+  [`8929cc3`](https://github.com/inspira-legal/lex-flow/commit/8929cc31b8c9557ca5a6c6312348b131a5fb9139))
+
+### Chores
+
+- **cli**: Release 1.3.0
+  ([`8aed001`](https://github.com/inspira-legal/lex-flow/commit/8aed001b447d16265215685980087c077f7072f9))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`5191cf3`](https://github.com/inspira-legal/lex-flow/commit/5191cf3a1b9e9dc4f93bf83b54fadaddd9c2ede8))
+
+- Create docs about slack opcodes connection
+  ([#21](https://github.com/inspira-legal/lex-flow/pull/21),
+  [`8929cc3`](https://github.com/inspira-legal/lex-flow/commit/8929cc31b8c9557ca5a6c6312348b131a5fb9139))
+
+- Regenerate opcode reference with all dependencies installed
+  ([#21](https://github.com/inspira-legal/lex-flow/pull/21),
+  [`8929cc3`](https://github.com/inspira-legal/lex-flow/commit/8929cc31b8c9557ca5a6c6312348b131a5fb9139))
+
+### Features
+
+- **core**: Add Slack integration opcodes for messaging and workspace automation
+  ([#21](https://github.com/inspira-legal/lex-flow/pull/21),
+  [`8929cc3`](https://github.com/inspira-legal/lex-flow/commit/8929cc31b8c9557ca5a6c6312348b131a5fb9139))
+
+### Testing
+
+- **core**: Add comprehensive tests for Slack opcodes and fix docstring placeholder
+  ([#21](https://github.com/inspira-legal/lex-flow/pull/21),
+  [`8929cc3`](https://github.com/inspira-legal/lex-flow/commit/8929cc31b8c9557ca5a6c6312348b131a5fb9139))
+
+
 ## v1.9.1 (2026-02-24)
 
 ### Bug Fixes
