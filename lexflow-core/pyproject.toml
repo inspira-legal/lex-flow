@@ -21,6 +21,7 @@ file = ["pymupdf"]
 pgvector = ["asyncpg", "pgvector"]
 gcs = ["gcloud-aio-storage"]
 pubsub = ["gcloud-aio-pubsub"]
+slack = ["slack-sdk>=3.19.0,<4.0.0"]
 sheets = ["google-auth", "google-auth-oauthlib", "google-api-python-client"]
 dev = ["pytest", "pytest-asyncio"]
 

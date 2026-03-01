@@ -37,6 +37,7 @@ Quick reference for all available opcodes in LexFlow.
 - [⚡ Task Operations](#task-operations)
 - [📡 Channel Operations](#channel-operations)
 - [🔒 Sync Primitives](#sync-primitives)
+- [💬 Slack](#slack) *(requires `lexflow[slack]`)*
 
 ## 📤 I/O Operations
 
@@ -4904,9 +4905,708 @@ Args:
 
 ---
 
+## 💬 Slack
+
+> **Requires:** `pip install lexflow[slack]`
+
+### `slack_add_reaction(client, channel, ts, emoji)`
+
+Add a reaction emoji to a message.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID where the message exists
+    ts: Timestamp of the message
+    emoji: Emoji name without colons (e.g., "thumbsup")
+
+Returns:
+    True if successful
+
+Required scopes: reactions:write
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+- `ts` (str, required)
+- `emoji` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `slack_archive_channel(client, channel)`
+
+Archive a channel.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID to archive
+
+Returns:
+    True if successful
+
+Required scopes: channels:manage, groups:write (for private)
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `slack_create_channel(client, name, is_private=False)`
+
+Create a new channel.
+
+Args:
+    client: Slack client (from slack_create_client)
+    name: Channel name (lowercase, no spaces, max 80 chars)
+    is_private: Whether to create a private channel (default: False)
+
+Returns:
+    Dict with: id, name, is_private, created
+
+Required scopes: channels:manage, groups:write (for private)
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `name` (str, required)
+- `is_private` (bool, optional, default: `False`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `slack_create_client(token)`
+
+Create a Slack Web API client.
+
+Args:
+    token: Slack Bot Token (xoxb-...) or User Token (xoxp-...)
+
+Returns:
+    AsyncWebClient instance for use with other Slack opcodes
+
+Example:
+    token: "xoxb-xxxx-xxxx-xxxx"
+
+**Returns:** `AsyncWebClient`
+
+---
+
+### `slack_delete_file(client, file_id)`
+
+Delete a file.
+
+Args:
+    client: Slack client (from slack_create_client)
+    file_id: File ID to delete
+
+Returns:
+    True if successful
+
+Required scopes: files:write
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `file_id` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `slack_delete_message(client, channel, ts)`
+
+Delete a message.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID where the message exists
+    ts: Timestamp of the message to delete
+
+Returns:
+    Dict with: ok, channel, ts
+
+Required scopes: chat:write
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+- `ts` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `slack_format_channel_mention(channel_id)`
+
+Format a channel ID as a mention.
+
+Args:
+    channel_id: Channel ID (e.g., "C12345678")
+
+Returns:
+    Formatted mention string (e.g., "<#C12345678>")
+
+**Returns:** `str`
+
+---
+
+### `slack_format_link(url, text=None)`
+
+Format a URL as a Slack link.
+
+Args:
+    url: URL to link to
+    text: Optional display text
+
+Returns:
+    Formatted link string (e.g., "<https://example.com|Click here>")
+
+**Parameters:**
+
+- `url` (str, required)
+- `text` (Optional[str], optional, default: `None`)
+
+**Returns:** `str`
+
+---
+
+### `slack_format_user_mention(user_id)`
+
+Format a user ID as a mention.
+
+Args:
+    user_id: User ID (e.g., "U12345678")
+
+Returns:
+    Formatted mention string (e.g., "<@U12345678>")
+
+**Returns:** `str`
+
+---
+
+### `slack_get_channel_info(client, channel)`
+
+Get information about a channel.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID
+
+Returns:
+    Dict with: id, name, is_private, is_archived, topic, purpose, num_members, created
+
+Required scopes: channels:read, groups:read (for private)
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `slack_get_channel_members(client, channel, limit=100)`
+
+Get list of members in a channel.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID
+    limit: Maximum number of members to return (default: 100)
+
+Returns:
+    List of user IDs
+
+Required scopes: channels:read, groups:read (for private)
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+- `limit` (int, optional, default: `100`)
+
+**Returns:** `List[str]`
+
+---
+
+### `slack_get_conversation_history(client, channel, limit=100, oldest=None, latest=None)`
+
+Get conversation history for a channel.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID
+    limit: Number of messages to return (default: 100)
+    oldest: Optional oldest message timestamp to fetch from
+    latest: Optional latest message timestamp to fetch to
+
+Returns:
+    List of message dicts with: ts, text, user, thread_ts, reply_count
+
+Required scopes: channels:history, groups:history (for private), mpim:history, im:history
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+- `limit` (int, optional, default: `100`)
+- `oldest` (Optional[str], optional, default: `None`)
+- `latest` (Optional[str], optional, default: `None`)
+
+**Returns:** `List[Dict[str, Any]]`
+
+---
+
+### `slack_get_reactions(client, channel, ts)`
+
+Get reactions on a message.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID where the message exists
+    ts: Timestamp of the message
+
+Returns:
+    List of reaction dicts with: name, count, users
+
+Required scopes: reactions:read
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+- `ts` (str, required)
+
+**Returns:** `List[Dict[str, Any]]`
+
+---
+
+### `slack_get_thread_replies(client, channel, thread_ts, limit=100)`
+
+Get replies in a thread.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID where the thread exists
+    thread_ts: Timestamp of the parent message
+    limit: Number of replies to return (default: 100)
+
+Returns:
+    List of message dicts with: ts, text, user, thread_ts
+
+Required scopes: channels:history, groups:history (for private)
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+- `thread_ts` (str, required)
+- `limit` (int, optional, default: `100`)
+
+**Returns:** `List[Dict[str, Any]]`
+
+---
+
+### `slack_get_user_info(client, user)`
+
+Get information about a user.
+
+Args:
+    client: Slack client (from slack_create_client)
+    user: User ID
+
+Returns:
+    Dict with: id, name, real_name, email, title, phone, is_bot, is_admin, tz
+
+Required scopes: users:read, users:read.email (for email)
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `user` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `slack_get_user_presence(client, user)`
+
+Get user's presence status.
+
+Args:
+    client: Slack client (from slack_create_client)
+    user: User ID
+
+Returns:
+    Dict with: presence (active/away), online, auto_away, manual_away
+
+Required scopes: users:read
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `user` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `slack_invite_to_channel(client, channel, users)`
+
+Invite users to a channel.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID
+    users: List of user IDs to invite
+
+Returns:
+    True if successful
+
+Required scopes: channels:manage, groups:write (for private)
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+- `users` (List[str], required)
+
+**Returns:** `bool`
+
+---
+
+### `slack_leave_channel(client, channel)`
+
+Leave a channel.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID to leave
+
+Returns:
+    True if successful
+
+Required scopes: channels:manage, groups:write (for private)
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `slack_list_channels(client, types=None, limit=100, exclude_archived=True)`
+
+List channels in the workspace.
+
+Args:
+    client: Slack client (from slack_create_client)
+    types: Comma-separated channel types (public_channel, private_channel, mpim, im)
+    limit: Maximum number of channels to return (default: 100)
+    exclude_archived: Exclude archived channels (default: True)
+
+Returns:
+    List of channel dicts with: id, name, is_private, is_archived, num_members
+
+Required scopes: channels:read, groups:read (for private), mpim:read, im:read
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `types` (Optional[str], optional, default: `None`)
+- `limit` (int, optional, default: `100`)
+- `exclude_archived` (bool, optional, default: `True`)
+
+**Returns:** `List[Dict[str, Any]]`
+
+---
+
+### `slack_list_files(client, channel=None, user=None, types=None, limit=100)`
+
+List files in the workspace.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Optional channel ID to filter by
+    user: Optional user ID to filter by
+    types: Optional comma-separated file types (spaces, snippets, images, etc.)
+    limit: Number of files to return (default: 100)
+
+Returns:
+    List of file dicts with: id, name, title, filetype, size, user, created
+
+Required scopes: files:read
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (Optional[str], optional, default: `None`)
+- `user` (Optional[str], optional, default: `None`)
+- `types` (Optional[str], optional, default: `None`)
+- `limit` (int, optional, default: `100`)
+
+**Returns:** `List[Dict[str, Any]]`
+
+---
+
+### `slack_list_users(client, limit=100)`
+
+List users in the workspace.
+
+Args:
+    client: Slack client (from slack_create_client)
+    limit: Maximum number of users to return (default: 100)
+
+Returns:
+    List of user dicts with: id, name, real_name, email, is_bot, is_admin
+
+Required scopes: users:read, users:read.email (for email)
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `limit` (int, optional, default: `100`)
+
+**Returns:** `List[Dict[str, Any]]`
+
+---
+
+### `slack_remove_reaction(client, channel, ts, emoji)`
+
+Remove a reaction emoji from a message.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID where the message exists
+    ts: Timestamp of the message
+    emoji: Emoji name without colons (e.g., "thumbsup")
+
+Returns:
+    True if successful
+
+Required scopes: reactions:write
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+- `ts` (str, required)
+- `emoji` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `slack_schedule_message(client, channel, text, post_at, thread_ts=None)`
+
+Schedule a message for later delivery.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID or channel name
+    text: Message text
+    post_at: Unix timestamp for when to send the message
+    thread_ts: Optional thread timestamp to reply in thread
+
+Returns:
+    Dict with: ok, channel, scheduled_message_id, post_at
+
+Required scopes: chat:write
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+- `text` (str, required)
+- `post_at` (int, required)
+- `thread_ts` (Optional[str], optional, default: `None`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `slack_send_blocks(client, channel, blocks, text="", thread_ts=None)`
+
+Send a message with Block Kit blocks.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID or channel name
+    blocks: List of Block Kit block objects
+    text: Fallback text for notifications (recommended)
+    thread_ts: Optional thread timestamp to reply in thread
+
+Returns:
+    Dict with: ok, channel, ts, message
+
+Required scopes: chat:write
+
+See: https://api.slack.com/block-kit
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+- `blocks` (List[Dict[str, Any]], required)
+- `text` (str, optional, default: `""`)
+- `thread_ts` (Optional[str], optional, default: `None`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `slack_send_message(client, channel, text, thread_ts=None, broadcast=False, unfurl_links=True, unfurl_media=True)`
+
+Send a message to a channel, user, or thread.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID, channel name, or user ID
+    text: Message text (supports Slack markdown)
+    thread_ts: Optional thread timestamp to reply in thread
+    broadcast: Whether to also post to channel when replying in thread (default: False)
+    unfurl_links: Whether to unfurl URLs (default: True)
+    unfurl_media: Whether to unfurl media (default: True)
+
+Returns:
+    Dict with: ok, channel, ts, message
+
+Required scopes: chat:write, chat:write.public (for public channels)
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+- `text` (str, required)
+- `thread_ts` (Optional[str], optional, default: `None`)
+- `broadcast` (bool, optional, default: `False`)
+- `unfurl_links` (bool, optional, default: `True`)
+- `unfurl_media` (bool, optional, default: `True`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `slack_send_webhook(url, text, blocks=None, username=None, icon_emoji=None, icon_url=None, timeout=30.0)`
+
+Send a message via incoming webhook.
+
+Args:
+    url: Incoming webhook URL (must be https://hooks.slack.com/...)
+    text: Message text (required, used as fallback)
+    blocks: Optional Block Kit blocks
+    username: Optional custom username
+    icon_emoji: Optional emoji for bot icon (e.g., ":robot_face:")
+    icon_url: Optional URL for bot icon
+    timeout: Request timeout in seconds (default: 30)
+
+Returns:
+    True if successful
+
+Note: Does not require a Slack client, uses webhook directly
+
+**Parameters:**
+
+- `url` (str, required)
+- `text` (str, required)
+- `blocks` (Optional[List[Dict[str, Any]]], optional, default: `None`)
+- `username` (Optional[str], optional, default: `None`)
+- `icon_emoji` (Optional[str], optional, default: `None`)
+- `icon_url` (Optional[str], optional, default: `None`)
+- `timeout` (float, optional, default: `30.0`)
+
+**Returns:** `bool`
+
+---
+
+### `slack_test_auth(client)`
+
+Test authentication and get bot/user info.
+
+Args:
+    client: Slack client (from slack_create_client)
+
+Returns:
+    Dict with: ok, url, team, user, team_id, user_id, bot_id
+
+Useful for verifying token validity and getting workspace info.
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `slack_update_message(client, channel, ts, text=None, blocks=None)`
+
+Update an existing message.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channel: Channel ID where the message exists
+    ts: Timestamp of the message to update
+    text: New message text (optional if blocks provided)
+    blocks: New Block Kit blocks (optional)
+
+Returns:
+    Dict with: ok, channel, ts, message
+
+Required scopes: chat:write
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channel` (str, required)
+- `ts` (str, required)
+- `text` (Optional[str], optional, default: `None`)
+- `blocks` (Optional[List[Dict[str, Any]]], optional, default: `None`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `slack_upload_file(client, channels, content, filename, title=None, initial_comment=None)`
+
+Upload a file to channels.
+
+Args:
+    client: Slack client (from slack_create_client)
+    channels: List of channel IDs to share the file
+    content: File content as string
+    filename: Name of the file
+    title: Optional title for the file
+    initial_comment: Optional comment to add with the file
+
+Returns:
+    Dict with: id, name, title, url_private, permalink
+
+Required scopes: files:write
+
+**Parameters:**
+
+- `client` (AsyncWebClient, required)
+- `channels` (List[str], required)
+- `content` (str, required)
+- `filename` (str, required)
+- `title` (Optional[str], optional, default: `None`)
+- `initial_comment` (Optional[str], optional, default: `None`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
 ## Summary
 
-**Total opcodes:** 265
+**Total opcodes:** 294
 
 ### Categories
 
@@ -4943,3 +5643,4 @@ Args:
 | ⚡ Task Operations | 10 | - |
 | 📡 Channel Operations | 8 | - |
 | 🔒 Sync Primitives | 8 | - |
+| 💬 Slack | 29 | `lexflow[slack]` |

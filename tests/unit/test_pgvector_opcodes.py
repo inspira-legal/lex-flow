@@ -150,9 +150,7 @@ class TestPgvectorOpcodeLogic:
 
     @patch("lexflow.opcodes.opcodes_pgvector.asyncpg")
     @patch("lexflow.opcodes.opcodes_pgvector.register_vector", new_callable=AsyncMock)
-    async def test_connect_without_ensure_extension(
-        self, mock_register, mock_asyncpg
-    ):
+    async def test_connect_without_ensure_extension(self, mock_register, mock_asyncpg):
         from lexflow.opcodes import default_registry
 
         mock_pool = AsyncMock()
@@ -277,9 +275,7 @@ class TestPgvectorOpcodeLogic:
     async def test_upsert_batch_payloads_mismatch(self, mock_pool):
         from lexflow.opcodes import default_registry
 
-        with pytest.raises(
-            ValueError, match="payloads must have the same length"
-        ):
+        with pytest.raises(ValueError, match="payloads must have the same length"):
             await default_registry.call(
                 "pgvector_upsert_batch",
                 [mock_pool, "livros", [1, 2], [[0.1], [0.2]], [{"a": 1}]],

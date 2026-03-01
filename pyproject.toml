@@ -34,10 +34,11 @@ pubsub = ["gcloud-aio-pubsub"]
 sheets = ["google-auth", "google-auth-oauthlib", "google-api-python-client"]
 pgvector = ["asyncpg", "pgvector"]
 hubspot = ["aiohttp"]
+slack = ["slack-sdk>=3.19.0,<4.0.0"]
 rag = ["pypdf", "google-cloud-aiplatform", "qdrant-client", "bm25s"]
 web = ["fastapi>=0.100.0", "uvicorn[standard]>=0.23.0"]
 dev = ["pytest", "pytest-asyncio"]
-all = ["lexflow[ai,pygame,file,http,hubspot,web,rag,gcs,pubsub,sheets,pgvector]"]
+all = ["lexflow[ai,pygame,file,http,hubspot,slack,web,rag,gcs,pubsub,sheets,pgvector]"]
 
 [project.scripts]
 lexflow = "lexflow_cli.main:cli_main"

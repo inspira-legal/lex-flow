@@ -14,6 +14,7 @@ from .opcodes_pydantic_ai import register_pydantic_ai_opcodes
 from .opcodes_pygame import register_pygame_opcodes
 from .opcodes_rag import register_rag_opcodes
 from .opcodes_sheets import register_sheets_opcodes
+from .opcodes_slack import register_slack_opcodes
 
 # Import opcodes that register via @opcode() decorator (no external dependencies)
 from . import opcodes_chat  # noqa: F401
@@ -31,6 +32,7 @@ register_pydantic_ai_opcodes()
 register_pygame_opcodes()
 register_rag_opcodes()
 register_sheets_opcodes()
+register_slack_opcodes()
 
 __all__ = [
     "CategoryInfo",

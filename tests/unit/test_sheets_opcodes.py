@@ -427,9 +427,7 @@ class TestSheetsSheetNameQuoting:
             "values": [["a"]]
         }
         with patch("asyncio.to_thread", side_effect=fake_to_thread):
-            await default_registry.call(
-                "sheets_get_row", [client, "sid", "Sheet1", 1]
-            )
+            await default_registry.call("sheets_get_row", [client, "sid", "Sheet1", 1])
         client.spreadsheets.values().get.assert_called_with(
             spreadsheetId="sid", range="Sheet1!1:1"
         )
