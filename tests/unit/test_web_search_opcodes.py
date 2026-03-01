@@ -284,6 +284,12 @@ class TestWebSearchNewsOpcode:
                     "web_search_news", ["test query", 5, "yesterday"]
                 )
 
+    async def test_news_search_without_api_key_raises_error(self):
+        """Test that news search fails without API key."""
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(ValueError, match="TAVILY_API_KEY"):
+                await default_registry.call("web_search_news", ["test query"])
+
 
 @pytest.mark.skipif(not TAVILY_AVAILABLE, reason="tavily not installed")
 class TestWebSearchContextOpcode:
@@ -340,6 +346,12 @@ class TestWebSearchContextOpcode:
                     max_results=10,
                     max_tokens=8000,
                 )
+
+    async def test_context_search_without_api_key_raises_error(self):
+        """Test that context search fails without API key."""
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(ValueError, match="TAVILY_API_KEY"):
+                await default_registry.call("web_search_context", ["test query"])
 
 
 @pytest.mark.skipif(TAVILY_AVAILABLE, reason="Test only when tavily is not installed")
