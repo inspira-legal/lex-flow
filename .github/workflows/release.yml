@@ -66,12 +66,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin git@github.com:inspira-legal/lex-flow.git
 
       - name: Bump version, push and create GitHub release
         working-directory: lexflow-core
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: semantic-release version
+        run: semantic-release version --dry-run
 
   update-docs:
     needs: [detect-changes, release-core]
@@ -144,12 +145,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin git@github.com:inspira-legal/lex-flow.git
 
       - name: Bump version, push and create GitHub release
         working-directory: lexflow-cli
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: semantic-release version
+        run: semantic-release version --dry-run
 
   release-web:
     needs: [detect-changes, release-core, update-docs, release-cli]
@@ -189,6 +191,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin git@github.com:inspira-legal/lex-flow.git
           git add -f lexflow-web/frontend/dist/lexflow-editor.umd.js
           git add -f lexflow-web/frontend/dist/lexflow-editor.es.js
           git add -f lexflow-web/frontend/dist/lexflow-editor.css
@@ -201,4 +204,4 @@ jobs:
         working-directory: lexflow-web
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: semantic-release version
+        run: semantic-release version --dry-run
