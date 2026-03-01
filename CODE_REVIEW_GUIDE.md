@@ -85,7 +85,7 @@ Before submitting a PR, verify:
 Format: `<type>(<scope>): <description>`
 
 Valid types: `feat`, `fix`, `perf`, `refactor`, `docs`, `chore`, `test`
-Valid scopes: `core`, `web`, `cli`, `ai`, `examples`
+Valid scopes: `core`, `web`, `cli`, `ai`, `examples`, `ci`, `opcode`
 
 Breaking changes MUST include `BREAKING CHANGE:` in the commit footer. This triggers a major version bump via semantic-release.
 

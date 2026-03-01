@@ -67,15 +67,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump version and push (via SSH deploy key)
-        working-directory: lexflow-core
-        run: semantic-release version --no-vcs-release
-
-      - name: Create GitHub release
+      - name: Bump version, push and create GitHub release
         working-directory: lexflow-core
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: semantic-release publish
+        run: semantic-release version
 
   update-docs:
     needs: [detect-changes, release-core]
@@ -149,15 +145,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump version and push (via SSH deploy key)
-        working-directory: lexflow-cli
-        run: semantic-release version --no-vcs-release
-
-      - name: Create GitHub release
+      - name: Bump version, push and create GitHub release
         working-directory: lexflow-cli
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: semantic-release publish
+        run: semantic-release version
 
   release-web:
     needs: [detect-changes, release-core, update-docs, release-cli]
@@ -205,12 +197,8 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-      - name: Bump version and push (via SSH deploy key)
-        working-directory: lexflow-web
-        run: semantic-release version --no-vcs-release
-
-      - name: Create GitHub release
+      - name: Bump version, push and create GitHub release
         working-directory: lexflow-web
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: semantic-release publish
+        run: semantic-release version
