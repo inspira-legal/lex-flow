@@ -724,12 +724,15 @@ class Parser:
         # Variables are now always in format: {"var_name": default_value}
         locals_dict = variables.copy()
 
+        trigger = wf_data.get("trigger")
+
         return Workflow(
             name=name,
             params=params,
             body=body,
             locals=locals_dict,
             description=description,
+            trigger=trigger,
         )
 
     def _parse_nodes(self, nodes: dict) -> Statement:

@@ -225,6 +225,7 @@ class Workflow(BaseModel):
     body: Statement
     locals: dict[str, Any] = {}
     description: Optional[str] = None
+    trigger: Optional[dict[str, Any]] = None
 
 
 class Program(BaseModel):
