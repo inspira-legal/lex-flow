@@ -66,6 +66,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin git@github.com:inspira-legal/lex-flow.git
+
+      - name: Test SSH push permission
+        run: git push --dry-run origin main
 
       - name: Bump version, push and create GitHub release
         working-directory: lexflow-core
@@ -144,6 +148,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin git@github.com:inspira-legal/lex-flow.git
 
       - name: Bump version, push and create GitHub release
         working-directory: lexflow-cli
@@ -189,6 +194,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin git@github.com:inspira-legal/lex-flow.git
           git add -f lexflow-web/frontend/dist/lexflow-editor.umd.js
           git add -f lexflow-web/frontend/dist/lexflow-editor.es.js
           git add -f lexflow-web/frontend/dist/lexflow-editor.css
