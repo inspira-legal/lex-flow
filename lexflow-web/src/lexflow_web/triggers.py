@@ -1,6 +1,7 @@
 """Dynamic HTTP trigger routes from workflow definitions."""
 
 import io
+import json
 import logging
 from dataclasses import dataclass
 
@@ -33,9 +34,15 @@ def _parse_http_trigger(trigger_data: dict | None) -> HttpTrigger | None:
     """Parse a trigger dict into HttpTrigger if it's an HTTP trigger."""
     if not trigger_data or trigger_data.get("type") != "http":
         return None
+
+    path = trigger_data.get("path")
+    if not path:
+        logger.warning("HTTP trigger missing 'path', ignoring: %s", trigger_data)
+        return None
+
     return HttpTrigger(
         method=trigger_data.get("method", "POST").upper(),
-        path=trigger_data["path"],
+        path=path,
     )
 
 
@@ -56,7 +63,11 @@ async def _build_inputs(request: Request, params: list[str]) -> dict:
     """Extract request data into workflow inputs based on declared params."""
     inputs = {}
     if "body" in params:
-        inputs["body"] = await request.json()
+        try:
+            inputs["body"] = await request.json()
+        except (json.JSONDecodeError, ValueError):
+            logger.warning("Invalid JSON body on %s, using None", request.url.path)
+            inputs["body"] = None
     if "headers" in params:
         inputs["headers"] = dict(request.headers)
     if "query_params" in params:
