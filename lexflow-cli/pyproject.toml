@@ -26,6 +26,10 @@ tag_format = "cli-v{version}"
 branch = "main"
 commit_message = "chore(cli): release {version}"
 
+[tool.semantic_release.remote]
+type = "github"
+ignore_token_for_push = true
+
 [tool.semantic_release.commit_parser_options]
 allowed_tags = ["feat", "fix", "perf", "refactor", "docs", "chore", "test"]
 minor_tags = ["feat"]
