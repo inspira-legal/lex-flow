@@ -486,6 +486,94 @@ class TestHubSpotAssociateOpcode:
         assert "/crm/v4/objects/" in url
 
 
+class TestHubSpotGetAssociationsOpcode:
+    async def test_returns_associated_ids(self):
+        client = _mock_client()
+        response_data = {
+            "results": [
+                {
+                    "toObjectId": 111,
+                    "associationTypes": [
+                        {"category": "HUBSPOT_DEFINED", "typeId": 3, "label": None}
+                    ],
+                },
+                {
+                    "toObjectId": 222,
+                    "associationTypes": [
+                        {"category": "HUBSPOT_DEFINED", "typeId": 3, "label": None}
+                    ],
+                },
+            ]
+        }
+        client._session.request = MagicMock(
+            return_value=_mock_response(200, response_data)
+        )
+
+        result = await default_registry.call(
+            "hubspot_get_associations", [client, "deals", "999", "contacts"]
+        )
+        assert result == ["111", "222"]
+
+    async def test_empty_associations(self):
+        client = _mock_client()
+        client._session.request = MagicMock(
+            return_value=_mock_response(200, {"results": []})
+        )
+
+        result = await default_registry.call(
+            "hubspot_get_associations", [client, "deals", "999", "contacts"]
+        )
+        assert result == []
+
+    async def test_invalid_from_type(self):
+        client = _mock_client()
+        with pytest.raises(ValueError, match="Invalid object type"):
+            await default_registry.call(
+                "hubspot_get_associations", [client, "invalid", "123", "contacts"]
+            )
+
+    async def test_invalid_to_type(self):
+        client = _mock_client()
+        with pytest.raises(ValueError, match="Invalid object type"):
+            await default_registry.call(
+                "hubspot_get_associations", [client, "deals", "123", "invalid"]
+            )
+
+    async def test_invalid_object_id(self):
+        client = _mock_client()
+        with pytest.raises(ValueError, match="Must be alphanumeric"):
+            await default_registry.call(
+                "hubspot_get_associations", [client, "deals", "../hack", "contacts"]
+            )
+
+    async def test_uses_v4_endpoint(self):
+        client = _mock_client()
+        client._session.request = MagicMock(
+            return_value=_mock_response(200, {"results": []})
+        )
+
+        await default_registry.call(
+            "hubspot_get_associations", [client, "deals", "123", "companies"]
+        )
+
+        call_args = client._session.request.call_args
+        url = call_args[0][1]
+        assert "/crm/v4/objects/deals/123/associations/companies" in url
+
+    async def test_ids_returned_as_strings(self):
+        client = _mock_client()
+        response_data = {"results": [{"toObjectId": 42, "associationTypes": []}]}
+        client._session.request = MagicMock(
+            return_value=_mock_response(200, response_data)
+        )
+
+        result = await default_registry.call(
+            "hubspot_get_associations", [client, "contacts", "1", "companies"]
+        )
+        assert result == ["42"]
+        assert isinstance(result[0], str)
+
+
 class TestHubSpotUtilityOpcodes:
     async def test_list_properties(self):
         client = _mock_client()
@@ -543,6 +631,7 @@ class TestOpcodeRegistration:
             "hubspot_create_deal",
             "hubspot_update_deal",
             "hubspot_associate",
+            "hubspot_get_associations",
             "hubspot_list_properties",
             "hubspot_test_connection",
         ]
