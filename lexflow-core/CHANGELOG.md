@@ -2,6 +2,32 @@
 
 <!-- version list -->
 
+## v1.12.0 (2026-03-04)
+
+### Bug Fixes
+
+- **core**: Filter malformed results in hubspot_get_associations
+  ([`d12bb44`](https://github.com/inspira-legal/lex-flow/commit/d12bb447d1f9ed51a02cac79465890e3d1e9c247))
+
+### Chores
+
+- **cli**: Release 1.4.0
+  ([`acde866`](https://github.com/inspira-legal/lex-flow/commit/acde86605c9f6041d8abdcf3f640a5d4f3ca281e))
+
+- **web**: Release 1.12.0
+  ([`476d5ad`](https://github.com/inspira-legal/lex-flow/commit/476d5adec270a7f30566109d20cd2de2c366d9b1))
+
+### Features
+
+- **core**: Add hubspot_get_associations opcode
+  ([`754ca42`](https://github.com/inspira-legal/lex-flow/commit/754ca42cddc9822fa48bad0dedc1e74aeee494fb))
+
+### Testing
+
+- **core**: Add tests for hubspot_get_associations opcode
+  ([`9d68271`](https://github.com/inspira-legal/lex-flow/commit/9d68271f207014afd8648f96166eed5cf642384e))
+
+
 ## v1.11.0 (2026-03-02)
 
 ### Bug Fixes
