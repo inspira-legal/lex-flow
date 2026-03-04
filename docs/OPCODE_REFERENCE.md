@@ -2155,6 +2155,36 @@ Example:
 
 ---
 
+### `hubspot_get_associations(client, from_type, object_id, to_type)`
+
+Get associated object IDs for a HubSpot object.
+
+Args:
+    client: HubSpotClient from hubspot_create_client
+    from_type: Source object type (contacts, companies, deals, tickets)
+    object_id: Source object ID
+    to_type: Target object type (contacts, companies, deals, tickets)
+
+Returns:
+    List of associated object IDs as strings
+
+Example - Get contacts associated with a deal:
+    client: { node: create_client }
+    from_type: "deals"
+    object_id: "12345"
+    to_type: "contacts"
+
+**Parameters:**
+
+- `client` (HubSpotClient, required)
+- `from_type` (str, required)
+- `object_id` (str, required)
+- `to_type` (str, required)
+
+**Returns:** `List[str]`
+
+---
+
 ### `hubspot_get_company(client, company_id, properties=None)`
 
 Get a company by ID from HubSpot.
@@ -5722,7 +5752,7 @@ Required scopes: files:write
 
 ## Summary
 
-**Total opcodes:** 297
+**Total opcodes:** 298
 
 ### Categories
 
@@ -5747,7 +5777,7 @@ Required scopes: files:write
 | 📊 Google Sheets Operations | 12 | `lexflow[sheets]` |
 | 📄 HTML Operations | 5 | `lexflow[http]` |
 | 📋 JSON Operations | 2 | - |
-| hubspot HubSpot Operations | 18 | `lexflow[http]` |
+| hubspot HubSpot Operations | 19 | `lexflow[http]` |
 | 🔍 Web Search | 3 | `lexflow[search]` |
 | ☁️ Cloud Storage | 11 | `lexflow[gcs]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
