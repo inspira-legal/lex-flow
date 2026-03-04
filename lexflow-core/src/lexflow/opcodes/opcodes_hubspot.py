@@ -711,6 +711,39 @@ def register_hubspot_opcodes():
 
         return await client.put(endpoint, json_data=body)
 
+    @opcode(category="hubspot")
+    async def hubspot_get_associations(
+        client: HubSpotClient,
+        from_type: str,
+        object_id: str,
+        to_type: str,
+    ) -> List[str]:
+        """Get associated object IDs for a HubSpot object.
+
+        Args:
+            client: HubSpotClient from hubspot_create_client
+            from_type: Source object type (contacts, companies, deals, tickets)
+            object_id: Source object ID
+            to_type: Target object type (contacts, companies, deals, tickets)
+
+        Returns:
+            List of associated object IDs as strings
+
+        Example - Get contacts associated with a deal:
+            client: { node: create_client }
+            from_type: "deals"
+            object_id: "12345"
+            to_type: "contacts"
+        """
+        from_type = _validate_object_type(from_type)
+        to_type = _validate_object_type(to_type)
+        _validate_id(object_id, "object_id")
+
+        endpoint = f"/crm/v4/objects/{from_type}/{object_id}/associations/{to_type}"
+        response = await client.get(endpoint)
+        results = response.get("results", [])
+        return [str(r["toObjectId"]) for r in results if "toObjectId" in r]
+
     # ============================================================================
     # Utilities
     # ============================================================================
