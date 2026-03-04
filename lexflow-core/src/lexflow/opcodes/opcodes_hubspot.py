@@ -742,7 +742,7 @@ def register_hubspot_opcodes():
         endpoint = f"/crm/v4/objects/{from_type}/{object_id}/associations/{to_type}"
         response = await client.get(endpoint)
         results = response.get("results", [])
-        return [str(r["toObjectId"]) for r in results]
+        return [str(r["toObjectId"]) for r in results if "toObjectId" in r]
 
     # ============================================================================
     # Utilities
