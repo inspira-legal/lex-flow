@@ -147,12 +147,14 @@ lexflow workflow.yaml
 
 **Opção B - Programático**:
 ```python
-from lexflow.core import Parser, Engine
+from lexflow import Parser, Engine
 
 async def run():
-    with open("workflow.yaml") as f:
-        workflow = Parser.parse(f.read())
-    await Engine.execute(workflow)
+    parser = Parser()
+    program = parser.parse_file("workflow.yaml")
+    engine = Engine(program)
+    result = await engine.run()
+    return result
 ```
 
 **Opção C - Web Editor**:
