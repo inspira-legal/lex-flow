@@ -68,6 +68,9 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin git@github.com:inspira-legal/lex-flow.git
 
+      - name: Pull latest changes
+        run: git pull origin main
+
       - name: Test SSH push permission
         run: git push --dry-run origin main
 

@@ -122,6 +122,9 @@ class Engine:
             >>> engine = Engine(program)
             >>> result = await engine.run(inputs={"name": "Alice", "age": 30})
         """
+        if self.program is None:
+            raise RuntimeError("No program loaded. Call load_program() first.")
+
         # Apply inputs to main workflow if provided
         if inputs:
             # Validate that all input keys are valid parameters
