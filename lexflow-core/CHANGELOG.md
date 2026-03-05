@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v1.12.1 (2026-03-05)
+
+### Bug Fixes
+
+- **core**: Add guard for running engine without loaded program
+  ([`418d7bc`](https://github.com/inspira-legal/lex-flow/commit/418d7bcec69b5995709ea02ae44f732d7c54bc23))
+
+### Chores
+
+- **cli**: Release 1.5.0
+  ([`5366247`](https://github.com/inspira-legal/lex-flow/commit/5366247c7332b79c455b30299ab9415e7045c8d7))
+
+- **web**: Release 1.13.0
+  ([`0c3c965`](https://github.com/inspira-legal/lex-flow/commit/0c3c965bade6b8c3dc0468e13b140f41c12c8d74))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`8f3ee91`](https://github.com/inspira-legal/lex-flow/commit/8f3ee9131f3925088f31a279d20a6a9322a31f7a))
+
+
 ## v1.12.0 (2026-03-04)
 
 ### Bug Fixes
