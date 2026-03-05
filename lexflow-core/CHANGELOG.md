@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.13.0 (2026-03-05)
+
+### Features
+
+- **core**: Add `all` optional dependency group
+  ([`509de3b`](https://github.com/inspira-legal/lex-flow/commit/509de3b0cc8f475cf6916271f5a778376b0a2c12))
+
+
 ## v1.12.1 (2026-03-05)
 
 ### Bug Fixes
