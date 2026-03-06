@@ -117,8 +117,8 @@ def register_web_search_opcodes():
 
     @opcode(category="web_search")
     async def web_search(
-        client: TavilyClient,
         query: str,
+        client: TavilyClient | None = None,
         max_results: int = 5,
         search_depth: str = "basic",
         include_domains: Optional[List[str]] = None,
@@ -128,8 +128,8 @@ def register_web_search_opcodes():
         """Perform a general web search using Tavily API.
 
         Args:
-            client: TavilyClient from web_search_create_client
             query: The search query string
+            client: TavilyClient from web_search_create_client (optional, falls back to env var)
             max_results: Maximum number of results to return (default: 5)
             search_depth: Search depth - "basic" or "advanced" (default: "basic")
             include_domains: List of domains to include in search (optional)
@@ -143,7 +143,6 @@ def register_web_search_opcodes():
             - response_time: Time taken for the search in seconds
 
         Example:
-            client: <TavilyClient>
             query: "Python 3.12 new features"
             max_results: 5
             search_depth: "basic"
@@ -180,8 +179,8 @@ def register_web_search_opcodes():
 
     @opcode(category="web_search")
     async def web_search_news(
-        client: TavilyClient,
         query: str,
+        client: TavilyClient | None = None,
         max_results: int = 5,
         time_range: str = "week",
     ) -> Dict[str, Any]:
@@ -191,8 +190,8 @@ def register_web_search_opcodes():
         time range of one week for recent news.
 
         Args:
-            client: TavilyClient from web_search_create_client
             query: The search query string
+            client: TavilyClient from web_search_create_client (optional, falls back to env var)
             max_results: Maximum number of results to return (default: 5)
             time_range: Time range filter - "day", "week", "month", or "year"
                        (default: "week")
@@ -204,7 +203,6 @@ def register_web_search_opcodes():
             - response_time: Time taken for the search in seconds
 
         Example:
-            client: <TavilyClient>
             query: "artificial intelligence breakthroughs"
             max_results: 5
             time_range: "week"
@@ -229,8 +227,8 @@ def register_web_search_opcodes():
 
     @opcode(category="web_search")
     async def web_search_context(
-        client: TavilyClient,
         query: str,
+        client: TavilyClient | None = None,
         max_results: int = 5,
         max_tokens: int = 4000,
     ) -> str:
@@ -240,8 +238,8 @@ def register_web_search_opcodes():
         into LLM prompts via Tavily's get_search_context().
 
         Args:
-            client: TavilyClient from web_search_create_client
             query: The search query string
+            client: TavilyClient from web_search_create_client (optional, falls back to env var)
             max_results: Maximum number of results to include (default: 5)
             max_tokens: Maximum tokens in the returned context (default: 4000)
 
@@ -250,7 +248,6 @@ def register_web_search_opcodes():
             as context in LLM prompts.
 
         Example:
-            client: <TavilyClient>
             query: "quantum computing applications 2024"
             max_results: 5
             max_tokens: 4000

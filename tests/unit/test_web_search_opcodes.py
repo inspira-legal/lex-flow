@@ -150,6 +150,11 @@ class TestCreateClient:
         with pytest.raises(ValueError, match="api_key is required"):
             await default_registry.call("web_search_create_client", [""])
 
+    async def test_repr_masks_key(self):
+        result = await default_registry.call("web_search_create_client", ["secret-key"])
+        assert repr(result) == "TavilyClient(api_key=***)"
+        assert "secret-key" not in repr(result)
+
 
 @pytest.mark.skipif(not TAVILY_AVAILABLE, reason="tavily not installed")
 class TestWebSearchOpcode:
@@ -179,7 +184,7 @@ class TestWebSearchOpcode:
 
             # Create client then search
             tc = await default_registry.call("web_search_create_client", ["test-key"])
-            result = await default_registry.call("web_search", [tc, "python async"])
+            result = await default_registry.call("web_search", ["python async", tc])
 
             assert result["query"] == "python async"
             assert len(result["results"]) == 1
@@ -207,8 +212,8 @@ class TestWebSearchOpcode:
             await default_registry.call(
                 "web_search",
                 [
-                    tc,
                     "test query",
+                    tc,
                     10,  # max_results
                     "advanced",  # search_depth
                     ["example.com"],  # include_domains
@@ -237,20 +242,20 @@ class TestWebSearchOpcode:
                 mock_client.search = AsyncMock(return_value=mock_response)
                 mock_client_class.return_value = mock_client
 
-                # Pass None as client — should fall back to env var
-                result = await default_registry.call("web_search", [None, "test query"])
+                # No client — should fall back to env var
+                result = await default_registry.call("web_search", ["test query"])
                 assert result["query"] == "test query"
 
     async def test_search_without_client_or_env_raises_error(self):
         """Test that search fails without client or env var."""
         with patch.dict("os.environ", {}, clear=True):
             with pytest.raises(ValueError, match="Tavily API key not found"):
-                await default_registry.call("web_search", [None, "test query"])
+                await default_registry.call("web_search", ["test query"])
 
     async def test_invalid_search_depth_raises_error(self):
         """Test that invalid search_depth raises ValueError."""
         with pytest.raises(ValueError, match="Invalid search_depth 'deep'"):
-            await default_registry.call("web_search", [None, "test query", 5, "deep"])
+            await default_registry.call("web_search", ["test query", None, 5, "deep"])
 
 
 @pytest.mark.skipif(not TAVILY_AVAILABLE, reason="tavily not installed")
@@ -281,7 +286,7 @@ class TestWebSearchNewsOpcode:
 
             tc = await default_registry.call("web_search_create_client", ["test-key"])
             result = await default_registry.call(
-                "web_search_news", [tc, "AI developments"]
+                "web_search_news", ["AI developments", tc]
             )
 
             assert result["query"] == "AI developments"
@@ -308,8 +313,8 @@ class TestWebSearchNewsOpcode:
             await default_registry.call(
                 "web_search_news",
                 [
-                    tc,
                     "breaking news",
+                    tc,
                     10,  # max_results
                     "day",  # time_range
                 ],
@@ -324,14 +329,14 @@ class TestWebSearchNewsOpcode:
         with patch.dict("os.environ", {"TAVILY_API_KEY": "test-key"}):
             with pytest.raises(ValueError, match="Invalid time_range 'yesterday'"):
                 await default_registry.call(
-                    "web_search_news", [None, "test query", 5, "yesterday"]
+                    "web_search_news", ["test query", None, 5, "yesterday"]
                 )
 
     async def test_news_search_without_client_or_env_raises_error(self):
         """Test that news search fails without client or env var."""
         with patch.dict("os.environ", {}, clear=True):
             with pytest.raises(ValueError, match="Tavily API key not found"):
-                await default_registry.call("web_search_news", [None, "test query"])
+                await default_registry.call("web_search_news", ["test query"])
 
 
 @pytest.mark.skipif(not TAVILY_AVAILABLE, reason="tavily not installed")
@@ -353,7 +358,7 @@ class TestWebSearchContextOpcode:
 
             tc = await default_registry.call("web_search_create_client", ["test-key"])
             result = await default_registry.call(
-                "web_search_context", [tc, "quantum computing"]
+                "web_search_context", ["quantum computing", tc]
             )
 
             assert result == mock_context
@@ -378,8 +383,8 @@ class TestWebSearchContextOpcode:
             await default_registry.call(
                 "web_search_context",
                 [
-                    tc,
                     "test query",
+                    tc,
                     10,  # max_results
                     8000,  # max_tokens
                 ],
@@ -391,11 +396,28 @@ class TestWebSearchContextOpcode:
                 max_tokens=8000,
             )
 
+    async def test_context_search_with_env_var_fallback(self):
+        """Test that context search works with env var when no client."""
+        mock_context = "Fallback context..."
+
+        with patch.dict("os.environ", {"TAVILY_API_KEY": "env-key"}):
+            with patch(
+                "lexflow.opcodes.opcodes_web_search.AsyncTavilyClient"
+            ) as mock_client_class:
+                mock_client = AsyncMock()
+                mock_client.get_search_context = AsyncMock(return_value=mock_context)
+                mock_client_class.return_value = mock_client
+
+                result = await default_registry.call(
+                    "web_search_context", ["test query"]
+                )
+                assert result == mock_context
+
     async def test_context_search_without_client_or_env_raises_error(self):
         """Test that context search fails without client or env var."""
         with patch.dict("os.environ", {}, clear=True):
             with pytest.raises(ValueError, match="Tavily API key not found"):
-                await default_registry.call("web_search_context", [None, "test query"])
+                await default_registry.call("web_search_context", ["test query"])
 
 
 @pytest.mark.skipif(TAVILY_AVAILABLE, reason="Test only when tavily is not installed")
@@ -413,3 +435,7 @@ class TestImportErrorWhenNotInstalled:
     def test_web_search_context_import_error(self):
         """Test that web_search_context opcode is not registered."""
         assert "web_search_context" not in default_registry.opcodes
+
+    def test_web_search_create_client_import_error(self):
+        """Test that web_search_create_client opcode is not registered."""
+        assert "web_search_create_client" not in default_registry.opcodes
