@@ -8,9 +8,9 @@ Installation:
     or:
     pip install tavily-python
 
-Environment:
-    Set TAVILY_API_KEY environment variable with your Tavily API key.
-    Get your key at https://tavily.com
+Authentication:
+    Create a client with web_search_create_client(api_key) or set TAVILY_API_KEY
+    environment variable. Get your key at https://tavily.com
 """
 
 import os
@@ -35,22 +35,36 @@ def _check_tavily():
         )
 
 
-def _get_client() -> "AsyncTavilyClient":
-    """Get a configured Tavily client.
+class TavilyClient:
+    """Reusable Tavily API client."""
 
-    Returns:
-        AsyncTavilyClient instance
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self._client = AsyncTavilyClient(api_key=api_key)
+
+    def __repr__(self) -> str:
+        return "TavilyClient(api_key=***)"
+
+
+def _resolve_client(client: TavilyClient | None = None) -> "AsyncTavilyClient":
+    """Resolve Tavily client from explicit client or environment variable.
+
+    Args:
+        client: Explicit TavilyClient instance. Falls back to TAVILY_API_KEY env var.
 
     Raises:
-        ImportError: If tavily-python is not installed
-        ValueError: If TAVILY_API_KEY environment variable is not set
+        ValueError: If no client provided and env var not set.
     """
     _check_tavily()
+    if client is not None:
+        return client._client
+
     api_key = os.environ.get("TAVILY_API_KEY")
     if not api_key:
         raise ValueError(
-            "TAVILY_API_KEY environment variable not set. "
-            "Get your key at https://tavily.com"
+            "Tavily API key not found. Provide a client via "
+            "web_search_create_client(api_key) or set the TAVILY_API_KEY "
+            "environment variable. Get a key at https://tavily.com"
         )
     return AsyncTavilyClient(api_key=api_key)
 
@@ -84,8 +98,27 @@ def register_web_search_opcodes():
     )
 
     @opcode(category="web_search")
+    async def web_search_create_client(api_key: str) -> TavilyClient:
+        """Create a Tavily API client for web search operations.
+
+        Args:
+            api_key: Tavily API key
+
+        Returns:
+            TavilyClient instance to pass to other web_search opcodes
+
+        Example:
+            api_key: "tvly-xxxxxxxxxxxxxxxxxxxxxxxx"
+        """
+        _check_tavily()
+        if not api_key:
+            raise ValueError("api_key is required. Get your key at https://tavily.com")
+        return TavilyClient(api_key)
+
+    @opcode(category="web_search")
     async def web_search(
         query: str,
+        client: TavilyClient | None = None,
         max_results: int = 5,
         search_depth: str = "basic",
         include_domains: Optional[List[str]] = None,
@@ -96,9 +129,9 @@ def register_web_search_opcodes():
 
         Args:
             query: The search query string
+            client: TavilyClient from web_search_create_client (optional, falls back to env var)
             max_results: Maximum number of results to return (default: 5)
-            search_depth: Search depth - "basic" for fast results, "advanced" for
-                         more comprehensive results (default: "basic")
+            search_depth: Search depth - "basic" or "advanced" (default: "basic")
             include_domains: List of domains to include in search (optional)
             exclude_domains: List of domains to exclude from search (optional)
             time_range: Time range filter - "day", "week", "month", or "year" (optional)
@@ -106,11 +139,7 @@ def register_web_search_opcodes():
         Returns:
             Dict with keys:
             - query: The original query string
-            - results: List of result dicts, each with:
-                - title: Page title
-                - url: Page URL
-                - content: Snippet/content from the page
-                - score: Relevance score (0-1)
+            - results: List of result dicts with title, url, content, score
             - response_time: Time taken for the search in seconds
 
         Example:
@@ -123,10 +152,9 @@ def register_web_search_opcodes():
                 f"Invalid search_depth '{search_depth}'. Must be 'basic' or 'advanced'"
             )
 
-        client = _get_client()
+        tavily = _resolve_client(client)
         start_time = time.monotonic()
 
-        # Build search kwargs
         kwargs: Dict[str, Any] = {
             "query": query,
             "max_results": max_results,
@@ -140,7 +168,7 @@ def register_web_search_opcodes():
         if time_range:
             kwargs["days"] = _time_range_to_days(time_range)
 
-        response = await client.search(**kwargs)
+        response = await tavily.search(**kwargs)
         response_time = time.monotonic() - start_time
 
         return {
@@ -152,6 +180,7 @@ def register_web_search_opcodes():
     @opcode(category="web_search")
     async def web_search_news(
         query: str,
+        client: TavilyClient | None = None,
         max_results: int = 5,
         time_range: str = "week",
     ) -> Dict[str, Any]:
@@ -162,6 +191,7 @@ def register_web_search_opcodes():
 
         Args:
             query: The search query string
+            client: TavilyClient from web_search_create_client (optional, falls back to env var)
             max_results: Maximum number of results to return (default: 5)
             time_range: Time range filter - "day", "week", "month", or "year"
                        (default: "week")
@@ -169,11 +199,7 @@ def register_web_search_opcodes():
         Returns:
             Dict with keys:
             - query: The original query string
-            - results: List of result dicts, each with:
-                - title: Article title
-                - url: Article URL
-                - content: Snippet/content from the article
-                - score: Relevance score (0-1)
+            - results: List of result dicts with title, url, content, score
             - response_time: Time taken for the search in seconds
 
         Example:
@@ -182,10 +208,10 @@ def register_web_search_opcodes():
             time_range: "week"
         """
         days = _time_range_to_days(time_range)
-        client = _get_client()
+        tavily = _resolve_client(client)
         start_time = time.monotonic()
 
-        response = await client.search(
+        response = await tavily.search(
             query=query,
             max_results=max_results,
             topic="news",
@@ -202,17 +228,18 @@ def register_web_search_opcodes():
     @opcode(category="web_search")
     async def web_search_context(
         query: str,
+        client: TavilyClient | None = None,
         max_results: int = 5,
         max_tokens: int = 4000,
     ) -> str:
         """Search the web and return context optimized for RAG/agent prompts.
 
-        This opcode returns a plain string (not a dict) of search results ready
-        to be injected directly into LLM prompts. It uses Tavily's
-        get_search_context() method which is optimized for RAG workflows.
+        Returns a plain string of search results ready to be injected directly
+        into LLM prompts via Tavily's get_search_context().
 
         Args:
             query: The search query string
+            client: TavilyClient from web_search_create_client (optional, falls back to env var)
             max_results: Maximum number of results to include (default: 5)
             max_tokens: Maximum tokens in the returned context (default: 4000)
 
@@ -225,9 +252,9 @@ def register_web_search_opcodes():
             max_results: 5
             max_tokens: 4000
         """
-        client = _get_client()
+        tavily = _resolve_client(client)
 
-        context = await client.get_search_context(
+        context = await tavily.get_search_context(
             query=query,
             max_results=max_results,
             max_tokens=max_tokens,
