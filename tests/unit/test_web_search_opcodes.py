@@ -116,7 +116,7 @@ class TestResolveClient:
     @pytest.mark.skipif(not HELPERS_AVAILABLE, reason="helpers not available")
     def test_raises_without_client_or_env(self):
         with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(ValueError, match="No client provided"):
+            with pytest.raises(ValueError, match="Tavily API key not found"):
                 _resolve_client()
 
     @pytest.mark.skipif(not TAVILY_AVAILABLE, reason="tavily not installed")
@@ -244,7 +244,7 @@ class TestWebSearchOpcode:
     async def test_search_without_client_or_env_raises_error(self):
         """Test that search fails without client or env var."""
         with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(ValueError, match="No client provided"):
+            with pytest.raises(ValueError, match="Tavily API key not found"):
                 await default_registry.call("web_search", [None, "test query"])
 
     async def test_invalid_search_depth_raises_error(self):
@@ -330,7 +330,7 @@ class TestWebSearchNewsOpcode:
     async def test_news_search_without_client_or_env_raises_error(self):
         """Test that news search fails without client or env var."""
         with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(ValueError, match="No client provided"):
+            with pytest.raises(ValueError, match="Tavily API key not found"):
                 await default_registry.call("web_search_news", [None, "test query"])
 
 
@@ -394,7 +394,7 @@ class TestWebSearchContextOpcode:
     async def test_context_search_without_client_or_env_raises_error(self):
         """Test that context search fails without client or env var."""
         with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(ValueError, match="No client provided"):
+            with pytest.raises(ValueError, match="Tavily API key not found"):
                 await default_registry.call("web_search_context", [None, "test query"])
 
 

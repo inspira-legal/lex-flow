@@ -62,8 +62,9 @@ def _resolve_client(client: TavilyClient | None = None) -> "AsyncTavilyClient":
     api_key = os.environ.get("TAVILY_API_KEY")
     if not api_key:
         raise ValueError(
-            "No client provided and TAVILY_API_KEY environment variable not set. "
-            "Use web_search_create_client(api_key) or set the env var."
+            "Tavily API key not found. Provide a client via "
+            "web_search_create_client(api_key) or set the TAVILY_API_KEY "
+            "environment variable. Get a key at https://tavily.com"
         )
     return AsyncTavilyClient(api_key=api_key)
 
@@ -185,6 +186,9 @@ def register_web_search_opcodes():
         time_range: str = "week",
     ) -> Dict[str, Any]:
         """Search for news articles using Tavily API.
+
+        This is a specialized search focused on news content with a default
+        time range of one week for recent news.
 
         Args:
             client: TavilyClient from web_search_create_client
