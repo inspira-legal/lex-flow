@@ -2500,15 +2500,15 @@ Example:
 
 > **Requires:** `pip install lexflow[search]`
 
-### `web_search(query, max_results=5, search_depth="basic", include_domains=None, exclude_domains=None, time_range=None)`
+### `web_search(query, client=None, max_results=5, search_depth="basic", include_domains=None, exclude_domains=None, time_range=None)`
 
 Perform a general web search using Tavily API.
 
 Args:
     query: The search query string
+    client: TavilyClient from web_search_create_client (optional, falls back to env var)
     max_results: Maximum number of results to return (default: 5)
-    search_depth: Search depth - "basic" for fast results, "advanced" for
-                 more comprehensive results (default: "basic")
+    search_depth: Search depth - "basic" or "advanced" (default: "basic")
     include_domains: List of domains to include in search (optional)
     exclude_domains: List of domains to exclude from search (optional)
     time_range: Time range filter - "day", "week", "month", or "year" (optional)
@@ -2516,11 +2516,7 @@ Args:
 Returns:
     Dict with keys:
     - query: The original query string
-    - results: List of result dicts, each with:
-        - title: Page title
-        - url: Page URL
-        - content: Snippet/content from the page
-        - score: Relevance score (0-1)
+    - results: List of result dicts with title, url, content, score
     - response_time: Time taken for the search in seconds
 
 Example:
@@ -2531,6 +2527,7 @@ Example:
 **Parameters:**
 
 - `query` (str, required)
+- `client` (lexflow.opcodes.opcodes_web_search.TavilyClient | None, optional, default: `None`)
 - `max_results` (int, optional, default: `5`)
 - `search_depth` (str, optional, default: `"basic"`)
 - `include_domains` (Optional[List[str]], optional, default: `None`)
@@ -2541,16 +2538,16 @@ Example:
 
 ---
 
-### `web_search_context(query, max_results=5, max_tokens=4000)`
+### `web_search_context(query, client=None, max_results=5, max_tokens=4000)`
 
 Search the web and return context optimized for RAG/agent prompts.
 
-This opcode returns a plain string (not a dict) of search results ready
-to be injected directly into LLM prompts. It uses Tavily's
-get_search_context() method which is optimized for RAG workflows.
+Returns a plain string of search results ready to be injected directly
+into LLM prompts via Tavily's get_search_context().
 
 Args:
     query: The search query string
+    client: TavilyClient from web_search_create_client (optional, falls back to env var)
     max_results: Maximum number of results to include (default: 5)
     max_tokens: Maximum tokens in the returned context (default: 4000)
 
@@ -2566,6 +2563,7 @@ Example:
 **Parameters:**
 
 - `query` (str, required)
+- `client` (lexflow.opcodes.opcodes_web_search.TavilyClient | None, optional, default: `None`)
 - `max_results` (int, optional, default: `5`)
 - `max_tokens` (int, optional, default: `4000`)
 
@@ -2573,7 +2571,24 @@ Example:
 
 ---
 
-### `web_search_news(query, max_results=5, time_range="week")`
+### `web_search_create_client(api_key)`
+
+Create a Tavily API client for web search operations.
+
+Args:
+    api_key: Tavily API key
+
+Returns:
+    TavilyClient instance to pass to other web_search opcodes
+
+Example:
+    api_key: "tvly-xxxxxxxxxxxxxxxxxxxxxxxx"
+
+**Returns:** `TavilyClient`
+
+---
+
+### `web_search_news(query, client=None, max_results=5, time_range="week")`
 
 Search for news articles using Tavily API.
 
@@ -2582,6 +2597,7 @@ time range of one week for recent news.
 
 Args:
     query: The search query string
+    client: TavilyClient from web_search_create_client (optional, falls back to env var)
     max_results: Maximum number of results to return (default: 5)
     time_range: Time range filter - "day", "week", "month", or "year"
                (default: "week")
@@ -2589,11 +2605,7 @@ Args:
 Returns:
     Dict with keys:
     - query: The original query string
-    - results: List of result dicts, each with:
-        - title: Article title
-        - url: Article URL
-        - content: Snippet/content from the article
-        - score: Relevance score (0-1)
+    - results: List of result dicts with title, url, content, score
     - response_time: Time taken for the search in seconds
 
 Example:
@@ -2604,6 +2616,7 @@ Example:
 **Parameters:**
 
 - `query` (str, required)
+- `client` (lexflow.opcodes.opcodes_web_search.TavilyClient | None, optional, default: `None`)
 - `max_results` (int, optional, default: `5`)
 - `time_range` (str, optional, default: `"week"`)
 
@@ -5752,7 +5765,7 @@ Required scopes: files:write
 
 ## Summary
 
-**Total opcodes:** 298
+**Total opcodes:** 299
 
 ### Categories
 
@@ -5778,7 +5791,7 @@ Required scopes: files:write
 | 📄 HTML Operations | 5 | `lexflow[http]` |
 | 📋 JSON Operations | 2 | - |
 | hubspot HubSpot Operations | 19 | `lexflow[http]` |
-| 🔍 Web Search | 3 | `lexflow[search]` |
+| 🔍 Web Search | 4 | `lexflow[search]` |
 | ☁️ Cloud Storage | 11 | `lexflow[gcs]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
 | 🔍 RAG Operations | 20 | `lexflow[rag]` |
