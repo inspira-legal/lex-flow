@@ -2,6 +2,29 @@
 
 <!-- version list -->
 
+## v1.14.0 (2026-03-06)
+
+### Bug Fixes
+
+- **core**: Address code review findings for web search opcodes
+  ([#45](https://github.com/inspira-legal/lex-flow/pull/45),
+  [`0be3966`](https://github.com/inspira-legal/lex-flow/commit/0be3966fb7f666ca09f970cd9d1f385bc3b96ea7))
+
+- **core**: Make client param optional for backward compatibility
+  ([#45](https://github.com/inspira-legal/lex-flow/pull/45),
+  [`0be3966`](https://github.com/inspira-legal/lex-flow/commit/0be3966fb7f666ca09f970cd9d1f385bc3b96ea7))
+
+### Features
+
+- **core**: Add api_key parameter to web search opcodes
+  ([#45](https://github.com/inspira-legal/lex-flow/pull/45),
+  [`0be3966`](https://github.com/inspira-legal/lex-flow/commit/0be3966fb7f666ca09f970cd9d1f385bc3b96ea7))
+
+- **core**: Add client pattern to web search opcodes
+  ([#45](https://github.com/inspira-legal/lex-flow/pull/45),
+  [`0be3966`](https://github.com/inspira-legal/lex-flow/commit/0be3966fb7f666ca09f970cd9d1f385bc3b96ea7))
+
+
 ## v1.13.0 (2026-03-05)
 
 ### Features
