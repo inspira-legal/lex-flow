@@ -1,0 +1,593 @@
+# Clicksign + ReceitaWS: Envio de Contrato com Signatarios
+# Replica o fluxo Zapier de envio de contrato:
+#   1. Consulta CNPJ na ReceitaWS para obter dados da empresa
+#   2. Cria envelope na Clicksign com o nome da empresa
+#   3. Adiciona documento a partir de template com dados da empresa
+#   4. Adiciona 4 signatarios (1 cliente + 3 internos)
+#   5. Configura qualificacao e autenticacao para cada signatario
+#   6. Ativa o envelope e notifica todos os signatarios
+#
+# Uso:
+#   lexflow contrato_envio.yaml \
+#     --input clicksign_token=$CLICKSIGN_TOKEN \
+#     --input cnpj="11.222.333/0001-81" \
+#     --input num_usuarios=10 \
+#     --input mrr=5000 \
+#     --input signatario_nome="Maria Silva" \
+#     --input signatario_email="maria@empresa.com" \
+#     --input template_id="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" \
+#     --input data_limite="2025-12-31T23:59:59-03:00"
+#
+# Requer:
+#   pip install lexflow[clicksign]
+#   aiohttp deve estar instalado
+
+workflows:
+  - name: main
+    interface:
+      inputs:
+        - clicksign_token
+        - cnpj
+        - num_usuarios
+        - mrr
+        - signatario_nome
+        - signatario_email
+        - template_id
+        - data_limite
+      outputs: []
+    variables:
+      clicksign_token: ""
+      cnpj: ""
+      num_usuarios: 0
+      mrr: 0
+      signatario_nome: ""
+      signatario_email: ""
+      template_id: ""
+      data_limite: ""
+      # Dados da empresa (ReceitaWS)
+      empresa_data: null
+      empresa_nome: ""
+      # Clicksign
+      client: null
+      envelope_response: null
+      envelope_id: ""
+      document_response: null
+      document_id: ""
+      # Signatarios
+      signer_ids: []
+      current_signer_id: ""
+      # Signatarios internos
+      internos:
+        - name: "Caue Silva"
+          email: "caue.silva@empresa.com"
+        - name: "Gabriel Santos"
+          email: "gabriel.santos@empresa.com"
+        - name: "Thay Oliveira"
+          email: "thay.oliveira@empresa.com"
+      current_interno: null
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_inicio
+        inputs: {}
+
+      # ========================================================================
+      # Passo 1: Consultar CNPJ na ReceitaWS
+      # ========================================================================
+
+      print_inicio:
+        opcode: io_print
+        next: store_empresa_data
+        inputs:
+          values:
+            - { literal: "=== Envio de Contrato via Clicksign ===" }
+
+      consulta_cnpj:
+        opcode: receitaws_consulta_cnpj
+        isReporter: true
+        inputs:
+          cnpj: { variable: cnpj }
+
+      store_empresa_data:
+        opcode: data_set_variable_to
+        next: store_empresa_nome
+        inputs:
+          VARIABLE: { literal: "empresa_data" }
+          VALUE: { node: consulta_cnpj }
+
+      get_empresa_nome:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { variable: empresa_data }
+          key: { literal: "nome" }
+          default: { literal: "Empresa Desconhecida" }
+
+      store_empresa_nome:
+        opcode: data_set_variable_to
+        next: print_empresa
+        inputs:
+          VARIABLE: { literal: "empresa_nome" }
+          VALUE: { node: get_empresa_nome }
+
+      print_empresa:
+        opcode: io_print
+        next: safe_run
+        inputs:
+          values:
+            - { literal: "Empresa encontrada: " }
+            - { variable: empresa_nome }
+
+      # ========================================================================
+      # Try/finally para garantir que o client sera fechado
+      # ========================================================================
+
+      safe_run:
+        opcode: control_try
+        next: null
+        inputs:
+          TRY:
+            branch: store_client
+          CATCH1:
+            exception_type: "Exception"
+            var: "error"
+            body:
+              branch: handle_error
+          FINALLY:
+            branch: close_client
+
+      # ========================================================================
+      # Passo 2: Criar cliente Clicksign
+      # ========================================================================
+
+      create_client:
+        opcode: clicksign_create_client
+        isReporter: true
+        inputs:
+          access_token: { variable: clicksign_token }
+          sandbox: { literal: true }
+
+      store_client:
+        opcode: data_set_variable_to
+        next: print_client
+        inputs:
+          VARIABLE: { literal: "client" }
+          VALUE: { node: create_client }
+
+      print_client:
+        opcode: io_print
+        next: store_envelope_response
+        inputs:
+          MESSAGE: { literal: "Cliente Clicksign criado (sandbox)" }
+
+      # ========================================================================
+      # Passo 3: Criar envelope
+      # ========================================================================
+
+      build_envelope_name:
+        opcode: string_join
+        isReporter: true
+        inputs:
+          items:
+            - { literal: "Contrato - " }
+            - { variable: empresa_nome }
+          separator: { literal: "" }
+
+      create_envelope:
+        opcode: clicksign_create_envelope
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          name: { node: build_envelope_name }
+          locale: { literal: "pt-BR" }
+          auto_close: { literal: true }
+          deadline_at: { variable: data_limite }
+
+      store_envelope_response:
+        opcode: data_set_variable_to
+        next: store_envelope_id
+        inputs:
+          VARIABLE: { literal: "envelope_response" }
+          VALUE: { node: create_envelope }
+
+      # Extrair envelope ID: response.data.id
+      get_envelope_data:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { variable: envelope_response }
+          key: { literal: "data" }
+
+      get_envelope_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { node: get_envelope_data }
+          key: { literal: "id" }
+
+      store_envelope_id:
+        opcode: data_set_variable_to
+        next: print_envelope
+        inputs:
+          VARIABLE: { literal: "envelope_id" }
+          VALUE: { node: get_envelope_id }
+
+      print_envelope:
+        opcode: io_print
+        next: store_document_response
+        inputs:
+          values:
+            - { literal: "Envelope criado: " }
+            - { variable: envelope_id }
+
+      # ========================================================================
+      # Passo 4: Adicionar documento a partir de template
+      # ========================================================================
+
+      build_filename:
+        opcode: string_join
+        isReporter: true
+        inputs:
+          items:
+            - { literal: "contrato_" }
+            - { variable: cnpj }
+            - { literal: ".pdf" }
+          separator: { literal: "" }
+
+      # Montar dados do template com informacoes da empresa
+      num_usuarios_str:
+        opcode: type_to_str
+        isReporter: true
+        inputs:
+          value: { variable: num_usuarios }
+
+      mrr_str:
+        opcode: type_to_str
+        isReporter: true
+        inputs:
+          value: { variable: mrr }
+
+      get_empresa_fantasia:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { variable: empresa_data }
+          key: { literal: "fantasia" }
+          default: { variable: empresa_nome }
+
+      get_empresa_logradouro:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { variable: empresa_data }
+          key: { literal: "logradouro" }
+          default: { literal: "" }
+
+      get_empresa_municipio:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { variable: empresa_data }
+          key: { literal: "municipio" }
+          default: { literal: "" }
+
+      get_empresa_uf:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { variable: empresa_data }
+          key: { literal: "uf" }
+          default: { literal: "" }
+
+      build_template_data:
+        opcode: dict_create
+        isReporter: true
+        inputs:
+          razao_social: { variable: empresa_nome }
+          nome_fantasia: { node: get_empresa_fantasia }
+          cnpj: { variable: cnpj }
+          endereco: { node: get_empresa_logradouro }
+          cidade: { node: get_empresa_municipio }
+          estado: { node: get_empresa_uf }
+          num_usuarios: { node: num_usuarios_str }
+          mrr: { node: mrr_str }
+          signatario_nome: { variable: signatario_nome }
+          signatario_email: { variable: signatario_email }
+
+      add_document:
+        opcode: clicksign_add_document_from_template
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          envelope_id: { variable: envelope_id }
+          template_id: { variable: template_id }
+          filename: { node: build_filename }
+          data: { node: build_template_data }
+
+      store_document_response:
+        opcode: data_set_variable_to
+        next: store_document_id
+        inputs:
+          VARIABLE: { literal: "document_response" }
+          VALUE: { node: add_document }
+
+      # Extrair document ID: response.data.id
+      get_document_data:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { variable: document_response }
+          key: { literal: "data" }
+
+      get_document_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { node: get_document_data }
+          key: { literal: "id" }
+
+      store_document_id:
+        opcode: data_set_variable_to
+        next: print_document
+        inputs:
+          VARIABLE: { literal: "document_id" }
+          VALUE: { node: get_document_id }
+
+      print_document:
+        opcode: io_print
+        next: add_signer_cliente
+        inputs:
+          values:
+            - { literal: "Documento adicionado: " }
+            - { variable: document_id }
+
+      # ========================================================================
+      # Passo 5: Adicionar signatarios
+      # ========================================================================
+
+      # 5a. Signatario do cliente (externo)
+      create_signer_cliente:
+        opcode: clicksign_add_signer
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          envelope_id: { variable: envelope_id }
+          name: { variable: signatario_nome }
+          email: { variable: signatario_email }
+          refusable: { literal: true }
+          group: { literal: 0 }
+
+      get_signer_cliente_data:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { node: create_signer_cliente }
+          key: { literal: "data" }
+
+      get_signer_cliente_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { node: get_signer_cliente_data }
+          key: { literal: "id" }
+
+      add_signer_cliente:
+        opcode: data_set_variable_to
+        next: print_signer_cliente
+        inputs:
+          VARIABLE: { literal: "current_signer_id" }
+          VALUE: { node: get_signer_cliente_id }
+
+      print_signer_cliente:
+        opcode: io_print
+        next: add_qual_cliente
+        inputs:
+          values:
+            - { literal: "Signatario cliente adicionado: " }
+            - { variable: signatario_nome }
+            - { literal: " (ID: " }
+            - { variable: current_signer_id }
+            - { literal: ")" }
+
+      # 5b. Qualificacao e autenticacao do signatario cliente
+      add_qual_cliente:
+        opcode: clicksign_add_qualification
+        next: add_auth_cliente
+        inputs:
+          client: { variable: client }
+          envelope_id: { variable: envelope_id }
+          document_id: { variable: document_id }
+          signer_id: { variable: current_signer_id }
+          action: { literal: "agree" }
+          role: { literal: "sign" }
+
+      add_auth_cliente:
+        opcode: clicksign_add_authentication
+        next: append_signer_cliente
+        inputs:
+          client: { variable: client }
+          envelope_id: { variable: envelope_id }
+          document_id: { variable: document_id }
+          signer_id: { variable: current_signer_id }
+          auth: { literal: "email" }
+
+      # Guardar ID do signatario na lista
+      append_signer_cliente:
+        opcode: list_append
+        next: iterate_internos
+        inputs:
+          list: { variable: signer_ids }
+          item: { variable: current_signer_id }
+
+      # ========================================================================
+      # 5c. Signatarios internos (foreach)
+      # ========================================================================
+
+      iterate_internos:
+        opcode: control_foreach
+        next: activate
+        inputs:
+          VAR: { literal: "current_interno" }
+          ITERABLE: { variable: internos }
+          BODY:
+            branch: add_interno
+
+      # Extrair dados do interno atual
+      get_interno_nome:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { variable: current_interno }
+          key: { literal: "name" }
+
+      get_interno_email:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { variable: current_interno }
+          key: { literal: "email" }
+
+      # Criar signatario interno
+      create_signer_interno:
+        opcode: clicksign_add_signer
+        isReporter: true
+        inputs:
+          client: { variable: client }
+          envelope_id: { variable: envelope_id }
+          name: { node: get_interno_nome }
+          email: { node: get_interno_email }
+          refusable: { literal: false }
+          group: { literal: 1 }
+
+      get_signer_interno_data:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { node: create_signer_interno }
+          key: { literal: "data" }
+
+      get_signer_interno_id:
+        opcode: dict_get
+        isReporter: true
+        inputs:
+          dict: { node: get_signer_interno_data }
+          key: { literal: "id" }
+
+      add_interno:
+        opcode: data_set_variable_to
+        next: print_interno
+        inputs:
+          VARIABLE: { literal: "current_signer_id" }
+          VALUE: { node: get_signer_interno_id }
+
+      print_interno:
+        opcode: io_print
+        next: add_qual_interno
+        inputs:
+          values:
+            - { literal: "Signatario interno adicionado: " }
+            - { node: get_interno_nome }
+            - { literal: " (ID: " }
+            - { variable: current_signer_id }
+            - { literal: ")" }
+
+      # Qualificacao e autenticacao do signatario interno
+      add_qual_interno:
+        opcode: clicksign_add_qualification
+        next: add_auth_interno
+        inputs:
+          client: { variable: client }
+          envelope_id: { variable: envelope_id }
+          document_id: { variable: document_id }
+          signer_id: { variable: current_signer_id }
+          action: { literal: "agree" }
+          role: { literal: "sign" }
+
+      add_auth_interno:
+        opcode: clicksign_add_authentication
+        next: append_signer_interno
+        inputs:
+          client: { variable: client }
+          envelope_id: { variable: envelope_id }
+          document_id: { variable: document_id }
+          signer_id: { variable: current_signer_id }
+          auth: { literal: "email" }
+
+      append_signer_interno:
+        opcode: list_append
+        next: null
+        inputs:
+          list: { variable: signer_ids }
+          item: { variable: current_signer_id }
+
+      # ========================================================================
+      # Passo 6: Ativar envelope
+      # ========================================================================
+
+      activate:
+        opcode: clicksign_activate_envelope
+        next: print_activated
+        inputs:
+          client: { variable: client }
+          envelope_id: { variable: envelope_id }
+
+      print_activated:
+        opcode: io_print
+        next: notify_all
+        inputs:
+          MESSAGE: { literal: "Envelope ativado! Iniciando processo de assinatura..." }
+
+      # ========================================================================
+      # Passo 7: Notificar todos os signatarios
+      # ========================================================================
+
+      notify_all:
+        opcode: clicksign_notify_all
+        next: print_success
+        inputs:
+          client: { variable: client }
+          envelope_id: { variable: envelope_id }
+
+      # ========================================================================
+      # Passo 8: Mensagem de sucesso
+      # ========================================================================
+
+      print_success:
+        opcode: io_print
+        next: null
+        inputs:
+          values:
+            - { literal: "Contrato enviado com sucesso para " }
+            - { variable: empresa_nome }
+            - { literal: " (CNPJ: " }
+            - { variable: cnpj }
+            - { literal: "). " }
+            - { literal: "Todos os signatarios foram notificados." }
+
+      # ========================================================================
+      # Tratamento de erro
+      # ========================================================================
+
+      handle_error:
+        opcode: io_print
+        next: null
+        inputs:
+          values:
+            - { literal: "ERRO no envio do contrato: " }
+            - { variable: error }
+
+      # ========================================================================
+      # Cleanup: fechar client
+      # ========================================================================
+
+      close_client:
+        opcode: clicksign_close_client
+        next: print_closed
+        inputs:
+          client: { variable: client }
+
+      print_closed:
+        opcode: io_print
+        next: null
+        inputs:
+          MESSAGE: { literal: "Cliente Clicksign fechado." }

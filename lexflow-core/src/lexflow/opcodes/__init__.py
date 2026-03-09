@@ -9,7 +9,9 @@ from .opcodes_gcs import register_gcs_opcodes
 from .opcodes_http import register_http_opcodes
 from .opcodes_pgvector import register_pgvector_opcodes
 from .opcodes_pubsub import register_pubsub_opcodes
+from .opcodes_clicksign import register_clicksign_opcodes
 from .opcodes_hubspot import register_hubspot_opcodes
+from .opcodes_receitaws import register_receitaws_opcodes
 from .opcodes_pydantic_ai import register_pydantic_ai_opcodes
 from .opcodes_pygame import register_pygame_opcodes
 from .opcodes_rag import register_rag_opcodes
@@ -28,7 +30,9 @@ register_gcs_opcodes()
 register_http_opcodes()
 register_pgvector_opcodes()
 register_pubsub_opcodes()
+register_clicksign_opcodes()
 register_hubspot_opcodes()
+register_receitaws_opcodes()
 register_pydantic_ai_opcodes()
 register_pygame_opcodes()
 register_rag_opcodes()
