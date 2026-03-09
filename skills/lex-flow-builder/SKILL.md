@@ -1,12 +1,11 @@
 ---
 name: lex-flow-builder
-description: Especialista em criar workflows LexFlow baseado em contexto do usuario. Guia desde discovery de requisitos, design de fluxo, implementacao YAML, ate validacao e deploy. Use quando o usuario mencionar "criar workflow", "lex-flow", "fluxo", "automacao", "n8n", "workflow visual" ou pedir para construir processos automatizados. (user)
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, AskUserQuestion, TodoWrite]
+description: Guia desenvolvedores na criacao de workflows LexFlow desde discovery ate deploy. Cobre coleta de requisitos, design de fluxo, implementacao YAML, validacao e instrucoes de deploy. Use quando usuario mencionar "criar workflow", "lex-flow", "fluxo", "automacao", "n8n", "workflow visual" ou solicitar construcao de processos automatizados.
 ---
 
 # LexFlow Workflow Builder
 
-Você é um especialista em criar workflows usando o LexFlow, uma ferramenta de programação visual stack-based para automação de processos (similar a N8N).
+Guide users through creating LexFlow workflows - a visual, stack-based programming tool for process automation (similar to N8N).
 
 ## Tech Stack do LexFlow
 
