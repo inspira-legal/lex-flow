@@ -2,6 +2,57 @@
 
 <!-- version list -->
 
+## v1.14.0 (2026-03-09)
+
+### Bug Fixes
+
+- **core**: Add guard for running engine without loaded program
+  ([`418d7bc`](https://github.com/inspira-legal/lex-flow/commit/418d7bcec69b5995709ea02ae44f732d7c54bc23))
+
+- **core**: Address code review findings for web search opcodes
+  ([#45](https://github.com/inspira-legal/lex-flow/pull/45),
+  [`0be3966`](https://github.com/inspira-legal/lex-flow/commit/0be3966fb7f666ca09f970cd9d1f385bc3b96ea7))
+
+- **core**: Make client param optional for backward compatibility
+  ([#45](https://github.com/inspira-legal/lex-flow/pull/45),
+  [`0be3966`](https://github.com/inspira-legal/lex-flow/commit/0be3966fb7f666ca09f970cd9d1f385bc3b96ea7))
+
+### Chores
+
+- **core**: Release 1.12.1
+  ([`74510bb`](https://github.com/inspira-legal/lex-flow/commit/74510bbf80b343ac4de7ea5fbc3eea1b8e4a25d9))
+
+- **core**: Release 1.13.0
+  ([`ff33f2a`](https://github.com/inspira-legal/lex-flow/commit/ff33f2adb6f43c375b8686d743a9ba75ec704d7e))
+
+- **core**: Release 1.14.0
+  ([`c13db6e`](https://github.com/inspira-legal/lex-flow/commit/c13db6e3a3a88c281d504ec2bb9a58b30b334018))
+
+- **deps**: Bump pypdf, rollup, and minimatch
+  ([`c1e17f9`](https://github.com/inspira-legal/lex-flow/commit/c1e17f99446dc01d19d08462cb9cba72c2b9487a))
+
+- **web**: Build frontend library [skip ci]
+  ([`50557bf`](https://github.com/inspira-legal/lex-flow/commit/50557bf54aba6bdee8a4b0b0fa0aa07eb6e038a3))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`db3a2cc`](https://github.com/inspira-legal/lex-flow/commit/db3a2cc9266a6cb8a1bdd26bda3e859f45b93504))
+
+### Features
+
+- **core**: Add `all` optional dependency group
+  ([`509de3b`](https://github.com/inspira-legal/lex-flow/commit/509de3b0cc8f475cf6916271f5a778376b0a2c12))
+
+- **core**: Add api_key parameter to web search opcodes
+  ([#45](https://github.com/inspira-legal/lex-flow/pull/45),
+  [`0be3966`](https://github.com/inspira-legal/lex-flow/commit/0be3966fb7f666ca09f970cd9d1f385bc3b96ea7))
+
+- **core**: Add client pattern to web search opcodes
+  ([#45](https://github.com/inspira-legal/lex-flow/pull/45),
+  [`0be3966`](https://github.com/inspira-legal/lex-flow/commit/0be3966fb7f666ca09f970cd9d1f385bc3b96ea7))
+
+
 ## v1.13.0 (2026-03-05)
 
 ### Bug Fixes
