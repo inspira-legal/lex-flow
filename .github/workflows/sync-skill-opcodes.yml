@@ -1,0 +1,122 @@
+name: Sync Skill Opcodes
+
+# Executa quando:
+# 1. OPCODE_REFERENCE.md é modificado
+# 2. Manualmente via workflow_dispatch
+# 3. Toda segunda-feira às 9h (verifica se há drift)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/OPCODE_REFERENCE.md'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * 1'  # Segunda-feira 9h
+
+jobs:
+  check-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check for new opcodes
+        id: check
+        run: |
+          python skills/lex-flow-builder/sync_opcodes.py --check-only
+        continue-on-error: true
+
+      - name: Create issue if outdated
+        if: steps.check.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🔄 Skill lex-flow-builder precisa atualizar opcodes';
+
+            const body = `
+            ## ⚠️ Novos opcodes detectados!
+
+            A skill \`lex-flow-builder\` está desatualizada. Existem novos opcodes no \`OPCODE_REFERENCE.md\` que não estão documentados em \`skills/lex-flow-builder/reference.md\`.
+
+            ### 📋 O que fazer:
+
+            1. Execute localmente:
+               \`\`\`bash
+               cd skills/lex-flow-builder
+               python sync_opcodes.py
+               \`\`\`
+
+            2. Revise os opcodes **ESSENCIAIS** reportados
+
+            3. Adicione ao \`reference.md\`:
+               - Descrição do opcode
+               - Parâmetros
+               - Exemplo de uso
+
+            4. Commit e PR:
+               \`\`\`bash
+               git add reference.md
+               git commit -m "feat(skill): add new opcodes to lex-flow-builder"
+               \`\`\`
+
+            ### 🔗 Links úteis:
+
+            - [OPCODE_REFERENCE.md oficial](/docs/OPCODE_REFERENCE.md)
+            - [reference.md da skill](/skills/lex-flow-builder/reference.md)
+            - [Script de sync](/skills/lex-flow-builder/sync_opcodes.py)
+
+            ### 📊 Detalhes:
+
+            Veja os logs do workflow para lista completa de opcodes novos.
+
+            ---
+
+            🤖 Issue criada automaticamente por GitHub Actions
+            `;
+
+            // Verificar se já existe issue aberta
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['skill-sync', 'automation']
+            });
+
+            const existingIssue = issues.data.find(issue =>
+              issue.title.includes('lex-flow-builder precisa atualizar')
+            );
+
+            if (existingIssue) {
+              // Apenas adicionar comentário
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `🔔 Nova detecção de opcodes desatualizados em ${new Date().toISOString()}`
+              });
+
+              console.log(`Issue já existe: #${existingIssue.number}`);
+            } else {
+              // Criar nova issue
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['skill-sync', 'automation', 'enhancement']
+              });
+
+              console.log(`Issue criada: #${issue.data.number}`);
+            }
+
+      - name: Success message
+        if: steps.check.outcome == 'success'
+        run: |
+          echo "✅ Skill está sincronizada com OPCODE_REFERENCE.md"
