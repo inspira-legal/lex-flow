@@ -20,6 +20,20 @@ except ImportError:
     CLICKSIGN_AVAILABLE = False
 
 
+def _check_clicksign():
+    if not CLICKSIGN_AVAILABLE:
+        raise ImportError(
+            "aiohttp is required for Clicksign opcodes. Install with: uv add 'lexflow[clicksign]'"
+        )
+
+
+def _validate_id(value: str, name: str = "id") -> str:
+    """Validate that an ID is not empty and strip whitespace."""
+    if not value or not value.strip():
+        raise ValueError(f"{name} cannot be empty")
+    return value.strip()
+
+
 class ClicksignClient:
     """Reusable Clicksign API client."""
 
@@ -131,6 +145,8 @@ def register_clicksign_opcodes():
             access_token: "your-access-token"
             sandbox: true
         """
+        _check_clicksign()
+
         if not access_token:
             raise ValueError(
                 "access_token is required. "
@@ -217,6 +233,7 @@ def register_clicksign_opcodes():
             client: { node: create_client }
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
         return await client.get(f"/envelopes/{envelope_id}")
 
     @opcode(category="clicksign")
@@ -265,6 +282,7 @@ def register_clicksign_opcodes():
             client: { node: create_client }
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
         body = {
             "data": {
                 "type": "envelopes",
@@ -291,6 +309,7 @@ def register_clicksign_opcodes():
             client: { node: create_client }
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
         body = {
             "data": {
                 "type": "envelopes",
@@ -317,6 +336,7 @@ def register_clicksign_opcodes():
             client: { node: create_client }
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
         await client.delete(f"/envelopes/{envelope_id}")
         return True
 
@@ -353,6 +373,8 @@ def register_clicksign_opcodes():
               name: "John Doe"
               value: "10000"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
+        template_id = _validate_id(template_id, "template_id")
         body = {
             "data": {
                 "type": "documents",
@@ -391,6 +413,7 @@ def register_clicksign_opcodes():
             filename: "contract.pdf"
             content_base64: "JVBERi0xLjQK..."
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
         body = {
             "data": {
                 "type": "documents",
@@ -423,6 +446,8 @@ def register_clicksign_opcodes():
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
             document_id: "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
+        document_id = _validate_id(document_id, "document_id")
         return await client.get(f"/envelopes/{envelope_id}/documents/{document_id}")
 
     @opcode(category="clicksign")
@@ -443,6 +468,7 @@ def register_clicksign_opcodes():
             client: { node: create_client }
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
         return await client.get(f"/envelopes/{envelope_id}/documents")
 
     @opcode(category="clicksign")
@@ -469,6 +495,8 @@ def register_clicksign_opcodes():
             document_id: "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
             filename: "updated_contract.pdf"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
+        document_id = _validate_id(document_id, "document_id")
         attributes: Dict[str, Any] = {}
         if filename is not None:
             attributes["filename"] = filename
@@ -499,6 +527,8 @@ def register_clicksign_opcodes():
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
             document_id: "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
+        document_id = _validate_id(document_id, "document_id")
         await client.delete(f"/envelopes/{envelope_id}/documents/{document_id}")
         return True
 
@@ -546,6 +576,7 @@ def register_clicksign_opcodes():
             phone_number: "+5511999999999"
             refusable: true
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
         if not name:
             raise ValueError("name is required")
         if not email:
@@ -593,6 +624,8 @@ def register_clicksign_opcodes():
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
             signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
+        signer_id = _validate_id(signer_id, "signer_id")
         return await client.get(f"/envelopes/{envelope_id}/signers/{signer_id}")
 
     @opcode(category="clicksign")
@@ -613,6 +646,7 @@ def register_clicksign_opcodes():
             client: { node: create_client }
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
         return await client.get(f"/envelopes/{envelope_id}/signers")
 
     @opcode(category="clicksign")
@@ -636,6 +670,8 @@ def register_clicksign_opcodes():
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
             signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
+        signer_id = _validate_id(signer_id, "signer_id")
         await client.delete(f"/envelopes/{envelope_id}/signers/{signer_id}")
         return True
 
@@ -675,6 +711,9 @@ def register_clicksign_opcodes():
             action: "agree"
             role: "sign"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
+        document_id = _validate_id(document_id, "document_id")
+        signer_id = _validate_id(signer_id, "signer_id")
         body = {
             "data": {
                 "type": "requirements",
@@ -723,6 +762,9 @@ def register_clicksign_opcodes():
             signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
             auth: "email"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
+        document_id = _validate_id(document_id, "document_id")
+        signer_id = _validate_id(signer_id, "signer_id")
         body = {
             "data": {
                 "type": "requirements",
@@ -758,6 +800,7 @@ def register_clicksign_opcodes():
             client: { node: create_client }
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
         return await client.get(f"/envelopes/{envelope_id}/requirements")
 
     @opcode(category="clicksign")
@@ -781,6 +824,8 @@ def register_clicksign_opcodes():
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
             requirement_id: "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
+        requirement_id = _validate_id(requirement_id, "requirement_id")
         await client.delete(f"/envelopes/{envelope_id}/requirements/{requirement_id}")
         return True
 
@@ -821,6 +866,7 @@ def register_clicksign_opcodes():
                 document_id: "doc-id-1"
                 signer_id: "signer-id-1"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
         items = []
         for req in requirements:
             attributes: Dict[str, Any] = {"action": req["action"]}
@@ -871,6 +917,8 @@ def register_clicksign_opcodes():
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
             signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
+        signer_id = _validate_id(signer_id, "signer_id")
         body = {"data": {"type": "notifications", "attributes": {}}}
         return await client.post(
             f"/envelopes/{envelope_id}/signers/{signer_id}/notifications",
@@ -895,6 +943,7 @@ def register_clicksign_opcodes():
             client: { node: create_client }
             envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         """
+        envelope_id = _validate_id(envelope_id, "envelope_id")
         body = {"data": {"type": "notifications", "attributes": {}}}
         return await client.post(
             f"/envelopes/{envelope_id}/notifications", json_data=body
@@ -939,6 +988,7 @@ def register_clicksign_opcodes():
             client: { node: create_client }
             template_id: "tttttttt-tttt-tttt-tttt-tttttttttttt"
         """
+        template_id = _validate_id(template_id, "template_id")
         return await client.get(f"/templates/{template_id}")
 
     # ============================================================================
@@ -1015,5 +1065,6 @@ def register_clicksign_opcodes():
             client: { node: create_client }
             webhook_id: "wwwwwwww-wwww-wwww-wwww-wwwwwwwwwwww"
         """
+        webhook_id = _validate_id(webhook_id, "webhook_id")
         await client.delete(f"/webhooks/{webhook_id}")
         return True

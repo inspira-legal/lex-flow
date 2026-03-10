@@ -20,6 +20,13 @@ except ImportError:
     RECEITAWS_AVAILABLE = False
 
 
+def _check_receitaws():
+    if not RECEITAWS_AVAILABLE:
+        raise ImportError(
+            "aiohttp is required for ReceitaWS opcodes. Install with: uv add 'lexflow[receitaws]'"
+        )
+
+
 def register_receitaws_opcodes():
     """Register ReceitaWS opcodes to the default registry."""
     if not RECEITAWS_AVAILABLE:
@@ -51,6 +58,8 @@ def register_receitaws_opcodes():
         Example:
             cnpj: "11.222.333/0001-81"
         """
+        _check_receitaws()
+
         cnpj_digits = re.sub(r"\D", "", cnpj)
 
         if len(cnpj_digits) != 14:

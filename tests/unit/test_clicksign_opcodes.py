@@ -161,6 +161,31 @@ class TestClicksignEnvelopes:
         assert params["filter[status]"] == "running"
         assert params["filter[name]"] == "Contract"
 
+    async def test_list_envelopes_no_filters(self):
+        client = _mock_client()
+        expected = {"data": []}
+        client._session.request = MagicMock(return_value=_mock_response(200, expected))
+
+        result = await default_registry.call("clicksign_list_envelopes", [client])
+        assert result == expected
+
+        call_args = client._session.request.call_args
+        assert call_args[0][0] == "GET"
+        params = call_args[1]["params"]
+        assert params == {}
+
+    async def test_get_envelope_not_found(self):
+        client = _mock_client()
+        error_data = {"errors": [{"detail": "Envelope not found", "code": "not_found"}]}
+        client._session.request = MagicMock(
+            return_value=_mock_response(404, error_data)
+        )
+
+        with pytest.raises(ValueError, match="Clicksign API error \\(404\\)"):
+            await default_registry.call(
+                "clicksign_get_envelope", [client, "invalid-id"]
+            )
+
     async def test_activate_envelope(self):
         client = _mock_client()
         expected = {"data": {"id": "env-123", "attributes": {"status": "running"}}}
@@ -268,6 +293,23 @@ class TestClicksignDocuments:
         assert call_args[0][0] == "GET"
         assert "/envelopes/env-123/documents" in call_args[0][1]
 
+    async def test_update_document(self):
+        client = _mock_client()
+        expected = {"data": {"id": "doc-123", "type": "documents"}}
+        client._session.request = MagicMock(return_value=_mock_response(200, expected))
+
+        result = await default_registry.call(
+            "clicksign_update_document",
+            [client, "env-123", "doc-123", "updated_contract.pdf"],
+        )
+        assert result == expected
+
+        call_args = client._session.request.call_args
+        assert call_args[0][0] == "PATCH"
+        assert "/envelopes/env-123/documents/doc-123" in call_args[0][1]
+        body = call_args[1]["json"]
+        assert body["data"]["attributes"]["filename"] == "updated_contract.pdf"
+
     async def test_delete_document(self):
         client = _mock_client()
         client._session.request = MagicMock(return_value=_mock_response(204))
@@ -323,6 +365,44 @@ class TestClicksignSigners:
                 "clicksign_add_signer",
                 [_mock_client(), "env-123", "John Doe", ""],
             )
+
+    async def test_get_signer(self):
+        client = _mock_client()
+        expected = {"data": {"id": "signer-123", "type": "signers"}}
+        client._session.request = MagicMock(return_value=_mock_response(200, expected))
+
+        result = await default_registry.call(
+            "clicksign_get_signer", [client, "env-123", "signer-123"]
+        )
+        assert result == expected
+
+        call_args = client._session.request.call_args
+        assert call_args[0][0] == "GET"
+        assert "/envelopes/env-123/signers/signer-123" in call_args[0][1]
+
+    async def test_add_signer_with_optional_params(self):
+        client = _mock_client()
+        expected = {"data": {"id": "signer-456", "type": "signers"}}
+        client._session.request = MagicMock(return_value=_mock_response(200, expected))
+
+        result = await default_registry.call(
+            "clicksign_add_signer",
+            [
+                client,
+                "env-123",
+                "John Doe",
+                "john@example.com",
+                "+5511999999999",
+                "12345678900",
+            ],
+        )
+        assert result == expected
+
+        call_args = client._session.request.call_args
+        body = call_args[1]["json"]
+        attrs = body["data"]["attributes"]
+        assert attrs["phone_number"] == "+5511999999999"
+        assert attrs["documentation"] == "12345678900"
 
     async def test_list_signers(self):
         client = _mock_client()
