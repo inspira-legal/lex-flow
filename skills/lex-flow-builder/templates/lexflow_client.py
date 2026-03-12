@@ -17,6 +17,9 @@ Uso:
     result = client.execute_workflow_from_file("meu_workflow.yaml")
 """
 
+import os
+import sys
+import re
 import requests
 import json
 import base64
@@ -32,7 +35,7 @@ class LexFlowClient:
         self,
         auth_token: str,
         refresh_token: Optional[str] = None,
-        base_url: str = "https://lexflow.internal.inspira.legal"
+        base_url: Optional[str] = None
     ):
         """
         Inicializa o cliente com token do Firebase
@@ -40,16 +43,24 @@ class LexFlowClient:
         Args:
             auth_token: Token JWT do Firebase
             refresh_token: Refresh token para renovação automática
-            base_url: URL base da API
+            base_url: URL base da API (default: variável LEXFLOW_PLATFORM_URL ou fallback)
 
         Nota:
             Use get_client() ao invés de instanciar diretamente.
             Ele carrega as credenciais automaticamente.
         """
-        self.base_url = base_url
+        self.base_url = base_url or os.environ.get(
+            "LEXFLOW_PLATFORM_URL",
+            "https://lexflow.internal.inspira.legal"
+        )
         self.auth_token = auth_token
         self.refresh_token = refresh_token
-        self.firebase_api_key = "AIzaSyBCm6Puaap_bRh_TMeb0LupseAabrx2p6I"
+        # Firebase API Key (public web API key - safe to expose)
+        # Can be overridden with LEXFLOW_FIREBASE_API_KEY environment variable
+        self.firebase_api_key = os.environ.get(
+            "LEXFLOW_FIREBASE_API_KEY",
+            "AIzaSyBCm6Puaap_bRh_TMeb0LupseAabrx2p6I"
+        )
 
         # Headers base
         self.headers = {
@@ -261,7 +272,6 @@ class LexFlowClient:
 
         # Auto-gerar slug se não fornecido
         if not slug:
-            import re
             slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
 
         payload = {
@@ -306,8 +316,6 @@ class LexFlowClient:
         Returns:
             Dict com 'workflow' e 'version' criados
         """
-        from pathlib import Path
-
         # Auto-gerar nome se não fornecido
         if not name:
             name = Path(file_path).stem.replace('_', ' ').replace('-', ' ').title()
@@ -364,7 +372,13 @@ def get_client() -> LexFlowClient:
         data = json.loads(auth_file.read_text())
         auth_token = data["token"]
         refresh_token = data.get("refresh_token")
-        platform_url = data.get("platform_url", "https://lexflow.internal.inspira.legal")
+        platform_url = data.get(
+            "platform_url",
+            os.environ.get(
+                "LEXFLOW_PLATFORM_URL",
+                "https://lexflow.internal.inspira.legal"
+            )
+        )
     except (json.JSONDecodeError, KeyError) as e:
         raise ValueError(
             f"❌ Erro ao ler arquivo de autenticação: {e}\n"
@@ -380,8 +394,6 @@ def get_client() -> LexFlowClient:
 
 if __name__ == "__main__":
     # Exemplo de uso
-    import sys
-
     if len(sys.argv) < 2:
         print("Uso: python lexflow_client.py <arquivo.yaml>")
         print("\nPrimeiro, configure a autenticação:")

@@ -55,10 +55,10 @@ echo.
 
 REM Clonar o repositorio
 echo Clonando repositorio LexFlow...
-cd /d "%TEMP%"
 
 set REPO_URL=https://github.com/inspira-legal/lex-flow.git
-set TEMP_DIR=%TEMP%\lex-flow-temp-%RANDOM%
+REM Create unique temp directory with timestamp for better security
+set TEMP_DIR=%TEMP%\lex-flow-temp-%RANDOM%-%TIME:~6,2%%TIME:~9,2%
 
 git clone "%REPO_URL%" "%TEMP_DIR%"
 if %ERRORLEVEL% NEQ 0 (

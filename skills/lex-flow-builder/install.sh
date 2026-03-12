@@ -72,10 +72,10 @@ echo ""
 
 # Clonar o repositório
 echo "📦 Clonando repositório LexFlow..."
-cd /tmp
 
 REPO_URL="https://github.com/inspira-legal/lex-flow.git"
-TEMP_DIR="/tmp/lex-flow-temp-$$"
+# Use mktemp for secure temporary directory creation
+TEMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/lex-flow-temp.XXXXXX")
 
 if git clone "$REPO_URL" "$TEMP_DIR"; then
     echo "✅ Repositório clonado com sucesso"

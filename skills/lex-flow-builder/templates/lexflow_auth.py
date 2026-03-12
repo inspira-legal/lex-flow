@@ -13,7 +13,10 @@ e o token é renovado automaticamente quando necessário.
 
 import json
 import base64
+import os
+import sys
 import time
+import datetime
 import webbrowser
 import socket
 from pathlib import Path
@@ -27,8 +30,17 @@ import requests
 # Configurações
 AUTH_DIR = Path.home() / ".config" / "lexflow"
 AUTH_FILE = AUTH_DIR / "auth.json"
-FIREBASE_API_KEY = "AIzaSyBCm6Puaap_bRh_TMeb0LupseAabrx2p6I"
-DEFAULT_PLATFORM_URL = "https://lexflow.internal.inspira.legal"
+
+# Firebase API Key (public web API key - safe to expose)
+# Can be overridden with LEXFLOW_FIREBASE_API_KEY environment variable
+FIREBASE_API_KEY = os.environ.get(
+    "LEXFLOW_FIREBASE_API_KEY",
+    "AIzaSyBCm6Puaap_bRh_TMeb0LupseAabrx2p6I"
+)
+DEFAULT_PLATFORM_URL = os.environ.get(
+    "LEXFLOW_PLATFORM_URL",
+    "https://lexflow.internal.inspira.legal"
+)
 
 
 class LexFlowAuth:
@@ -277,7 +289,6 @@ class LexFlowAuth:
             payload_b64 += "=" * padding
             payload = json.loads(base64.urlsafe_b64decode(payload_b64))
 
-            import datetime
             exp_timestamp = payload.get("exp", 0)
             exp_date = datetime.datetime.fromtimestamp(exp_timestamp)
             remaining = exp_date - datetime.datetime.now()
@@ -297,8 +308,6 @@ class LexFlowAuth:
 
 def main():
     """CLI principal"""
-    import sys
-
     auth = LexFlowAuth()
 
     if len(sys.argv) < 2:
