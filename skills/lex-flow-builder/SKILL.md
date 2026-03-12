@@ -14,6 +14,80 @@ Guide users through creating LexFlow workflows - a visual, stack-based programmi
 - **Formato**: Workflows em YAML/JSON
 - **Arquitetura**: Node-based graph com opcodes
 
+## 0. SETUP INICIAL (Executar UMA VEZ por projeto)
+
+Antes de criar workflows, verificar se o projeto está configurado com autenticação.
+
+### Verificar autenticação existente
+
+```bash
+ls ~/.config/lexflow/auth.json
+```
+
+**Se o arquivo EXISTE**: Pular para seção 1 (DISCOVERY)
+
+**Se o arquivo NÃO EXISTE**: Executar setup abaixo
+
+### Setup do projeto (pasta vazia ou sem configuração)
+
+**PASSO 1: Criar arquivos base do projeto**
+
+Use o Write tool para criar estes 3 arquivos na pasta do usuário:
+
+1. **lexflow_auth.py** - Copiar de `templates/lexflow_auth.py`
+2. **lexflow_client.py** - Copiar de `templates/lexflow_client.py`
+3. **requirements.txt** - Copiar de `templates/requirements.txt`
+
+**PASSO 2: Instalar dependências**
+
+```bash
+pip install -r requirements.txt
+```
+
+**PASSO 3: Fazer login (UMA VEZ)**
+
+Guiar o usuário:
+
+```
+Para criar workflows no LexFlow, você precisa fazer login uma única vez.
+
+Execute este comando:
+  python lexflow_auth.py login
+
+Isso vai:
+1. Abrir o browser
+2. Você faz login com sua conta Inspira
+3. As credenciais são salvas em ~/.config/lexflow/auth.json
+4. O token é renovado AUTOMATICAMENTE quando necessário
+
+Após o login, você nunca mais precisa se preocupar com tokens!
+```
+
+**PASSO 4: Aguardar confirmação**
+
+Pergunte ao usuário: "Conseguiu fazer o login com sucesso?"
+
+- ✅ Se SIM: Continuar para seção 1 (DISCOVERY)
+- ❌ Se NÃO: Ajudar com troubleshooting:
+  - Verificar se o browser abriu
+  - Verificar mensagem de erro
+  - Sugerir: `python lexflow_auth.py status`
+
+### Verificar configuração
+
+Para confirmar que está tudo OK:
+
+```bash
+python lexflow_auth.py status
+```
+
+Deve mostrar email do usuário e tempo restante do token.
+
+**IMPORTANTE**:
+- Este setup é feito UMA VEZ por máquina (não por projeto)
+- O token é compartilhado entre todos os projetos
+- Renovação é automática - usuário não precisa fazer nada
+
 ## Processo de Criação (Ciclo Completo)
 
 ### 1. DISCOVERY (Entender o Contexto)
