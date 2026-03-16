@@ -8,12 +8,9 @@ Authentication:
     Get your key at: https://developer.apollo.io
 """
 
-import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from .opcodes import opcode, register_category
-
-logger = logging.getLogger(__name__)
 
 try:
     import aiohttp
@@ -24,6 +21,14 @@ except ImportError:
 
 
 APOLLO_API_BASE_URL = "https://api.apollo.io"
+
+
+def _check_aiohttp():
+    """Check if aiohttp is available."""
+    if not APOLLO_AVAILABLE:
+        raise ImportError(
+            "aiohttp is required for Apollo opcodes. Install with: uv add 'lexflow[http]'"
+        )
 
 # =============================================================================
 # Legal industry defaults (used by apollo_search_law_firms / legal_people)
@@ -181,6 +186,12 @@ class ApolloClient:
     def __repr__(self) -> str:
         return "ApolloClient(api_key=***)"
 
+    async def __aenter__(self) -> "ApolloClient":
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self._session.close()
+
     async def post(
         self,
         endpoint: str,
@@ -277,6 +288,7 @@ def register_apollo_opcodes():
         Example:
             api_key: "xxxxxxxxxxxxxxxxxxxxxxxxxx"
         """
+        _check_aiohttp()
         if not api_key:
             raise ValueError(
                 "api_key is required. "
@@ -505,14 +517,8 @@ def register_apollo_opcodes():
                 all_results.extend(
                     match for match in matches if match is not None
                 )
-            except ValueError as e:
-                logger.warning(
-                    "Apollo enrichment chunk failed (ids %d-%d of %d): %s",
-                    i,
-                    min(i + chunk_size, len(person_ids)),
-                    len(person_ids),
-                    e,
-                )
+            except ValueError:
+                # Skip failed chunks, continue with remaining
                 continue
 
         return all_results
