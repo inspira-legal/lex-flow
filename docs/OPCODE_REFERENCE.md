@@ -27,6 +27,7 @@ Quick reference for all available opcodes in LexFlow.
 - [📋 JSON Operations](#json-operations)
 - [hubspot HubSpot Operations](#hubspot-operations) *(requires `lexflow[http]`)*
 - [🔍 Web Search](#web-search) *(requires `lexflow[search]`)*
+- [🚀 Apollo.io](#apollo.io) *(requires `lexflow[http]`)*
 - [☁️ Cloud Storage](#cloud-storage) *(requires `lexflow[gcs]`)*
 - [🎮 Pygame Operations](#pygame-operations) *(requires `lexflow[pygame]`)*
 - [🔍 RAG Operations](#rag-operations) *(requires `lexflow[rag]`)*
@@ -2619,6 +2620,254 @@ Example:
 - `client` (lexflow.opcodes.opcodes_web_search.TavilyClient | None, optional, default: `None`)
 - `max_results` (int, optional, default: `5`)
 - `time_range` (str, optional, default: `"week"`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+## 🚀 Apollo.io
+
+> **Requires:** `pip install lexflow[http]`
+
+### `apollo_close_client(client)`
+
+Close an Apollo client and release its resources.
+
+Args:
+    client: ApolloClient to close.
+
+Returns:
+    True when the client session is closed.
+
+**Returns:** `bool`
+
+---
+
+### `apollo_create_client(api_key)`
+
+Create an Apollo.io API client for lead generation.
+
+Args:
+    api_key: Apollo.io API key.
+
+Returns:
+    ApolloClient object to use with other apollo_* opcodes.
+
+Example:
+    api_key: "xxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+**Returns:** `ApolloClient`
+
+---
+
+### `apollo_enrich_people(client, person_ids, reveal_personal_emails=True, chunk_size=10)`
+
+Enrich people data with full contact and company details.
+
+Calls Apollo's bulk_match endpoint in chunks to retrieve complete
+person and organization data including emails, phones, and company info.
+
+Args:
+    client: ApolloClient from apollo_create_client.
+    person_ids: List of Apollo person IDs to enrich.
+    reveal_personal_emails: Include personal emails in results (default: True).
+    chunk_size: Number of IDs per API call (default: 10, max: 10).
+
+Returns:
+    List of enriched person dicts with full contact and company details.
+    Each dict contains person fields (first_name, last_name, title, email,
+    email_status, linkedin_url, city, state, country, seniority, departments)
+    and nested organization fields (name, primary_domain, website_url,
+    industry, estimated_num_employees, phone, linkedin_url).
+
+Example:
+    client: { node: create_client }
+    person_ids: ["person_123", "person_456"]
+    reveal_personal_emails: true
+
+**Parameters:**
+
+- `client` (ApolloClient, required)
+- `person_ids` (List[str], required)
+- `reveal_personal_emails` (bool, optional, default: `True`)
+- `chunk_size` (int, optional, default: `10`)
+
+**Returns:** `List[Dict[str, Any]]`
+
+---
+
+### `apollo_search_companies(client, organization_locations=None, organization_not_locations=None, organization_num_employees_ranges=None, organization_industries=None, q_organization_keyword_tags=None, q_organization_sic_codes=None, currently_using_any_of_technology_uids=None, organization_ids=None, q_organization_name=None, revenue_range_min=None, revenue_range_max=None, total_funding_range_min=None, total_funding_range_max=None, per_page=100, page=1)`
+
+Search for companies on Apollo.io.
+
+Args:
+    client: ApolloClient from apollo_create_client.
+    organization_locations: List of location strings (e.g., ["Brazil", "São Paulo, Brazil"]).
+    organization_not_locations: Locations to exclude from results.
+    organization_num_employees_ranges: Employee count ranges (e.g., ["1,10", "11,50"]).
+    organization_industries: Industry filters (e.g., ["legal services"]).
+    q_organization_keyword_tags: Keyword tags to filter by.
+    q_organization_sic_codes: SIC code filters.
+    currently_using_any_of_technology_uids: Technology UID filters.
+    organization_ids: Specific organization IDs to search.
+    q_organization_name: Organization name search terms.
+    revenue_range_min: Minimum revenue filter.
+    revenue_range_max: Maximum revenue filter.
+    total_funding_range_min: Minimum total funding filter.
+    total_funding_range_max: Maximum total funding filter.
+    per_page: Results per page (default: 100).
+    page: Page number (default: 1).
+
+Returns:
+    Dict with model_ids (company IDs), organizations (company details),
+    and breadcrumbs (search metadata).
+
+Example:
+    client: { node: create_client }
+    organization_locations: ["Brazil"]
+    organization_industries: ["legal services"]
+    per_page: 100
+    page: 1
+
+**Parameters:**
+
+- `client` (ApolloClient, required)
+- `organization_locations` (Optional[List[str]], optional, default: `None`)
+- `organization_not_locations` (Optional[List[str]], optional, default: `None`)
+- `organization_num_employees_ranges` (Optional[List[str]], optional, default: `None`)
+- `organization_industries` (Optional[List[str]], optional, default: `None`)
+- `q_organization_keyword_tags` (Optional[List[str]], optional, default: `None`)
+- `q_organization_sic_codes` (Optional[List[str]], optional, default: `None`)
+- `currently_using_any_of_technology_uids` (Optional[List[str]], optional, default: `None`)
+- `organization_ids` (Optional[List[str]], optional, default: `None`)
+- `q_organization_name` (Optional[List[str]], optional, default: `None`)
+- `revenue_range_min` (Optional[int], optional, default: `None`)
+- `revenue_range_max` (Optional[int], optional, default: `None`)
+- `total_funding_range_min` (Optional[int], optional, default: `None`)
+- `total_funding_range_max` (Optional[int], optional, default: `None`)
+- `per_page` (int, optional, default: `100`)
+- `page` (int, optional, default: `1`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `apollo_search_law_firms(client, locations, employee_ranges=None, keyword_tags=None, industries=None, sic_codes=None, technology_uids=None, per_page=100, page=1)`
+
+Search for law firms on Apollo.io with legal industry defaults.
+
+Convenience opcode that wraps apollo_search_companies with pre-configured
+defaults for the legal industry: 150 legal keyword tags, law practice/legal
+services industries, SIC code 8111, and automatic exclusion of non-selected
+Brazilian states.
+
+Args:
+    client: ApolloClient from apollo_create_client.
+    locations: List of location strings (e.g., ["são paulo, Brazil"]).
+    employee_ranges: Employee count ranges (e.g., ["1,10", "11,50"]).
+    keyword_tags: Override default legal keyword tags (150 legal terms).
+    industries: Override default industries (law practice, legal services).
+    sic_codes: Override default SIC codes (8111).
+    technology_uids: Technology UID filters.
+    per_page: Results per page (default: 100).
+    page: Page number (default: 1).
+
+Returns:
+    Dict with model_ids (company IDs), organizations (company details),
+    and breadcrumbs (search metadata).
+
+Example:
+    client: { node: create_client }
+    locations: ["são paulo, Brazil"]
+    employee_ranges: ["1,10", "11,50"]
+    page: 1
+
+**Parameters:**
+
+- `client` (ApolloClient, required)
+- `locations` (List[str], required)
+- `employee_ranges` (Optional[List[str]], optional, default: `None`)
+- `keyword_tags` (Optional[List[str]], optional, default: `None`)
+- `industries` (Optional[List[str]], optional, default: `None`)
+- `sic_codes` (Optional[List[str]], optional, default: `None`)
+- `technology_uids` (Optional[List[str]], optional, default: `None`)
+- `per_page` (int, optional, default: `100`)
+- `page` (int, optional, default: `1`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `apollo_search_legal_people(client, organization_ids, person_locations=None, titles=None, per_page=100, page=1)`
+
+Search for legal professionals on Apollo.io with legal title defaults.
+
+Convenience opcode that wraps apollo_search_people with pre-configured
+defaults for the legal industry: 64 legal job titles (PT/EN) and
+verified email status filter.
+
+Args:
+    client: ApolloClient from apollo_create_client.
+    organization_ids: List of Apollo organization IDs to search within.
+    person_locations: Location filters for people.
+    titles: Override default legal titles (51 legal roles PT/EN).
+    per_page: Results per page (default: 100).
+    page: Page number (default: 1).
+
+Returns:
+    Dict with people list containing id, first_name, last_name, title.
+
+Example:
+    client: { node: create_client }
+    organization_ids: ["org_123", "org_456"]
+    person_locations: ["são paulo, Brazil"]
+
+**Parameters:**
+
+- `client` (ApolloClient, required)
+- `organization_ids` (List[str], required)
+- `person_locations` (Optional[List[str]], optional, default: `None`)
+- `titles` (Optional[List[str]], optional, default: `None`)
+- `per_page` (int, optional, default: `100`)
+- `page` (int, optional, default: `1`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `apollo_search_people(client, organization_ids=None, person_titles=None, person_locations=None, contact_email_status=None, person_seniorities=None, per_page=100, page=1)`
+
+Search for people on Apollo.io.
+
+Args:
+    client: ApolloClient from apollo_create_client.
+    organization_ids: List of Apollo organization IDs to search within.
+    person_titles: Job title filters (e.g., ["Sócio", "Advogado"]).
+    person_locations: Location filters for people.
+    contact_email_status: Email status filters (e.g., ["verified"]).
+    person_seniorities: Seniority level filters.
+    per_page: Results per page (default: 100).
+    page: Page number (default: 1).
+
+Returns:
+    Dict with people list containing id, first_name, last_name, title.
+
+Example:
+    client: { node: create_client }
+    organization_ids: ["org_123", "org_456"]
+    person_titles: ["Sócio", "Advogado Senior"]
+    contact_email_status: ["verified"]
+
+**Parameters:**
+
+- `client` (ApolloClient, required)
+- `organization_ids` (Optional[List[str]], optional, default: `None`)
+- `person_titles` (Optional[List[str]], optional, default: `None`)
+- `person_locations` (Optional[List[str]], optional, default: `None`)
+- `contact_email_status` (Optional[List[str]], optional, default: `None`)
+- `person_seniorities` (Optional[List[str]], optional, default: `None`)
+- `per_page` (int, optional, default: `100`)
+- `page` (int, optional, default: `1`)
 
 **Returns:** `Dict[str, Any]`
 
@@ -5765,7 +6014,7 @@ Required scopes: files:write
 
 ## Summary
 
-**Total opcodes:** 299
+**Total opcodes:** 306
 
 ### Categories
 
@@ -5792,6 +6041,7 @@ Required scopes: files:write
 | 📋 JSON Operations | 2 | - |
 | hubspot HubSpot Operations | 19 | `lexflow[http]` |
 | 🔍 Web Search | 4 | `lexflow[search]` |
+| 🚀 Apollo.io | 7 | `lexflow[http]` |
 | ☁️ Cloud Storage | 11 | `lexflow[gcs]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
 | 🔍 RAG Operations | 20 | `lexflow[rag]` |
