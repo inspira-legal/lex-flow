@@ -2,6 +2,36 @@
 
 <!-- version list -->
 
+## v1.15.1 (2026-03-24)
+
+### Bug Fixes
+
+- **core**: Allow pydantic-ai-slim >=1.0
+  ([`2599a46`](https://github.com/inspira-legal/lex-flow/commit/2599a4660a2583914681290f4dadeff41cc01ccc))
+
+- **core**: Update dependency lock file for pydantic-ai-slim >=1.0
+  ([`bafc0c7`](https://github.com/inspira-legal/lex-flow/commit/bafc0c7d7672938fad1d2ba04f7392f6f92bb786))
+
+### Chores
+
+- **cli**: Release 1.6.0
+  ([`e449a89`](https://github.com/inspira-legal/lex-flow/commit/e449a8926feb116a218b740d19eabff95bdedd32))
+
+- **core**: Bump pydantic-ai-slim to >=1.0
+  ([`ee70e2e`](https://github.com/inspira-legal/lex-flow/commit/ee70e2ea53965a820351c86313054489772accf7))
+
+- **web**: Build frontend library [skip ci]
+  ([`64abc91`](https://github.com/inspira-legal/lex-flow/commit/64abc91683f1a665a95ce283242c788bd0de06e7))
+
+- **web**: Release 1.15.0
+  ([`27d6ce6`](https://github.com/inspira-legal/lex-flow/commit/27d6ce63d901cc0e02bedeb51b2d85e53b792520))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`44216e4`](https://github.com/inspira-legal/lex-flow/commit/44216e47422c0161501f0eaaa2ed58f9eab199cf))
+
+
 ## v1.15.0 (2026-03-17)
 
 ### Bug Fixes
