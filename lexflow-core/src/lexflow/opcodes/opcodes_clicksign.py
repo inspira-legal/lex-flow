@@ -54,6 +54,8 @@ class ClicksignClient:
     def __repr__(self) -> str:
         return f"ClicksignClient(sandbox={self.sandbox})"
 
+    __str__ = __repr__
+
     async def _request(
         self,
         method: str,
@@ -142,7 +144,7 @@ def register_clicksign_opcodes():
             ClicksignClient object to use with other clicksign_* opcodes
 
         Example:
-            access_token: "your-access-token"
+            access_token: { variable: clicksign_token }
             sandbox: true
         """
         _check_clicksign()
@@ -178,7 +180,7 @@ def register_clicksign_opcodes():
         name: str,
         locale: str = "pt-BR",
         auto_close: bool = True,
-        remind_interval: str = "3",
+        remind_interval: int = 3,
         block_after_refusal: bool = False,
         deadline_at: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -189,7 +191,7 @@ def register_clicksign_opcodes():
             name: Name of the envelope
             locale: Envelope locale (default: pt-BR)
             auto_close: Auto-close after all signers sign (default: True)
-            remind_interval: Reminder interval in days (default: "3")
+            remind_interval: Reminder interval in days (default: 3)
             block_after_refusal: Block envelope after a signer refuses (default: False)
             deadline_at: Optional deadline in ISO 8601 format
 
@@ -285,6 +287,7 @@ def register_clicksign_opcodes():
         envelope_id = _validate_id(envelope_id, "envelope_id")
         body = {
             "data": {
+                "id": envelope_id,
                 "type": "envelopes",
                 "attributes": {"status": "running"},
             }
@@ -381,7 +384,7 @@ def register_clicksign_opcodes():
                 "attributes": {
                     "filename": filename,
                     "template": {
-                        "id": template_id,
+                        "key": template_id,
                         "data": data,
                     },
                 },
@@ -547,7 +550,7 @@ def register_clicksign_opcodes():
         has_documentation: bool = False,
         birthday: Optional[str] = None,
         refusable: bool = False,
-        group: int = 0,
+        group: int = 1,
         communicate_events: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Add a signer to an envelope.

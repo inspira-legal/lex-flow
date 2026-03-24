@@ -63,6 +63,15 @@ class TestClicksignClient:
         client = _mock_client()
         assert "test-token" not in repr(client)
 
+    async def test_error_response_without_errors_array(self):
+        client = _mock_client()
+        client._session.request = MagicMock(
+            return_value=_mock_response(400, {"message": "Bad request"})
+        )
+
+        with pytest.raises(ValueError, match="Clicksign API error \\(400\\)"):
+            await client.get("/envelopes/invalid")
+
     async def test_error_response_json_api(self):
         client = _mock_client()
         error_data = {
@@ -79,6 +88,36 @@ class TestClicksignClient:
 
         with pytest.raises(ValueError, match="Clicksign API error \\(400\\)"):
             await client.get("/envelopes/invalid")
+
+
+# ============================================================================
+# _validate_id
+# ============================================================================
+
+
+@pytest.mark.skipif(not AIOHTTP_AVAILABLE, reason="aiohttp not installed")
+class TestValidateId:
+    async def test_valid_id(self):
+        from lexflow.opcodes.opcodes_clicksign import _validate_id
+
+        assert _validate_id("abc-123") == "abc-123"
+
+    async def test_strips_whitespace(self):
+        from lexflow.opcodes.opcodes_clicksign import _validate_id
+
+        assert _validate_id("  abc-123  ") == "abc-123"
+
+    async def test_empty_string_raises(self):
+        from lexflow.opcodes.opcodes_clicksign import _validate_id
+
+        with pytest.raises(ValueError, match="id cannot be empty"):
+            _validate_id("")
+
+    async def test_whitespace_only_raises(self):
+        from lexflow.opcodes.opcodes_clicksign import _validate_id
+
+        with pytest.raises(ValueError, match="id cannot be empty"):
+            _validate_id("   ")
 
 
 # ============================================================================
@@ -130,6 +169,31 @@ class TestClicksignEnvelopes:
         body = call_args[1]["json"]
         assert body["data"]["type"] == "envelopes"
         assert body["data"]["attributes"]["name"] == "Test Envelope"
+        assert body["data"]["attributes"]["remind_interval"] == 3
+        assert isinstance(body["data"]["attributes"]["remind_interval"], int)
+
+    async def test_create_envelope_with_deadline(self):
+        client = _mock_client()
+        expected = {"data": {"id": "env-456", "type": "envelopes"}}
+        client._session.request = MagicMock(return_value=_mock_response(200, expected))
+
+        result = await default_registry.call(
+            "clicksign_create_envelope",
+            [
+                client,
+                "Deadline Envelope",
+                "pt-BR",
+                True,
+                3,
+                False,
+                "2025-12-31T23:59:59Z",
+            ],
+        )
+        assert result == expected
+
+        call_args = client._session.request.call_args
+        body = call_args[1]["json"]
+        assert body["data"]["attributes"]["deadline_at"] == "2025-12-31T23:59:59Z"
 
     async def test_get_envelope(self):
         client = _mock_client()
@@ -199,6 +263,7 @@ class TestClicksignEnvelopes:
         call_args = client._session.request.call_args
         assert call_args[0][0] == "PATCH"
         body = call_args[1]["json"]
+        assert body["data"]["id"] == "env-123"
         assert body["data"]["attributes"]["status"] == "running"
 
     async def test_cancel_envelope(self):
@@ -246,7 +311,7 @@ class TestClicksignDocuments:
         assert body["data"]["type"] == "documents"
         assert body["data"]["attributes"]["filename"] == "contract.pdf"
         assert body["data"]["attributes"]["template"]["data"] == {"name": "John"}
-        assert body["data"]["attributes"]["template"]["id"] == "tmpl-456"
+        assert body["data"]["attributes"]["template"]["key"] == "tmpl-456"
 
     async def test_add_document_from_upload(self):
         client = _mock_client()
@@ -340,6 +405,7 @@ class TestClicksignSigners:
         attrs = body["data"]["attributes"]
         assert attrs["name"] == "John Doe"
         assert attrs["email"] == "john@example.com"
+        assert attrs["group"] == 1
         # Optional fields should not be in body when not provided
         assert "phone_number" not in attrs
         assert "documentation" not in attrs

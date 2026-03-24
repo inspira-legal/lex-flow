@@ -79,8 +79,7 @@ workflows:
         opcode: io_print
         next: store_empresa_data
         inputs:
-          values:
-            - { literal: "=== Envio de Contrato via Clicksign ===" }
+          MESSAGE: { literal: "=== Envio de Contrato via Clicksign ===\n" }
 
       consulta_cnpj:
         opcode: receitaws_consulta_cnpj
@@ -110,13 +109,26 @@ workflows:
           VARIABLE: { literal: "empresa_nome" }
           VALUE: { node: get_empresa_nome }
 
+      # "Empresa encontrada: " + empresa_nome + "\n"
+      concat_empresa_msg_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { literal: "Empresa encontrada: " }
+          right: { variable: empresa_nome }
+
+      concat_empresa_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: concat_empresa_msg_1 }
+          right: { literal: "\n" }
+
       print_empresa:
         opcode: io_print
         next: safe_run
         inputs:
-          values:
-            - { literal: "Empresa encontrada: " }
-            - { variable: empresa_nome }
+          STRING: { node: concat_empresa_msg_2 }
 
       # ========================================================================
       # Try/finally para garantir que o client sera fechado
@@ -129,7 +141,6 @@ workflows:
           TRY:
             branch: store_client
           CATCH1:
-            exception_type: "Exception"
             var: "error"
             body:
               branch: handle_error
@@ -158,20 +169,19 @@ workflows:
         opcode: io_print
         next: store_envelope_response
         inputs:
-          MESSAGE: { literal: "Cliente Clicksign criado (sandbox)" }
+          MESSAGE: { literal: "Cliente Clicksign criado (sandbox)\n" }
 
       # ========================================================================
       # Passo 3: Criar envelope
       # ========================================================================
 
+      # "Contrato - " + empresa_nome
       build_envelope_name:
-        opcode: string_join
+        opcode: operator_add
         isReporter: true
         inputs:
-          items:
-            - { literal: "Contrato - " }
-            - { variable: empresa_nome }
-          separator: { literal: "" }
+          left: { literal: "Contrato - " }
+          right: { variable: empresa_nome }
 
       create_envelope:
         opcode: clicksign_create_envelope
@@ -181,6 +191,8 @@ workflows:
           name: { node: build_envelope_name }
           locale: { literal: "pt-BR" }
           auto_close: { literal: true }
+          remind_interval: { literal: 3 }
+          block_after_refusal: { literal: false }
           deadline_at: { variable: data_limite }
 
       store_envelope_response:
@@ -212,37 +224,80 @@ workflows:
           VARIABLE: { literal: "envelope_id" }
           VALUE: { node: get_envelope_id }
 
+      # "Envelope criado: " + envelope_id + "\n"
+      concat_envelope_msg_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { literal: "Envelope criado: " }
+          right: { variable: envelope_id }
+
+      concat_envelope_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: concat_envelope_msg_1 }
+          right: { literal: "\n" }
+
       print_envelope:
         opcode: io_print
         next: store_document_response
         inputs:
-          values:
-            - { literal: "Envelope criado: " }
-            - { variable: envelope_id }
+          STRING: { node: concat_envelope_msg_2 }
 
       # ========================================================================
       # Passo 4: Adicionar documento a partir de template
       # ========================================================================
 
-      build_filename:
-        opcode: string_join
+      # Limpar CNPJ para uso no filename (remover . / -)
+      cnpj_clean_1:
+        opcode: string_replace
         isReporter: true
         inputs:
-          items:
-            - { literal: "contrato_" }
-            - { variable: cnpj }
-            - { literal: ".pdf" }
-          separator: { literal: "" }
+          text: { variable: cnpj }
+          old: { literal: "." }
+          new: { literal: "" }
+
+      cnpj_clean_2:
+        opcode: string_replace
+        isReporter: true
+        inputs:
+          text: { node: cnpj_clean_1 }
+          old: { literal: "/" }
+          new: { literal: "" }
+
+      cnpj_clean:
+        opcode: string_replace
+        isReporter: true
+        inputs:
+          text: { node: cnpj_clean_2 }
+          old: { literal: "-" }
+          new: { literal: "" }
+
+      # "contrato_" + cnpj_limpo + ".docx"
+      build_filename_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { literal: "contrato_" }
+          right: { node: cnpj_clean }
+
+      build_filename:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: build_filename_1 }
+          right: { literal: ".docx" }
 
       # Montar dados do template com informacoes da empresa
       num_usuarios_str:
-        opcode: type_to_str
+        opcode: str
         isReporter: true
         inputs:
           value: { variable: num_usuarios }
 
       mrr_str:
-        opcode: type_to_str
+        opcode: str
         isReporter: true
         inputs:
           value: { variable: mrr }
@@ -283,16 +338,28 @@ workflows:
         opcode: dict_create
         isReporter: true
         inputs:
-          razao_social: { variable: empresa_nome }
-          nome_fantasia: { node: get_empresa_fantasia }
-          cnpj: { variable: cnpj }
-          endereco: { node: get_empresa_logradouro }
-          cidade: { node: get_empresa_municipio }
-          estado: { node: get_empresa_uf }
-          num_usuarios: { node: num_usuarios_str }
-          mrr: { node: mrr_str }
-          signatario_nome: { variable: signatario_nome }
-          signatario_email: { variable: signatario_email }
+          k1: { literal: "Razão Social" }
+          v1: { variable: empresa_nome }
+          k2: { literal: "nome_fantasia" }
+          v2: { node: get_empresa_fantasia }
+          k3: { literal: "CNPJ" }
+          v3: { variable: cnpj }
+          k4: { literal: "endereco" }
+          v4: { node: get_empresa_logradouro }
+          k5: { literal: "cidade" }
+          v5: { node: get_empresa_municipio }
+          k6: { literal: "estado" }
+          v6: { node: get_empresa_uf }
+          k7: { literal: "num_usuarios" }
+          v7: { node: num_usuarios_str }
+          k8: { literal: "mrr" }
+          v8: { node: mrr_str }
+          k9: { literal: "signatario_nome" }
+          v9: { variable: signatario_nome }
+          k10: { literal: "signatario_email" }
+          v10: { variable: signatario_email }
+          k11: { literal: "Nome" }
+          v11: { variable: signatario_nome }
 
       add_document:
         opcode: clicksign_add_document_from_template
@@ -333,13 +400,26 @@ workflows:
           VARIABLE: { literal: "document_id" }
           VALUE: { node: get_document_id }
 
+      # "Documento adicionado: " + document_id + "\n"
+      concat_document_msg_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { literal: "Documento adicionado: " }
+          right: { variable: document_id }
+
+      concat_document_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: concat_document_msg_1 }
+          right: { literal: "\n" }
+
       print_document:
         opcode: io_print
         next: add_signer_cliente
         inputs:
-          values:
-            - { literal: "Documento adicionado: " }
-            - { variable: document_id }
+          STRING: { node: concat_document_msg_2 }
 
       # ========================================================================
       # Passo 5: Adicionar signatarios
@@ -354,8 +434,12 @@ workflows:
           envelope_id: { variable: envelope_id }
           name: { variable: signatario_nome }
           email: { variable: signatario_email }
+          phone_number: { literal: null }
+          documentation: { literal: null }
+          has_documentation: { literal: false }
+          birthday: { literal: null }
           refusable: { literal: true }
-          group: { literal: 0 }
+          group: { literal: 1 }
 
       get_signer_cliente_data:
         opcode: dict_get
@@ -378,16 +462,40 @@ workflows:
           VARIABLE: { literal: "current_signer_id" }
           VALUE: { node: get_signer_cliente_id }
 
+      # "Signatario cliente adicionado: " + signatario_nome + " (ID: " + current_signer_id + ")\n"
+      concat_signer_cliente_msg_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { literal: "Signatario cliente adicionado: " }
+          right: { variable: signatario_nome }
+
+      concat_signer_cliente_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: concat_signer_cliente_msg_1 }
+          right: { literal: " (ID: " }
+
+      concat_signer_cliente_msg_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: concat_signer_cliente_msg_2 }
+          right: { variable: current_signer_id }
+
+      concat_signer_cliente_msg_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: concat_signer_cliente_msg_3 }
+          right: { literal: ")\n" }
+
       print_signer_cliente:
         opcode: io_print
         next: add_qual_cliente
         inputs:
-          values:
-            - { literal: "Signatario cliente adicionado: " }
-            - { variable: signatario_nome }
-            - { literal: " (ID: " }
-            - { variable: current_signer_id }
-            - { literal: ")" }
+          STRING: { node: concat_signer_cliente_msg_4 }
 
       # 5b. Qualificacao e autenticacao do signatario cliente
       add_qual_cliente:
@@ -456,8 +564,12 @@ workflows:
           envelope_id: { variable: envelope_id }
           name: { node: get_interno_nome }
           email: { node: get_interno_email }
+          phone_number: { literal: null }
+          documentation: { literal: null }
+          has_documentation: { literal: false }
+          birthday: { literal: null }
           refusable: { literal: false }
-          group: { literal: 1 }
+          group: { literal: 2 }
 
       get_signer_interno_data:
         opcode: dict_get
@@ -480,16 +592,40 @@ workflows:
           VARIABLE: { literal: "current_signer_id" }
           VALUE: { node: get_signer_interno_id }
 
+      # "Signatario interno adicionado: " + nome + " (ID: " + current_signer_id + ")\n"
+      concat_interno_msg_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { literal: "Signatario interno adicionado: " }
+          right: { node: get_interno_nome }
+
+      concat_interno_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: concat_interno_msg_1 }
+          right: { literal: " (ID: " }
+
+      concat_interno_msg_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: concat_interno_msg_2 }
+          right: { variable: current_signer_id }
+
+      concat_interno_msg_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: concat_interno_msg_3 }
+          right: { literal: ")\n" }
+
       print_interno:
         opcode: io_print
         next: add_qual_interno
         inputs:
-          values:
-            - { literal: "Signatario interno adicionado: " }
-            - { node: get_interno_nome }
-            - { literal: " (ID: " }
-            - { variable: current_signer_id }
-            - { literal: ")" }
+          STRING: { node: concat_interno_msg_4 }
 
       # Qualificacao e autenticacao do signatario interno
       add_qual_interno:
@@ -535,7 +671,7 @@ workflows:
         opcode: io_print
         next: notify_all
         inputs:
-          MESSAGE: { literal: "Envelope ativado! Iniciando processo de assinatura..." }
+          MESSAGE: { literal: "Envelope ativado! Iniciando processo de assinatura...\n" }
 
       # ========================================================================
       # Passo 7: Notificar todos os signatarios
@@ -552,29 +688,65 @@ workflows:
       # Passo 8: Mensagem de sucesso
       # ========================================================================
 
+      # "Contrato enviado com sucesso para " + empresa_nome + " (CNPJ: " + cnpj + "). Todos os signatarios foram notificados.\n"
+      concat_success_msg_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { literal: "Contrato enviado com sucesso para " }
+          right: { variable: empresa_nome }
+
+      concat_success_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: concat_success_msg_1 }
+          right: { literal: " (CNPJ: " }
+
+      concat_success_msg_3:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: concat_success_msg_2 }
+          right: { variable: cnpj }
+
+      concat_success_msg_4:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: concat_success_msg_3 }
+          right: { literal: "). Todos os signatarios foram notificados.\n" }
+
       print_success:
         opcode: io_print
         next: null
         inputs:
-          values:
-            - { literal: "Contrato enviado com sucesso para " }
-            - { variable: empresa_nome }
-            - { literal: " (CNPJ: " }
-            - { variable: cnpj }
-            - { literal: "). " }
-            - { literal: "Todos os signatarios foram notificados." }
+          STRING: { node: concat_success_msg_4 }
 
       # ========================================================================
       # Tratamento de erro
       # ========================================================================
 
+      # "ERRO no envio do contrato: " + error + "\n"
+      concat_error_msg_1:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { literal: "ERRO no envio do contrato: " }
+          right: { variable: error }
+
+      concat_error_msg_2:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left: { node: concat_error_msg_1 }
+          right: { literal: "\n" }
+
       handle_error:
         opcode: io_print
         next: null
         inputs:
-          values:
-            - { literal: "ERRO no envio do contrato: " }
-            - { variable: error }
+          STRING: { node: concat_error_msg_2 }
 
       # ========================================================================
       # Cleanup: fechar client
@@ -590,4 +762,4 @@ workflows:
         opcode: io_print
         next: null
         inputs:
-          MESSAGE: { literal: "Cliente Clicksign fechado." }
+          MESSAGE: { literal: "Cliente Clicksign fechado.\n" }
