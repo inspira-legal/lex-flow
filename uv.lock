@@ -1443,7 +1443,7 @@ requires-dist = [
     { name = "lexflow", extras = ["ai", "pygame", "file", "http", "hubspot", "slack", "web", "rag", "gcs", "pubsub", "sheets", "pgvector", "search"], marker = "extra == 'all'" },
     { name = "pgvector", marker = "extra == 'pgvector'" },
     { name = "pydantic" },
-    { name = "pydantic-ai-slim", extras = ["google"], marker = "extra == 'ai'" },
+    { name = "pydantic-ai-slim", extras = ["google"], marker = "extra == 'ai'", specifier = ">=1.0" },
     { name = "pygame", marker = "extra == 'pygame'", specifier = ">=2.6.1" },
     { name = "pymupdf", marker = "extra == 'file'" },
     { name = "pypdf", marker = "extra == 'rag'" },
