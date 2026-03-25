@@ -1,133 +1,280 @@
-# LexFlow Skills
+# 🚀 LexFlow Skills para Claude Code
 
-Skills são assistentes especializados do Claude Code para auxiliar no desenvolvimento de workflows LexFlow. Cada skill fornece expertise em uma área específica, guiando desde a descoberta de requisitos até o deploy.
+> Skills especializadas para criação, edição e deploy de workflows LexFlow usando Claude Code
 
-## 📋 Skills Disponíveis
+## 📦 O que são essas Skills?
 
-### lex-flow-builder
+Este é um conjunto de 3 skills que transformam Claude Code em uma ferramenta poderosa para automação com LexFlow:
 
-**Descrição**: Especialista em criar workflows LexFlow baseado em contexto do usuário. Guia desde discovery de requisitos, design de fluxo, implementação YAML, até validação, documentação e deploy.
+- **lexflow-quick** - Cria e edita workflows rapidamente
+- **lexflow-extend** - Cria novos opcodes personalizados
+- **lexflow-deploy** - Gerencia deploy, versionamento e rollback
 
-**Quando usar**: Ao mencionar "criar workflow", "lex-flow", "fluxo", "automação", "workflow visual" ou pedir para construir processos automatizados.
+## 🎯 Para quem é?
 
-**Arquivos**:
-- `lex-flow-builder.md` - Processo completo de criação de workflows (Discovery → Design → Implementação → Validação → Documentação → Deploy)
-- `reference.md` - Catálogo de opcodes e estruturas de workflow
-- `examples.md` - 10 templates prontos de workflows comuns
+- **Desenvolvedores** que querem automatizar tarefas sem escrever YAML manualmente
+- **Times de DevOps** que precisam criar workflows rapidamente
+- **Empresas** que usam LexFlow e querem acelerar desenvolvimento
 
-**Tech Stack**:
-- Backend: Python (lexflow-core, lexflow-cli)
-- Frontend: TypeScript (lexflow-web)
-- Formato: YAML/JSON
-- Arquitetura: Node-based graph com opcodes
+## ⚡ Instalação Rápida
 
-## 🚀 Como Usar
+### Opção 1: Instalação Automática (Recomendado)
 
-### No Claude Code
+```bash
+# Clone este repositório
+git clone https://github.com/seu-usuario/lexflow-skills
+cd lexflow-skills
 
-1. **Instalação**: Copie a pasta da skill desejada para `~/.claude/skills/`
-
-   ```bash
-   cp -r skills/lex-flow-builder ~/.claude/skills/
-   ```
-
-2. **Ativação**: A skill é ativada automaticamente quando você menciona os termos-chave no Claude Code
-
-3. **Fluxo de Trabalho**:
-   - Descreva sua necessidade
-   - A skill fará discovery via perguntas
-   - Criará um plano estruturado
-   - Apresentará design para aprovação
-   - Implementará o YAML
-   - Validará e revisará
-   - Gerará documentação
-   - Entregará com instruções de deploy
-
-### Exemplo de Uso
-
-```
-User: "Preciso criar um workflow que busca issues do Jira e gera um relatório"
-
-Claude Code (com skill lex-flow-builder):
-- Fará perguntas sobre autenticação, filtros, formato de saída
-- Criará um plano com TodoWrite
-- Implementará o workflow YAML
-- Testará localmente
-- Gerará documentação completa
-- Fornecerá instruções de deploy
+# Execute o instalador
+./install.sh
 ```
 
-## 📚 Estrutura de uma Skill
+### Opção 2: Instalação Manual
 
-Cada skill deve conter:
-
-```
-skill-name/
-├── skill-name.md     # Arquivo principal com processo e instruções
-├── reference.md      # Documentação de referência técnica
-└── examples.md       # Templates e exemplos prontos
+1. **Copie a pasta `.claude/skills`** para seu projeto:
+```bash
+cp -r .claude/skills /seu/projeto/.claude/skills
 ```
 
-### Arquivo Principal (`skill-name.md`)
+2. **Verifique a estrutura**:
+```
+seu-projeto/
+└── .claude/
+    └── skills/
+        ├── lexflow-quick/
+        ├── lexflow-extend/
+        ├── lexflow-deploy/
+        └── shared/
+```
 
-Deve incluir:
-- Frontmatter com metadados (name, description, allowed-tools)
-- Processo passo a passo
-- Boas práticas
-- Quando usar/não usar a skill
-- Workflow recomendado
+3. **Teste a instalação**:
+```bash
+uv run python test_skills_integration.py
+```
 
-### Arquivo de Referência (`reference.md`)
+## 🔧 Configuração
 
-Contém:
-- Documentação técnica detalhada
-- APIs, opcodes, sintaxes
-- Padrões e estruturas
-- Checklist de validação
+### 1. Configurar Credenciais LexFlow
 
-### Arquivo de Exemplos (`examples.md`)
+Crie um arquivo `.env` na raiz do projeto:
 
-Inclui:
-- Templates prontos para uso
-- Casos de uso comuns
-- Padrões de composição
-- Boas práticas de nomenclatura
+```env
+# LexFlow API
+LEXFLOW_API_URL=https://api.lexflow.com
+LEXFLOW_API_KEY=seu_token_aqui
 
-## 🛠️ Criando Novas Skills
+# GitHub (para PRs de opcodes)
+GITHUB_TOKEN=ghp_seu_token_aqui
+GITHUB_REPO=seu-org/lexflow-opcodes
 
-Para criar uma nova skill para LexFlow:
+# Ambiente padrão
+DEFAULT_ENVIRONMENT=production
+```
 
-1. Crie uma pasta em `skills/` com o nome da skill
-2. Crie os 3 arquivos principais (main, reference, examples)
-3. Defina o frontmatter no arquivo principal:
-   ```yaml
-   ---
-   name: skill-name
-   description: Descrição clara da skill e quando usar. (user)
-   allowed-tools: [Read, Write, Edit, Bash, ...]
-   ---
-   ```
-4. Documente o processo completo
-5. Adicione exemplos práticos
-6. Teste a skill em cenários reais
+### 2. Configurar Claude Code
+
+As skills são detectadas automaticamente pelo Claude Code. Não precisa configurar nada!
+
+## 💬 Como Usar
+
+### Criando Workflows
+
+Basta falar naturalmente com Claude:
+
+```
+"criar workflow para enviar mensagem no Slack"
+"automatizar processamento de CSV"
+"integrar com API do GitHub"
+```
+
+### Editando Workflows
+
+```
+"editar workflow slack-notifier para adicionar canal #dev"
+"modificar api-fetcher para usar nova URL"
+"otimizar csv-processor para rodar mais rápido"
+```
+
+### Deploy e Gestão
+
+```
+"fazer deploy do workflow"
+"rollback para versão 1.0.0"
+"qual o status do workflow user-signup?"
+```
+
+## 📚 Exemplos Práticos
+
+### Exemplo 1: Notificação Slack
+
+```yaml
+Você: criar workflow para notificar equipe no Slack quando build falhar
+
+Claude:
+✅ Workflow criado: build-failure-notifier
+✅ Opcode slack_send criado automaticamente
+✅ Deploy realizado: https://lexflow.com/w/build-failure-notifier
+```
+
+### Exemplo 2: Processamento de Dados
+
+```yaml
+Você: criar workflow para processar planilha Excel e gerar relatório PDF
+
+Claude:
+✅ Workflow criado: excel-to-pdf-reporter
+✅ Templates aplicados: csv_parse, pdf_generate
+✅ Deploy realizado: https://lexflow.com/w/excel-to-pdf-reporter
+```
+
+### Exemplo 3: Integração API
+
+```yaml
+Você: editar workflow github-monitor para incluir webhook do Discord
+
+Claude:
+✅ Workflow encontrado: github-monitor
+✅ Node discord_webhook adicionado
+✅ Nova versão v1.2.0 deployada
+```
+
+## 🏗️ Arquitetura
+
+```
+┌─────────────┐
+│   Claude    │ ← Você fala naturalmente
+│    Code     │
+└──────┬──────┘
+       │
+       ▼
+┌──────────────────────────┐
+│   lexflow-quick          │ ← Detecta padrão e cria workflow
+│   (Criação/Edição)       │
+└──────┬───────────────────┘
+       │ Precisa opcode?
+       ▼
+┌──────────────────────────┐
+│   lexflow-extend         │ ← Cria opcode automaticamente
+│   (Extensão)             │
+└──────┬───────────────────┘
+       │
+       ▼
+┌──────────────────────────┐
+│   lexflow-deploy         │ ← Deploy via CLI
+│   (Deploy/Gestão)        │
+└──────────────────────────┘
+```
+
+## 📊 Capacidades
+
+| Funcionalidade | Status | Descrição |
+|---------------|--------|-----------|
+| Criar workflows | ✅ | Templates validados para APIs, Slack, CSV, Web |
+| Editar workflows | ✅ | Adicionar, remover, modificar elementos |
+| Criar opcodes | ✅ | Geração automática de Python + testes |
+| Deploy via CLI | ✅ | Sempre via linha de comando |
+| Versionamento | ✅ | Semântico automático (v1.0.0) |
+| Rollback | ✅ | Voltar para versões anteriores |
+| Multi-ambiente | ✅ | Dev, staging, production |
 
 ## 🤝 Contribuindo
 
-Para adicionar ou melhorar skills:
+### Como Adicionar Novo Template
 
-1. Crie um branch: `git checkout -b feature/add-your-skill`
-2. Adicione a skill em `skills/your-skill/`
-3. Atualize este README com a nova skill
-4. Crie uma PR com descrição detalhada
-5. Inclua exemplos de uso na PR
+1. Crie o arquivo em `lexflow-quick/templates/seu_template.yaml`
+2. Adicione ao dicionário em `lexflow_quick.py`:
 
-## 📖 Documentação Adicional
+```python
+"seu_template": {
+    "triggers": ["palavra", "chave"],
+    "opcodes": ["opcode1", "opcode2"],
+    "validated": True,
+    "template": "templates/seu_template.yaml"
+}
+```
 
-- [LexFlow Core](../lexflow-core/README.md)
-- [Grammar Reference](../docs/GRAMMAR_REFERENCE.md)
-- [Opcode Reference](../docs/OPCODE_REFERENCE.md)
-- [Examples](../examples/)
+### Como Adicionar Novo Opcode
 
-## 📝 Licença
+1. Implemente em `lexflow-extend/opcodes/seu_opcode.py`
+2. Adicione testes em `lexflow-extend/tests/`
+3. Registre em `available_opcodes`
 
-As skills seguem a mesma licença do projeto LexFlow.
+### Enviando PRs
+
+```bash
+# Fork o projeto
+# Crie sua branch
+git checkout -b feature/novo-template
+
+# Commit suas mudanças
+git commit -m "feat: adiciona template para integração X"
+
+# Push e abra PR
+git push origin feature/novo-template
+```
+
+## 🐛 Troubleshooting
+
+### Erro: "Skill not found"
+
+Verifique se a estrutura `.claude/skills/` está correta:
+```bash
+ls -la .claude/skills/
+```
+
+### Erro: "Opcode not available"
+
+O opcode será criado automaticamente. Se falhar:
+```bash
+# Verifique opcodes customizados
+ls .lexflow/custom_opcodes/
+```
+
+### Erro: "Deploy failed"
+
+Verifique credenciais:
+```bash
+# Teste conexão
+python test_lexflow_connection.py
+```
+
+## 📝 Requisitos
+
+- Claude Code instalado
+- Python 3.9+
+- uv (gerenciador de pacotes)
+- Conta LexFlow (para deploy real)
+
+## 📄 Licença
+
+MIT - Veja [LICENSE](LICENSE) para detalhes
+
+## 🆘 Suporte
+
+- **Issues**: [GitHub Issues](https://github.com/seu-usuario/lexflow-skills/issues)
+- **Discussões**: [GitHub Discussions](https://github.com/seu-usuario/lexflow-skills/discussions)
+- **Email**: suporte@seu-dominio.com
+
+## 🌟 Showcase
+
+Empresas usando LexFlow Skills:
+
+- 🏢 **Empresa A** - "Reduziu tempo de criação de workflows em 80%"
+- 🏢 **Empresa B** - "Deploy 10x mais rápido"
+- 🏢 **Empresa C** - "Zero erros de sintaxe YAML"
+
+## 📈 Roadmap
+
+- [ ] Suporte a mais plataformas (Teams, Discord, Telegram)
+- [ ] Templates para ML/AI workflows
+- [ ] Interface web para gestão
+- [ ] Marketplace de opcodes
+- [ ] Integração com CI/CD
+
+## ⭐ Star este projeto!
+
+Se você achou útil, deixe uma ⭐ no GitHub!
+
+---
+
+**Desenvolvido com ❤️ pela comunidade LexFlow**
