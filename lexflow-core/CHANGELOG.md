@@ -2,6 +2,34 @@
 
 <!-- version list -->
 
+## v1.16.0 (2026-03-25)
+
+### Bug Fixes
+
+- **core**: Add dependency checks, ID validation, and missing tests for Clicksign/ReceitaWS opcodes
+  ([#57](https://github.com/inspira-legal/lex-flow/pull/57),
+  [`427ef5b`](https://github.com/inspira-legal/lex-flow/commit/427ef5bdad108e0d0d46f328a1f657952e442fad))
+
+- **core**: Add HTTP timeouts, input validation and error path tests for Clicksign/ReceitaWS opcodes
+  ([#57](https://github.com/inspira-legal/lex-flow/pull/57),
+  [`427ef5b`](https://github.com/inspira-legal/lex-flow/commit/427ef5bdad108e0d0d46f328a1f657952e442fad))
+
+### Documentation
+
+- Regenerate opcode reference after merge ([#57](https://github.com/inspira-legal/lex-flow/pull/57),
+  [`427ef5b`](https://github.com/inspira-legal/lex-flow/commit/427ef5bdad108e0d0d46f328a1f657952e442fad))
+
+### Features
+
+- **opcode**: Add Clicksign v3 and ReceitaWS opcodes
+  ([#57](https://github.com/inspira-legal/lex-flow/pull/57),
+  [`427ef5b`](https://github.com/inspira-legal/lex-flow/commit/427ef5bdad108e0d0d46f328a1f657952e442fad))
+
+- **workflow**: Enhance contrato_envio workflow with detailed logging and error handling
+  ([#57](https://github.com/inspira-legal/lex-flow/pull/57),
+  [`427ef5b`](https://github.com/inspira-legal/lex-flow/commit/427ef5bdad108e0d0d46f328a1f657952e442fad))
+
+
 ## v1.15.1 (2026-03-24)
 
 ### Bug Fixes
