@@ -163,6 +163,14 @@
       "requires": "http"
     },
     {
+      "id": "clicksign",
+      "label": "Clicksign Operations",
+      "prefix": "clicksign_",
+      "color": "#4B0082",
+      "icon": "clicksign",
+      "requires": "clicksign"
+    },
+    {
       "id": "gcs",
       "label": "Cloud Storage",
       "prefix": "gcs_",
@@ -177,6 +185,14 @@
       "color": "#00D86A",
       "icon": "🎮",
       "requires": "pygame"
+    },
+    {
+      "id": "receitaws",
+      "label": "ReceitaWS Operations",
+      "prefix": "receitaws_",
+      "color": "#009C3B",
+      "icon": "receitaws",
+      "requires": "receitaws"
     },
     {
       "id": "rag",
