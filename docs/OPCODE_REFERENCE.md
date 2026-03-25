@@ -28,10 +28,11 @@ Quick reference for all available opcodes in LexFlow.
 - [hubspot HubSpot Operations](#hubspot-operations) *(requires `lexflow[http]`)*
 - [🔍 Web Search](#web-search) *(requires `lexflow[search]`)*
 - [🚀 Apollo.io](#apollo.io) *(requires `lexflow[http]`)*
+- [clicksign Clicksign Operations](#clicksign-operations) *(requires `lexflow[clicksign]`)*
 - [☁️ Cloud Storage](#cloud-storage) *(requires `lexflow[gcs]`)*
 - [🎮 Pygame Operations](#pygame-operations) *(requires `lexflow[pygame]`)*
+- [receitaws ReceitaWS Operations](#receitaws-operations) *(requires `lexflow[receitaws]`)*
 - [🔍 RAG Operations](#rag-operations) *(requires `lexflow[rag]`)*
-- [🐘 PgVector Operations](#pgvector-operations) *(requires `lexflow[pgvector]`)*
 - [💬 Chat Operations](#chat-operations)
 - [💻 CLI Operations](#cli-operations)
 - [🐙 GitHub Operations](#github-operations)
@@ -2873,6 +2874,835 @@ Example:
 
 ---
 
+## clicksign Clicksign Operations
+
+> **Requires:** `pip install lexflow[clicksign]`
+
+### `clicksign_activate_envelope(client, envelope_id)`
+
+Activate an envelope to start the signing process.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+
+Returns:
+    Updated envelope object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_add_authentication(client, envelope_id, document_id, signer_id, auth="email")`
+
+Add an authentication requirement to an envelope.
+
+Requires a signer to provide evidence (e.g., email, SMS, selfie)
+before signing a document.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+    document_id: The document ID
+    signer_id: The signer ID
+    auth: Authentication type (e.g., "email", "sms", "pix", "selfie",
+        "handwritten", "liveness", "official_document", "icpbr_certificate")
+
+Returns:
+    Created requirement object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    document_id: "dddddddd-dddd-dddd-dddd-dddddddddddd"
+    signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
+    auth: "email"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+- `document_id` (str, required)
+- `signer_id` (str, required)
+- `auth` (str, optional, default: `"email"`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_add_document_from_template(client, envelope_id, template_id, filename, data)`
+
+Add a document to an envelope using a template.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+    template_id: The template ID to use
+    filename: Name for the generated document
+    data: Template variable data to fill in
+
+Returns:
+    Created document object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    template_id: "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+    filename: "contract.pdf"
+    data:
+      name: "John Doe"
+      value: "10000"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+- `template_id` (str, required)
+- `filename` (str, required)
+- `data` (Dict[str, Any], required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_add_document_from_upload(client, envelope_id, filename, content_base64)`
+
+Add a document to an envelope by uploading base64 content.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+    filename: Name for the uploaded document
+    content_base64: Base64-encoded file content
+
+Returns:
+    Created document object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    filename: "contract.pdf"
+    content_base64: "JVBERi0xLjQK..."
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+- `filename` (str, required)
+- `content_base64` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_add_qualification(client, envelope_id, document_id, signer_id, action="agree", role="sign")`
+
+Add a signing qualification requirement to an envelope.
+
+Links a signer to a document with a specific action and role.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+    document_id: The document ID
+    signer_id: The signer ID
+    action: Action type (e.g., "agree", "sign", "approve", "acknowledge")
+    role: Signer role (e.g., "sign", "witness", "intervening", "receipt")
+
+Returns:
+    Created requirement object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    document_id: "dddddddd-dddd-dddd-dddd-dddddddddddd"
+    signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
+    action: "agree"
+    role: "sign"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+- `document_id` (str, required)
+- `signer_id` (str, required)
+- `action` (str, optional, default: `"agree"`)
+- `role` (str, optional, default: `"sign"`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_add_signer(client, envelope_id, name, email, phone_number=None, documentation=None, has_documentation=False, birthday=None, refusable=False, group=1, communicate_events=None)`
+
+Add a signer to an envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+    name: Full name of the signer (must have at least 2 words)
+    email: Email address of the signer
+    phone_number: Phone number with country code (e.g., "+5511999999999")
+    documentation: CPF or CNPJ document number
+    has_documentation: Whether the signer has documentation (default: False)
+    birthday: Birthday in ISO 8601 format (e.g., "1990-01-15")
+    refusable: Whether the signer can refuse to sign (default: False)
+    group: Signing group/order (default: 0)
+    communicate_events: Event notification config (e.g., {"sign": "email"})
+
+Returns:
+    Created signer object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    name: "John Doe"
+    email: "john@example.com"
+    phone_number: "+5511999999999"
+    refusable: true
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+- `name` (str, required)
+- `email` (str, required)
+- `phone_number` (Optional[str], optional, default: `None`)
+- `documentation` (Optional[str], optional, default: `None`)
+- `has_documentation` (bool, optional, default: `False`)
+- `birthday` (Optional[str], optional, default: `None`)
+- `refusable` (bool, optional, default: `False`)
+- `group` (int, optional, default: `1`)
+- `communicate_events` (Optional[Dict[str, str]], optional, default: `None`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_batch_requirements(client, envelope_id, requirements)`
+
+Create multiple requirements in a single batch request.
+
+Each requirement in the list should contain action, role (or auth),
+document_id, and signer_id.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+    requirements: List of requirement dicts, each with keys:
+        - action: Action type (e.g., "agree", "provide_evidence")
+        - document_id: The document ID
+        - signer_id: The signer ID
+        - role: Signer role (for qualifications)
+        - auth: Auth type (for authentications)
+
+Returns:
+    Batch creation response (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    requirements:
+      - action: "agree"
+        role: "sign"
+        document_id: "doc-id-1"
+        signer_id: "signer-id-1"
+      - action: "provide_evidence"
+        auth: "email"
+        document_id: "doc-id-1"
+        signer_id: "signer-id-1"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+- `requirements` (List[Dict[str, Any]], required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_cancel_envelope(client, envelope_id)`
+
+Cancel an active envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+
+Returns:
+    Updated envelope object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_close_client(client)`
+
+Close a Clicksign client and release its resources.
+
+Args:
+    client: ClicksignClient to close
+
+Returns:
+    True when the client session is closed
+
+**Returns:** `bool`
+
+---
+
+### `clicksign_create_client(access_token, sandbox=True)`
+
+Create a Clicksign API client for digital signing operations.
+
+Args:
+    access_token: Clicksign API access token
+    sandbox: Use sandbox environment (default: True)
+
+Returns:
+    ClicksignClient object to use with other clicksign_* opcodes
+
+Example:
+    access_token: { variable: clicksign_token }
+    sandbox: true
+
+**Parameters:**
+
+- `access_token` (str, required)
+- `sandbox` (bool, optional, default: `True`)
+
+**Returns:** `ClicksignClient`
+
+---
+
+### `clicksign_create_envelope(client, name, locale="pt-BR", auto_close=True, remind_interval=3, block_after_refusal=False, deadline_at=None)`
+
+Create a new signing envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    name: Name of the envelope
+    locale: Envelope locale (default: pt-BR)
+    auto_close: Auto-close after all signers sign (default: True)
+    remind_interval: Reminder interval in days (default: 3)
+    block_after_refusal: Block envelope after a signer refuses (default: False)
+    deadline_at: Optional deadline in ISO 8601 format
+
+Returns:
+    Created envelope object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    name: "Contract 2024"
+    locale: "pt-BR"
+    auto_close: true
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `name` (str, required)
+- `locale` (str, optional, default: `"pt-BR"`)
+- `auto_close` (bool, optional, default: `True`)
+- `remind_interval` (int, optional, default: `3`)
+- `block_after_refusal` (bool, optional, default: `False`)
+- `deadline_at` (Optional[str], optional, default: `None`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_create_webhook(client, url, events)`
+
+Create a webhook subscription for envelope events.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    url: URL to receive webhook POST requests
+    events: List of event types to subscribe to (e.g.,
+        ["envelope.closed", "signer.signed", "envelope.canceled"])
+
+Returns:
+    Created webhook object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    url: "https://my-app.com/webhooks/clicksign"
+    events:
+      - "envelope.closed"
+      - "signer.signed"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `url` (str, required)
+- `events` (List[str], required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_delete_document(client, envelope_id, document_id)`
+
+Delete a document from an envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+    document_id: The document ID
+
+Returns:
+    True if deletion was successful
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    document_id: "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+- `document_id` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `clicksign_delete_envelope(client, envelope_id)`
+
+Delete an envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+
+Returns:
+    True if deletion was successful
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `clicksign_delete_requirement(client, envelope_id, requirement_id)`
+
+Delete a requirement from an envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+    requirement_id: The requirement ID
+
+Returns:
+    True if deletion was successful
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    requirement_id: "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+- `requirement_id` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `clicksign_delete_signer(client, envelope_id, signer_id)`
+
+Delete a signer from an envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+    signer_id: The signer ID
+
+Returns:
+    True if deletion was successful
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+- `signer_id` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `clicksign_delete_webhook(client, webhook_id)`
+
+Delete a webhook subscription.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    webhook_id: The webhook ID
+
+Returns:
+    True if deletion was successful
+
+Example:
+    client: { node: create_client }
+    webhook_id: "wwwwwwww-wwww-wwww-wwww-wwwwwwwwwwww"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `webhook_id` (str, required)
+
+**Returns:** `bool`
+
+---
+
+### `clicksign_get_document(client, envelope_id, document_id)`
+
+Get a document from an envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+    document_id: The document ID
+
+Returns:
+    Document object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    document_id: "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+- `document_id` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_get_envelope(client, envelope_id)`
+
+Get an envelope by ID.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+
+Returns:
+    Envelope object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_get_signer(client, envelope_id, signer_id)`
+
+Get a signer from an envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+    signer_id: The signer ID
+
+Returns:
+    Signer object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+- `signer_id` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_get_template(client, template_id)`
+
+Get a template by ID.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    template_id: The template ID
+
+Returns:
+    Template object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    template_id: "tttttttt-tttt-tttt-tttt-tttttttttttt"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `template_id` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_list_documents(client, envelope_id)`
+
+List all documents in an envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+
+Returns:
+    List of documents (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_list_envelopes(client, status=None, name=None)`
+
+List envelopes with optional filters.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    status: Filter by status (e.g., "running", "closed", "canceled")
+    name: Filter by name
+
+Returns:
+    List of envelopes (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    status: "running"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `status` (Optional[str], optional, default: `None`)
+- `name` (Optional[str], optional, default: `None`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_list_requirements(client, envelope_id)`
+
+List all requirements in an envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+
+Returns:
+    List of requirements (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_list_signers(client, envelope_id)`
+
+List all signers in an envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+
+Returns:
+    List of signers (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_list_templates(client)`
+
+List all available document templates.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+
+Returns:
+    List of templates (JSON:API response)
+
+Example:
+    client: { node: create_client }
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_list_webhooks(client)`
+
+List all webhook subscriptions.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+
+Returns:
+    List of webhooks (JSON:API response)
+
+Example:
+    client: { node: create_client }
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_notify_all(client, envelope_id)`
+
+Send notifications to all pending signers in an envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+
+Returns:
+    Notification response (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_notify_signer(client, envelope_id, signer_id)`
+
+Send a notification to a specific signer.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+    signer_id: The signer ID to notify
+
+Returns:
+    Notification response (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+- `signer_id` (str, required)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
+### `clicksign_update_document(client, envelope_id, document_id, filename=None)`
+
+Update a document in an envelope.
+
+Args:
+    client: ClicksignClient from clicksign_create_client
+    envelope_id: The envelope ID
+    document_id: The document ID
+    filename: New filename for the document
+
+Returns:
+    Updated document object (JSON:API response)
+
+Example:
+    client: { node: create_client }
+    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    document_id: "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
+    filename: "updated_contract.pdf"
+
+**Parameters:**
+
+- `client` (ClicksignClient, required)
+- `envelope_id` (str, required)
+- `document_id` (str, required)
+- `filename` (Optional[str], optional, default: `None`)
+
+**Returns:** `Dict[str, Any]`
+
+---
+
 ## ☁️ Cloud Storage
 
 > **Requires:** `pip install lexflow[gcs]`
@@ -3436,6 +4266,30 @@ Update the display to show all drawn elements.
 
 ---
 
+## receitaws ReceitaWS Operations
+
+> **Requires:** `pip install lexflow[receitaws]`
+
+### `receitaws_consulta_cnpj(cnpj)`
+
+Consulta dados de uma empresa pelo CNPJ na ReceitaWS.
+
+Args:
+    cnpj: CNPJ da empresa (aceita formatado ou apenas digitos)
+
+Returns:
+    Dict com dados da empresa (nome, fantasia, situacao, etc.)
+
+Raises:
+    ValueError: Se o CNPJ nao tiver 14 digitos ou a API retornar erro
+
+Example:
+    cnpj: "11.222.333/0001-81"
+
+**Returns:** `Dict[str, Any]`
+
+---
+
 ## 🔍 RAG Operations
 
 > **Requires:** `pip install lexflow[rag]`
@@ -3856,213 +4710,6 @@ Returns:
 - `min_chunk_size` (int, optional, default: `100`)
 
 **Returns:** `List[Dict[str, Any]]`
-
----
-
-## 🐘 PgVector Operations
-
-> **Requires:** `pip install lexflow[pgvector]`
-
-### `pgvector_collection_exists(pool, name)`
-
-Check if a pgvector collection (table) exists.
-
-Args:
-    pool: asyncpg.Pool instance
-    name: Collection (table) name to check
-
-Returns:
-    True if collection exists
-
-**Parameters:**
-
-- `pool` (Any, required)
-- `name` (str, required)
-
-**Returns:** `bool`
-
----
-
-### `pgvector_connect(dsn, min_size=1, max_size=10, ensure_extension=True)`
-
-Create an asyncpg connection pool with pgvector support.
-
-Args:
-    dsn: PostgreSQL connection string
-    min_size: Minimum pool connections (default: 1)
-    max_size: Maximum pool connections (default: 10)
-    ensure_extension: Run CREATE EXTENSION IF NOT EXISTS vector (default: True).
-        Set to False if the extension is pre-configured or the user lacks privileges.
-
-Returns:
-    asyncpg.Pool instance with pgvector type registered
-
-**Parameters:**
-
-- `dsn` (str, required)
-- `min_size` (int, optional, default: `1`)
-- `max_size` (int, optional, default: `10`)
-- `ensure_extension` (bool, optional, default: `True`)
-
-**Returns:** `Any`
-
----
-
-### `pgvector_create_collection(pool, name, vector_size=768)`
-
-Create a pgvector collection (table) if it doesn't exist.
-
-Creates the pgvector extension and a table with id, embedding, and payload columns.
-
-Args:
-    pool: asyncpg.Pool instance
-    name: Collection (table) name
-    vector_size: Dimension of embedding vectors (default: 768)
-
-Returns:
-    True if created, False if already existed
-
-**Parameters:**
-
-- `pool` (Any, required)
-- `name` (str, required)
-- `vector_size` (int, optional, default: `768`)
-
-**Returns:** `bool`
-
----
-
-### `pgvector_delete(pool, collection, point_ids)`
-
-Delete points from a pgvector collection by IDs.
-
-Args:
-    pool: asyncpg.Pool instance
-    collection: Collection (table) name
-    point_ids: List of point IDs to delete
-
-Returns:
-    True if deletion was successful
-
-**Parameters:**
-
-- `pool` (Any, required)
-- `collection` (str, required)
-- `point_ids` (List[int], required)
-
-**Returns:** `bool`
-
----
-
-### `pgvector_delete_collection(pool, name)`
-
-Delete a pgvector collection (table).
-
-Args:
-    pool: asyncpg.Pool instance
-    name: Collection (table) name to delete
-
-Returns:
-    True if deletion was successful
-
-**Parameters:**
-
-- `pool` (Any, required)
-- `name` (str, required)
-
-**Returns:** `bool`
-
----
-
-### `pgvector_disconnect(pool)`
-
-Close a pgvector connection pool.
-
-Args:
-    pool: asyncpg.Pool instance to close
-
-Returns:
-    True if pool was closed successfully
-
-**Returns:** `bool`
-
----
-
-### `pgvector_search(pool, collection, query_vector, limit=5)`
-
-Search for similar vectors in a pgvector collection.
-
-Uses cosine distance (<=> operator) for similarity ranking.
-
-Args:
-    pool: asyncpg.Pool instance
-    collection: Collection (table) name
-    query_vector: Embedding vector to search for
-    limit: Maximum number of results (default: 5)
-
-Returns:
-    List of dicts with keys: id, score, payload
-
-**Parameters:**
-
-- `pool` (Any, required)
-- `collection` (str, required)
-- `query_vector` (List[float], required)
-- `limit` (int, optional, default: `5`)
-
-**Returns:** `List[Dict[str, Any]]`
-
----
-
-### `pgvector_upsert(pool, collection, point_id, vector, payload=None)`
-
-Insert or update a single vector point in a pgvector collection.
-
-Args:
-    pool: asyncpg.Pool instance
-    collection: Collection (table) name
-    point_id: Unique identifier for the point
-    vector: Embedding vector
-    payload: Optional metadata dict
-
-Returns:
-    True if upsert was successful
-
-**Parameters:**
-
-- `pool` (Any, required)
-- `collection` (str, required)
-- `point_id` (int, required)
-- `vector` (List[float], required)
-- `payload` (Optional[Dict[str, Any]], optional, default: `None`)
-
-**Returns:** `bool`
-
----
-
-### `pgvector_upsert_batch(pool, collection, point_ids, vectors, payloads=None)`
-
-Insert or update multiple vector points in a pgvector collection.
-
-Args:
-    pool: asyncpg.Pool instance
-    collection: Collection (table) name
-    point_ids: List of unique identifiers
-    vectors: List of embedding vectors
-    payloads: Optional list of metadata dicts
-
-Returns:
-    True if upsert was successful
-
-**Parameters:**
-
-- `pool` (Any, required)
-- `collection` (str, required)
-- `point_ids` (List[int], required)
-- `vectors` (List[List[float]], required)
-- `payloads` (Optional[List[Dict[str, Any]]], optional, default: `None`)
-
-**Returns:** `bool`
 
 ---
 
@@ -6014,7 +6661,7 @@ Required scopes: files:write
 
 ## Summary
 
-**Total opcodes:** 306
+**Total opcodes:** 328
 
 ### Categories
 
@@ -6042,10 +6689,11 @@ Required scopes: files:write
 | hubspot HubSpot Operations | 19 | `lexflow[http]` |
 | 🔍 Web Search | 4 | `lexflow[search]` |
 | 🚀 Apollo.io | 7 | `lexflow[http]` |
+| clicksign Clicksign Operations | 30 | `lexflow[clicksign]` |
 | ☁️ Cloud Storage | 11 | `lexflow[gcs]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
+| receitaws ReceitaWS Operations | 1 | `lexflow[receitaws]` |
 | 🔍 RAG Operations | 20 | `lexflow[rag]` |
-| 🐘 PgVector Operations | 9 | `lexflow[pgvector]` |
 | 💬 Chat Operations | 10 | - |
 | 💻 CLI Operations | 10 | - |
 | 🐙 GitHub Operations | 7 | - |
