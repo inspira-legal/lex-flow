@@ -2,6 +2,86 @@
 
 <!-- version list -->
 
+## v1.15.1 (2026-03-24)
+
+### Bug Fixes
+
+- **core**: Allow pydantic-ai-slim >=1.0
+  ([`2599a46`](https://github.com/inspira-legal/lex-flow/commit/2599a4660a2583914681290f4dadeff41cc01ccc))
+
+- **core**: Update dependency lock file for pydantic-ai-slim >=1.0
+  ([`bafc0c7`](https://github.com/inspira-legal/lex-flow/commit/bafc0c7d7672938fad1d2ba04f7392f6f92bb786))
+
+### Chores
+
+- **cli**: Release 1.6.0
+  ([`e449a89`](https://github.com/inspira-legal/lex-flow/commit/e449a8926feb116a218b740d19eabff95bdedd32))
+
+- **core**: Bump pydantic-ai-slim to >=1.0
+  ([`ee70e2e`](https://github.com/inspira-legal/lex-flow/commit/ee70e2ea53965a820351c86313054489772accf7))
+
+- **web**: Build frontend library [skip ci]
+  ([`64abc91`](https://github.com/inspira-legal/lex-flow/commit/64abc91683f1a665a95ce283242c788bd0de06e7))
+
+- **web**: Release 1.15.0
+  ([`27d6ce6`](https://github.com/inspira-legal/lex-flow/commit/27d6ce63d901cc0e02bedeb51b2d85e53b792520))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`44216e4`](https://github.com/inspira-legal/lex-flow/commit/44216e47422c0161501f0eaaa2ed58f9eab199cf))
+
+
+## v1.15.0 (2026-03-17)
+
+### Bug Fixes
+
+- Correct API usage in lex-flow-builder skill
+  ([#44](https://github.com/inspira-legal/lex-flow/pull/44),
+  [`b381c23`](https://github.com/inspira-legal/lex-flow/commit/b381c23107f7b6a0d69116b994f9d11c6dc16ea8))
+
+- Correct reference.md with official YAML structure and opcodes
+  ([#44](https://github.com/inspira-legal/lex-flow/pull/44),
+  [`b381c23`](https://github.com/inspira-legal/lex-flow/commit/b381c23107f7b6a0d69116b994f9d11c6dc16ea8))
+
+- Rename to SKILL.md and align with best practices
+  ([#44](https://github.com/inspira-legal/lex-flow/pull/44),
+  [`b381c23`](https://github.com/inspira-legal/lex-flow/commit/b381c23107f7b6a0d69116b994f9d11c6dc16ea8))
+
+- **opcodes**: Address review feedback on Apollo opcodes
+  ([#51](https://github.com/inspira-legal/lex-flow/pull/51),
+  [`c9ac55e`](https://github.com/inspira-legal/lex-flow/commit/c9ac55e31c92a4a588d3f1822d995aa5a7f03205))
+
+### Chores
+
+- **deps**: Bump pypdf, rollup, and minimatch
+  ([`c1e17f9`](https://github.com/inspira-legal/lex-flow/commit/c1e17f99446dc01d19d08462cb9cba72c2b9487a))
+
+- **web**: Build frontend library [skip ci]
+  ([`50557bf`](https://github.com/inspira-legal/lex-flow/commit/50557bf54aba6bdee8a4b0b0fa0aa07eb6e038a3))
+
+- **web**: Release 1.14.0
+  ([`f35af90`](https://github.com/inspira-legal/lex-flow/commit/f35af90952832b8c95a482fb9e99ae702d22e9b5))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`db3a2cc`](https://github.com/inspira-legal/lex-flow/commit/db3a2cc9266a6cb8a1bdd26bda3e859f45b93504))
+
+### Features
+
+- Add lex-flow-builder skill for workflow development
+  ([#44](https://github.com/inspira-legal/lex-flow/pull/44),
+  [`b381c23`](https://github.com/inspira-legal/lex-flow/commit/b381c23107f7b6a0d69116b994f9d11c6dc16ea8))
+
+- **opcodes**: Add Apollo.io opcodes for lead generation
+  ([#51](https://github.com/inspira-legal/lex-flow/pull/51),
+  [`c9ac55e`](https://github.com/inspira-legal/lex-flow/commit/c9ac55e31c92a4a588d3f1822d995aa5a7f03205))
+
+- **skill**: Add automated opcode synchronization system
+  ([`005904a`](https://github.com/inspira-legal/lex-flow/commit/005904a71b144430aee129ea3c270383b2a5e5ca))
+
+
 ## v1.14.0 (2026-03-06)
 
 ### Bug Fixes

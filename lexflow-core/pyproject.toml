@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexflow"
-version = "1.14.0"
-description = "A stack-based visual programming workflow interpreter - Core Engine"
+version = "1.15.1"
+description = "A stack-based visual programming workflow interpreter - Core engine"
 requires-python = ">=3.10"
 dependencies = [
     "pydantic",
@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-ai = ["pydantic-ai-slim[google]>=0.1,<1.0"]
+ai = ["pydantic-ai-slim[google]>=1.0"]
 pygame = ["pygame>=2.6.1"]
 file = ["pymupdf"]
 clicksign = ["aiohttp"]

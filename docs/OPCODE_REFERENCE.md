@@ -27,10 +27,9 @@ Quick reference for all available opcodes in LexFlow.
 - [📋 JSON Operations](#json-operations)
 - [hubspot HubSpot Operations](#hubspot-operations) *(requires `lexflow[http]`)*
 - [🔍 Web Search](#web-search) *(requires `lexflow[search]`)*
-- [clicksign Clicksign Operations](#clicksign-operations) *(requires `lexflow[clicksign]`)*
+- [🚀 Apollo.io](#apollo.io) *(requires `lexflow[http]`)*
 - [☁️ Cloud Storage](#cloud-storage) *(requires `lexflow[gcs]`)*
 - [🎮 Pygame Operations](#pygame-operations) *(requires `lexflow[pygame]`)*
-- [receitaws ReceitaWS Operations](#receitaws-operations) *(requires `lexflow[receitaws]`)*
 - [🔍 RAG Operations](#rag-operations) *(requires `lexflow[rag]`)*
 - [🐘 PgVector Operations](#pgvector-operations) *(requires `lexflow[pgvector]`)*
 - [💬 Chat Operations](#chat-operations)
@@ -2626,830 +2625,249 @@ Example:
 
 ---
 
-## clicksign Clicksign Operations
+## 🚀 Apollo.io
 
-> **Requires:** `pip install lexflow[clicksign]`
+> **Requires:** `pip install lexflow[http]`
 
-### `clicksign_activate_envelope(client, envelope_id)`
+### `apollo_close_client(client)`
 
-Activate an envelope to start the signing process.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-
-Returns:
-    Updated envelope object (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_add_authentication(client, envelope_id, document_id, signer_id, auth="email")`
-
-Add an authentication requirement to an envelope.
-
-Requires a signer to provide evidence (e.g., email, SMS, selfie)
-before signing a document.
+Close an Apollo client and release its resources.
 
 Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-    document_id: The document ID
-    signer_id: The signer ID
-    auth: Authentication type (e.g., "email", "sms", "pix", "selfie",
-        "handwritten", "liveness", "official_document", "icpbr_certificate")
+    client: ApolloClient to close.
 
 Returns:
-    Created requirement object (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    document_id: "dddddddd-dddd-dddd-dddd-dddddddddddd"
-    signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
-    auth: "email"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-- `document_id` (str, required)
-- `signer_id` (str, required)
-- `auth` (str, optional, default: `"email"`)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_add_document_from_template(client, envelope_id, template_id, filename, data)`
-
-Add a document to an envelope using a template.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-    template_id: The template ID to use
-    filename: Name for the generated document
-    data: Template variable data to fill in
-
-Returns:
-    Created document object (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    template_id: "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
-    filename: "contract.pdf"
-    data:
-      name: "John Doe"
-      value: "10000"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-- `template_id` (str, required)
-- `filename` (str, required)
-- `data` (Dict[str, Any], required)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_add_document_from_upload(client, envelope_id, filename, content_base64)`
-
-Add a document to an envelope by uploading base64 content.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-    filename: Name for the uploaded document
-    content_base64: Base64-encoded file content
-
-Returns:
-    Created document object (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    filename: "contract.pdf"
-    content_base64: "JVBERi0xLjQK..."
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-- `filename` (str, required)
-- `content_base64` (str, required)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_add_qualification(client, envelope_id, document_id, signer_id, action="agree", role="sign")`
-
-Add a signing qualification requirement to an envelope.
-
-Links a signer to a document with a specific action and role.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-    document_id: The document ID
-    signer_id: The signer ID
-    action: Action type (e.g., "agree", "sign", "approve", "acknowledge")
-    role: Signer role (e.g., "sign", "witness", "intervening", "receipt")
-
-Returns:
-    Created requirement object (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    document_id: "dddddddd-dddd-dddd-dddd-dddddddddddd"
-    signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
-    action: "agree"
-    role: "sign"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-- `document_id` (str, required)
-- `signer_id` (str, required)
-- `action` (str, optional, default: `"agree"`)
-- `role` (str, optional, default: `"sign"`)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_add_signer(client, envelope_id, name, email, phone_number=None, documentation=None, has_documentation=False, birthday=None, refusable=False, group=0, communicate_events=None)`
-
-Add a signer to an envelope.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-    name: Full name of the signer (must have at least 2 words)
-    email: Email address of the signer
-    phone_number: Phone number with country code (e.g., "+5511999999999")
-    documentation: CPF or CNPJ document number
-    has_documentation: Whether the signer has documentation (default: False)
-    birthday: Birthday in ISO 8601 format (e.g., "1990-01-15")
-    refusable: Whether the signer can refuse to sign (default: False)
-    group: Signing group/order (default: 0)
-    communicate_events: Event notification config (e.g., {"sign": "email"})
-
-Returns:
-    Created signer object (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    name: "John Doe"
-    email: "john@example.com"
-    phone_number: "+5511999999999"
-    refusable: true
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-- `name` (str, required)
-- `email` (str, required)
-- `phone_number` (Optional[str], optional, default: `None`)
-- `documentation` (Optional[str], optional, default: `None`)
-- `has_documentation` (bool, optional, default: `False`)
-- `birthday` (Optional[str], optional, default: `None`)
-- `refusable` (bool, optional, default: `False`)
-- `group` (int, optional, default: `0`)
-- `communicate_events` (Optional[Dict[str, str]], optional, default: `None`)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_batch_requirements(client, envelope_id, requirements)`
-
-Create multiple requirements in a single batch request.
-
-Each requirement in the list should contain action, role (or auth),
-document_id, and signer_id.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-    requirements: List of requirement dicts, each with keys:
-        - action: Action type (e.g., "agree", "provide_evidence")
-        - document_id: The document ID
-        - signer_id: The signer ID
-        - role: Signer role (for qualifications)
-        - auth: Auth type (for authentications)
-
-Returns:
-    Batch creation response (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    requirements:
-      - action: "agree"
-        role: "sign"
-        document_id: "doc-id-1"
-        signer_id: "signer-id-1"
-      - action: "provide_evidence"
-        auth: "email"
-        document_id: "doc-id-1"
-        signer_id: "signer-id-1"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-- `requirements` (List[Dict[str, Any]], required)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_cancel_envelope(client, envelope_id)`
-
-Cancel an active envelope.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-
-Returns:
-    Updated envelope object (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_close_client(client)`
-
-Close a Clicksign client and release its resources.
-
-Args:
-    client: ClicksignClient to close
-
-Returns:
-    True when the client session is closed
+    True when the client session is closed.
 
 **Returns:** `bool`
 
 ---
 
-### `clicksign_create_client(access_token, sandbox=True)`
+### `apollo_create_client(api_key)`
 
-Create a Clicksign API client for digital signing operations.
+Create an Apollo.io API client for lead generation.
 
 Args:
-    access_token: Clicksign API access token
-    sandbox: Use sandbox environment (default: True)
+    api_key: Apollo.io API key.
 
 Returns:
-    ClicksignClient object to use with other clicksign_* opcodes
+    ApolloClient object to use with other apollo_* opcodes.
 
 Example:
-    access_token: "your-access-token"
-    sandbox: true
+    api_key: "xxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-**Parameters:**
-
-- `access_token` (str, required)
-- `sandbox` (bool, optional, default: `True`)
-
-**Returns:** `ClicksignClient`
+**Returns:** `ApolloClient`
 
 ---
 
-### `clicksign_create_envelope(client, name, locale="pt-BR", auto_close=True, remind_interval="3", block_after_refusal=False, deadline_at=None)`
+### `apollo_enrich_people(client, person_ids, reveal_personal_emails=True, chunk_size=10)`
 
-Create a new signing envelope.
+Enrich people data with full contact and company details.
+
+Calls Apollo's bulk_match endpoint in chunks to retrieve complete
+person and organization data including emails, phones, and company info.
 
 Args:
-    client: ClicksignClient from clicksign_create_client
-    name: Name of the envelope
-    locale: Envelope locale (default: pt-BR)
-    auto_close: Auto-close after all signers sign (default: True)
-    remind_interval: Reminder interval in days (default: "3")
-    block_after_refusal: Block envelope after a signer refuses (default: False)
-    deadline_at: Optional deadline in ISO 8601 format
+    client: ApolloClient from apollo_create_client.
+    person_ids: List of Apollo person IDs to enrich.
+    reveal_personal_emails: Include personal emails in results (default: True).
+    chunk_size: Number of IDs per API call (default: 10, max: 10).
 
 Returns:
-    Created envelope object (JSON:API response)
+    List of enriched person dicts with full contact and company details.
+    Each dict contains person fields (first_name, last_name, title, email,
+    email_status, linkedin_url, city, state, country, seniority, departments)
+    and nested organization fields (name, primary_domain, website_url,
+    industry, estimated_num_employees, phone, linkedin_url).
 
 Example:
     client: { node: create_client }
-    name: "Contract 2024"
-    locale: "pt-BR"
-    auto_close: true
+    person_ids: ["person_123", "person_456"]
+    reveal_personal_emails: true
 
 **Parameters:**
 
-- `client` (ClicksignClient, required)
-- `name` (str, required)
-- `locale` (str, optional, default: `"pt-BR"`)
-- `auto_close` (bool, optional, default: `True`)
-- `remind_interval` (str, optional, default: `"3"`)
-- `block_after_refusal` (bool, optional, default: `False`)
-- `deadline_at` (Optional[str], optional, default: `None`)
+- `client` (ApolloClient, required)
+- `person_ids` (List[str], required)
+- `reveal_personal_emails` (bool, optional, default: `True`)
+- `chunk_size` (int, optional, default: `10`)
+
+**Returns:** `List[Dict[str, Any]]`
+
+---
+
+### `apollo_search_companies(client, organization_locations=None, organization_not_locations=None, organization_num_employees_ranges=None, organization_industries=None, q_organization_keyword_tags=None, q_organization_sic_codes=None, currently_using_any_of_technology_uids=None, organization_ids=None, q_organization_name=None, revenue_range_min=None, revenue_range_max=None, total_funding_range_min=None, total_funding_range_max=None, per_page=100, page=1)`
+
+Search for companies on Apollo.io.
+
+Args:
+    client: ApolloClient from apollo_create_client.
+    organization_locations: List of location strings (e.g., ["Brazil", "São Paulo, Brazil"]).
+    organization_not_locations: Locations to exclude from results.
+    organization_num_employees_ranges: Employee count ranges (e.g., ["1,10", "11,50"]).
+    organization_industries: Industry filters (e.g., ["legal services"]).
+    q_organization_keyword_tags: Keyword tags to filter by.
+    q_organization_sic_codes: SIC code filters.
+    currently_using_any_of_technology_uids: Technology UID filters.
+    organization_ids: Specific organization IDs to search.
+    q_organization_name: Organization name search terms.
+    revenue_range_min: Minimum revenue filter.
+    revenue_range_max: Maximum revenue filter.
+    total_funding_range_min: Minimum total funding filter.
+    total_funding_range_max: Maximum total funding filter.
+    per_page: Results per page (default: 100).
+    page: Page number (default: 1).
+
+Returns:
+    Dict with model_ids (company IDs), organizations (company details),
+    and breadcrumbs (search metadata).
+
+Example:
+    client: { node: create_client }
+    organization_locations: ["Brazil"]
+    organization_industries: ["legal services"]
+    per_page: 100
+    page: 1
+
+**Parameters:**
+
+- `client` (ApolloClient, required)
+- `organization_locations` (Optional[List[str]], optional, default: `None`)
+- `organization_not_locations` (Optional[List[str]], optional, default: `None`)
+- `organization_num_employees_ranges` (Optional[List[str]], optional, default: `None`)
+- `organization_industries` (Optional[List[str]], optional, default: `None`)
+- `q_organization_keyword_tags` (Optional[List[str]], optional, default: `None`)
+- `q_organization_sic_codes` (Optional[List[str]], optional, default: `None`)
+- `currently_using_any_of_technology_uids` (Optional[List[str]], optional, default: `None`)
+- `organization_ids` (Optional[List[str]], optional, default: `None`)
+- `q_organization_name` (Optional[List[str]], optional, default: `None`)
+- `revenue_range_min` (Optional[int], optional, default: `None`)
+- `revenue_range_max` (Optional[int], optional, default: `None`)
+- `total_funding_range_min` (Optional[int], optional, default: `None`)
+- `total_funding_range_max` (Optional[int], optional, default: `None`)
+- `per_page` (int, optional, default: `100`)
+- `page` (int, optional, default: `1`)
 
 **Returns:** `Dict[str, Any]`
 
 ---
 
-### `clicksign_create_webhook(client, url, events)`
+### `apollo_search_law_firms(client, locations, employee_ranges=None, keyword_tags=None, industries=None, sic_codes=None, technology_uids=None, per_page=100, page=1)`
 
-Create a webhook subscription for envelope events.
+Search for law firms on Apollo.io with legal industry defaults.
+
+Convenience opcode that wraps apollo_search_companies with pre-configured
+defaults for the legal industry: 150 legal keyword tags, law practice/legal
+services industries, SIC code 8111, and automatic exclusion of non-selected
+Brazilian states.
 
 Args:
-    client: ClicksignClient from clicksign_create_client
-    url: URL to receive webhook POST requests
-    events: List of event types to subscribe to (e.g.,
-        ["envelope.closed", "signer.signed", "envelope.canceled"])
+    client: ApolloClient from apollo_create_client.
+    locations: List of location strings (e.g., ["são paulo, Brazil"]).
+    employee_ranges: Employee count ranges (e.g., ["1,10", "11,50"]).
+    keyword_tags: Override default legal keyword tags (150 legal terms).
+    industries: Override default industries (law practice, legal services).
+    sic_codes: Override default SIC codes (8111).
+    technology_uids: Technology UID filters.
+    per_page: Results per page (default: 100).
+    page: Page number (default: 1).
 
 Returns:
-    Created webhook object (JSON:API response)
+    Dict with model_ids (company IDs), organizations (company details),
+    and breadcrumbs (search metadata).
 
 Example:
     client: { node: create_client }
-    url: "https://my-app.com/webhooks/clicksign"
-    events:
-      - "envelope.closed"
-      - "signer.signed"
+    locations: ["são paulo, Brazil"]
+    employee_ranges: ["1,10", "11,50"]
+    page: 1
 
 **Parameters:**
 
-- `client` (ClicksignClient, required)
-- `url` (str, required)
-- `events` (List[str], required)
+- `client` (ApolloClient, required)
+- `locations` (List[str], required)
+- `employee_ranges` (Optional[List[str]], optional, default: `None`)
+- `keyword_tags` (Optional[List[str]], optional, default: `None`)
+- `industries` (Optional[List[str]], optional, default: `None`)
+- `sic_codes` (Optional[List[str]], optional, default: `None`)
+- `technology_uids` (Optional[List[str]], optional, default: `None`)
+- `per_page` (int, optional, default: `100`)
+- `page` (int, optional, default: `1`)
 
 **Returns:** `Dict[str, Any]`
 
 ---
 
-### `clicksign_delete_document(client, envelope_id, document_id)`
+### `apollo_search_legal_people(client, organization_ids, person_locations=None, titles=None, per_page=100, page=1)`
 
-Delete a document from an envelope.
+Search for legal professionals on Apollo.io with legal title defaults.
+
+Convenience opcode that wraps apollo_search_people with pre-configured
+defaults for the legal industry: 64 legal job titles (PT/EN) and
+verified email status filter.
 
 Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-    document_id: The document ID
+    client: ApolloClient from apollo_create_client.
+    organization_ids: List of Apollo organization IDs to search within.
+    person_locations: Location filters for people.
+    titles: Override default legal titles (51 legal roles PT/EN).
+    per_page: Results per page (default: 100).
+    page: Page number (default: 1).
 
 Returns:
-    True if deletion was successful
+    Dict with people list containing id, first_name, last_name, title.
 
 Example:
     client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    document_id: "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
+    organization_ids: ["org_123", "org_456"]
+    person_locations: ["são paulo, Brazil"]
 
 **Parameters:**
 
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-- `document_id` (str, required)
-
-**Returns:** `bool`
-
----
-
-### `clicksign_delete_envelope(client, envelope_id)`
-
-Delete an envelope.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-
-Returns:
-    True if deletion was successful
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-
-**Returns:** `bool`
-
----
-
-### `clicksign_delete_requirement(client, envelope_id, requirement_id)`
-
-Delete a requirement from an envelope.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-    requirement_id: The requirement ID
-
-Returns:
-    True if deletion was successful
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    requirement_id: "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-- `requirement_id` (str, required)
-
-**Returns:** `bool`
-
----
-
-### `clicksign_delete_signer(client, envelope_id, signer_id)`
-
-Delete a signer from an envelope.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-    signer_id: The signer ID
-
-Returns:
-    True if deletion was successful
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-- `signer_id` (str, required)
-
-**Returns:** `bool`
-
----
-
-### `clicksign_delete_webhook(client, webhook_id)`
-
-Delete a webhook subscription.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    webhook_id: The webhook ID
-
-Returns:
-    True if deletion was successful
-
-Example:
-    client: { node: create_client }
-    webhook_id: "wwwwwwww-wwww-wwww-wwww-wwwwwwwwwwww"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `webhook_id` (str, required)
-
-**Returns:** `bool`
-
----
-
-### `clicksign_get_document(client, envelope_id, document_id)`
-
-Get a document from an envelope.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-    document_id: The document ID
-
-Returns:
-    Document object (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    document_id: "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-- `document_id` (str, required)
+- `client` (ApolloClient, required)
+- `organization_ids` (List[str], required)
+- `person_locations` (Optional[List[str]], optional, default: `None`)
+- `titles` (Optional[List[str]], optional, default: `None`)
+- `per_page` (int, optional, default: `100`)
+- `page` (int, optional, default: `1`)
 
 **Returns:** `Dict[str, Any]`
 
 ---
 
-### `clicksign_get_envelope(client, envelope_id)`
+### `apollo_search_people(client, organization_ids=None, person_titles=None, person_locations=None, contact_email_status=None, person_seniorities=None, per_page=100, page=1)`
 
-Get an envelope by ID.
+Search for people on Apollo.io.
 
 Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
+    client: ApolloClient from apollo_create_client.
+    organization_ids: List of Apollo organization IDs to search within.
+    person_titles: Job title filters (e.g., ["Sócio", "Advogado"]).
+    person_locations: Location filters for people.
+    contact_email_status: Email status filters (e.g., ["verified"]).
+    person_seniorities: Seniority level filters.
+    per_page: Results per page (default: 100).
+    page: Page number (default: 1).
 
 Returns:
-    Envelope object (JSON:API response)
+    Dict with people list containing id, first_name, last_name, title.
 
 Example:
     client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    organization_ids: ["org_123", "org_456"]
+    person_titles: ["Sócio", "Advogado Senior"]
+    contact_email_status: ["verified"]
 
 **Parameters:**
 
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_get_signer(client, envelope_id, signer_id)`
-
-Get a signer from an envelope.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-    signer_id: The signer ID
-
-Returns:
-    Signer object (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-- `signer_id` (str, required)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_get_template(client, template_id)`
-
-Get a template by ID.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    template_id: The template ID
-
-Returns:
-    Template object (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    template_id: "tttttttt-tttt-tttt-tttt-tttttttttttt"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `template_id` (str, required)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_list_documents(client, envelope_id)`
-
-List all documents in an envelope.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-
-Returns:
-    List of documents (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_list_envelopes(client, status=None, name=None)`
-
-List envelopes with optional filters.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    status: Filter by status (e.g., "running", "closed", "canceled")
-    name: Filter by name
-
-Returns:
-    List of envelopes (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    status: "running"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `status` (Optional[str], optional, default: `None`)
-- `name` (Optional[str], optional, default: `None`)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_list_requirements(client, envelope_id)`
-
-List all requirements in an envelope.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-
-Returns:
-    List of requirements (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_list_signers(client, envelope_id)`
-
-List all signers in an envelope.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-
-Returns:
-    List of signers (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_list_templates(client)`
-
-List all available document templates.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-
-Returns:
-    List of templates (JSON:API response)
-
-Example:
-    client: { node: create_client }
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_list_webhooks(client)`
-
-List all webhook subscriptions.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-
-Returns:
-    List of webhooks (JSON:API response)
-
-Example:
-    client: { node: create_client }
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_notify_all(client, envelope_id)`
-
-Send notifications to all pending signers in an envelope.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-
-Returns:
-    Notification response (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_notify_signer(client, envelope_id, signer_id)`
-
-Send a notification to a specific signer.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-    signer_id: The signer ID to notify
-
-Returns:
-    Notification response (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    signer_id: "ssssssss-ssss-ssss-ssss-ssssssssssss"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-- `signer_id` (str, required)
-
-**Returns:** `Dict[str, Any]`
-
----
-
-### `clicksign_update_document(client, envelope_id, document_id, filename=None)`
-
-Update a document in an envelope.
-
-Args:
-    client: ClicksignClient from clicksign_create_client
-    envelope_id: The envelope ID
-    document_id: The document ID
-    filename: New filename for the document
-
-Returns:
-    Updated document object (JSON:API response)
-
-Example:
-    client: { node: create_client }
-    envelope_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    document_id: "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
-    filename: "updated_contract.pdf"
-
-**Parameters:**
-
-- `client` (ClicksignClient, required)
-- `envelope_id` (str, required)
-- `document_id` (str, required)
-- `filename` (Optional[str], optional, default: `None`)
+- `client` (ApolloClient, required)
+- `organization_ids` (Optional[List[str]], optional, default: `None`)
+- `person_titles` (Optional[List[str]], optional, default: `None`)
+- `person_locations` (Optional[List[str]], optional, default: `None`)
+- `contact_email_status` (Optional[List[str]], optional, default: `None`)
+- `person_seniorities` (Optional[List[str]], optional, default: `None`)
+- `per_page` (int, optional, default: `100`)
+- `page` (int, optional, default: `1`)
 
 **Returns:** `Dict[str, Any]`
 
@@ -4015,30 +3433,6 @@ Returns:
 Update the display to show all drawn elements.
 
 **Returns:** `NoneType`
-
----
-
-## receitaws ReceitaWS Operations
-
-> **Requires:** `pip install lexflow[receitaws]`
-
-### `receitaws_consulta_cnpj(cnpj)`
-
-Consulta dados de uma empresa pelo CNPJ na ReceitaWS.
-
-Args:
-    cnpj: CNPJ da empresa (aceita formatado ou apenas digitos)
-
-Returns:
-    Dict com dados da empresa (nome, fantasia, situacao, etc.)
-
-Raises:
-    ValueError: Se o CNPJ nao tiver 14 digitos ou a API retornar erro
-
-Example:
-    cnpj: "11.222.333/0001-81"
-
-**Returns:** `Dict[str, Any]`
 
 ---
 
@@ -6620,7 +6014,7 @@ Required scopes: files:write
 
 ## Summary
 
-**Total opcodes:** 330
+**Total opcodes:** 306
 
 ### Categories
 
@@ -6647,10 +6041,9 @@ Required scopes: files:write
 | 📋 JSON Operations | 2 | - |
 | hubspot HubSpot Operations | 19 | `lexflow[http]` |
 | 🔍 Web Search | 4 | `lexflow[search]` |
-| clicksign Clicksign Operations | 30 | `lexflow[clicksign]` |
+| 🚀 Apollo.io | 7 | `lexflow[http]` |
 | ☁️ Cloud Storage | 11 | `lexflow[gcs]` |
 | 🎮 Pygame Operations | 16 | `lexflow[pygame]` |
-| receitaws ReceitaWS Operations | 1 | `lexflow[receitaws]` |
 | 🔍 RAG Operations | 20 | `lexflow[rag]` |
 | 🐘 PgVector Operations | 9 | `lexflow[pgvector]` |
 | 💬 Chat Operations | 10 | - |
