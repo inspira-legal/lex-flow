@@ -69,7 +69,8 @@ def register_receitaws_opcodes():
 
         url = f"https://www.receitaws.com.br/v1/cnpj/{cnpj_digits}"
 
-        async with aiohttp.ClientSession() as session:
+        timeout = aiohttp.ClientTimeout(total=30)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(url) as response:
                 data = await response.json()
 

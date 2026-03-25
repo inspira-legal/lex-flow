@@ -172,6 +172,18 @@ class TestClicksignEnvelopes:
         assert body["data"]["attributes"]["remind_interval"] == 3
         assert isinstance(body["data"]["attributes"]["remind_interval"], int)
 
+    async def test_create_envelope_empty_name_raises_error(self):
+        with pytest.raises(ValueError, match="name cannot be empty"):
+            await default_registry.call(
+                "clicksign_create_envelope", [_mock_client(), ""]
+            )
+
+    async def test_create_envelope_whitespace_name_raises_error(self):
+        with pytest.raises(ValueError, match="name cannot be empty"):
+            await default_registry.call(
+                "clicksign_create_envelope", [_mock_client(), "   "]
+            )
+
     async def test_create_envelope_with_deadline(self):
         client = _mock_client()
         expected = {"data": {"id": "env-456", "type": "envelopes"}}
@@ -670,6 +682,19 @@ class TestClicksignWebhooks:
         assert body["data"]["type"] == "webhooks"
         assert body["data"]["attributes"]["url"] == "https://my-app.com/webhooks"
         assert body["data"]["attributes"]["events"] == events
+
+    async def test_create_webhook_empty_url_raises_error(self):
+        with pytest.raises(ValueError, match="url cannot be empty"):
+            await default_registry.call(
+                "clicksign_create_webhook", [_mock_client(), "", ["envelope.closed"]]
+            )
+
+    async def test_create_webhook_empty_events_raises_error(self):
+        with pytest.raises(ValueError, match="events cannot be empty"):
+            await default_registry.call(
+                "clicksign_create_webhook",
+                [_mock_client(), "https://example.com/webhook", []],
+            )
 
     async def test_list_webhooks(self):
         client = _mock_client()

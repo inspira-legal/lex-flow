@@ -49,6 +49,7 @@ class ClicksignClient:
                 "Content-Type": "application/vnd.api+json",
                 "Accept": "application/vnd.api+json",
             },
+            timeout=aiohttp.ClientTimeout(total=30),
         )
 
     def __repr__(self) -> str:
@@ -204,6 +205,9 @@ def register_clicksign_opcodes():
             locale: "pt-BR"
             auto_close: true
         """
+        if not name or not name.strip():
+            raise ValueError("name cannot be empty")
+
         attributes: Dict[str, Any] = {
             "name": name,
             "locale": locale,
@@ -1022,6 +1026,11 @@ def register_clicksign_opcodes():
               - "envelope.closed"
               - "signer.signed"
         """
+        if not url or not url.strip():
+            raise ValueError("url cannot be empty")
+        if not events:
+            raise ValueError("events cannot be empty")
+
         body = {
             "data": {
                 "type": "webhooks",
