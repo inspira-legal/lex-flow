@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.17.0 (2026-03-30)
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`3a99a4e`](https://github.com/inspira-legal/lex-flow/commit/3a99a4e1b8b7d2b0cd097143b51b4a1e09d0b0ec))
+
+### Features
+
+- **core**: Add http_post_json and http_post_data opcodes
+  ([`9f37ec8`](https://github.com/inspira-legal/lex-flow/commit/9f37ec8dd17ef1ab0c4e6ee191def5ad030ffdea))
+
+
 ## v1.16.0 (2026-03-25)
 
 ### Bug Fixes
