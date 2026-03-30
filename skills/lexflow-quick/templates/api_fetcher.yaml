@@ -1,0 +1,60 @@
+workflows:
+  - name: main
+    interface:
+      inputs: ["api_url", "method"]
+      outputs: []
+
+    variables:
+      api_url: "https://api.example.com/data"
+      method: "GET"
+      headers: {}
+      response: null
+      parsed_data: null
+      status_code: null
+
+    nodes:
+      start:
+        opcode: workflow_start
+        next: make_request
+        inputs: {}
+
+      make_request:
+        opcode: http_get
+        next: store_response
+        inputs:
+          URL:
+            variable: api_url
+          HEADERS:
+            variable: headers
+
+      store_response:
+        opcode: data_set_variable_to
+        next: parse_json
+        inputs:
+          VARIABLE:
+            literal: "response"
+          VALUE:
+            node: make_request
+
+      parse_json:
+        opcode: json_parse
+        next: extract_data
+        inputs:
+          JSON_STRING:
+            variable: response
+
+      extract_data:
+        opcode: data_set_variable_to
+        next: print_result
+        inputs:
+          VARIABLE:
+            literal: "parsed_data"
+          VALUE:
+            node: parse_json
+
+      print_result:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "API Response: {{parsed_data}}"
