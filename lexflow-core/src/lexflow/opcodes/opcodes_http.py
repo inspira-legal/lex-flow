@@ -111,6 +111,12 @@ def register_http_opcodes():
         ) -> Dict[str, Any]:
             """Perform an HTTP POST request.
 
+            .. deprecated::
+                Use http_post_json for JSON payloads or http_post_data for
+                form/raw data. This opcode has a known argument ordering bug
+                where named inputs are mapped positionally, causing json data
+                to be sent as form data.
+
             Args:
                 url: The URL to request
                 data: Form data to send (for form-encoded POST)
@@ -126,6 +132,78 @@ def register_http_opcodes():
                 async with session.post(
                     url, data=data, json=json, headers=headers
                 ) as response:
+                    text = await response.text()
+                    json_data = None
+                    if "application/json" in response.headers.get("Content-Type", ""):
+                        try:
+                            json_data = json_module.loads(text)
+                        except json_module.JSONDecodeError:
+                            pass
+
+                    return {
+                        "status": response.status,
+                        "headers": dict(response.headers),
+                        "text": text,
+                        "json": json_data,
+                    }
+
+        @opcode(category="http")
+        async def http_post_json(
+            url: str,
+            json: Dict[str, Any],
+            headers: Optional[Dict[str, str]] = None,
+            timeout: float = 30.0,
+        ) -> Dict[str, Any]:
+            """POST JSON data (sets Content-Type: application/json automatically).
+
+            Args:
+                url: The URL to request
+                json: JSON data to send
+                headers: Optional dictionary of additional HTTP headers
+                timeout: Request timeout in seconds (default: 30.0)
+
+            Returns:
+                Response dict with keys: status, headers, text, json
+            """
+            client_timeout = aiohttp.ClientTimeout(total=timeout)
+            async with aiohttp.ClientSession(timeout=client_timeout) as session:
+                async with session.post(url, json=json, headers=headers) as response:
+                    text = await response.text()
+                    json_data = None
+                    if "application/json" in response.headers.get("Content-Type", ""):
+                        try:
+                            json_data = json_module.loads(text)
+                        except json_module.JSONDecodeError:
+                            pass
+
+                    return {
+                        "status": response.status,
+                        "headers": dict(response.headers),
+                        "text": text,
+                        "json": json_data,
+                    }
+
+        @opcode(category="http")
+        async def http_post_data(
+            url: str,
+            data: str,
+            headers: Optional[Dict[str, str]] = None,
+            timeout: float = 30.0,
+        ) -> Dict[str, Any]:
+            """POST form/raw data.
+
+            Args:
+                url: The URL to request
+                data: Data to send (string or form data)
+                headers: Optional dictionary of HTTP headers
+                timeout: Request timeout in seconds (default: 30.0)
+
+            Returns:
+                Response dict with keys: status, headers, text, json
+            """
+            client_timeout = aiohttp.ClientTimeout(total=timeout)
+            async with aiohttp.ClientSession(timeout=client_timeout) as session:
+                async with session.post(url, data=data, headers=headers) as response:
                     text = await response.text()
                     json_data = None
                     if "application/json" in response.headers.get("Content-Type", ""):
