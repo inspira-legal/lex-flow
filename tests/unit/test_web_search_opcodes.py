@@ -11,7 +11,7 @@ TAVILY_AVAILABLE = importlib.util.find_spec("tavily") is not None
 
 # Try to import helper functions for testing
 try:
-    from lexflow.opcodes.opcodes_web_search import (
+    from lexflow_opcodes.web_search import (
         _check_tavily,
         _format_results,
         _resolve_client,
@@ -32,7 +32,7 @@ class TestCheckTavily:
     @pytest.mark.skipif(not HELPERS_AVAILABLE, reason="helpers not available")
     @pytest.mark.skipif(not TAVILY_AVAILABLE, reason="tavily not installed")
     def test_raises_import_error_when_not_installed(self):
-        with patch("lexflow.opcodes.opcodes_web_search.TAVILY_AVAILABLE", False):
+        with patch("lexflow_opcodes.web_search.TAVILY_AVAILABLE", False):
             with pytest.raises(ImportError, match="tavily-python is required"):
                 _check_tavily()
 
@@ -176,7 +176,7 @@ class TestWebSearchOpcode:
         }
 
         with patch(
-            "lexflow.opcodes.opcodes_web_search.AsyncTavilyClient"
+            "lexflow_opcodes.web_search.AsyncTavilyClient"
         ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.search = AsyncMock(return_value=mock_response)
@@ -202,7 +202,7 @@ class TestWebSearchOpcode:
         mock_response = {"results": []}
 
         with patch(
-            "lexflow.opcodes.opcodes_web_search.AsyncTavilyClient"
+            "lexflow_opcodes.web_search.AsyncTavilyClient"
         ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.search = AsyncMock(return_value=mock_response)
@@ -236,7 +236,7 @@ class TestWebSearchOpcode:
 
         with patch.dict("os.environ", {"TAVILY_API_KEY": "env-key"}):
             with patch(
-                "lexflow.opcodes.opcodes_web_search.AsyncTavilyClient"
+                "lexflow_opcodes.web_search.AsyncTavilyClient"
             ) as mock_client_class:
                 mock_client = AsyncMock()
                 mock_client.search = AsyncMock(return_value=mock_response)
@@ -278,7 +278,7 @@ class TestWebSearchNewsOpcode:
         }
 
         with patch(
-            "lexflow.opcodes.opcodes_web_search.AsyncTavilyClient"
+            "lexflow_opcodes.web_search.AsyncTavilyClient"
         ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.search = AsyncMock(return_value=mock_response)
@@ -303,7 +303,7 @@ class TestWebSearchNewsOpcode:
         mock_response = {"results": []}
 
         with patch(
-            "lexflow.opcodes.opcodes_web_search.AsyncTavilyClient"
+            "lexflow_opcodes.web_search.AsyncTavilyClient"
         ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.search = AsyncMock(return_value=mock_response)
@@ -350,7 +350,7 @@ class TestWebSearchContextOpcode:
         mock_context = "This is search context optimized for RAG..."
 
         with patch(
-            "lexflow.opcodes.opcodes_web_search.AsyncTavilyClient"
+            "lexflow_opcodes.web_search.AsyncTavilyClient"
         ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get_search_context = AsyncMock(return_value=mock_context)
@@ -373,7 +373,7 @@ class TestWebSearchContextOpcode:
         mock_context = "Custom context..."
 
         with patch(
-            "lexflow.opcodes.opcodes_web_search.AsyncTavilyClient"
+            "lexflow_opcodes.web_search.AsyncTavilyClient"
         ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get_search_context = AsyncMock(return_value=mock_context)
@@ -402,7 +402,7 @@ class TestWebSearchContextOpcode:
 
         with patch.dict("os.environ", {"TAVILY_API_KEY": "env-key"}):
             with patch(
-                "lexflow.opcodes.opcodes_web_search.AsyncTavilyClient"
+                "lexflow_opcodes.web_search.AsyncTavilyClient"
             ) as mock_client_class:
                 mock_client = AsyncMock()
                 mock_client.get_search_context = AsyncMock(return_value=mock_context)

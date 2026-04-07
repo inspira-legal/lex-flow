@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from lexflow.opcodes.opcodes_pgvector import _validate_table_name
+from lexflow_opcodes.pgvector import _validate_table_name
 
 pytestmark = pytest.mark.asyncio
 
@@ -126,8 +126,8 @@ except ImportError:
 
 @pytest.mark.skipif(not HAS_ASYNCPG, reason="asyncpg not installed")
 class TestPgvectorOpcodeLogic:
-    @patch("lexflow.opcodes.opcodes_pgvector.asyncpg")
-    @patch("lexflow.opcodes.opcodes_pgvector.register_vector", new_callable=AsyncMock)
+    @patch("lexflow_opcodes.pgvector.asyncpg")
+    @patch("lexflow_opcodes.pgvector.register_vector", new_callable=AsyncMock)
     async def test_connect_with_ensure_extension(self, mock_register, mock_asyncpg):
         from lexflow.opcodes import default_registry
 
@@ -148,8 +148,8 @@ class TestPgvectorOpcodeLogic:
         mock_conn.close.assert_called_once()
         mock_asyncpg.create_pool.assert_called_once()
 
-    @patch("lexflow.opcodes.opcodes_pgvector.asyncpg")
-    @patch("lexflow.opcodes.opcodes_pgvector.register_vector", new_callable=AsyncMock)
+    @patch("lexflow_opcodes.pgvector.asyncpg")
+    @patch("lexflow_opcodes.pgvector.register_vector", new_callable=AsyncMock)
     async def test_connect_without_ensure_extension(self, mock_register, mock_asyncpg):
         from lexflow.opcodes import default_registry
 
@@ -165,8 +165,8 @@ class TestPgvectorOpcodeLogic:
         mock_asyncpg.connect.assert_not_called()
         mock_asyncpg.create_pool.assert_called_once()
 
-    @patch("lexflow.opcodes.opcodes_pgvector.asyncpg")
-    @patch("lexflow.opcodes.opcodes_pgvector.register_vector", new_callable=AsyncMock)
+    @patch("lexflow_opcodes.pgvector.asyncpg")
+    @patch("lexflow_opcodes.pgvector.register_vector", new_callable=AsyncMock)
     async def test_connect_timeout_error(self, mock_register, mock_asyncpg):
         from lexflow.opcodes import default_registry
 
