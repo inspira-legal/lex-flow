@@ -9,7 +9,7 @@ from lexflow import default_registry
 HUBSPOT_AVAILABLE = importlib.util.find_spec("aiohttp") is not None
 
 try:
-    from lexflow.opcodes.opcodes_hubspot import (
+    from lexflow_opcodes.hubspot import (
         _validate_object_type,
         _validate_id,
         _get_association_type_id,
@@ -95,7 +95,7 @@ class TestGetAssociationTypeId:
 
 def _mock_client():
     """Create a HubSpotClient with a mocked aiohttp session."""
-    with patch("lexflow.opcodes.opcodes_hubspot.aiohttp.ClientSession"):
+    with patch("lexflow_opcodes.hubspot.aiohttp.ClientSession"):
         client = HubSpotClient("test-token")
 
     # Replace session with a mock
@@ -226,7 +226,7 @@ class TestHubSpotClientRequest:
 
 class TestHubSpotCreateClient:
     async def test_creates_client(self):
-        with patch("lexflow.opcodes.opcodes_hubspot.aiohttp.ClientSession"):
+        with patch("lexflow_opcodes.hubspot.aiohttp.ClientSession"):
             client = await default_registry.call(
                 "hubspot_create_client", ["test-token"]
             )
