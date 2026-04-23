@@ -23,3 +23,33 @@ repos:
         language: system
         pass_filenames: false
         files: ^lexflow-core/src/lexflow/grammar\.json$
+
+      - id: conventional-commit-msg
+        name: validate conventional commit message
+        entry: bash -c '
+          MSG=$(head -1 "$1")
+          if echo "$MSG" | grep -qE "^Merge "; then
+            exit 0
+          fi
+          if ! echo "$MSG" | grep -qE "^(feat|fix|perf|refactor|docs|chore|test)\((core|web|cli|ai|examples)\): .+"; then
+            echo ""
+            echo "ERROR: Commit message does not follow Conventional Commits (rule H1)."
+            echo ""
+            echo "  Expected format: <type>(<scope>): <description>"
+            echo ""
+            echo "  Valid types:  feat, fix, perf, refactor, docs, chore, test"
+            echo "  Valid scopes: core, web, cli, ai, examples"
+            echo ""
+            echo "  Examples:"
+            echo "    feat(core): add new opcode for string interpolation"
+            echo "    fix(web): resolve login redirect loop"
+            echo "    chore(cli): update dependencies"
+            echo ""
+            echo "  Your message: $MSG"
+            echo ""
+            exit 1
+          fi
+          '
+        language: system
+        stages: [commit-msg]
+        always_run: true
