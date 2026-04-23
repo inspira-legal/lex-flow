@@ -139,14 +139,6 @@
       "icon": "📋"
     },
     {
-      "id": "drive",
-      "label": "Google Drive",
-      "prefix": "drive_",
-      "color": "#4285F4",
-      "icon": "📁",
-      "requires": "drive"
-    },
-    {
       "id": "hubspot",
       "label": "HubSpot Operations",
       "prefix": "hubspot_",
