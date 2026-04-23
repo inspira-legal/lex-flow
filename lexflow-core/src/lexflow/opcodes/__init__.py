@@ -6,6 +6,7 @@ from .opcodes import (
     register_category,
 )
 from .opcodes_apollo import register_apollo_opcodes
+from .opcodes_drive import register_drive_opcodes
 from .opcodes_gcs import register_gcs_opcodes
 from .opcodes_http import register_http_opcodes
 from .opcodes_pgvector import register_pgvector_opcodes
@@ -28,6 +29,7 @@ from . import opcodes_tasks  # noqa: F401
 
 # Register optional opcode modules (require external dependencies)
 register_apollo_opcodes()
+register_drive_opcodes()
 register_gcs_opcodes()
 register_http_opcodes()
 register_pgvector_opcodes()
