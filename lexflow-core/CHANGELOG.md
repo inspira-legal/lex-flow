@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.18.0 (2026-04-23)
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`07280de`](https://github.com/inspira-legal/lex-flow/commit/07280def975f58d3dbe273185be660a59a2b3e2b))
+
+### Features
+
+- **core**: Add Google Drive opcodes
+  ([`fd61a84`](https://github.com/inspira-legal/lex-flow/commit/fd61a846a93fd5ec99aac47458455d119c19381d))
+
+
 ## v1.17.0 (2026-03-30)
 
 ### Documentation
