@@ -42,11 +42,11 @@ class TestSheetsCreateClient:
         with (
             patch("asyncio.to_thread", side_effect=fake_to_thread),
             patch(
-                "lexflow.opcodes.opcodes_sheets.google_auth_default",
+                "lexflow_opcodes.sheets.google_auth_default",
                 return_value=(mock_creds, "project-id"),
             ),
             patch(
-                "lexflow.opcodes.opcodes_sheets.build",
+                "lexflow_opcodes.sheets.build",
                 return_value=Mock(),
             ) as mock_build,
         ):
@@ -77,11 +77,11 @@ class TestSheetsCreateClient:
             patch("asyncio.to_thread", side_effect=fake_to_thread),
             patch("os.path.isfile", return_value=True),
             patch(
-                "lexflow.opcodes.opcodes_sheets.Credentials.from_service_account_file",
+                "lexflow_opcodes.sheets.Credentials.from_service_account_file",
                 return_value=mock_creds,
             ),
             patch(
-                "lexflow.opcodes.opcodes_sheets.build",
+                "lexflow_opcodes.sheets.build",
                 return_value=Mock(),
             ) as mock_build,
         ):

@@ -57,7 +57,7 @@ class TestReceitawsConsultaCnpj:
         session_ctx = _mock_aiohttp_session(response_ctx)
 
         with patch(
-            "lexflow.opcodes.opcodes_receitaws.aiohttp.ClientSession",
+            "lexflow_opcodes.receitaws.aiohttp.ClientSession",
             return_value=session_ctx,
         ):
             result = await default_registry.call(
@@ -84,7 +84,7 @@ class TestReceitawsConsultaCnpj:
         session_ctx = _mock_aiohttp_session(response_ctx)
 
         with patch(
-            "lexflow.opcodes.opcodes_receitaws.aiohttp.ClientSession",
+            "lexflow_opcodes.receitaws.aiohttp.ClientSession",
             return_value=session_ctx,
         ):
             result = await default_registry.call(
@@ -109,7 +109,7 @@ class TestReceitawsConsultaCnpj:
         session_ctx = _mock_aiohttp_session(response_ctx)
 
         with patch(
-            "lexflow.opcodes.opcodes_receitaws.aiohttp.ClientSession",
+            "lexflow_opcodes.receitaws.aiohttp.ClientSession",
             return_value=session_ctx,
         ):
             with pytest.raises(ValueError, match="CNPJ inválido"):

@@ -9,7 +9,7 @@ from lexflow import default_registry
 AIOHTTP_AVAILABLE = importlib.util.find_spec("aiohttp") is not None
 
 try:
-    from lexflow.opcodes.opcodes_apollo import (
+    from lexflow_opcodes.apollo import (
         _build_query_params,
         _build_excluded_brazilian_states,
         _check_aiohttp,
@@ -37,7 +37,7 @@ class TestCheckAiohttp:
 
     @pytest.mark.skipif(not HELPERS_AVAILABLE, reason="helpers not available")
     def test_raises_import_error_when_not_installed(self):
-        with patch("lexflow.opcodes.opcodes_apollo.APOLLO_AVAILABLE", False):
+        with patch("lexflow_opcodes.apollo.APOLLO_AVAILABLE", False):
             with pytest.raises(ImportError, match="aiohttp is required"):
                 _check_aiohttp()
 
