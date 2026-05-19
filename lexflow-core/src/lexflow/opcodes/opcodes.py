@@ -18,6 +18,7 @@ class CategoryInfo:
     icon: str = "⚡"
     requires: Optional[str] = None  # pip extra required (e.g., "ai", "http")
     order: int = field(default=100)  # display order in docs
+    description: str = ""  # user-facing description (e.g., PT-BR for frontend)
 
     def to_dict(self) -> dict:
         """Convert to dict for grammar.json export."""
@@ -27,6 +28,7 @@ class CategoryInfo:
             "prefix": self.prefix,
             "color": self.color,
             "icon": self.icon,
+            "description": self.description,
         }
         if self.requires:
             d["requires"] = self.requires
@@ -43,6 +45,7 @@ class OpcodeRegistry:
         self.opcode_categories: dict[str, str] = {}  # opcode_name -> category_id
         self._privileged: set[str] = set()
         self._injected: dict[str, Callable] = {}
+        self.descriptions: dict[str, str] = {}  # opcode_name -> user-facing description
         self._register_builtin_categories()
         self._register_builtins()
 
@@ -103,6 +106,7 @@ class OpcodeRegistry:
         icon: str = "⚡",
         requires: Optional[str] = None,
         order: int = 200,
+        description: str = "",
     ) -> CategoryInfo:
         """Register a category for opcodes.
 
@@ -114,11 +118,21 @@ class OpcodeRegistry:
             icon: Emoji icon for UI display
             requires: pip extra required (e.g., "ai" for lexflow[ai])
             order: Display order in docs (lower = earlier)
+            description: User-facing description (e.g., PT-BR for frontend)
 
         Returns:
             The registered CategoryInfo
         """
-        cat = CategoryInfo(id, label, prefix, color, icon, requires, order)
+        cat = CategoryInfo(
+            id=id,
+            label=label,
+            prefix=prefix,
+            color=color,
+            icon=icon,
+            requires=requires,
+            order=order,
+            description=description,
+        )
         self.categories[id] = cat
         return cat
 
@@ -151,7 +165,7 @@ class OpcodeRegistry:
         return sorted(self.categories.values(), key=lambda c: (c.order, c.id))
 
     def register(
-        self, name: str = None, *, category: str = None, privileged: bool = False
+        self, name: str = None, *, category: str = None, privileged: bool = False, description: str = ""
     ):
         """
         Decorator to register an opcode with automatic argument unpacking.
@@ -190,6 +204,10 @@ class OpcodeRegistry:
             # Store original signature for introspection
             sig = inspect.signature(func)
             self.signatures[opcode_name] = sig
+
+            # Store user-facing description if provided
+            if description:
+                self.descriptions[opcode_name] = description
 
             if privileged:
                 # Mark as privileged - requires injection before use
@@ -339,7 +357,7 @@ class OpcodeRegistry:
         return_type = hints.get("return", Any)
         return_type_name = self._format_type_hint(return_type)
 
-        return {
+        result = {
             "name": name,
             "parameters": params,
             "return_type": return_type_name,
@@ -347,6 +365,9 @@ class OpcodeRegistry:
             if original_func.__doc__
             else None,
         }
+        if name in self.descriptions:
+            result["description"] = self.descriptions[name]
+        return result
 
     def list_opcodes(self, include_private: bool = False) -> list[str]:
         """List all registered opcodes.
@@ -1037,7 +1058,7 @@ class OpcodeRegistry:
 default_registry = OpcodeRegistry()
 
 
-def opcode(name: str = None, *, category: str = None):
+def opcode(name: str = None, *, category: str = None, description: str = ""):
     """Convenience decorator for registering opcodes to the default global registry.
 
     Usage:
@@ -1049,7 +1070,7 @@ def opcode(name: str = None, *, category: str = None):
         async def my_category_op(x: int) -> int:
             return x * 2
     """
-    return default_registry.register(name, category=category)
+    return default_registry.register(name, category=category, description=description)
 
 
 def register_category(
@@ -1060,6 +1081,7 @@ def register_category(
     icon: str = "⚡",
     requires: Optional[str] = None,
     order: int = 200,
+    description: str = "",
 ) -> CategoryInfo:
     """Register a category to the default global registry.
 
@@ -1080,5 +1102,5 @@ def register_category(
             return x * 2
     """
     return default_registry.register_category(
-        id, label, prefix, color, icon, requires, order
+        id, label, prefix, color, icon, requires, order, description
     )
