@@ -2,6 +2,29 @@
 
 <!-- version list -->
 
+## v1.19.0 (2026-05-19)
+
+### Bug Fixes
+
+- Address PR review — tests, keyword args, top-level functions
+  ([#79](https://github.com/inspira-legal/lex-flow/pull/79),
+  [`0ae4829`](https://github.com/inspira-legal/lex-flow/commit/0ae4829360143a5292f1c784a4268f467177e91d))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`db41e9a`](https://github.com/inspira-legal/lex-flow/commit/db41e9ae85050059353080ad83d1b5dffb09b214))
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`e5f241e`](https://github.com/inspira-legal/lex-flow/commit/e5f241ead804147411f361d3a0893d42ba59f4b2))
+
+### Features
+
+- **opcodes**: Add description field to CategoryInfo and register decorator
+  ([#79](https://github.com/inspira-legal/lex-flow/pull/79),
+  [`0ae4829`](https://github.com/inspira-legal/lex-flow/commit/0ae4829360143a5292f1c784a4268f467177e91d))
+
+
 ## v1.18.0 (2026-04-23)
 
 ### Documentation
