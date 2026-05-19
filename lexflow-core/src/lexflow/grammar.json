@@ -6,98 +6,112 @@
       "label": "I/O Operations",
       "prefix": "io_",
       "color": "#22D3EE",
-      "icon": "📤"
+      "icon": "📤",
+      "description": ""
     },
     {
       "id": "operator",
       "label": "Operators",
       "prefix": "operator_",
       "color": "#9C27B0",
-      "icon": "⚡"
+      "icon": "⚡",
+      "description": ""
     },
     {
       "id": "math",
       "label": "Math Operations",
       "prefix": "math_",
       "color": "#8B5CF6",
-      "icon": "🔢"
+      "icon": "🔢",
+      "description": ""
     },
     {
       "id": "string",
       "label": "String Operations",
       "prefix": "string_",
       "color": "#F472B6",
-      "icon": "📝"
+      "icon": "📝",
+      "description": ""
     },
     {
       "id": "list",
       "label": "List Operations",
       "prefix": "list_",
       "color": "#3B82F6",
-      "icon": "📋"
+      "icon": "📋",
+      "description": ""
     },
     {
       "id": "dict",
       "label": "Dictionary Operations",
       "prefix": "dict_",
       "color": "#F59E0B",
-      "icon": "📖"
+      "icon": "📖",
+      "description": ""
     },
     {
       "id": "object",
       "label": "Object Operations",
       "prefix": "object_",
       "color": "#10B981",
-      "icon": "📦"
+      "icon": "📦",
+      "description": ""
     },
     {
       "id": "type",
       "label": "Type Conversions",
       "prefix": "type_",
       "color": "#6B7280",
-      "icon": "🔄"
+      "icon": "🔄",
+      "description": ""
     },
     {
       "id": "throw",
       "label": "Exception Operations",
       "prefix": "throw_",
       "color": "#EF4444",
-      "icon": "⚠️"
+      "icon": "⚠️",
+      "description": ""
     },
     {
       "id": "assert",
       "label": "Assertion Operations",
       "prefix": "assert_",
       "color": "#F97316",
-      "icon": "✓"
+      "icon": "✓",
+      "description": ""
     },
     {
       "id": "workflow",
       "label": "Workflow Operations",
       "prefix": "workflow_",
       "color": "#E91E63",
-      "icon": "🔗"
+      "icon": "🔗",
+      "description": ""
     },
     {
       "id": "data",
       "label": "Data Operations",
       "prefix": "data_",
       "color": "#4CAF50",
-      "icon": "📦"
+      "icon": "📦",
+      "description": ""
     },
     {
       "id": "control",
       "label": "Control Flow",
       "prefix": "control_",
       "color": "#FF9500",
-      "icon": "↻"
+      "icon": "↻",
+      "description": ""
     },
     {
       "id": "async",
       "label": "Async Operations",
       "prefix": "async_",
       "color": "#06B6D4",
-      "icon": "⏱"
+      "icon": "⏱",
+      "description": ""
     },
     {
       "id": "pydantic_ai",
@@ -105,6 +119,7 @@
       "prefix": "pydantic_ai_",
       "color": "#10B981",
       "icon": "🤖",
+      "description": "",
       "requires": "ai"
     },
     {
@@ -113,6 +128,7 @@
       "prefix": "http_",
       "color": "#3B82F6",
       "icon": "🌐",
+      "description": "",
       "requires": "http"
     },
     {
@@ -121,6 +137,7 @@
       "prefix": "sheets_",
       "color": "#34A853",
       "icon": "📊",
+      "description": "",
       "requires": "sheets"
     },
     {
@@ -129,6 +146,7 @@
       "prefix": "html_",
       "color": "#E34F26",
       "icon": "📄",
+      "description": "",
       "requires": "http"
     },
     {
@@ -136,7 +154,8 @@
       "label": "JSON Operations",
       "prefix": "json_",
       "color": "#F59E0B",
-      "icon": "📋"
+      "icon": "📋",
+      "description": ""
     },
     {
       "id": "hubspot",
@@ -144,6 +163,7 @@
       "prefix": "hubspot_",
       "color": "#FF7A59",
       "icon": "hubspot",
+      "description": "",
       "requires": "http"
     },
     {
@@ -152,6 +172,7 @@
       "prefix": "web_search",
       "color": "#8B5CF6",
       "icon": "🔍",
+      "description": "",
       "requires": "search"
     },
     {
@@ -160,6 +181,7 @@
       "prefix": "apollo_",
       "color": "#4A90D9",
       "icon": "🚀",
+      "description": "",
       "requires": "http"
     },
     {
@@ -168,6 +190,7 @@
       "prefix": "clicksign_",
       "color": "#4B0082",
       "icon": "clicksign",
+      "description": "",
       "requires": "clicksign"
     },
     {
@@ -176,6 +199,7 @@
       "prefix": "gcs_",
       "color": "#4285F4",
       "icon": "☁️",
+      "description": "",
       "requires": "gcs"
     },
     {
@@ -184,6 +208,7 @@
       "prefix": "pygame_",
       "color": "#00D86A",
       "icon": "🎮",
+      "description": "",
       "requires": "pygame"
     },
     {
@@ -192,6 +217,7 @@
       "prefix": "receitaws_",
       "color": "#009C3B",
       "icon": "receitaws",
+      "description": "",
       "requires": "receitaws"
     },
     {
@@ -200,6 +226,7 @@
       "prefix": "rag_",
       "color": "#8B5CF6",
       "icon": "🔍",
+      "description": "",
       "requires": "rag"
     },
     {
@@ -208,6 +235,7 @@
       "prefix": "pgvector_",
       "color": "#336791",
       "icon": "🐘",
+      "description": "",
       "requires": "pgvector"
     },
     {
@@ -215,21 +243,24 @@
       "label": "Chat Operations",
       "prefix": "chat_",
       "color": "#6366F1",
-      "icon": "💬"
+      "icon": "💬",
+      "description": ""
     },
     {
       "id": "cli",
       "label": "CLI Operations",
       "prefix": "cli_",
       "color": "#EC4899",
-      "icon": "💻"
+      "icon": "💻",
+      "description": ""
     },
     {
       "id": "github",
       "label": "GitHub Operations",
       "prefix": "github_",
       "color": "#24292F",
-      "icon": "🐙"
+      "icon": "🐙",
+      "description": ""
     },
     {
       "id": "pubsub",
@@ -237,6 +268,7 @@
       "prefix": "pubsub_",
       "color": "#EA4335",
       "icon": "📨",
+      "description": "",
       "requires": "pubsub"
     },
     {
@@ -244,21 +276,24 @@
       "label": "Task Operations",
       "prefix": "task_",
       "color": "#0EA5E9",
-      "icon": "⚡"
+      "icon": "⚡",
+      "description": ""
     },
     {
       "id": "channel",
       "label": "Channel Operations",
       "prefix": "channel_",
       "color": "#14B8A6",
-      "icon": "📡"
+      "icon": "📡",
+      "description": ""
     },
     {
       "id": "sync",
       "label": "Sync Primitives",
       "prefix": "sync_",
       "color": "#A855F7",
-      "icon": "🔒"
+      "icon": "🔒",
+      "description": ""
     },
     {
       "id": "slack",
@@ -266,6 +301,7 @@
       "prefix": "slack_",
       "color": "#4A154B",
       "icon": "💬",
+      "description": "",
       "requires": "slack"
     }
   ],
