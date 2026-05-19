@@ -123,7 +123,16 @@ class OpcodeRegistry:
         Returns:
             The registered CategoryInfo
         """
-        cat = CategoryInfo(id, label, prefix, color, icon, requires, order, description)
+        cat = CategoryInfo(
+            id=id,
+            label=label,
+            prefix=prefix,
+            color=color,
+            icon=icon,
+            requires=requires,
+            order=order,
+            description=description,
+        )
         self.categories[id] = cat
         return cat
 
@@ -1049,7 +1058,7 @@ class OpcodeRegistry:
 default_registry = OpcodeRegistry()
 
 
-def opcode(name: str = None, *, category: str = None):
+def opcode(name: str = None, *, category: str = None, description: str = ""):
     """Convenience decorator for registering opcodes to the default global registry.
 
     Usage:
@@ -1061,7 +1070,7 @@ def opcode(name: str = None, *, category: str = None):
         async def my_category_op(x: int) -> int:
             return x * 2
     """
-    return default_registry.register(name, category=category)
+    return default_registry.register(name, category=category, description=description)
 
 
 def register_category(
@@ -1072,6 +1081,7 @@ def register_category(
     icon: str = "⚡",
     requires: Optional[str] = None,
     order: int = 200,
+    description: str = "",
 ) -> CategoryInfo:
     """Register a category to the default global registry.
 
@@ -1092,5 +1102,5 @@ def register_category(
             return x * 2
     """
     return default_registry.register_category(
-        id, label, prefix, color, icon, requires, order
+        id, label, prefix, color, icon, requires, order, description
     )
