@@ -10,7 +10,7 @@ from lexflow import default_registry
 AIOHTTP_AVAILABLE = importlib.util.find_spec("aiohttp") is not None
 
 try:
-    from lexflow.opcodes.opcodes_clicksign import ClicksignClient
+    from lexflow_opcodes.clicksign import ClicksignClient
 except ImportError:
     pass
 
@@ -24,7 +24,7 @@ pytestmark = pytest.mark.asyncio
 
 def _mock_client():
     """Create a ClicksignClient with a mocked aiohttp session."""
-    with patch("lexflow.opcodes.opcodes_clicksign.aiohttp.ClientSession"):
+    with patch("lexflow_opcodes.clicksign.aiohttp.ClientSession"):
         client = ClicksignClient("test-token", sandbox=True)
 
     client._session = MagicMock()
@@ -55,7 +55,7 @@ class TestClicksignClient:
         assert "sandbox" in client.base_url
 
     async def test_production_url(self):
-        with patch("lexflow.opcodes.opcodes_clicksign.aiohttp.ClientSession"):
+        with patch("lexflow_opcodes.clicksign.aiohttp.ClientSession"):
             client = ClicksignClient("test-token", sandbox=False)
         assert "app.clicksign.com" in client.base_url
 
@@ -98,23 +98,23 @@ class TestClicksignClient:
 @pytest.mark.skipif(not AIOHTTP_AVAILABLE, reason="aiohttp not installed")
 class TestValidateId:
     async def test_valid_id(self):
-        from lexflow.opcodes.opcodes_clicksign import _validate_id
+        from lexflow_opcodes.clicksign import _validate_id
 
         assert _validate_id("abc-123") == "abc-123"
 
     async def test_strips_whitespace(self):
-        from lexflow.opcodes.opcodes_clicksign import _validate_id
+        from lexflow_opcodes.clicksign import _validate_id
 
         assert _validate_id("  abc-123  ") == "abc-123"
 
     async def test_empty_string_raises(self):
-        from lexflow.opcodes.opcodes_clicksign import _validate_id
+        from lexflow_opcodes.clicksign import _validate_id
 
         with pytest.raises(ValueError, match="id cannot be empty"):
             _validate_id("")
 
     async def test_whitespace_only_raises(self):
-        from lexflow.opcodes.opcodes_clicksign import _validate_id
+        from lexflow_opcodes.clicksign import _validate_id
 
         with pytest.raises(ValueError, match="id cannot be empty"):
             _validate_id("   ")
@@ -128,7 +128,7 @@ class TestValidateId:
 @pytest.mark.skipif(not AIOHTTP_AVAILABLE, reason="aiohttp not installed")
 class TestClicksignCreateClient:
     async def test_creates_client(self):
-        with patch("lexflow.opcodes.opcodes_clicksign.aiohttp.ClientSession"):
+        with patch("lexflow_opcodes.clicksign.aiohttp.ClientSession"):
             client = await default_registry.call(
                 "clicksign_create_client", ["test-token", True]
             )

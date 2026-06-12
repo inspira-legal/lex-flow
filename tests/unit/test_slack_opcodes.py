@@ -56,7 +56,7 @@ class TestSlackOpcodesNotAvailable:
 @pytest.mark.skipif(not SLACK_SDK_AVAILABLE, reason="slack_sdk not installed")
 class TestSlackCreateClient:
     async def test_create_client_returns_async_web_client(self):
-        with patch("lexflow.opcodes.opcodes_slack.AsyncWebClient") as mock_cls:
+        with patch("lexflow_opcodes.slack.AsyncWebClient") as mock_cls:
             mock_cls.return_value = MagicMock()
             result = await default_registry.call("slack_create_client", ["xoxb-test"])
             mock_cls.assert_called_once_with(token="xoxb-test")
