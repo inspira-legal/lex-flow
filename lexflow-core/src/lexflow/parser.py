@@ -54,6 +54,15 @@ class ParseContext:
         self.parser = parser
         self.all_nodes = all_nodes
         self.current_workflow = None
+        # One Statement per node id. A node reached along several paths
+        # (a continuation shared by the THEN and ELSE chains of a gate, a
+        # tail that many branches fall into) is parsed once and the same
+        # Statement object is placed on every path, so the program is a
+        # DAG the size of the node table rather than a tree the size of
+        # the path space. Handlers are pure functions of (node_id, node,
+        # context), so the shared object is exactly what re-parsing would
+        # have produced.
+        self.parsed_nodes: dict[str, "Statement | None"] = {}
 
 
 # ============= Node Handler Strategy Pattern =============
@@ -768,16 +777,29 @@ class Parser:
     def _parse_node(
         self, node_id: str, node: dict, context: ParseContext
     ) -> Statement | None:
-        """Parse a single node using appropriate handler."""
+        """Parse a single node using appropriate handler.
+
+        Memoized per node id within the ParseContext: without this, a node
+        that several paths flow into is re-parsed once per path, and a
+        chain of gates whose branches rejoin grows the tree exponentially
+        (one Polaris workflow of 3,285 nodes parsed into 560,309 AST
+        objects and took 4 s; memoized, it is a DAG of ~10 k objects).
+        """
+        if node_id in context.parsed_nodes:
+            return context.parsed_nodes[node_id]
+
         opcode = node.get("opcode", "")
 
         # Try each handler in priority order
+        stmt: Statement | None = None
         for handler in self.handlers:
             if handler.can_handle(opcode):
-                return handler.handle(node_id, node, context)
+                stmt = handler.handle(node_id, node, context)
+                break
+        # No handler found (shouldn't happen with DefaultHandler) -> None
 
-        # No handler found (shouldn't happen with DefaultHandler)
-        return None
+        context.parsed_nodes[node_id] = stmt
+        return stmt
 
     def _parse_input(self, input_data: Any, context: ParseContext) -> Expression:
         """Parse an input value into an expression using ExpressionParser."""
