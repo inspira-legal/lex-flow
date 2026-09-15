@@ -2,6 +2,32 @@
 
 <!-- version list -->
 
+## v1.19.1 (2026-09-15)
+
+### Bug Fixes
+
+- **core**: Parse a node once, however many paths flow into it
+  ([#121](https://github.com/inspira-legal/lex-flow/pull/121),
+  [`2f0ca82`](https://github.com/inspira-legal/lex-flow/commit/2f0ca824befa40d524cd5239dfc72e8be725912c))
+
+### Chores
+
+- **core**: Consolidate dependency bumps across all workspaces
+  ([#90](https://github.com/inspira-legal/lex-flow/pull/90),
+  [`5ed9b03`](https://github.com/inspira-legal/lex-flow/commit/5ed9b03467faf96138e2bf9bb1b998a1f2bdcbfe))
+
+- **web**: Build frontend library [skip ci]
+  ([`6eb6149`](https://github.com/inspira-legal/lex-flow/commit/6eb6149f9a923aec217bbe3e71b173215189145a))
+
+- **web**: Release 1.16.0
+  ([`d0ab58d`](https://github.com/inspira-legal/lex-flow/commit/d0ab58d832485b0709b6da3c98c418cc988d6f34))
+
+### Documentation
+
+- Auto-update opcode reference and grammar [skip ci]
+  ([`57ce083`](https://github.com/inspira-legal/lex-flow/commit/57ce0830239e1ca1efc9e822e588c0757b218a91))
+
+
 ## v1.19.0 (2026-05-19)
 
 ### Bug Fixes
