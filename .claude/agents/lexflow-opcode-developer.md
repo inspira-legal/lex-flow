@@ -285,19 +285,18 @@ These stubs exist so `get_interface()` returns documentation. Calling them direc
 
 ## Integration Opcode Libraries
 
-For optional integrations (pygame, AI, HTTP, web), check `docs/OPCODE_REFERENCE.md` for complete listings.
+For optional integrations (AI, HTTP, web), check `docs/OPCODE_REFERENCE.md` for complete listings.
 
 **Common installation patterns:**
 ```bash
-pip install lexflow[pygame]  # Pygame opcodes
 pip install lexflow[ai]      # Pydantic AI opcodes
 pip install lexflow[http]    # HTTP/scraping opcodes
 ```
 
 **Registration pattern:**
 ```python
-from lexflow.opcodes.opcodes_pygame import register_pygame_opcodes
-register_pygame_opcodes()  # Call BEFORE creating Engine
+from lexflow.opcodes.opcodes_pydantic_ai import register_pydantic_ai_opcodes
+register_pydantic_ai_opcodes()  # Call BEFORE creating Engine
 ```
 
 ## Engine Integration
@@ -342,12 +341,12 @@ engine = Engine(program, opcodes=custom_registry)
 
 ```python
 # Import the registration function
-from lexflow.opcodes.opcodes_pygame import register_pygame_opcodes
+from lexflow.opcodes.opcodes_pydantic_ai import register_pydantic_ai_opcodes
 
 # Call it BEFORE creating Engine
-register_pygame_opcodes()
+register_pydantic_ai_opcodes()
 
-# Now pygame opcodes are available
+# Now the AI opcodes are available
 engine = Engine(program)
 ```
 

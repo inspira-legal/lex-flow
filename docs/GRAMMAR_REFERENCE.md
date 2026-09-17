@@ -36,7 +36,6 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 | `http` | HTTP Operations | `http_` | `#3B82F6` | 🌐 |
 | `html` | HTML Operations | `html_` | `#E34F26` | 📄 |
 | `json` | JSON Operations | `json_` | `#F59E0B` | 📋 |
-| `pygame` | Pygame Operations | `pygame_` | `#00D86A` | 🎮 |
 | `rag` | RAG Operations | `rag_` | `#8B5CF6` | 🔍 |
 | `chat` | Chat Operations | `chat_` | `#6366F1` | 💬 |
 | `cli` | CLI Operations | `cli_` | `#EC4899` | 💻 |
@@ -398,7 +397,7 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 ## Summary
 
-- **Categories:** 26
+- **Categories:** 25
 - **Constructs:** 16
 - **Control Flow:** 12
 - **Data Operations:** 1

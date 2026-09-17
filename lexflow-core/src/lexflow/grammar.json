@@ -203,15 +203,6 @@
       "requires": "gcs"
     },
     {
-      "id": "pygame",
-      "label": "Pygame Operations",
-      "prefix": "pygame_",
-      "color": "#00D86A",
-      "icon": "🎮",
-      "description": "",
-      "requires": "pygame"
-    },
-    {
       "id": "receitaws",
       "label": "ReceitaWS Operations",
       "prefix": "receitaws_",

@@ -109,27 +109,6 @@ gcloud auth application-default login
 lexflow examples/integrations/pydantic_ai/vertex_ai_example.yaml
 ```
 
-#### integrations/pygame/
-Pygame integration for game development and graphics.
-
-- `hello.yaml` - Simple pygame window
-- `simple.yaml` - Basic pygame workflow
-- `wave_animation.yaml` - Animated wave pattern
-- `custom_opcodes.py` - Custom pygame opcodes
-- `run_hello.py` - Python runner for hello example
-- `run_wave.py` - Python runner for wave animation
-
-**Requirements:**
-```bash
-uv sync --extra pygame
-```
-
-**Run examples:**
-```bash
-python examples/integrations/pygame/run_hello.py
-python examples/integrations/pygame/run_wave.py
-```
-
 #### integrations/http_scraping/
 HTTP requests and web scraping examples.
 
