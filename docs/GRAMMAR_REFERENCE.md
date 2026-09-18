@@ -34,16 +34,25 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 | `async` | Async Operations | `async_` | `#06B6D4` | ⏱ |
 | `pydantic_ai` | AI Operations (Pydantic AI) | `pydantic_ai_` | `#10B981` | 🤖 |
 | `http` | HTTP Operations | `http_` | `#3B82F6` | 🌐 |
+| `sheets` | Google Sheets Operations | `sheets_` | `#34A853` | 📊 |
 | `html` | HTML Operations | `html_` | `#E34F26` | 📄 |
 | `json` | JSON Operations | `json_` | `#F59E0B` | 📋 |
-| `pygame` | Pygame Operations | `pygame_` | `#00D86A` | 🎮 |
+| `hubspot` | HubSpot Operations | `hubspot_` | `#FF7A59` | hubspot |
+| `web_search` | Web Search | `web_search` | `#8B5CF6` | 🔍 |
+| `apollo` | Apollo.io | `apollo_` | `#4A90D9` | 🚀 |
+| `clicksign` | Clicksign Operations | `clicksign_` | `#4B0082` | clicksign |
+| `gcs` | Cloud Storage | `gcs_` | `#4285F4` | ☁️ |
+| `receitaws` | ReceitaWS Operations | `receitaws_` | `#009C3B` | receitaws |
 | `rag` | RAG Operations | `rag_` | `#8B5CF6` | 🔍 |
+| `pgvector` | PgVector Operations | `pgvector_` | `#336791` | 🐘 |
 | `chat` | Chat Operations | `chat_` | `#6366F1` | 💬 |
 | `cli` | CLI Operations | `cli_` | `#EC4899` | 💻 |
 | `github` | GitHub Operations | `github_` | `#24292F` | 🐙 |
+| `pubsub` | Pub/Sub | `pubsub_` | `#EA4335` | 📨 |
 | `task` | Task Operations | `task_` | `#0EA5E9` | ⚡ |
 | `channel` | Channel Operations | `channel_` | `#14B8A6` | 📡 |
 | `sync` | Sync Primitives | `sync_` | `#A855F7` | 🔒 |
+| `slack` | Slack | `slack_` | `#4A154B` | 💬 |
 
 ## Control Flow Constructs
 
@@ -398,8 +407,8 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 ## Summary
 
-- **Categories:** 26
-- **Constructs:** 16
+- **Categories:** 35
+- **Constructs:** 17
 - **Control Flow:** 12
 - **Data Operations:** 1
 - **Workflow Operations:** 3
