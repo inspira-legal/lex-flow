@@ -143,6 +143,9 @@ def parse_data(data: str, format: str):
 uv sync --all-extras
 ```
 
+Existing environments need this too: `pytest-timeout` is a new dev dependency, and
+`pytest` exits 4 with `Unknown config option: timeout` until it is installed.
+
 ### Testing
 ```bash
 # Run all tests
