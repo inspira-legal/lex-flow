@@ -3,6 +3,7 @@ import asyncio
 import difflib
 import json
 import sys
+import warnings
 import yaml
 from pathlib import Path
 
@@ -423,10 +424,15 @@ async def run_workflow(args):
 
         # Parse the workflow(s)
         parser = Parser()
-        if include_files:
-            program = parser.parse_files(str(workflow_file), include_files)
-        else:
-            program = parser.parse_file(str(workflow_file))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", DeprecationWarning)
+            if include_files:
+                program = parser.parse_files(str(workflow_file), include_files)
+            else:
+                program = parser.parse_file(str(workflow_file))
+
+        for warning in caught:
+            print(f"! {warning.message}", file=sys.stderr)
 
         if args.verbose:
             print_success("Workflow parsed successfully")

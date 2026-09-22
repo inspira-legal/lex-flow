@@ -1,4 +1,5 @@
 import json
+import warnings
 import yaml
 from pathlib import Path
 from typing import Any, Optional, List
@@ -804,6 +805,8 @@ class Parser:
         if "start" not in nodes:
             raise ValueError("No 'start' node found in workflow")
 
+        self._warn_legacy_inputs(nodes)
+
         # Create parse context
         context = ParseContext(self, nodes)
         context.current_workflow = self.current_workflow
@@ -830,6 +833,23 @@ class Parser:
             current_node_id = node.get("next")
 
         return Block(stmts=statements)
+
+    def _warn_legacy_inputs(self, nodes: dict) -> None:
+        """Warn once per workflow about nodes still using the legacy 'inputs' key."""
+        legacy = [
+            node_id
+            for node_id, node in nodes.items()
+            if isinstance(node, dict) and node.get("inputs")
+        ]
+        if legacy:
+            warnings.warn(
+                f"Workflow '{self.current_workflow}': {len(legacy)} nodes use the "
+                f"legacy 'inputs' key, where input names are decorative and position "
+                f"binds. Run 'lexflow migrate <path> --names --write' to convert them "
+                f"to 'args'/'kwargs'.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
 
     def _parse_node(
         self, node_id: str, node: dict, context: ParseContext

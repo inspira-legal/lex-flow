@@ -1,6 +1,8 @@
 """Tests for the 'args'/'kwargs' node syntax."""
 
 import io
+import warnings
+
 import pytest
 from lexflow import Parser, Engine
 
@@ -256,3 +258,22 @@ async def test_workflow_call_positional_args_list():
         },
     }
     assert await run(workflow(nodes, extra=[greeter])) == "Ana"
+
+
+async def test_legacy_inputs_warn_once_per_workflow():
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "show"},
+        "show": {"opcode": "io_print", "inputs": {"STRING": {"literal": "hi"}}},
+    }
+    with pytest.warns(DeprecationWarning, match="legacy 'inputs' key"):
+        Parser().parse_dict(workflow(nodes))
+
+
+async def test_args_kwargs_workflows_do_not_warn():
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "show"},
+        "show": {"opcode": "io_print", "args": [{"literal": "hi"}]},
+    }
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        Parser().parse_dict(workflow(nodes))
