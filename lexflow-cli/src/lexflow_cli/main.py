@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import difflib
 import json
 import sys
 import yaml
@@ -72,6 +73,71 @@ def handle_grammar_command(args) -> int:
             print_error(f"Error syncing grammar: {e}")
             return 1
 
+    return 0
+
+
+def handle_migrate_command(args) -> int:
+    """Handle the 'migrate' subcommand."""
+    from lexflow_cli.migrate import collect_files, migrate_text
+
+    try:
+        files = collect_files(args.paths)
+    except FileNotFoundError as e:
+        print_error(str(e))
+        return 1
+
+    total_nodes = 0
+    changed_files = []
+    warnings = []
+
+    for path in files:
+        original = path.read_text()
+        try:
+            migrated, nodes, file_warnings = migrate_text(original, path.suffix)
+        except Exception as e:
+            print_error(f"{path}: {e}")
+            return 1
+
+        warnings.extend(f"{path}: {w}" for w in file_warnings)
+
+        if not nodes:
+            continue
+
+        total_nodes += nodes
+        changed_files.append(path)
+
+        if args.diff:
+            diff = difflib.unified_diff(
+                original.splitlines(keepends=True),
+                migrated.splitlines(keepends=True),
+                fromfile=str(path),
+                tofile=str(path),
+            )
+            sys.stdout.writelines(diff)
+        else:
+            print(f"{path}: {nodes} nodes")
+
+        if args.write:
+            path.write_text(migrated)
+
+    if warnings:
+        print()
+        print_info("Inputs whose names do not match the opcode signature order:")
+        for warning in warnings:
+            print(f"  ! {warning}")
+
+    print()
+    if not changed_files:
+        print_success(f"Nothing to migrate ({len(files)} files scanned)")
+        return 0
+
+    if args.write:
+        print_success(f"Migrated {total_nodes} nodes in {len(changed_files)} files")
+    else:
+        print_info(
+            f"Would migrate {total_nodes} nodes in {len(changed_files)} files "
+            f"(run with --write to apply)"
+        )
     return 0
 
 
@@ -172,6 +238,35 @@ Examples:
         "--path",
         metavar="FILE",
         help="Path to grammar.json (default: auto-detect)",
+    )
+
+    # 'migrate' subcommand
+    migrate_parser = subparsers.add_parser(
+        "migrate",
+        help="Migrate workflow files from 'inputs' to 'args'/'kwargs'",
+        epilog="""
+Examples:
+  lexflow migrate examples/                  # Show what would change
+  lexflow migrate workflow.yaml --diff       # Show a unified diff
+  lexflow migrate examples/ --write          # Rewrite the files in place
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    migrate_parser.add_argument(
+        "paths",
+        nargs="+",
+        metavar="PATH",
+        help="Workflow files or directories to migrate",
+    )
+    migrate_parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Rewrite the files in place (default: report only)",
+    )
+    migrate_parser.add_argument(
+        "--diff",
+        action="store_true",
+        help="Print a unified diff of the changes",
     )
 
     return parser
@@ -469,6 +564,7 @@ async def main():
         "run",
         "docs",
         "grammar",
+        "migrate",
         "-h",
         "--help",
     ):
@@ -485,6 +581,8 @@ async def main():
         else:
             # Show docs help if no subcommand
             arg_parser.parse_args(["docs", "-h"])
+    elif args.command == "migrate":
+        sys.exit(handle_migrate_command(args))
     elif args.command == "grammar":
         if args.grammar_command == "sync":
             sys.exit(handle_grammar_command(args))
