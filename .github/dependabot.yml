@@ -1,0 +1,9 @@
+version: 2
+updates:
+  # Only the workflow actions: security updates for npm/pip arrive without a
+  # config, but action versions do not — that is how these drifted three
+  # majors behind.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
