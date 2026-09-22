@@ -1,4 +1,9 @@
-"""Migrating the bundled examples must not change what they mean."""
+"""Migrating a legacy workflow must not change what it means.
+
+The fixtures are real workflows as they were written before the migration:
+control flow, fork, spawn, timeout, try/catch, workflow calls and reporters,
+all in the legacy 'inputs' form.
+"""
 
 import json
 from pathlib import Path
@@ -9,7 +14,7 @@ import yaml
 from lexflow import Parser, default_registry
 from lexflow_cli.migrate import collect_files, migrate_text
 
-EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
+LEGACY = Path(__file__).resolve().parents[1] / "fixtures" / "legacy_workflows"
 
 
 def load(text: str, suffix: str) -> dict:
@@ -44,9 +49,9 @@ def canonical(value):
 
 @pytest.mark.parametrize("use_names", [False, True], ids=["positional", "names"])
 @pytest.mark.parametrize(
-    "path", collect_files([str(EXAMPLES)]), ids=lambda p: str(p.name)
+    "path", collect_files([str(LEGACY)]), ids=lambda p: str(p.name)
 )
-def test_migrated_example_parses_to_the_same_ast(path, use_names):
+def test_migrated_workflow_parses_to_the_same_ast(path, use_names):
     text = path.read_text()
     migrated, migrated_nodes, _ = migrate_text(text, path.suffix, use_names)
     if not migrated_nodes:
@@ -59,7 +64,7 @@ def test_migrated_example_parses_to_the_same_ast(path, use_names):
         try:
             expected = Parser()._parse_workflow(old_wf).model_dump()
         except Exception:
-            continue  # example does not parse before migration either
+            continue  # workflow does not parse before migration either
         assert canonical(Parser()._parse_workflow(new_wf).model_dump()) == canonical(
             expected
         )

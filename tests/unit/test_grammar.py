@@ -86,31 +86,31 @@ class TestGetConstruct:
         assert construct is None
 
     def test_control_if_has_then_branch(self):
-        """control_if should have THEN branch."""
+        """control_if should have then branch."""
         construct = get_construct("control_if")
         branch_names = [b["name"] for b in construct["branches"]]
-        assert "THEN" in branch_names
+        assert "then" in branch_names
 
     def test_control_if_else_has_both_branches(self):
-        """control_if_else should have THEN and ELSE branches."""
+        """control_if_else should have then and else branches."""
         construct = get_construct("control_if_else")
         branch_names = [b["name"] for b in construct["branches"]]
-        assert "THEN" in branch_names
-        assert "ELSE" in branch_names
+        assert "then" in branch_names
+        assert "else" in branch_names
 
     def test_control_while_has_body_branch(self):
-        """control_while should have BODY branch."""
+        """control_while should have body branch."""
         construct = get_construct("control_while")
         branch_names = [b["name"] for b in construct["branches"]]
-        assert "BODY" in branch_names
+        assert "body" in branch_names
 
     def test_control_for_has_loop_inputs(self):
-        """control_for should have VAR, START, END inputs."""
+        """control_for should have var, start, end inputs."""
         construct = get_construct("control_for")
         input_names = [i["name"] for i in construct["inputs"]]
-        assert "VAR" in input_names
-        assert "START" in input_names
-        assert "END" in input_names
+        assert "var" in input_names
+        assert "start" in input_names
+        assert "end" in input_names
 
 
 class TestGetCategory:
@@ -157,23 +157,26 @@ class TestGetBranchColor:
     """Tests for get_branch_color function."""
 
     def test_then_branch_color(self):
-        """THEN branch should have green color."""
-        color = get_branch_color("THEN")
-        assert color == "#34D399"
+        """then branch should have green color."""
+        assert get_branch_color("then") == "#34D399"
 
     def test_else_branch_color(self):
-        """ELSE branch should have red color."""
-        color = get_branch_color("ELSE")
-        assert color == "#F87171"
+        """else branch should have red color."""
+        assert get_branch_color("else") == "#F87171"
 
     def test_body_branch_color(self):
-        """BODY branch should have cyan color."""
-        color = get_branch_color("BODY")
-        assert color == "#22D3EE"
+        """body branch should have cyan color."""
+        assert get_branch_color("body") == "#22D3EE"
+
+    def test_legacy_uppercase_names_keep_their_color(self):
+        """Legacy slot names resolve to the same colors."""
+        assert get_branch_color("THEN") == get_branch_color("then")
+        assert get_branch_color("ON_TIMEOUT") == get_branch_color("on_timeout")
+        assert get_branch_color("BRANCH1") == get_branch_color("args")
 
     def test_catch_branches_have_same_color(self):
-        """All CATCH branches should have the same color."""
-        color1 = get_branch_color("CATCH")
+        """All catch branches should have the same color."""
+        color1 = get_branch_color("catch")
         color2 = get_branch_color("CATCH1")
         color3 = get_branch_color("CATCH2")
         assert color1 == color2 == color3
@@ -246,18 +249,18 @@ class TestGetConstructBranches:
     """Tests for get_construct_branches function."""
 
     def test_control_if_branches(self):
-        """control_if should have THEN branch."""
+        """control_if should have then branch."""
         branches = get_construct_branches("control_if")
         assert len(branches) == 1
-        assert branches[0]["name"] == "THEN"
+        assert branches[0]["name"] == "then"
 
     def test_control_if_else_branches(self):
-        """control_if_else should have THEN and ELSE branches."""
+        """control_if_else should have then and else branches."""
         branches = get_construct_branches("control_if_else")
         assert len(branches) == 2
         names = [b["name"] for b in branches]
-        assert "THEN" in names
-        assert "ELSE" in names
+        assert "then" in names
+        assert "else" in names
 
     def test_nonexistent_opcode_returns_empty(self):
         """Nonexistent opcode should return empty list."""
@@ -269,20 +272,20 @@ class TestGetConstructInputs:
     """Tests for get_construct_inputs function."""
 
     def test_control_if_inputs(self):
-        """control_if should have CONDITION input."""
+        """control_if should have condition input."""
         inputs = get_construct_inputs("control_if")
         assert len(inputs) >= 1
         names = [i["name"] for i in inputs]
-        assert "CONDITION" in names
+        assert "condition" in names
 
     def test_control_for_inputs(self):
-        """control_for should have VAR, START, END, STEP inputs."""
+        """control_for should have var, start, end, step inputs."""
         inputs = get_construct_inputs("control_for")
         names = [i["name"] for i in inputs]
-        assert "VAR" in names
-        assert "START" in names
-        assert "END" in names
-        assert "STEP" in names
+        assert "var" in names
+        assert "start" in names
+        assert "end" in names
+        assert "step" in names
 
     def test_nonexistent_opcode_returns_empty(self):
         """Nonexistent opcode should return empty list."""

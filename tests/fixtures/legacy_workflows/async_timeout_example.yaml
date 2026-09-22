@@ -1,0 +1,122 @@
+# Timeout Example
+# Demonstrates using timeouts to limit operation duration
+#
+# Run with: lexflow examples/async/timeout_example.yaml
+
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      result: "not set"
+
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_intro
+        inputs: {}
+
+      print_intro:
+        opcode: io_print
+        next: fast_operation
+        inputs:
+          STRING: { literal: "Testing timeout functionality...\n\n" }
+
+      # Test 1: Fast operation completes within timeout
+      fast_operation:
+        opcode: io_print
+        next: fast_timeout
+        inputs:
+          STRING: { literal: "Test 1: Fast operation (timeout: 5s)\n" }
+
+      fast_timeout:
+        opcode: async_timeout
+        next: print_fast_result
+        inputs:
+          TIMEOUT: { literal: 5.0 }
+          BODY: { branch: fast_work }
+
+      fast_work:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE: { literal: "result" }
+          VALUE: { literal: "completed quickly" }
+
+      print_fast_result:
+        opcode: io_print
+        next: slow_operation
+        inputs:
+          STRING: { node: fast_result_msg }
+
+      fast_result_msg:
+        opcode: operator_add
+        inputs:
+          A: { node: fast_prefix }
+          B: { literal: "\n\n" }
+
+      fast_prefix:
+        opcode: operator_add
+        inputs:
+          A: { literal: "Result: " }
+          B: { variable: result }
+
+      # Test 2: Slow operation times out with fallback
+      slow_operation:
+        opcode: io_print
+        next: slow_timeout
+        inputs:
+          STRING: { literal: "Test 2: Slow operation with fallback (timeout: 0.1s)\n" }
+
+      slow_timeout:
+        opcode: async_timeout
+        next: print_slow_result
+        inputs:
+          TIMEOUT: { literal: 0.1 }
+          BODY: { branch: slow_work }
+          ON_TIMEOUT: { branch: timeout_fallback }
+
+      slow_work:
+        opcode: task_sleep
+        next: set_slow_result
+        inputs:
+          SECONDS: { literal: 10.0 }
+
+      set_slow_result:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE: { literal: "result" }
+          VALUE: { literal: "completed slowly" }
+
+      timeout_fallback:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE: { literal: "result" }
+          VALUE: { literal: "timed out (fallback executed)" }
+
+      print_slow_result:
+        opcode: io_print
+        next: return_result
+        inputs:
+          STRING: { node: slow_result_msg }
+
+      slow_result_msg:
+        opcode: operator_add
+        inputs:
+          A: { node: slow_prefix }
+          B: { literal: "\n" }
+
+      slow_prefix:
+        opcode: operator_add
+        inputs:
+          A: { literal: "Result: " }
+          B: { variable: result }
+
+      return_result:
+        opcode: workflow_return
+        next: null
+        inputs:
+          VALUE: { variable: result }
