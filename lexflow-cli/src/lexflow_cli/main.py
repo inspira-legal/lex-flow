@@ -93,7 +93,9 @@ def handle_migrate_command(args) -> int:
     for path in files:
         original = path.read_text()
         try:
-            migrated, nodes, file_warnings = migrate_text(original, path.suffix)
+            migrated, nodes, file_warnings = migrate_text(
+                original, path.suffix, args.names
+            )
         except Exception as e:
             print_error(f"{path}: {e}")
             return 1
@@ -267,6 +269,11 @@ Examples:
         "--diff",
         action="store_true",
         help="Print a unified diff of the changes",
+    )
+    migrate_parser.add_argument(
+        "--names",
+        action="store_true",
+        help="Use 'kwargs' where the input names already match the opcode signature",
     )
 
     return parser

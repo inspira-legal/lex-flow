@@ -107,7 +107,21 @@ def _split_construct_inputs(opcode: str, inputs: Any) -> tuple[Any, Any]:
     return args, kwargs
 
 
-def _migrate_node(node: Any, named_slots: set[str]) -> Optional[Any]:
+def _binds_by_name(opcode: str, inputs: Any) -> bool:
+    """True when the input names are exactly the signature's first parameters.
+
+    Only then does binding by name give what binding by position gives today,
+    so only then can the migration use 'kwargs' without changing behaviour.
+    """
+    interface = default_registry.get_interface(opcode)
+    if "error" in interface:
+        return False
+    params = [p["name"] for p in interface["parameters"]]
+    keys = [str(k).lower() for k in inputs.keys()]
+    return bool(keys) and keys == params[: len(keys)]
+
+
+def _migrate_node(node: Any, named_slots: set[str], use_names: bool) -> Optional[Any]:
     """Return the node rewritten to 'args'/'kwargs', or None if unchanged."""
     if not isinstance(node, dict) or "inputs" not in node:
         return None
@@ -121,6 +135,11 @@ def _migrate_node(node: Any, named_slots: set[str]) -> Optional[Any]:
     opcode = node.get("opcode", "")
     if opcode in named_slots:
         args, kwargs = _split_construct_inputs(opcode, inputs)
+    elif use_names and _binds_by_name(opcode, inputs):
+        args = _new_seq(inputs)
+        kwargs = _new_map(inputs)
+        for key, value in inputs.items():
+            kwargs[str(key).lower()] = value
     else:
         args = _new_seq(inputs)
         for value in inputs.values():
@@ -202,14 +221,14 @@ def find_misbindings(data: Any) -> list[str]:
     return warnings
 
 
-def migrate_data(data: Any) -> int:
+def migrate_data(data: Any, use_names: bool = False) -> int:
     """Rewrite every node in place. Returns the number of nodes migrated."""
     named_slots = named_slot_opcodes()
     migrated = 0
 
     for _, nodes in _iter_node_tables(data):
         for node_id, node in list(nodes.items()):
-            new_node = _migrate_node(node, named_slots)
+            new_node = _migrate_node(node, named_slots, use_names)
             if new_node is not None:
                 nodes[node_id] = new_node
                 migrated += 1
@@ -217,7 +236,9 @@ def migrate_data(data: Any) -> int:
     return migrated
 
 
-def migrate_text(text: str, suffix: str) -> tuple[str, int, list[str]]:
+def migrate_text(
+    text: str, suffix: str, use_names: bool = False
+) -> tuple[str, int, list[str]]:
     """Migrate one workflow document. Returns (new text, nodes migrated, warnings)."""
     if suffix.lower() in YAML_SUFFIXES:
         yaml = _yaml()
@@ -229,7 +250,7 @@ def migrate_text(text: str, suffix: str) -> tuple[str, int, list[str]]:
         return text, 0, []
 
     warnings = find_misbindings(data)
-    migrated = migrate_data(data)
+    migrated = migrate_data(data, use_names)
     if not migrated:
         return text, 0, warnings
 

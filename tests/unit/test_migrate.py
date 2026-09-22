@@ -241,3 +241,56 @@ def test_non_workflow_documents_are_left_alone():
     source = "name: not-a-workflow\nvalue: 3\n"
     migrated, count, warnings = migrate_text(source, ".yaml")
     assert (migrated, count, warnings) == (source, 0, [])
+
+
+def test_names_mode_uses_kwargs_when_names_match_the_signature():
+    source = (
+        HEADER
+        + """      sum:
+        opcode: operator_add
+        isReporter: true
+        inputs:
+          left:
+            literal: 1
+          right:
+            literal: 2
+"""
+    )
+    migrated, _, _ = migrate_text(source, ".yaml", use_names=True)
+    node_data = yaml.safe_load(migrated)["workflows"][0]["nodes"]["sum"]
+    assert node_data["kwargs"] == {"left": {"literal": 1}, "right": {"literal": 2}}
+
+
+def test_names_mode_keeps_positional_args_when_names_would_rebind():
+    source = (
+        HEADER
+        + """      search:
+        opcode: web_search
+        isReporter: true
+        inputs:
+          query:
+            variable: query
+          max_results:
+            literal: 5
+"""
+    )
+    migrated, _, _ = migrate_text(source, ".yaml", use_names=True)
+    node_data = yaml.safe_load(migrated)["workflows"][0]["nodes"]["search"]
+    assert node_data["args"] == [{"variable": "query"}, {"literal": 5}]
+    assert "kwargs" not in node_data
+
+
+def test_names_mode_keeps_positional_args_for_decorative_names():
+    source = (
+        HEADER
+        + """      show:
+        opcode: string_upper
+        isReporter: true
+        inputs:
+          STRING:
+            literal: "hi"
+"""
+    )
+    migrated, _, _ = migrate_text(source, ".yaml", use_names=True)
+    node_data = yaml.safe_load(migrated)["workflows"][0]["nodes"]["show"]
+    assert node_data["args"] == [{"literal": "hi"}]
