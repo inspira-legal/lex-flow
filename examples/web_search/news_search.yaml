@@ -34,10 +34,13 @@ workflows:
       search:
         opcode: web_search_news
         isReporter: true
-        args:
-          - variable: topic
-          - literal: 5
-          - literal: "week"
+        kwargs:
+          query:
+            variable: topic
+          max_results:
+            literal: 5
+          time_range:
+            literal: "week"
 
       do_search:
         opcode: data_set_variable_to

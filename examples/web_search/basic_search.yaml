@@ -35,10 +35,13 @@ workflows:
       search:
         opcode: web_search
         isReporter: true
-        args:
-          - variable: query
-          - literal: 5
-          - literal: "basic"
+        kwargs:
+          query:
+            variable: query
+          max_results:
+            literal: 5
+          search_depth:
+            literal: "basic"
 
       do_search:
         opcode: data_set_variable_to

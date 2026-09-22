@@ -441,11 +441,15 @@ workflows:
       do_generate_embeddings:
         opcode: embedding_create_batch
         isReporter: true
-        args:
-          - variable: chunks
-          - literal: "text-multilingual-embedding-002"
-          - variable: project
-          - variable: location
+        kwargs:
+          texts:
+            variable: chunks
+          model:
+            literal: "text-multilingual-embedding-002"
+          project:
+            variable: project
+          location:
+            variable: location
 
       generate_embeddings:
         opcode: data_set_variable_to
