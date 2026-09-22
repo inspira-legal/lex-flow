@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v1.16.1 (2026-09-22)
+
+### Bug Fixes
+
+- **core**: Parse a node once, however many paths flow into it
+  ([#121](https://github.com/inspira-legal/lex-flow/pull/121),
+  [`2f0ca82`](https://github.com/inspira-legal/lex-flow/commit/2f0ca824befa40d524cd5239dfc72e8be725912c))
+
+### Chores
+
+- Apply the pytest config, drop pygame ([#122](https://github.com/inspira-legal/lex-flow/pull/122),
+  [`2d2967c`](https://github.com/inspira-legal/lex-flow/commit/2d2967c90dffed96539b0070f86e7cfd37b4dcde))
+
+- **core**: Release 1.19.1
+  ([`4ac5431`](https://github.com/inspira-legal/lex-flow/commit/4ac543177c690f32ef28c7f6186e88477f649ca9))
+
+- **deps**: Clear all 49 open Dependabot alerts
+  ([#109](https://github.com/inspira-legal/lex-flow/pull/109),
+  [`3b9d29b`](https://github.com/inspira-legal/lex-flow/commit/3b9d29b797a7820afc9258a0002ae7939ab12129))
+
+- **web**: Build frontend library [skip ci]
+  ([`63f1c42`](https://github.com/inspira-legal/lex-flow/commit/63f1c42f56b2bb5cc46b1d8f16003a4764e5bf92))
+
+
 ## v1.16.0 (2026-06-23)
 
 ### Bug Fixes
