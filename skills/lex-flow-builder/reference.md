@@ -21,29 +21,37 @@ workflows:
       node_id:
         opcode: operation_name
         next: next_node_id
-        inputs:
-          PARAM_NAME:
-            literal: "value"
-            # ou
+        args:                      # argumentos posicionais
+          - literal: "value"
+        kwargs:                    # argumentos por nome do parâmetro
+          param_name:
             variable: var_name
-            # ou
-            node: reporter_node_id
 ```
 
-## Tipos de Input
+## Como um Node Passa Argumentos
+
+- **`args:`** — lista posicional, na ordem dos parâmetros do opcode.
+- **`kwargs:`** — mapa `nome_do_parâmetro: valor`. Os nomes são os da assinatura
+  do opcode (veja `/docs/OPCODE_REFERENCE.md`); constructs usam slots em
+  minúsculas (`condition`, `then`, `body`, `variable`, `value`, ...).
+- Os dois podem aparecer no mesmo node; `args` preenche os primeiros parâmetros.
+- O formato antigo **`inputs:`** continua funcionando, mas nele os nomes são
+  decorativos — quem liga é a ordem. Um node não pode ter `inputs` junto com
+  `args`/`kwargs`. Para converter: `lexflow migrate <arquivo> --names --write`.
+
+## Tipos de Valor
 
 ### 1. Literal
 Valor fixo definido no workflow:
 ```yaml
-inputs:
-  STRING:
-    literal: "Hello World"
+args:
+  - literal: "Hello World"
 ```
 
 ### 2. Variable
 Referência a uma variável do workflow:
 ```yaml
-inputs:
+kwargs:
   value:
     variable: my_variable_name
 ```
@@ -51,8 +59,8 @@ inputs:
 ### 3. Node (Reporter)
 Referência a outro node que retorna um valor:
 ```yaml
-inputs:
-  VALUE:
+kwargs:
+  value:
     node: compute_result
 ```
 
@@ -72,7 +80,6 @@ inputs:
 start:
   opcode: workflow_start
   next: primeiro_node
-  inputs: {}
 ```
 
 ### I/O Operations
@@ -88,9 +95,8 @@ Imprime valores no output.
 print_message:
   opcode: io_print
   next: null
-  inputs:
-    STRING:
-      literal: "Hello World"
+  args:
+    - literal: "Hello World"
 ```
 
 ### Operators
@@ -107,7 +113,7 @@ Soma dois números OU concatena strings.
 add_numbers:
   opcode: operator_add
   isReporter: true
-  inputs:
+  kwargs:
     left:
       literal: 10
     right:
@@ -137,12 +143,12 @@ Itera sobre cada item em uma coleção.
 iterate_list:
   opcode: control_foreach
   next: after_loop
-  inputs:
-    VAR:
+  kwargs:
+    var:
       literal: "current_item"
-    ITERABLE:
+    iterable:
       variable: items
-    BODY:
+    body:
       branch: process_item
 ```
 
@@ -172,27 +178,26 @@ Condicional simples (sem else).
 check_value:
   opcode: control_if
   next: after_check
-  inputs:
-    CONDITION:
+  kwargs:
+    condition:
       node: is_positive
-    THEN:
+    then:
       branch: print_positive
 
 is_positive:
   opcode: operator_greater_than
   isReporter: true
-  inputs:
-    OPERAND1:
+  kwargs:
+    left:
       variable: x
-    OPERAND2:
+    right:
       literal: 0
 
 print_positive:
   opcode: io_print
   next: null
-  inputs:
-    STRING:
-      literal: "Value is positive"
+  args:
+    - literal: "Value is positive"
 ```
 
 #### `control_if_else`
@@ -219,10 +224,10 @@ Define o valor de uma variável.
 set_counter:
   opcode: data_set_variable_to
   next: continue
-  inputs:
-    VARIABLE:
+  kwargs:
+    variable:
       literal: "counter"
-    VALUE:
+    value:
       literal: 0
 ```
 
@@ -246,7 +251,6 @@ Cria um dicionário vazio (ou com argumentos variáveis).
 create_empty:
   opcode: dict_create
   isReporter: true
-  inputs: {}
 ```
 
 #### `dict_from_lists`
@@ -261,7 +265,7 @@ Cria dict de listas paralelas de keys e values.
 create_user:
   opcode: dict_from_lists
   isReporter: true
-  inputs:
+  kwargs:
     keys:
       literal: ["name", "age", "role"]
     values:
@@ -359,14 +363,14 @@ Faz requisição HTTP GET.
 fetch_data:
   opcode: http_get
   isReporter: true
-  inputs:
+  kwargs:
     url:
       literal: "https://api.example.com/data"
 
 extract_json:
   opcode: dict_get
   isReporter: true
-  inputs:
+  kwargs:
     d:
       node: fetch_data
     key:
@@ -390,7 +394,7 @@ Faz requisição HTTP POST.
 send_message:
   opcode: http_post
   isReporter: true
-  inputs:
+  kwargs:
     url:
       literal: "https://api.slack.com/api/chat.postMessage"
     json:
@@ -407,7 +411,7 @@ Nodes com `isReporter: true` retornam valores que podem ser usados por outros no
 compute:
   opcode: operator_add
   isReporter: true
-  inputs:
+  kwargs:
     left:
       literal: 10
     right:
@@ -416,9 +420,8 @@ compute:
 use_result:
   opcode: io_print
   next: null
-  inputs:
-    STRING:
-      node: compute  # Usa o resultado de compute (15)
+  args:
+    - node: compute  # Usa o resultado de compute (15)
 ```
 
 ## Integrações Customizadas
@@ -456,14 +459,14 @@ Testa autenticação.
 create_client:
   opcode: slack_create_client
   isReporter: true
-  inputs:
+  kwargs:
     token:
       variable: slack_token
 
 send_msg:
   opcode: slack_send_message
   isReporter: true
-  inputs:
+  kwargs:
     client:
       node: create_client
     channel:
