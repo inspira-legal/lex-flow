@@ -30,36 +30,35 @@ workflows:
       start:
         opcode: workflow_start
         next: build_sheet_prefix
-        inputs: {}
 
       # Build full range string (e.g., "Sheet1!A:Z")
       sheet_prefix:
         opcode: operator_add
         isReporter: true
-        inputs:
-          left: { variable: sheet_name }
-          right: { literal: "!" }
+        kwargs:
+          left: {variable: sheet_name}
+          right: {literal: "!"}
 
       build_sheet_prefix:
         opcode: data_set_variable_to
         next: build_full_range
-        inputs:
-          VARIABLE: { literal: "full_range" }
-          VALUE: { node: sheet_prefix }
+        kwargs:
+          variable: {literal: "full_range"}
+          value: {node: sheet_prefix}
 
       concat_range:
         opcode: operator_add
         isReporter: true
-        inputs:
-          left: { variable: full_range }
-          right: { variable: range }
+        kwargs:
+          left: {variable: full_range}
+          right: {variable: range}
 
       build_full_range:
         opcode: data_set_variable_to
         next: store_client
-        inputs:
-          VARIABLE: { literal: "full_range" }
-          VALUE: { node: concat_range }
+        kwargs:
+          variable: {literal: "full_range"}
+          value: {node: concat_range}
 
       # Create client
       create_client:
@@ -69,36 +68,36 @@ workflows:
       store_client:
         opcode: data_set_variable_to
         next: store_result
-        inputs:
-          VARIABLE: { literal: "client" }
-          VALUE: { node: create_client }
+        kwargs:
+          variable: {literal: "client"}
+          value: {node: create_client}
 
       # Append to sheet
       append_result:
         opcode: sheets_append
         isReporter: true
-        inputs:
-          client: { variable: client }
-          spreadsheet_id: { variable: spreadsheet_id }
-          range_notation: { variable: full_range }
-          values: { variable: row_values }
+        kwargs:
+          client: {variable: client}
+          spreadsheet_id: {variable: spreadsheet_id}
+          range_notation: {variable: full_range}
+          values: {variable: row_values}
 
       store_result:
         opcode: data_set_variable_to
         next: print_success
-        inputs:
-          VARIABLE: { literal: "result" }
-          VALUE: { node: append_result }
+        kwargs:
+          variable: {literal: "result"}
+          value: {node: append_result}
 
       # Print result
       print_success:
         opcode: io_print
         next: print_result
-        inputs:
-          MESSAGE: { literal: "Row appended successfully!" }
+        args:
+          - {literal: "Row appended successfully!"}
 
       print_result:
         opcode: io_print
         next: null
-        inputs:
-          MESSAGE: { variable: result }
+        args:
+          - {variable: result}

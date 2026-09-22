@@ -10,110 +10,96 @@ workflows:
       start:
         opcode: workflow_start
         next: print_header
-        inputs: {}
 
       print_header:
         opcode: io_print
         next: test_if_true
-        inputs:
-          STRING:
-            literal: "=== Testing control_if (without else) ===\n\n"
+        args:
+          - literal: "=== Testing control_if (without else) ===\n\n"
 
       # Test 1: Condition is true (should execute THEN branch)
       test_if_true:
         opcode: control_if
         next: test_if_false
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             node: check_x_greater
-          THEN:
+          then:
             branch: print_x_is_greater
 
       check_x_greater:
         opcode: operator_greater_than
         isReporter: true
-        inputs:
-          OPERAND1:
-            variable: x
-          OPERAND2:
-            variable: y
+        args:
+          - variable: x
+          - variable: y
 
       print_x_is_greater:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "✓ Test 1 passed: x is greater than y (10 > 5)\n"
+        args:
+          - literal: "✓ Test 1 passed: x is greater than y (10 > 5)\n"
 
       # Test 2: Condition is false (should skip THEN branch)
       test_if_false:
         opcode: control_if
         next: print_after_skip
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             node: check_y_greater
-          THEN:
+          then:
             branch: print_y_is_greater
 
       check_y_greater:
         opcode: operator_greater_than
         isReporter: true
-        inputs:
-          OPERAND1:
-            variable: y
-          OPERAND2:
-            variable: x
+        args:
+          - variable: y
+          - variable: x
 
       print_y_is_greater:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "✗ Test 2 FAILED: This should not print!\n"
+        args:
+          - literal: "✗ Test 2 FAILED: This should not print!\n"
 
       print_after_skip:
         opcode: io_print
         next: test_if_with_next
-        inputs:
-          STRING:
-            literal: "✓ Test 2 passed: THEN branch was correctly skipped (5 not > 10)\n"
+        args:
+          - literal: "✓ Test 2 passed: THEN branch was correctly skipped (5 not > 10)\n"
 
       # Test 3: control_if with next node continues correctly
       test_if_with_next:
         opcode: control_if
         next: print_continued
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             node: check_always_true
-          THEN:
+          then:
             branch: print_in_then
 
       check_always_true:
         opcode: operator_equals
         isReporter: true
-        inputs:
-          OPERAND1:
-            literal: 1
-          OPERAND2:
-            literal: 1
+        args:
+          - literal: 1
+          - literal: 1
 
       print_in_then:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "✓ Test 3a: Executed THEN branch\n"
+        args:
+          - literal: "✓ Test 3a: Executed THEN branch\n"
 
       print_continued:
         opcode: io_print
         next: print_footer
-        inputs:
-          STRING:
-            literal: "✓ Test 3b: Continued to next node after control_if\n"
+        args:
+          - literal: "✓ Test 3b: Continued to next node after control_if\n"
 
       print_footer:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n✅ All control_if tests passed!\n"
+        args:
+          - literal: "\n✅ All control_if tests passed!\n"

@@ -27,22 +27,19 @@ workflows:
       start:
         opcode: workflow_start
         next: print_header
-        inputs: {}
 
       # --- Introduction ---
       print_header:
         opcode: io_print
         next: print_fetching
-        inputs:
-          STRING:
-            literal: "=== LexFlow HTTP API Example ===\n\n"
+        args:
+          - literal: "=== LexFlow HTTP API Example ===\n\n"
 
       print_fetching:
         opcode: io_print
         next: store_response
-        inputs:
-          STRING:
-            literal: "Fetching post #1 from JSONPlaceholder API...\n\n"
+        args:
+          - literal: "Fetching post #1 from JSONPlaceholder API...\n\n"
 
       # --- Step 1: Fetch data from API ---
       # The http_get opcode returns a dict with:
@@ -53,7 +50,7 @@ workflows:
       fetch_post:
         opcode: http_get
         isReporter: true
-        inputs:
+        kwargs:
           url:
             literal: "https://jsonplaceholder.typicode.com/posts/1"
 
@@ -61,17 +58,17 @@ workflows:
       store_response:
         opcode: data_set_variable_to
         next: print_status
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "response"
-          VALUE:
+          value:
             node: fetch_post
 
       # --- Step 2: Display status code ---
       get_status:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: response
           key:
@@ -80,14 +77,14 @@ workflows:
       status_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: get_status
 
       format_status:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "HTTP Status: "
           right:
@@ -96,16 +93,15 @@ workflows:
       print_status:
         opcode: io_print
         next: store_json_data
-        inputs:
-          STRING:
-            node: format_status
+        args:
+          - node: format_status
 
       # --- Step 3: Extract JSON data ---
       # The 'json' field contains the parsed response body
       get_json:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: response
           key:
@@ -114,24 +110,23 @@ workflows:
       store_json_data:
         opcode: data_set_variable_to
         next: print_title_header
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "post_data"
-          VALUE:
+          value:
             node: get_json
 
       # --- Step 4: Extract and display the title field ---
       print_title_header:
         opcode: io_print
         next: print_title_value
-        inputs:
-          STRING:
-            literal: "\n--- Post Details ---\n"
+        args:
+          - literal: "\n--- Post Details ---\n"
 
       get_title:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: post_data
           key:
@@ -140,7 +135,7 @@ workflows:
       format_title:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Title: "
           right:
@@ -149,15 +144,14 @@ workflows:
       print_title_value:
         opcode: io_print
         next: print_body_value
-        inputs:
-          STRING:
-            node: format_title
+        args:
+          - node: format_title
 
       # --- Step 5: Extract and display the body field ---
       get_body:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: post_data
           key:
@@ -166,7 +160,7 @@ workflows:
       format_body:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "\nBody: "
           right:
@@ -175,15 +169,14 @@ workflows:
       print_body_value:
         opcode: io_print
         next: print_user_id
-        inputs:
-          STRING:
-            node: format_body
+        args:
+          - node: format_body
 
       # --- Step 6: Extract numeric field (userId) ---
       get_user_id:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: post_data
           key:
@@ -192,14 +185,14 @@ workflows:
       user_id_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: get_user_id
 
       format_user_id:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "\nUser ID: "
           right:
@@ -208,15 +201,14 @@ workflows:
       print_user_id:
         opcode: io_print
         next: print_post_id
-        inputs:
-          STRING:
-            node: format_user_id
+        args:
+          - node: format_user_id
 
       # --- Step 7: Extract post ID ---
       get_post_id:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: post_data
           key:
@@ -225,14 +217,14 @@ workflows:
       post_id_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: get_post_id
 
       format_post_id:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "\nPost ID: "
           right:
@@ -241,14 +233,12 @@ workflows:
       print_post_id:
         opcode: io_print
         next: print_footer
-        inputs:
-          STRING:
-            node: format_post_id
+        args:
+          - node: format_post_id
 
       # --- Conclusion ---
       print_footer:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n\n=== API fetch completed successfully! ===\n"
+        args:
+          - literal: "\n\n=== API fetch completed successfully! ===\n"

@@ -16,43 +16,37 @@ workflows:
       start:
         opcode: workflow_start
         next: greet
-        inputs: {}
 
       greet:
         opcode: web_markdown
         next: save_name
-        inputs:
-          web_send:
-            variable: web_send
-          content:
-            literal: "# Welcome to LexFlow!\n\nThis demo shows interactive web opcodes."
+        args:
+          - variable: web_send
+          - literal: "# Welcome to LexFlow!\n\nThis demo shows interactive web opcodes."
 
       # Reporter: prompts for name input
       ask_name:
         opcode: web_input
         isReporter: true
-        inputs:
-          web_send:
-            variable: web_send
-          web_recv:
-            variable: web_recv
-          prompt:
-            literal: "What is your name?"
+        args:
+          - variable: web_send
+          - variable: web_recv
+          - literal: "What is your name?"
 
       save_name:
         opcode: data_set_variable_to
         next: show_greeting
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "user_name"
-          VALUE:
+          value:
             node: ask_name
 
       # Reporter: builds greeting message
       greeting_msg:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Hello, "
           right:
@@ -61,7 +55,7 @@ workflows:
       add_exclaim:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: user_name
           right:
@@ -70,42 +64,35 @@ workflows:
       show_greeting:
         opcode: web_alert
         next: save_color
-        inputs:
-          web_send:
-            variable: web_send
-          message:
-            node: greeting_msg
-          variant:
-            literal: "success"
+        args:
+          - variable: web_send
+          - node: greeting_msg
+          - literal: "success"
 
       # Reporter: prompts for color selection
       ask_color:
         opcode: web_select
         isReporter: true
-        inputs:
-          web_send:
-            variable: web_send
-          web_recv:
-            variable: web_recv
-          options:
-            literal: ["Red", "Green", "Blue", "Purple"]
-          prompt:
-            literal: "What's your favorite color?"
+        args:
+          - variable: web_send
+          - variable: web_recv
+          - literal: ["Red", "Green", "Blue", "Purple"]
+          - literal: "What's your favorite color?"
 
       save_color:
         opcode: data_set_variable_to
         next: show_color
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "favorite_color"
-          VALUE:
+          value:
             node: ask_color
 
       # Reporter: builds color message
       color_msg:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "You chose: **"
           right:
@@ -114,7 +101,7 @@ workflows:
       color_msg_end:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: favorite_color
           right:
@@ -123,93 +110,70 @@ workflows:
       show_color:
         opcode: web_markdown
         next: check_confirm
-        inputs:
-          web_send:
-            variable: web_send
-          content:
-            node: color_msg
+        args:
+          - variable: web_send
+          - node: color_msg
 
       # Reporter: prompts for confirmation
       confirm_done:
         opcode: web_confirm
         isReporter: true
-        inputs:
-          web_send:
-            variable: web_send
-          web_recv:
-            variable: web_recv
-          message:
-            literal: "Would you like to see a progress demo?"
+        args:
+          - variable: web_send
+          - variable: web_recv
+          - literal: "Would you like to see a progress demo?"
 
       check_confirm:
         opcode: control_if
         next: finish
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             node: confirm_done
-          THEN:
+          then:
             branch: progress_demo
 
       progress_demo:
         opcode: web_progress
         next: progress_50
-        inputs:
-          web_send:
-            variable: web_send
-          value:
-            literal: 25
-          max:
-            literal: 100
-          label:
-            literal: "Loading..."
+        args:
+          - variable: web_send
+          - literal: 25
+          - literal: 100
+          - literal: "Loading..."
 
       progress_50:
         opcode: web_progress
         next: progress_75
-        inputs:
-          web_send:
-            variable: web_send
-          value:
-            literal: 50
-          max:
-            literal: 100
-          label:
-            literal: "Processing..."
+        args:
+          - variable: web_send
+          - literal: 50
+          - literal: 100
+          - literal: "Processing..."
 
       progress_75:
         opcode: web_progress
         next: progress_100
-        inputs:
-          web_send:
-            variable: web_send
-          value:
-            literal: 75
-          max:
-            literal: 100
-          label:
-            literal: "Almost done..."
+        args:
+          - variable: web_send
+          - literal: 75
+          - literal: 100
+          - literal: "Almost done..."
 
       progress_100:
         opcode: web_progress
         next: show_table
-        inputs:
-          web_send:
-            variable: web_send
-          value:
-            literal: 100
-          max:
-            literal: 100
-          label:
-            literal: "Complete!"
+        args:
+          - variable: web_send
+          - literal: 100
+          - literal: 100
+          - literal: "Complete!"
 
       show_table:
         opcode: web_table
         next: null
-        inputs:
-          web_send:
-            variable: web_send
-          data:
-            literal:
+        args:
+          - variable: web_send
+          - literal:
               - name: Alice
                 score: 95
               - name: Bob
@@ -220,10 +184,7 @@ workflows:
       finish:
         opcode: web_alert
         next: null
-        inputs:
-          web_send:
-            variable: web_send
-          message:
-            literal: "Demo complete! Thanks for trying LexFlow."
-          variant:
-            literal: "info"
+        args:
+          - variable: web_send
+          - literal: "Demo complete! Thanks for trying LexFlow."
+          - literal: "info"

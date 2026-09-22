@@ -9,61 +9,57 @@ workflows:
       start:
         opcode: workflow_start
         next: print_intro
-        inputs: {}
 
       print_intro:
         opcode: io_print
         next: test_try_finally
-        inputs:
-          STRING:
-            literal: "=== Testing Try-Finally ===\n\n"
+        args:
+          - literal: "=== Testing Try-Finally ===\n\n"
 
       # Test try-finally without exception
       test_try_finally:
         opcode: control_try
         next: check_cleanup
-        inputs:
-          TRY:
+        kwargs:
+          try:
             branch: normal_execution
-          FINALLY:
+          finally:
             branch: cleanup
 
       normal_execution:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "✓ Normal execution completed\n"
+        args:
+          - literal: "✓ Normal execution completed\n"
 
       cleanup:
         opcode: data_set_variable_to
         next: print_cleanup
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: cleanup_executed
-          VALUE:
+          value:
             literal: true
 
       print_cleanup:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "✓ Finally block executed\n"
+        args:
+          - literal: "✓ Finally block executed\n"
 
       check_cleanup:
         opcode: control_if_else
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             node: cleanup_check
-          THEN:
+          then:
             branch: cleanup_success
-          ELSE:
+          else:
             branch: cleanup_failed
 
       cleanup_check:
         opcode: operator_equals
-        inputs:
+        kwargs:
           left:
             variable: cleanup_executed
           right:
@@ -73,13 +69,11 @@ workflows:
       cleanup_success:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n✅ Try-finally test passed!\n"
+        args:
+          - literal: "\n✅ Try-finally test passed!\n"
 
       cleanup_failed:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n✗ Finally block did not execute!\n"
+        args:
+          - literal: "\n✗ Finally block did not execute!\n"

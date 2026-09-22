@@ -31,42 +31,38 @@ workflows:
       start:
         opcode: workflow_start
         next: intro
-        inputs: {}
 
       intro:
         opcode: io_print
         next: store_client
-        inputs:
-          STRING:
-            literal: "=== GCS Download Example ===\n\n"
+        args:
+          - literal: "=== GCS Download Example ===\n\n"
 
       # Step 1: Create GCS client (native async with gcloud-aio-storage)
       create_client:
         opcode: gcs_create_client
         isReporter: true
-        inputs: {}
 
       store_client:
         opcode: data_set_variable_to
         next: print_client_created
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "client"
-          VALUE:
+          value:
             node: create_client
 
       print_client_created:
         opcode: io_print
         next: store_exists
-        inputs:
-          STRING:
-            literal: "1. GCS async client created\n"
+        args:
+          - literal: "1. GCS async client created\n"
 
       # Step 2: Check if object exists
       check_exists:
         opcode: gcs_object_exists
         isReporter: true
-        inputs:
+        kwargs:
           client:
             variable: "client"
           bucket_name:
@@ -77,23 +73,22 @@ workflows:
       store_exists:
         opcode: data_set_variable_to
         next: print_exists
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "exists"
-          VALUE:
+          value:
             node: check_exists
 
       print_exists:
         opcode: io_print
         next: store_metadata
-        inputs:
-          STRING:
-            node: exists_message
+        args:
+          - node: exists_message
 
       exists_message:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "2. Object exists: "
           right:
@@ -102,7 +97,7 @@ workflows:
       exists_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: "exists"
 
@@ -110,7 +105,7 @@ workflows:
       get_metadata:
         opcode: gcs_get_object_metadata
         isReporter: true
-        inputs:
+        kwargs:
           client:
             variable: "client"
           bucket_name:
@@ -121,24 +116,23 @@ workflows:
       store_metadata:
         opcode: data_set_variable_to
         next: print_metadata
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "metadata"
-          VALUE:
+          value:
             node: get_metadata
 
       print_metadata:
         opcode: io_print
         next: store_bytes
-        inputs:
-          STRING:
-            literal: "\n3. Object metadata retrieved\n"
+        args:
+          - literal: "\n3. Object metadata retrieved\n"
 
       # Step 4: Download object as bytes
       download_bytes:
         opcode: gcs_download_object_as_bytes
         isReporter: true
-        inputs:
+        kwargs:
           client:
             variable: "client"
           bucket_name:
@@ -149,30 +143,28 @@ workflows:
       store_bytes:
         opcode: data_set_variable_to
         next: print_downloaded
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "object_bytes"
-          VALUE:
+          value:
             node: download_bytes
 
       print_downloaded:
         opcode: io_print
         next: close_client
-        inputs:
-          STRING:
-            literal: "4. Object downloaded as bytes\n"
+        args:
+          - literal: "4. Object downloaded as bytes\n"
 
       # Step 5: Close client (releases async resources)
       close_client:
         opcode: gcs_close_client
         next: final_message
-        inputs:
+        kwargs:
           client:
             variable: "client"
 
       final_message:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n5. Client closed\n\n=== GCS operations completed! ===\n"
+        args:
+          - literal: "\n5. Client closed\n\n=== GCS operations completed! ===\n"

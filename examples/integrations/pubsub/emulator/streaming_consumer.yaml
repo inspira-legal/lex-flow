@@ -23,35 +23,31 @@ workflows:
       start:
         opcode: workflow_start
         next: intro
-        inputs: {}
 
       intro:
         opcode: io_print
         next: print_waiting
-        inputs:
-          STRING:
-            literal: "=== Streaming Consumer (Emulator) ===\n\n"
+        args:
+          - literal: "=== Streaming Consumer (Emulator) ===\n\n"
 
       print_waiting:
         opcode: io_print
         next: store_subscriber
-        inputs:
-          STRING:
-            literal: "Waiting for messages (max: 50)...\n\n"
+        args:
+          - literal: "Waiting for messages (max: 50)...\n\n"
 
       # Create subscriber for ack operations
       create_subscriber:
         opcode: pubsub_create_subscriber
         isReporter: true
-        inputs: {}
 
       store_subscriber:
         opcode: data_set_variable_to
         next: process_messages
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "subscriber"
-          VALUE:
+          value:
             node: create_subscriber
 
       # Subscribe and process messages with streaming
@@ -59,7 +55,7 @@ workflows:
       subscribe_stream:
         opcode: pubsub_subscribe_stream
         isReporter: true
-        inputs:
+        kwargs:
           subscriber:
             variable: "subscriber"
           project_id:
@@ -80,28 +76,28 @@ workflows:
       process_messages:
         opcode: control_async_foreach
         next: done
-        inputs:
-          VAR:
+        kwargs:
+          var:
             literal: "msg"
-          ITERABLE:
+          iterable:
             node: subscribe_stream
-          BODY:
+          body:
             branch: increment_count
 
       # Process each message
       increment_count:
         opcode: data_set_variable_to
         next: print_received
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "message_count"
-          VALUE:
+          value:
             node: new_count
 
       new_count:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: "message_count"
           right:
@@ -110,21 +106,19 @@ workflows:
       print_received:
         opcode: io_print
         next: print_msg_id
-        inputs:
-          STRING:
-            literal: "--- Message Received ---\nID: "
+        args:
+          - literal: "--- Message Received ---\nID: "
 
       print_msg_id:
         opcode: io_print
         next: print_data_label
-        inputs:
-          STRING:
-            node: get_msg_id
+        args:
+          - node: get_msg_id
 
       get_msg_id:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: "msg"
           key:
@@ -133,21 +127,19 @@ workflows:
       print_data_label:
         opcode: io_print
         next: print_data
-        inputs:
-          STRING:
-            literal: "\nData: "
+        args:
+          - literal: "\nData: "
 
       print_data:
         opcode: io_print
         next: ack_message
-        inputs:
-          STRING:
-            node: get_msg_data
+        args:
+          - node: get_msg_data
 
       get_msg_data:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: "msg"
           key:
@@ -157,7 +149,7 @@ workflows:
       ack_message:
         opcode: pubsub_ack_message
         next: print_acked
-        inputs:
+        kwargs:
           subscriber:
             variable: "subscriber"
           project_id:
@@ -169,36 +161,33 @@ workflows:
 
       print_acked:
         opcode: io_print
-        inputs:
-          STRING:
-            literal: "\n[ACK]\n\n"
+        args:
+          - literal: "\n[ACK]\n\n"
 
       # Done
       done:
         opcode: io_print
         next: close_subscriber
-        inputs:
-          STRING:
-            literal: "\n=== Streaming Complete ===\n"
+        args:
+          - literal: "\n=== Streaming Complete ===\n"
 
       # Close subscriber client
       close_subscriber:
         opcode: pubsub_close_subscriber
         next: print_total
-        inputs:
+        kwargs:
           subscriber:
             variable: "subscriber"
 
       print_total:
         opcode: io_print
-        inputs:
-          STRING:
-            node: format_total
+        args:
+          - node: format_total
 
       format_total:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Total messages: "
           right:
@@ -207,6 +196,6 @@ workflows:
       total_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: "message_count"
