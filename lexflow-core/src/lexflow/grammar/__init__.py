@@ -51,15 +51,15 @@ def get_control_flow_opcodes() -> set[str]:
 
 
 def get_branch_color(branch_name: str) -> str:
-    """Get the color for a branch by name."""
+    """Get the color for a branch by name (legacy UPPERCASE names included)."""
     colors = get_grammar().get("branch_colors", {})
-    # Check for CATCH prefix
-    if branch_name.startswith("CATCH"):
-        return colors.get("CATCH", colors.get("default", "#9C27B0"))
-    # Check for BRANCH prefix
-    if branch_name.startswith("BRANCH"):
-        return colors.get("BRANCH", colors.get("default", "#9C27B0"))
-    return colors.get(branch_name, colors.get("default", "#9C27B0"))
+    name = branch_name.lower()
+    # Legacy numbered branches: catch1, branch2, ...
+    if name.startswith("catch"):
+        name = "catch"
+    elif name.startswith("branch"):
+        name = "args"
+    return colors.get(name, colors.get("default", "#9C27B0"))
 
 
 def get_node_color(node_type: str) -> str:

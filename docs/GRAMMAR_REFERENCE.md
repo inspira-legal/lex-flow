@@ -4,11 +4,12 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 > **Note:** This file is auto-generated from `grammar.json`. Run `lexflow docs generate --grammar` to update.
 
-**Grammar Version:** 1.0
+**Grammar Version:** 1.1
 
 ## Table of Contents
 
 - [Categories](#categories)
+- [Node Syntax](#node-syntax)
 - [Control Flow Constructs](#control-flow-constructs)
 - [Data Operations](#data-operations)
 - [Workflow Operations](#workflow-operations)
@@ -54,6 +55,44 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 | `sync` | Sync Primitives | `sync_` | `#A855F7` | 🔒 |
 | `slack` | Slack | `slack_` | `#4A154B` | 💬 |
 
+## Node Syntax
+
+A node passes its arguments with `args` (a positional list), `kwargs`
+(a mapping of parameter names), or both:
+
+```yaml
+greet:
+  opcode: string_join
+  args:
+    - literal: ["Hello", "World"]
+  kwargs:
+    delimiter: { literal: " " }
+```
+
+Constructs use the slot names in the tables below, all lowercase:
+
+```yaml
+gate:
+  opcode: control_if_else
+  kwargs:
+    condition: { node: is_ready }
+    then: { branch: run }
+    else: { branch: skip }
+```
+
+Slots that hold several values are lists: `args` for a fork's branches,
+a call's arguments and a return's values, and `catch` for a try's
+handlers. `workflow_call` names the callee in `workflow` and passes any
+other keyword straight to the workflow's parameters.
+
+### Legacy `inputs`
+
+The older form is a single `inputs` mapping, still accepted and still
+parsed exactly as before: for an opcode its keys are labels only and
+the order binds, and for a construct the slots are UPPERCASE
+(`CONDITION`, `THEN`, `BRANCH1`, `CATCH1`, ...). A node may not carry
+both forms. Run `lexflow migrate <path>` to convert.
+
 ## Control Flow Constructs
 
 ### `control_if`
@@ -67,13 +106,13 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Type | Label | Required | Default |
 |:-----|:-----|:------|:---------|:--------|
-| `CONDITION` | `expression` (bool) | Condition | Yes | - |
+| `condition` | `expression` (bool) | Condition | Yes | - |
 
 **Branches:**
 
 | Name | Label | Color | Required |
 |:-----|:------|:------|:---------|
-| `THEN` | Then | `#66BB6A` | Yes |
+| `then` | Then | `#66BB6A` | Yes |
 
 ---
 
@@ -88,14 +127,14 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Type | Label | Required | Default |
 |:-----|:-----|:------|:---------|:--------|
-| `CONDITION` | `expression` (bool) | Condition | Yes | - |
+| `condition` | `expression` (bool) | Condition | Yes | - |
 
 **Branches:**
 
 | Name | Label | Color | Required |
 |:-----|:------|:------|:---------|
-| `THEN` | Then | `#66BB6A` | Yes |
-| `ELSE` | Else | `#EF5350` | Yes |
+| `then` | Then | `#66BB6A` | Yes |
+| `else` | Else | `#EF5350` | Yes |
 
 ---
 
@@ -110,13 +149,13 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Type | Label | Required | Default |
 |:-----|:-----|:------|:---------|:--------|
-| `CONDITION` | `expression` (bool) | Condition | Yes | - |
+| `condition` | `expression` (bool) | Condition | Yes | - |
 
 **Branches:**
 
 | Name | Label | Color | Required |
 |:-----|:------|:------|:---------|
-| `BODY` | Body | `#22D3EE` | Yes |
+| `body` | Body | `#22D3EE` | Yes |
 
 ---
 
@@ -131,16 +170,16 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Type | Label | Required | Default |
 |:-----|:-----|:------|:---------|:--------|
-| `VAR` | `variable_name` (-) | Variable | Yes | - |
-| `START` | `expression` (int) | Start | Yes | - |
-| `END` | `expression` (int) | End | Yes | - |
-| `STEP` | `expression` (int) | Step | No | `1` |
+| `var` | `variable_name` (-) | Variable | Yes | - |
+| `start` | `expression` (int) | Start | Yes | - |
+| `end` | `expression` (int) | End | Yes | - |
+| `step` | `expression` (int) | Step | No | `1` |
 
 **Branches:**
 
 | Name | Label | Color | Required |
 |:-----|:------|:------|:---------|
-| `BODY` | Body | `#22D3EE` | Yes |
+| `body` | Body | `#22D3EE` | Yes |
 
 ---
 
@@ -155,14 +194,14 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Type | Label | Required | Default |
 |:-----|:-----|:------|:---------|:--------|
-| `VAR` | `variable_name` (-) | Variable | Yes | - |
-| `ITERABLE` | `expression` (list) | Iterable | Yes | - |
+| `var` | `variable_name` (-) | Variable | Yes | - |
+| `iterable` | `expression` (list) | Iterable | Yes | - |
 
 **Branches:**
 
 | Name | Label | Color | Required |
 |:-----|:------|:------|:---------|
-| `BODY` | Body | `#22D3EE` | Yes |
+| `body` | Body | `#22D3EE` | Yes |
 
 ---
 
@@ -177,8 +216,7 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Label | Color | Required |
 |:-----|:------|:------|:---------|
-| `BRANCH1` | Branch 1 | `#9C27B0` | Yes |
-| `BRANCH2` | Branch 2 | `#9C27B0` | No |
+| `args` | Branches | `#9C27B0` | Yes |
 
 *This construct supports dynamic branches.*
 
@@ -195,9 +233,9 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Label | Color | Required |
 |:-----|:------|:------|:---------|
-| `TRY` | Try | `#3B82F6` | Yes |
-| `CATCH1` | Catch | `#F87171` | No |
-| `FINALLY` | Finally | `#FACC15` | No |
+| `try` | Try | `#3B82F6` | Yes |
+| `catch` | Catch | `#F87171` | No |
+| `finally` | Finally | `#FACC15` | No |
 
 *This construct supports dynamic branches.*
 
@@ -214,7 +252,7 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Type | Label | Required | Default |
 |:-----|:-----|:------|:---------|:--------|
-| `VALUE` | `expression` (string) | Message | Yes | - |
+| `value` | `expression` (string) | Message | Yes | - |
 
 ---
 
@@ -229,13 +267,13 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Type | Label | Required | Default |
 |:-----|:-----|:------|:---------|:--------|
-| `VAR` | `variable_name` (-) | Task Variable | No | - |
+| `var` | `variable_name` (-) | Task Variable | No | - |
 
 **Branches:**
 
 | Name | Label | Color | Required |
 |:-----|:------|:------|:---------|
-| `BODY` | Body | `#22D3EE` | Yes |
+| `body` | Body | `#22D3EE` | Yes |
 
 ---
 
@@ -250,14 +288,14 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Type | Label | Required | Default |
 |:-----|:-----|:------|:---------|:--------|
-| `VAR` | `variable_name` (-) | Variable | Yes | - |
-| `ITERABLE` | `expression` (async_iterable) | Async Iterable | Yes | - |
+| `var` | `variable_name` (-) | Variable | Yes | - |
+| `iterable` | `expression` (async_iterable) | Async Iterable | Yes | - |
 
 **Branches:**
 
 | Name | Label | Color | Required |
 |:-----|:------|:------|:---------|
-| `BODY` | Body | `#22D3EE` | Yes |
+| `body` | Body | `#22D3EE` | Yes |
 
 ---
 
@@ -272,14 +310,14 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Type | Label | Required | Default |
 |:-----|:-----|:------|:---------|:--------|
-| `TIMEOUT` | `expression` (float) | Timeout (seconds) | Yes | - |
+| `timeout` | `expression` (float) | Timeout (seconds) | Yes | - |
 
 **Branches:**
 
 | Name | Label | Color | Required |
 |:-----|:------|:------|:---------|
-| `BODY` | Body | `#22D3EE` | Yes |
-| `ON_TIMEOUT` | On Timeout | `#FACC15` | No |
+| `body` | Body | `#22D3EE` | Yes |
+| `on_timeout` | On Timeout | `#FACC15` | No |
 
 ---
 
@@ -294,14 +332,14 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Type | Label | Required | Default |
 |:-----|:-----|:------|:---------|:--------|
-| `RESOURCE` | `expression` (-) | Resource | Yes | - |
-| `VAR` | `variable_name` (-) | Variable | Yes | - |
+| `resource` | `expression` (-) | Resource | Yes | - |
+| `var` | `variable_name` (-) | Variable | Yes | - |
 
 **Branches:**
 
 | Name | Label | Color | Required |
 |:-----|:------|:------|:---------|
-| `BODY` | Body | `#22D3EE` | Yes |
+| `body` | Body | `#22D3EE` | Yes |
 
 ---
 
@@ -318,8 +356,8 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Type | Label | Required | Default |
 |:-----|:-----|:------|:---------|:--------|
-| `VARIABLE` | `variable_name` (-) | Variable | Yes | - |
-| `VALUE` | `expression` (-) | Value | Yes | - |
+| `variable` | `variable_name` (-) | Variable | Yes | - |
+| `value` | `expression` (-) | Value | Yes | - |
 
 ---
 
@@ -336,7 +374,7 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Type | Label | Required | Default |
 |:-----|:-----|:------|:---------|:--------|
-| `VALUE` | `expression` (-) | Value | No | - |
+| `args` | `expression` (-) | Values | No | - |
 
 *This construct supports dynamic inputs (e.g., ARG1, ARG2, ...).*
 
@@ -353,7 +391,7 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Name | Type | Label | Required | Default |
 |:-----|:-----|:------|:---------|:--------|
-| `WORKFLOW` | `variable_name` (-) | Workflow Name | Yes | - |
+| `workflow` | `variable_name` (-) | Workflow Name | Yes | - |
 
 *This construct supports dynamic inputs (e.g., ARG1, ARG2, ...).*
 
@@ -374,14 +412,14 @@ Reference for all LexFlow language constructs (control flow, data operations, et
 
 | Branch | Color |
 |:-------|:------|
-| `THEN` | `#34D399` |
-| `ELSE` | `#F87171` |
-| `BODY` | `#22D3EE` |
-| `TRY` | `#3B82F6` |
-| `CATCH` | `#F87171` |
-| `FINALLY` | `#FACC15` |
-| `ON_TIMEOUT` | `#FACC15` |
-| `BRANCH` | `#9C27B0` |
+| `then` | `#34D399` |
+| `else` | `#F87171` |
+| `body` | `#22D3EE` |
+| `try` | `#3B82F6` |
+| `catch` | `#F87171` |
+| `finally` | `#FACC15` |
+| `on_timeout` | `#FACC15` |
+| `args` | `#9C27B0` |
 | `default` | `#9C27B0` |
 
 ### Node Colors
