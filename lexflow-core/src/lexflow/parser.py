@@ -44,6 +44,89 @@ class ParseError(Exception):
         super().__init__(message)
 
 
+# ============= Node Arguments =============
+
+
+class NodeArgs:
+    """The arguments of a node, from 'args'/'kwargs' or from legacy 'inputs'.
+
+    'args' is a positional list and 'kwargs' a mapping of parameter names.
+    Legacy 'inputs' is a dict whose keys are decorative for opcodes (position
+    binds, not the name) and are slot names for constructs, so it is exposed
+    both as a positional list and as a case-insensitive slot lookup.
+    """
+
+    def __init__(self, args: list, kwargs: dict, legacy: bool):
+        self.args = args
+        self.kwargs = kwargs
+        self.legacy = legacy
+        self._slots = {k.lower(): v for k, v in kwargs.items()} if legacy else kwargs
+
+    @classmethod
+    def from_node(cls, node: dict) -> "NodeArgs":
+        """Read a node's arguments, rejecting a mix of both syntaxes."""
+        if "args" in node or "kwargs" in node:
+            if "inputs" in node:
+                raise ParseError(
+                    "Node mixes 'inputs' with 'args'/'kwargs'. Use one or the other.",
+                    {"node": node},
+                )
+            args = node.get("args") or []
+            kwargs = node.get("kwargs") or {}
+            if not isinstance(args, list):
+                raise ParseError("Node 'args' must be a list", {"args": args})
+            if not isinstance(kwargs, dict):
+                raise ParseError("Node 'kwargs' must be a mapping", {"kwargs": kwargs})
+            return cls(list(args), dict(kwargs), legacy=False)
+
+        inputs = node.get("inputs") or {}
+        if not isinstance(inputs, dict):
+            raise ParseError("Node 'inputs' must be a mapping", {"inputs": inputs})
+        return cls([], dict(inputs), legacy=True)
+
+    def get(self, slot: str, default: Any = None) -> Any:
+        """Value of a named slot ('condition', 'body', ...), case-insensitive."""
+        return self._slots.get(slot, default)
+
+    def has(self, slot: str) -> bool:
+        return slot in self._slots
+
+    def positional(self) -> list:
+        """Positional arguments: 'args', or legacy input values in order."""
+        return list(self.kwargs.values()) if self.legacy else self.args
+
+    def named(self, *reserved: str) -> dict:
+        """Keyword arguments, without the given construct slots."""
+        if self.legacy:
+            return {}
+        return {k: v for k, v in self.kwargs.items() if k not in reserved}
+
+    def sequence(self, prefix: str) -> list:
+        """'args', or a legacy numbered slot family (ARG1, ARG2, ...)."""
+        if not self.legacy:
+            return self.args
+        values = []
+        i = 1
+        while f"{prefix}{i}" in self._slots:
+            values.append(self._slots[f"{prefix}{i}"])
+            i += 1
+        return values
+
+
+def parse_workflow_call(node_args: NodeArgs, context: "ParseContext") -> Call:
+    """Build a Call from a workflow_call node: 'workflow' names it, the rest are arguments."""
+    workflow_input = node_args.get("workflow", {})
+    if not isinstance(workflow_input, dict) or "literal" not in workflow_input:
+        raise ParseError("Invalid 'workflow' input in call", {"input": workflow_input})
+
+    args = [context.parser._parse_input(v, context) for v in node_args.sequence("arg")]
+    kwargs = {
+        name: context.parser._parse_input(v, context)
+        for name, v in node_args.named("workflow").items()
+    }
+    return Call(name=workflow_input["literal"], args=args, kwargs=kwargs)
+
+
 # ============= Parse Context =============
 
 
@@ -124,47 +207,27 @@ class ExpressionParser:
             raise ParseError(f"Reporter node '{node_id}' not found")
 
         opcode = node.get("opcode", "")
-        inputs = node.get("inputs", {})
+        node_args = NodeArgs.from_node(node)
 
         # Special case: variable getter
         if opcode == "data_get_variable":
-            var_input = inputs.get("VARIABLE", {})
+            var_input = node_args.get("variable", {})
             if isinstance(var_input, dict) and "literal" in var_input:
                 return Variable(name=var_input["literal"])
-            raise ParseError("Invalid VARIABLE input in data_get_variable")
+            raise ParseError("Invalid 'variable' input in data_get_variable")
 
         # Special case: workflow call as expression
         if opcode in ("workflow_call", "call"):
-            workflow_name = self._extract_workflow_name(inputs)
-            args = self._extract_call_arguments(inputs, context)
-            return Call(name=workflow_name, args=args)
+            return parse_workflow_call(node_args, context)
 
         # Default: opcode expression
-        args = []
-        for param_name, param_input in inputs.items():
-            arg_expr = self.parse(param_input, context)
-            args.append(arg_expr)
+        args = [self.parse(value, context) for value in node_args.positional()]
+        kwargs = {
+            name: self.parse(value, context)
+            for name, value in node_args.named().items()
+        }
 
-        return Opcode(name=opcode, args=args)
-
-    def _extract_workflow_name(self, inputs: dict) -> str:
-        """Extract workflow name from WORKFLOW input."""
-        workflow_input = inputs.get("WORKFLOW", {})
-        if isinstance(workflow_input, dict) and "literal" in workflow_input:
-            return workflow_input["literal"]
-        raise ParseError("Invalid WORKFLOW input in call", {"input": workflow_input})
-
-    def _extract_call_arguments(
-        self, inputs: dict, context: ParseContext
-    ) -> List[Expression]:
-        """Extract ARG1, ARG2, ... arguments from inputs."""
-        args = []
-        i = 1
-        while f"ARG{i}" in inputs:
-            arg_expr = self.parse(inputs[f"ARG{i}"], context)
-            args.append(arg_expr)
-            i += 1
-        return args
+        return Opcode(name=opcode, args=args, kwargs=kwargs)
 
 
 # ============= Concrete Node Handlers =============
@@ -191,54 +254,58 @@ class ControlFlowHandler(NodeHandler):
         self, node_id: str, node: dict, context: ParseContext
     ) -> Optional[Statement]:
         opcode = node.get("opcode", "")
-        inputs = node.get("inputs", {})
+        node_args = NodeArgs.from_node(node)
 
         handlers = {
-            "control_if": lambda i, c: self._handle_if(node_id, i, c),
-            "control_if_else": lambda i, c: self._handle_if_else(node_id, i, c),
-            "control_while": lambda i, c: self._handle_while(node_id, i, c),
-            "control_for": lambda i, c: self._handle_for(node_id, i, c),
-            "control_foreach": lambda i, c: self._handle_foreach(node_id, i, c),
-            "control_fork": lambda i, c: self._handle_fork(node_id, i, c),
-            "control_spawn": lambda i, c: self._handle_spawn(node_id, i, c),
-            "control_async_foreach": lambda i, c: self._handle_async_foreach(
-                node_id, i, c
+            "control_if": lambda a, c: self._handle_if(node_id, a, c),
+            "control_if_else": lambda a, c: self._handle_if_else(node_id, a, c),
+            "control_while": lambda a, c: self._handle_while(node_id, a, c),
+            "control_for": lambda a, c: self._handle_for(node_id, a, c),
+            "control_foreach": lambda a, c: self._handle_foreach(node_id, a, c),
+            "control_fork": lambda a, c: self._handle_fork(node_id, a, c),
+            "control_spawn": lambda a, c: self._handle_spawn(node_id, a, c),
+            "control_async_foreach": lambda a, c: self._handle_async_foreach(
+                node_id, a, c
             ),
-            "async_timeout": lambda i, c: self._handle_timeout(node_id, i, c),
-            "control_with": lambda i, c: self._handle_with(node_id, i, c),
+            "async_timeout": lambda a, c: self._handle_timeout(node_id, a, c),
+            "control_with": lambda a, c: self._handle_with(node_id, a, c),
         }
 
         handler = handlers.get(opcode)
         if handler:
-            return handler(inputs, context)
+            return handler(node_args, context)
         return None
 
-    def _handle_if(self, node_id: str, inputs: dict, context: ParseContext) -> If:
-        cond = context.parser._parse_input(inputs.get("CONDITION", []), context)
-        then_branch = context.parser._parse_branch(inputs.get("THEN", []), context)
+    def _handle_if(self, node_id: str, args: NodeArgs, context: ParseContext) -> If:
+        cond = context.parser._parse_input(args.get("condition", []), context)
+        then_branch = context.parser._parse_branch(args.get("then", []), context)
         return If(cond=cond, then=then_branch, else_=None, node_id=node_id)
 
-    def _handle_if_else(self, node_id: str, inputs: dict, context: ParseContext) -> If:
-        cond = context.parser._parse_input(inputs.get("CONDITION", []), context)
-        then_branch = context.parser._parse_branch(inputs.get("THEN", []), context)
-        else_branch = context.parser._parse_branch(inputs.get("ELSE", []), context)
+    def _handle_if_else(
+        self, node_id: str, args: NodeArgs, context: ParseContext
+    ) -> If:
+        cond = context.parser._parse_input(args.get("condition", []), context)
+        then_branch = context.parser._parse_branch(args.get("then", []), context)
+        else_branch = context.parser._parse_branch(args.get("else", []), context)
         return If(cond=cond, then=then_branch, else_=else_branch, node_id=node_id)
 
-    def _handle_while(self, node_id: str, inputs: dict, context: ParseContext) -> While:
-        cond = context.parser._parse_input(inputs.get("CONDITION", []), context)
-        body = context.parser._parse_branch(inputs.get("BODY", []), context)
+    def _handle_while(
+        self, node_id: str, args: NodeArgs, context: ParseContext
+    ) -> While:
+        cond = context.parser._parse_input(args.get("condition", []), context)
+        body = context.parser._parse_branch(args.get("body", []), context)
         return While(cond=cond, body=body, node_id=node_id)
 
-    def _handle_for(self, node_id: str, inputs: dict, context: ParseContext) -> For:
-        var_name = self._extract_variable_name(inputs.get("VAR", {}), "control_for")
-        start = context.parser._parse_input(inputs.get("START", {}), context)
-        end = context.parser._parse_input(inputs.get("END", {}), context)
+    def _handle_for(self, node_id: str, args: NodeArgs, context: ParseContext) -> For:
+        var_name = self._extract_variable_name(args.get("var", {}), "control_for")
+        start = context.parser._parse_input(args.get("start", {}), context)
+        end = context.parser._parse_input(args.get("end", {}), context)
         step = (
-            context.parser._parse_input(inputs.get("STEP", {}), context)
-            if "STEP" in inputs
+            context.parser._parse_input(args.get("step"), context)
+            if args.has("step")
             else None
         )
-        body = context.parser._parse_branch(inputs.get("BODY", {}), context)
+        body = context.parser._parse_branch(args.get("body", {}), context)
         return For(
             var_name=var_name,
             start=start,
@@ -249,64 +316,64 @@ class ControlFlowHandler(NodeHandler):
         )
 
     def _handle_foreach(
-        self, node_id: str, inputs: dict, context: ParseContext
+        self, node_id: str, args: NodeArgs, context: ParseContext
     ) -> ForEach:
-        var_name = self._extract_variable_name(inputs.get("VAR", {}), "control_foreach")
-        iterable = context.parser._parse_input(inputs.get("ITERABLE", {}), context)
-        body = context.parser._parse_branch(inputs.get("BODY", {}), context)
+        var_name = self._extract_variable_name(args.get("var", {}), "control_foreach")
+        iterable = context.parser._parse_input(args.get("iterable", {}), context)
+        body = context.parser._parse_branch(args.get("body", {}), context)
         return ForEach(var_name=var_name, iterable=iterable, body=body, node_id=node_id)
 
-    def _handle_fork(self, node_id: str, inputs: dict, context: ParseContext) -> Fork:
+    def _handle_fork(self, node_id: str, args: NodeArgs, context: ParseContext) -> Fork:
         branches = []
-        i = 1
-        while f"BRANCH{i}" in inputs:
-            branch = context.parser._parse_branch(inputs[f"BRANCH{i}"], context)
+        for branch_input in args.sequence("branch"):
+            branch = context.parser._parse_branch(branch_input, context)
             if branch:
                 branches.append(branch)
-            i += 1
         return Fork(branches=branches, node_id=node_id)
 
-    def _handle_spawn(self, node_id: str, inputs: dict, context: ParseContext) -> Spawn:
-        body = context.parser._parse_branch(inputs.get("BODY", {}), context)
+    def _handle_spawn(
+        self, node_id: str, args: NodeArgs, context: ParseContext
+    ) -> Spawn:
+        body = context.parser._parse_branch(args.get("body", {}), context)
         var_name = None
-        if "VAR" in inputs:
-            var_name = self._extract_variable_name(inputs["VAR"], "control_spawn")
+        if args.has("var"):
+            var_name = self._extract_variable_name(args.get("var"), "control_spawn")
         return Spawn(body=body, var_name=var_name, node_id=node_id)
 
     def _handle_async_foreach(
-        self, node_id: str, inputs: dict, context: ParseContext
+        self, node_id: str, args: NodeArgs, context: ParseContext
     ) -> AsyncForEach:
         var_name = self._extract_variable_name(
-            inputs.get("VAR", {}), "control_async_foreach"
+            args.get("var", {}), "control_async_foreach"
         )
-        iterable = context.parser._parse_input(inputs.get("ITERABLE", {}), context)
-        body = context.parser._parse_branch(inputs.get("BODY", {}), context)
+        iterable = context.parser._parse_input(args.get("iterable", {}), context)
+        body = context.parser._parse_branch(args.get("body", {}), context)
         return AsyncForEach(
             var_name=var_name, iterable=iterable, body=body, node_id=node_id
         )
 
     def _handle_timeout(
-        self, node_id: str, inputs: dict, context: ParseContext
+        self, node_id: str, args: NodeArgs, context: ParseContext
     ) -> Timeout:
-        timeout_expr = context.parser._parse_input(inputs.get("TIMEOUT", {}), context)
-        body = context.parser._parse_branch(inputs.get("BODY", {}), context)
+        timeout_expr = context.parser._parse_input(args.get("timeout", {}), context)
+        body = context.parser._parse_branch(args.get("body", {}), context)
         on_timeout = None
-        if "ON_TIMEOUT" in inputs:
-            on_timeout = context.parser._parse_branch(inputs["ON_TIMEOUT"], context)
+        if args.has("on_timeout"):
+            on_timeout = context.parser._parse_branch(args.get("on_timeout"), context)
         return Timeout(
             timeout=timeout_expr, body=body, on_timeout=on_timeout, node_id=node_id
         )
 
-    def _handle_with(self, node_id: str, inputs: dict, context: ParseContext) -> With:
-        resource = context.parser._parse_input(inputs.get("RESOURCE", {}), context)
-        var_name = self._extract_variable_name(inputs.get("VAR", {}), "control_with")
-        body = context.parser._parse_branch(inputs.get("BODY", {}), context)
+    def _handle_with(self, node_id: str, args: NodeArgs, context: ParseContext) -> With:
+        resource = context.parser._parse_input(args.get("resource", {}), context)
+        var_name = self._extract_variable_name(args.get("var", {}), "control_with")
+        body = context.parser._parse_branch(args.get("body", {}), context)
         return With(resource=resource, var_name=var_name, body=body, node_id=node_id)
 
     def _extract_variable_name(self, var_input: dict, opcode: str) -> str:
         if isinstance(var_input, dict) and "literal" in var_input:
             return var_input["literal"]
-        raise ParseError(f"Invalid VAR input in {opcode}", {"input": var_input})
+        raise ParseError(f"Invalid 'var' input in {opcode}", {"input": var_input})
 
 
 class DataHandler(NodeHandler):
@@ -329,43 +396,39 @@ class DataHandler(NodeHandler):
         self, node_id: str, node: dict, context: ParseContext
     ) -> Optional[Statement]:
         opcode = node.get("opcode", "")
-        inputs = node.get("inputs", {})
+        node_args = NodeArgs.from_node(node)
 
         if opcode in ("data_set_variable_to", "assign"):
-            return self._handle_assign(node_id, inputs, context)
+            return self._handle_assign(node_id, node_args, context)
         elif opcode in ("workflow_return", "return"):
-            return self._handle_return(node_id, inputs, context)
+            return self._handle_return(node_id, node_args, context)
         return None
 
     def _handle_assign(
-        self, node_id: str, inputs: dict, context: ParseContext
+        self, node_id: str, args: NodeArgs, context: ParseContext
     ) -> Assign:
-        var_input = inputs.get("VARIABLE", {})
+        var_input = args.get("variable", {})
         if not isinstance(var_input, dict) or "literal" not in var_input:
             raise ParseError(
-                "Invalid VARIABLE input in assignment", {"input": var_input}
+                "Invalid 'variable' input in assignment", {"input": var_input}
             )
 
         var_name = var_input["literal"]
-        value = context.parser._parse_input(inputs.get("VALUE", {}), context)
+        value = context.parser._parse_input(args.get("value", {}), context)
         return Assign(name=var_name, value=value, node_id=node_id)
 
     def _handle_return(
-        self, node_id: str, inputs: dict, context: ParseContext
+        self, node_id: str, args: NodeArgs, context: ParseContext
     ) -> Return:
-        values = []
+        # Multiple return values: 'args', or legacy VALUE1, VALUE2, ...
+        values = [
+            context.parser._parse_input(value, context)
+            for value in args.sequence("value")
+        ]
 
-        # Check for multiple return values (VALUE1, VALUE2, ...)
-        i = 1
-        while f"VALUE{i}" in inputs:
-            value_expr = context.parser._parse_input(inputs[f"VALUE{i}"], context)
-            values.append(value_expr)
-            i += 1
-
-        # Fallback to single VALUE for backward compatibility
-        if not values and "VALUE" in inputs:
-            value_expr = context.parser._parse_input(inputs["VALUE"], context)
-            values.append(value_expr)
+        # Single value: 'value' slot
+        if not values and args.has("value"):
+            values.append(context.parser._parse_input(args.get("value"), context))
 
         return Return(values=values, node_id=node_id)
 
@@ -389,28 +452,8 @@ class WorkflowHandler(NodeHandler):
     def handle(
         self, node_id: str, node: dict, context: ParseContext
     ) -> Optional[Statement]:
-        inputs = node.get("inputs", {})
-        workflow_name = self._extract_workflow_name(inputs)
-        args = self._extract_arguments(inputs, context)
-        call_expr = Call(name=workflow_name, args=args)
+        call_expr = parse_workflow_call(NodeArgs.from_node(node), context)
         return ExprStmt(expr=call_expr, node_id=node_id)
-
-    def _extract_workflow_name(self, inputs: dict) -> str:
-        workflow_input = inputs.get("WORKFLOW", {})
-        if isinstance(workflow_input, dict) and "literal" in workflow_input:
-            return workflow_input["literal"]
-        raise ParseError("Invalid WORKFLOW input in call", {"input": workflow_input})
-
-    def _extract_arguments(
-        self, inputs: dict, context: ParseContext
-    ) -> List[Expression]:
-        args = []
-        i = 1
-        while f"ARG{i}" in inputs:
-            arg_expr = context.parser._parse_input(inputs[f"ARG{i}"], context)
-            args.append(arg_expr)
-            i += 1
-        return args
 
 
 class ExceptionHandler(NodeHandler):
@@ -433,33 +476,43 @@ class ExceptionHandler(NodeHandler):
         self, node_id: str, node: dict, context: ParseContext
     ) -> Optional[Statement]:
         opcode = node.get("opcode", "")
-        inputs = node.get("inputs", {})
+        node_args = NodeArgs.from_node(node)
 
         if opcode in ("control_try", "try_catch"):
-            return self._handle_try(node_id, inputs, context)
+            return self._handle_try(node_id, node_args, context)
         elif opcode == "control_throw":
-            return self._handle_throw(node_id, inputs, context)
+            return self._handle_throw(node_id, node_args, context)
         return None
 
-    def _handle_try(self, node_id: str, inputs: dict, context: ParseContext) -> Try:
-        try_body = context.parser._parse_branch(inputs.get("TRY", {}), context)
+    def _handle_try(self, node_id: str, args: NodeArgs, context: ParseContext) -> Try:
+        try_body = context.parser._parse_branch(args.get("try", {}), context)
 
-        handlers = []
-        i = 1
-        while f"CATCH{i}" in inputs:
-            handlers.append(self._parse_catch_handler(inputs[f"CATCH{i}"], context))
-            i += 1
+        handlers = [
+            self._parse_catch_handler(catch, context)
+            for catch in self._catch_clauses(args)
+        ]
 
         finally_body = None
-        if "FINALLY" in inputs:
-            finally_body = context.parser._parse_branch(inputs["FINALLY"], context)
+        if args.has("finally"):
+            finally_body = context.parser._parse_branch(args.get("finally"), context)
 
         return Try(
             body=try_body, handlers=handlers, finally_=finally_body, node_id=node_id
         )
 
-    def _handle_throw(self, node_id: str, inputs: dict, context: ParseContext) -> Throw:
-        value = context.parser._parse_input(inputs.get("VALUE", {}), context)
+    def _catch_clauses(self, args: NodeArgs) -> List[dict]:
+        """Catch clauses: a 'catch' list, or legacy CATCH1, CATCH2, ..."""
+        if args.legacy:
+            return args.sequence("catch")
+        clauses = args.get("catch", [])
+        if not isinstance(clauses, list):
+            raise ParseError("'catch' must be a list of handlers", {"catch": clauses})
+        return clauses
+
+    def _handle_throw(
+        self, node_id: str, args: NodeArgs, context: ParseContext
+    ) -> Throw:
+        value = context.parser._parse_input(args.get("value", {}), context)
         return Throw(value=value, node_id=node_id)
 
     def _parse_catch_handler(self, catch_input: dict, context: ParseContext) -> Catch:
@@ -480,15 +533,19 @@ class DefaultHandler(NodeHandler):
         self, node_id: str, node: dict, context: ParseContext
     ) -> Optional[Statement]:
         opcode = node.get("opcode", "")
-        inputs = node.get("inputs", {})
+        node_args = NodeArgs.from_node(node)
 
         # Convert regular opcodes to OpStmt
-        args = []
-        for param_name, param_input in inputs.items():
-            arg_expr = context.parser._parse_input(param_input, context)
-            args.append(arg_expr)
+        args = [
+            context.parser._parse_input(value, context)
+            for value in node_args.positional()
+        ]
+        kwargs = {
+            name: context.parser._parse_input(value, context)
+            for name, value in node_args.named().items()
+        }
 
-        return OpStmt(name=opcode, args=args, node_id=node_id)
+        return OpStmt(name=opcode, args=args, kwargs=kwargs, node_id=node_id)
 
 
 class Parser:
