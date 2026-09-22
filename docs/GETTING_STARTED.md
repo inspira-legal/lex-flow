@@ -53,7 +53,6 @@ uv sync
 
 # Or install with specific extras
 uv sync --extra ai        # Include AI opcodes (pydantic-ai)
-uv sync --extra pygame    # Include pygame opcodes
 uv sync --extra file      # Include file processing (PDF)
 ```
 

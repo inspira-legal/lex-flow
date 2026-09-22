@@ -143,15 +143,17 @@ def parse_data(data: str, format: str):
 uv sync --all-extras
 ```
 
+Existing environments need this too: `pytest-timeout` is a new dev dependency, and
+`pytest` exits 4 with `Unknown config option: timeout` until it is installed.
+
 ### Testing
 ```bash
 # Run all tests
 pytest
 
 # Run specific test categories
-pytest -m unit              # Unit tests only
-pytest -m integration       # Integration tests only
-pytest -m "not slow"        # Skip slow tests
+pytest tests/unit           # Unit tests only
+pytest tests/integration    # Integration tests only
 
 # Run single test file
 pytest tests/unit/test_output_capture.py
@@ -493,7 +495,7 @@ See `examples/integrations/custom_opcodes/basics.py` for complete examples.
 - Unit tests: `tests/unit/`
 - Integration tests: `tests/integration/` (organized by feature category)
 - Educational examples: `examples/` (organized by topic for users)
-- Use `pytest -m unit` or `pytest -m integration` to run specific categories
+- Use `pytest tests/unit` or `pytest tests/integration` to run specific categories
 - All tests use `pytest-asyncio` for async support (mode: auto)
 
 ## Important Implementation Details
