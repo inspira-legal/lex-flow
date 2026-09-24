@@ -1,5 +1,7 @@
 """Tests for the 'lexflow migrate' transformation."""
 
+import json
+
 import yaml
 
 from lexflow_cli.migrate import find_misbindings, migrate_text
@@ -294,3 +296,131 @@ def test_names_mode_keeps_positional_args_for_decorative_names():
     migrated, _, _ = migrate_text(source, ".yaml", use_names=True)
     node_data = yaml.safe_load(migrated)["workflows"][0]["nodes"]["show"]
     assert node_data["args"] == [{"literal": "hi"}]
+
+
+# ============= Behaviour preservation =============
+
+
+def test_names_mode_keeps_variadic_opcodes_positional():
+    """io_print(*values): binding 'values' by name fails at runtime."""
+    source = (
+        HEADER
+        + """      show:
+        opcode: io_print
+        inputs:
+          VALUES:
+            literal: "hi"
+"""
+    )
+    migrated, _, _ = migrate_text(source, ".yaml", use_names=True)
+    node = yaml.safe_load(migrated)["workflows"][0]["nodes"]["show"]
+    assert node == {"opcode": "io_print", "args": [{"literal": "hi"}]}
+
+
+def test_a_numbered_family_stops_at_the_first_gap():
+    """The legacy reader read VALUE1 then stopped, so VALUE3 was never returned."""
+    source = (
+        HEADER
+        + """      done:
+        opcode: workflow_return
+        inputs:
+          VALUE1:
+            literal: "a"
+          VALUE3:
+            literal: "c"
+"""
+    )
+    migrated, _, warnings = migrate_text(source, ".yaml")
+    node = yaml.safe_load(migrated)["workflows"][0]["nodes"]["done"]
+    assert node["args"] == [{"literal": "a"}]
+    assert any("dropped VALUE3" in w for w in warnings)
+
+
+def test_a_key_the_legacy_reader_ignored_is_dropped():
+    """An extra workflow_call key was inert; as a kwarg it would reach the callee."""
+    source = (
+        HEADER
+        + """      go:
+        opcode: workflow_call
+        inputs:
+          WORKFLOW:
+            literal: helper
+          ARG1:
+            literal: "x"
+          NOTE:
+            literal: "inert"
+"""
+    )
+    migrated, _, warnings = migrate_text(source, ".yaml")
+    node = yaml.safe_load(migrated)["workflows"][0]["nodes"]["go"]
+    assert node["kwargs"] == {"workflow": {"literal": "helper"}}
+    assert node["args"] == [{"literal": "x"}]
+    assert any("dropped NOTE" in w for w in warnings)
+
+
+def test_an_unread_construct_slot_is_dropped():
+    """control_for never read MAX, and the new parser would reject it."""
+    source = (
+        HEADER
+        + """      loop:
+        opcode: control_for
+        inputs:
+          VAR:
+            literal: i
+          START:
+            literal: 0
+          END:
+            literal: 3
+          MAX:
+            literal: 9
+          BODY:
+            branch: show
+      show:
+        opcode: io_print
+        inputs:
+          S:
+            literal: "x"
+"""
+    )
+    migrated, _, warnings = migrate_text(source, ".yaml")
+    node = yaml.safe_load(migrated)["workflows"][0]["nodes"]["loop"]
+    assert "max" not in node["kwargs"]
+    assert any("dropped MAX" in w for w in warnings)
+
+
+def test_a_bare_value_slot_is_still_read():
+    source = (
+        HEADER
+        + """      done:
+        opcode: workflow_return
+        inputs:
+          VALUE:
+            literal: "a"
+"""
+    )
+    migrated, _, _ = migrate_text(source, ".yaml")
+    node = yaml.safe_load(migrated)["workflows"][0]["nodes"]["done"]
+    assert node["args"] == [{"literal": "a"}]
+
+
+def test_json_output_keeps_non_ascii_readable():
+    source = json.dumps(
+        {
+            "workflows": [
+                {
+                    "name": "main",
+                    "interface": {"inputs": [], "outputs": []},
+                    "variables": {},
+                    "nodes": {
+                        "show": {
+                            "opcode": "io_print",
+                            "inputs": {"S": {"literal": "Petição"}},
+                        }
+                    },
+                }
+            ]
+        },
+        ensure_ascii=False,
+    )
+    migrated, _, _ = migrate_text(source, ".json")
+    assert "Petição" in migrated

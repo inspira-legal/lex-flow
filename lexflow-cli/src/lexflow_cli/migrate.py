@@ -1,12 +1,14 @@
 """Migrate workflow files from the legacy 'inputs' key to 'args'/'kwargs'."""
 
+import inspect
 import io
 import json
 import re
 from pathlib import Path
 from typing import Any, Optional
 
-from lexflow import default_registry, get_grammar
+from lexflow import Parser, default_registry, get_grammar
+from lexflow.grammar import SLOT_ALIASES, get_construct_slots
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 
@@ -22,16 +24,39 @@ SEQUENCE_SLOTS = {
 CATCH_OPCODES = {"control_try", "try_catch"}
 
 # Opcodes whose inputs are named slots rather than positional arguments
-NAMED_SLOT_ALIASES = {
-    "assign",
-    "return",
-    "call",
-    "try_catch",
-    "data_get_variable",
-}
+NAMED_SLOT_ALIASES = set(SLOT_ALIASES) | {"data_get_variable"}
+
+# Opcodes that read a bare family slot (VALUE) when no numbered one is present
+BARE_SLOT_OPCODES = {"workflow_return", "return"}
 
 YAML_SUFFIXES = (".yaml", ".yml")
 WORKFLOW_SUFFIXES = YAML_SUFFIXES + (".json",)
+
+
+def core_supports_kwargs() -> bool:
+    """True when the installed core can parse the syntax this migration emits.
+
+    The CLI depends on the core by git URL, which carries no version floor, so
+    an older core would accept the rewrite and then reject the rewritten file.
+    """
+    probe = {
+        "workflows": [
+            {
+                "name": "main",
+                "interface": {"inputs": [], "outputs": []},
+                "variables": {},
+                "nodes": {
+                    "start": {"opcode": "workflow_start", "next": "p"},
+                    "p": {"opcode": "io_print", "args": [{"literal": "probe"}]},
+                },
+            }
+        ]
+    }
+    try:
+        Parser().parse_dict(probe)
+        return True
+    except Exception:
+        return False
 
 
 def named_slot_opcodes() -> set[str]:
@@ -76,35 +101,65 @@ def _new_seq(source: Any) -> Any:
     return CommentedSeq() if isinstance(source, CommentedMap) else []
 
 
-def _split_construct_inputs(opcode: str, inputs: Any) -> tuple[Any, Any]:
-    """Split a construct's inputs into a positional list and named slots."""
+def _take_family(numbered: dict[int, Any], target: Any) -> None:
+    """Read a numbered family the way the legacy reader did: 1, 2, ... to the first gap."""
+    index = 1
+    while index in numbered:
+        target.append(numbered.pop(index))
+        index += 1
+
+
+def _split_construct_inputs(opcode: str, inputs: Any) -> tuple[Any, Any, list[str]]:
+    """Split a construct's inputs into a positional list and named slots.
+
+    Returns (args, kwargs, dropped). 'dropped' holds the keys the legacy reader
+    never looked at; keeping them would change behaviour, so they are reported
+    rather than carried over.
+    """
     args = _new_seq(inputs)
     kwargs = _new_map(inputs)
     prefix = SEQUENCE_SLOTS.get(opcode)
-    numbered_args: list[tuple[int, Any]] = []
-    catches: list[tuple[int, Any]] = []
+    slots = get_construct_slots(opcode)
+    numbered_args: dict[int, Any] = {}
+    numbered_keys: dict[int, str] = {}
+    catches: dict[int, Any] = {}
+    catch_keys: dict[int, str] = {}
+    bare: Optional[tuple[str, Any]] = None
+    dropped: list[str] = []
 
     for key, value in inputs.items():
         if prefix and (index := _numbered(key, prefix)) is not None:
-            numbered_args.append((index, value))
+            numbered_args[index] = value
+            numbered_keys[index] = key
         elif opcode in CATCH_OPCODES and (index := _numbered(key, "CATCH")) is not None:
-            catches.append((index, value))
+            catches[index] = value
+            catch_keys[index] = key
         elif prefix and key.upper() == prefix:
-            # Single unnumbered slot of a family (workflow_return's VALUE)
-            numbered_args.append((0, value))
+            bare = (key, value)
+        elif slots is not None and str(key).lower() in slots:
+            kwargs[str(key).lower()] = value
+        elif slots is None and str(key).lower() == "workflow":
+            kwargs["workflow"] = value
         else:
-            kwargs[key.lower()] = value
+            dropped.append(str(key))
 
-    for _, value in sorted(numbered_args):
-        args.append(value)
+    _take_family(numbered_args, args)
+    dropped.extend(numbered_keys[i] for i in sorted(numbered_args))
 
-    if catches:
-        catch_list = _new_seq(inputs)
-        for _, value in sorted(catches):
-            catch_list.append(value)
+    # A bare VALUE is read only when the numbered family came back empty
+    if bare is not None:
+        if opcode in BARE_SLOT_OPCODES and not len(args):
+            args.append(bare[1])
+        else:
+            dropped.append(bare[0])
+
+    catch_list = _new_seq(inputs)
+    _take_family(catches, catch_list)
+    dropped.extend(catch_keys[i] for i in sorted(catches))
+    if len(catch_list):
         kwargs["catch"] = catch_list
 
-    return args, kwargs
+    return args, kwargs, sorted(dropped)
 
 
 def _binds_by_name(opcode: str, inputs: Any) -> bool:
@@ -113,28 +168,35 @@ def _binds_by_name(opcode: str, inputs: Any) -> bool:
     Only then does binding by name give what binding by position gives today,
     so only then can the migration use 'kwargs' without changing behaviour.
     """
-    interface = default_registry.get_interface(opcode)
-    if "error" in interface:
+    sig = default_registry.signatures.get(opcode)
+    if sig is None:
         return False
-    params = [p["name"] for p in interface["parameters"]]
+    parameters = list(sig.parameters.values())
+    # A variadic opcode (*values) rejects keyword arguments at runtime
+    if any(p.kind is inspect.Parameter.VAR_POSITIONAL for p in parameters):
+        return False
+    params = [p.name for p in parameters]
     keys = [str(k).lower() for k in inputs.keys()]
     return bool(keys) and keys == params[: len(keys)]
 
 
-def _migrate_node(node: Any, named_slots: set[str], use_names: bool) -> Optional[Any]:
-    """Return the node rewritten to 'args'/'kwargs', or None if unchanged."""
+def _migrate_node(
+    node: Any, named_slots: set[str], use_names: bool
+) -> tuple[Optional[Any], list[str]]:
+    """Return the node rewritten to 'args'/'kwargs' (or None), plus dropped keys."""
     if not isinstance(node, dict) or "inputs" not in node:
-        return None
+        return None, []
     if "args" in node or "kwargs" in node:
-        return None
+        return None, []
 
     inputs = node.get("inputs") or {}
     if not isinstance(inputs, dict):
-        return None
+        return None, []
 
+    dropped: list[str] = []
     opcode = node.get("opcode", "")
     if opcode in named_slots:
-        args, kwargs = _split_construct_inputs(opcode, inputs)
+        args, kwargs, dropped = _split_construct_inputs(opcode, inputs)
     elif use_names and _binds_by_name(opcode, inputs):
         args = _new_seq(inputs)
         kwargs = _new_map(inputs)
@@ -152,7 +214,7 @@ def _migrate_node(node: Any, named_slots: set[str], use_names: bool) -> Optional
     if len(kwargs):
         replacement.append(("kwargs", kwargs))
 
-    return _replace_key(node, "inputs", replacement)
+    return _replace_key(node, "inputs", replacement), dropped
 
 
 def _replace_key(node: Any, key: str, replacement: list[tuple[str, Any]]) -> Any:
@@ -221,19 +283,26 @@ def find_misbindings(data: Any) -> list[str]:
     return warnings
 
 
-def migrate_data(data: Any, use_names: bool = False) -> int:
-    """Rewrite every node in place. Returns the number of nodes migrated."""
+def migrate_data(data: Any, use_names: bool = False) -> tuple[int, list[str]]:
+    """Rewrite every node in place. Returns (nodes migrated, dropped-key notes)."""
     named_slots = named_slot_opcodes()
     migrated = 0
+    notes = []
 
-    for _, nodes in _iter_node_tables(data):
+    for workflow_name, nodes in _iter_node_tables(data):
         for node_id, node in list(nodes.items()):
-            new_node = _migrate_node(node, named_slots, use_names)
-            if new_node is not None:
-                nodes[node_id] = new_node
-                migrated += 1
+            new_node, dropped = _migrate_node(node, named_slots, use_names)
+            if new_node is None:
+                continue
+            nodes[node_id] = new_node
+            migrated += 1
+            if dropped:
+                notes.append(
+                    f"{workflow_name}.{node_id} ({node.get('opcode', '?')}): "
+                    f"dropped {', '.join(dropped)}, which the legacy reader ignored."
+                )
 
-    return migrated
+    return migrated, notes
 
 
 def migrate_text(
@@ -250,7 +319,8 @@ def migrate_text(
         return text, 0, []
 
     warnings = find_misbindings(data)
-    migrated = migrate_data(data, use_names)
+    migrated, notes = migrate_data(data, use_names)
+    warnings.extend(notes)
     if not migrated:
         return text, 0, warnings
 
@@ -259,7 +329,7 @@ def migrate_text(
         _yaml().dump(data, buffer)
         return buffer.getvalue(), migrated, warnings
 
-    return json.dumps(data, indent=2) + "\n", migrated, warnings
+    return json.dumps(data, indent=2, ensure_ascii=False) + "\n", migrated, warnings
 
 
 def collect_files(paths: list[str]) -> list[Path]:
