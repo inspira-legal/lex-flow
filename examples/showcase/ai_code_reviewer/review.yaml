@@ -76,7 +76,7 @@ workflows:
       # URL PARSING (if URL provided, extract owner/repo/pr from it)
       # ========================================================================
       check_url_provided:
-        opcode: control_if
+        opcode: control_if_else
         next: check_owner_empty
         kwargs:
           condition:
@@ -202,7 +202,7 @@ workflows:
       # INTERACTIVE INPUT PROMPTS
       # ========================================================================
       check_owner_empty:
-        opcode: control_if
+        opcode: control_if_else
         next: check_repo_empty
         kwargs:
           condition:
@@ -238,7 +238,7 @@ workflows:
             literal: "GitHub owner/org: "
 
       check_repo_empty:
-        opcode: control_if
+        opcode: control_if_else
         next: check_pr_zero
         kwargs:
           condition:
@@ -274,7 +274,7 @@ workflows:
             literal: "Repository name: "
 
       check_pr_zero:
-        opcode: control_if
+        opcode: control_if_else
         next: print_banner_top
         kwargs:
           condition:

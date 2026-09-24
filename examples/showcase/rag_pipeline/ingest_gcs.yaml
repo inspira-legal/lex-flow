@@ -833,7 +833,7 @@ workflows:
             variable: payloads
 
       do_upsert:
-        opcode: control_if
+        opcode: control_if_else
         next: print_footer
         kwargs:
           condition:

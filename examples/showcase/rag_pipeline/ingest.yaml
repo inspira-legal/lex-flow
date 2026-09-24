@@ -249,7 +249,7 @@ workflows:
             literal: 768
 
       create_collection:
-        opcode: control_if
+        opcode: control_if_else
         next: extract_pdf
         kwargs:
           condition:
@@ -662,7 +662,7 @@ workflows:
           - variable: payloads
 
       do_upsert:
-        opcode: control_if
+        opcode: control_if_else
         next: print_footer
         kwargs:
           condition:
