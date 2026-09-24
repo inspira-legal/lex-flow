@@ -88,7 +88,12 @@ def _yaml() -> YAML:
 
 
 def _numbered(key: str, prefix: str) -> Optional[int]:
-    match = re.fullmatch(rf"{prefix}(\d+)", key, re.IGNORECASE)
+    """Index of a numbered slot, matching what the legacy reader looked up.
+
+    NodeArgs.sequence() builds the literal string f"{prefix}{i}" from 1, so a
+    zero-padded ARG01 or a non-ASCII digit was never a member of the family.
+    """
+    match = re.fullmatch(rf"{prefix}([1-9][0-9]*)", key, re.IGNORECASE | re.ASCII)
     return int(match.group(1)) if match else None
 
 
@@ -136,6 +141,9 @@ def _split_construct_inputs(opcode: str, inputs: Any) -> tuple[Any, Any, list[st
             catch_keys[index] = key
         elif prefix and key.upper() == prefix:
             bare = (key, value)
+        elif opcode in CATCH_OPCODES and str(key).lower() == "catch":
+            # The legacy reader only ever read the CATCH1..n family
+            dropped.append(str(key))
         elif slots is not None and str(key).lower() in slots:
             kwargs[str(key).lower()] = value
         elif slots is None and str(key).lower() == "workflow":
@@ -332,19 +340,25 @@ def migrate_text(
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n", migrated, warnings
 
 
+# Directories a workflow tree never keeps its own files in
+SKIPPED_DIRS = {"node_modules", "__pycache__", ".git", ".venv", "venv", "dist", "build"}
+
+
+def _is_candidate(path: Path, root: Path) -> bool:
+    """True for a workflow file outside vendored and hidden directories."""
+    if path.suffix.lower() not in WORKFLOW_SUFFIXES or not path.is_file():
+        return False
+    parts = path.relative_to(root).parts[:-1]
+    return not any(p in SKIPPED_DIRS or p.startswith(".") for p in parts)
+
+
 def collect_files(paths: list[str]) -> list[Path]:
     """Expand paths into workflow files, recursing into directories."""
     files = []
     for raw in paths:
         path = Path(raw)
         if path.is_dir():
-            files.extend(
-                sorted(
-                    p
-                    for p in path.rglob("*")
-                    if p.suffix.lower() in WORKFLOW_SUFFIXES and p.is_file()
-                )
-            )
+            files.extend(sorted(p for p in path.rglob("*") if _is_candidate(p, path)))
         elif path.is_file():
             files.append(path)
         else:
