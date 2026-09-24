@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import difflib
 import json
+import os
 import sys
 import warnings
 import yaml
@@ -77,15 +78,65 @@ def handle_grammar_command(args) -> int:
     return 0
 
 
+def _migrate_error(exc: Exception) -> str:
+    """A message for a file the migration could not read."""
+    text = str(exc)
+    if "found duplicate key" in text:
+        key = text.split('"')[1] if '"' in text else "a key"
+        return (
+            f"duplicate key {key}. Remove the duplicate before migrating; do not "
+            f"allow duplicate keys, which changes which value wins."
+        )
+    return text
+
+
+def _write_all(changed: list) -> list[str]:
+    """Write every migrated file, or none of them.
+
+    Each one lands in a sibling temporary first, so a failure partway through
+    leaves the tree as it was.
+    """
+    written = []
+    errors = []
+    for path, _, migrated, _ in changed:
+        tmp = path.with_suffix(path.suffix + ".lexflow-tmp")
+        try:
+            tmp.write_text(migrated)
+            written.append((tmp, path))
+        except OSError as e:
+            errors.append(f"{path}: {e}")
+
+    if errors:
+        for tmp, _ in written:
+            tmp.unlink(missing_ok=True)
+        errors.append(f"{len(errors)} files could not be written; nothing was changed")
+        return errors
+
+    for tmp, path in written:
+        os.replace(tmp, path)
+    return []
+
+
 def handle_migrate_command(args) -> int:
     """Handle the 'migrate' subcommand."""
-    from lexflow_cli.migrate import collect_files, core_supports_kwargs, migrate_text
+    outdated = (
+        "The installed lexflow core cannot parse 'args'/'kwargs'. "
+        "Upgrade it before migrating, or the rewritten files will not run."
+    )
+    try:
+        from lexflow_cli.migrate import (
+            collect_files,
+            core_supports_kwargs,
+            migrate_text,
+        )
+    except ImportError:
+        # An older core lacks the grammar helpers this module imports, so the
+        # failure lands here rather than in core_supports_kwargs()
+        print_error(outdated)
+        return 1
 
     if not core_supports_kwargs():
-        print_error(
-            "The installed lexflow core cannot parse 'args'/'kwargs'. "
-            "Upgrade it before migrating, or the rewritten files will not run."
-        )
+        print_error(outdated)
         return 1
 
     try:
@@ -101,13 +152,16 @@ def handle_migrate_command(args) -> int:
 
     # Migrate everything first, so a failure halfway through writes nothing
     for path in files:
-        original = path.read_text()
         try:
+            original = path.read_text()
             migrated, nodes, file_warnings = migrate_text(
                 original, path.suffix, args.names
             )
+        except UnicodeDecodeError:
+            errors.append(f"{path}: not a text file")
+            continue
         except Exception as e:
-            errors.append(f"{path}: {e}")
+            errors.append(f"{path}: {_migrate_error(e)}")
             continue
 
         warnings.extend(f"{path}: {w}" for w in file_warnings)
@@ -141,8 +195,12 @@ def handle_migrate_command(args) -> int:
         return 1
 
     if args.write:
-        for path, _, migrated, _ in changed:
-            path.write_text(migrated)
+        write_errors = _write_all(changed)
+        if write_errors:
+            print()
+            for error in write_errors:
+                print_error(error)
+            return 1
 
     changed_files = [path for path, _, _, _ in changed]
     print()
@@ -479,6 +537,9 @@ async def run_workflow(args):
             print("\n" + visualization + "\n")
 
         if args.validate_only:
+            # Building the engine runs the binding checks, so --validate-only
+            # cannot pass a workflow that 'run' would reject
+            Engine(program)
             print_success("Workflow is valid!")
             return
 
