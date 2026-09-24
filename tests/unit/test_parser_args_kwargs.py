@@ -271,7 +271,7 @@ async def test_legacy_inputs_warn_once_per_workflow():
         },
         "second": {"opcode": "io_print", "inputs": {"STRING": {"literal": "there"}}},
     }
-    with pytest.warns(DeprecationWarning, match="legacy 'inputs' key") as record:
+    with pytest.warns(FutureWarning, match="legacy 'inputs' key") as record:
         Parser().parse_dict(workflow(nodes))
     assert len(record) == 1
     assert "2 nodes" in str(record[0].message)
@@ -283,7 +283,7 @@ async def test_args_kwargs_workflows_do_not_warn():
         "show": {"opcode": "io_print", "args": [{"literal": "hi"}]},
     }
     with warnings.catch_warnings():
-        warnings.simplefilter("error", DeprecationWarning)
+        warnings.simplefilter("error", FutureWarning)
         Parser().parse_dict(workflow(nodes))
 
 
@@ -453,7 +453,7 @@ async def test_legacy_uppercase_slots_still_parse():
         "b": {"opcode": "io_print", "inputs": {"S": {"literal": "x"}}},
     }
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
+        warnings.simplefilter("ignore", FutureWarning)
         assert await run(workflow(nodes)) == "xx"
 
 
@@ -574,7 +574,7 @@ async def test_legacy_return_ignores_a_bare_value_beside_a_numbered_one():
         },
     }
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
+        warnings.simplefilter("ignore", FutureWarning)
         program = Parser().parse_dict(workflow(nodes))
     values = program.main.body.stmts[0].values
     assert [v.value for v in values] == ["a"]

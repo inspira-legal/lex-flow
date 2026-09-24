@@ -499,7 +499,7 @@ async def run_workflow(args):
         # Parse the workflow(s)
         parser = Parser()
         with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always", DeprecationWarning)
+            warnings.simplefilter("always", FutureWarning)
             if include_files:
                 program = parser.parse_files(str(workflow_file), include_files)
             else:

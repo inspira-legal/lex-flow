@@ -907,7 +907,10 @@ class Parser:
                 f"legacy 'inputs' key, where input names are decorative and position "
                 f"binds. Run 'lexflow migrate <path> --names --write' to convert them "
                 f"to 'args'/'kwargs'.",
-                DeprecationWarning,
+                # FutureWarning, not DeprecationWarning: this is aimed at
+                # workflow authors, and DeprecationWarning is hidden by default
+                # for anything raised outside __main__
+                FutureWarning,
                 stacklevel=3,
             )
 
