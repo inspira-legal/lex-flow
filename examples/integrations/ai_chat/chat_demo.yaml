@@ -21,44 +21,40 @@ workflows:
       start:
         opcode: workflow_start
         next: print_intro
-        inputs: {}
 
       # Introduction
       print_intro:
         opcode: io_print
         next: create_history
-        inputs:
-          STRING:
-            literal: "=== Chat History Management Demo ===\n\nThis demo shows how to use chat history opcodes.\n\n"
+        args:
+          - literal: "=== Chat History Management Demo ===\n\nThis demo shows how to use chat history opcodes.\n\n"
 
       # Step 1: Create empty chat history
       create_history:
         opcode: chat_create
         next: store_history
         isReporter: true
-        inputs: {}
 
       store_history:
         opcode: data_set_variable_to
         next: print_created
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "history"
-          VALUE:
+          value:
             node: create_history
 
       print_created:
         opcode: io_print
         next: add_user_msg_1
-        inputs:
-          STRING:
-            literal: "1. Created empty chat history\n\n"
+        args:
+          - literal: "1. Created empty chat history\n\n"
 
       # Step 2: Add first user message
       add_user_msg_1:
         opcode: chat_add_user
         next: print_added_1
-        inputs:
+        kwargs:
           history:
             variable: history
           content:
@@ -67,15 +63,14 @@ workflows:
       print_added_1:
         opcode: io_print
         next: add_assistant_msg_1
-        inputs:
-          STRING:
-            literal: "2. Added user message: \"Hello! Can you help me learn Python?\"\n\n"
+        args:
+          - literal: "2. Added user message: \"Hello! Can you help me learn Python?\"\n\n"
 
       # Step 3: Add first assistant response
       add_assistant_msg_1:
         opcode: chat_add_assistant
         next: print_added_2
-        inputs:
+        kwargs:
           history:
             variable: history
           content:
@@ -84,15 +79,14 @@ workflows:
       print_added_2:
         opcode: io_print
         next: add_user_msg_2
-        inputs:
-          STRING:
-            literal: "3. Added assistant response: \"Of course! Python is a great language...\"\n\n"
+        args:
+          - literal: "3. Added assistant response: \"Of course! Python is a great language...\"\n\n"
 
       # Step 4: Add second user message
       add_user_msg_2:
         opcode: chat_add_user
         next: print_added_3
-        inputs:
+        kwargs:
           history:
             variable: history
           content:
@@ -101,15 +95,14 @@ workflows:
       print_added_3:
         opcode: io_print
         next: add_assistant_msg_2
-        inputs:
-          STRING:
-            literal: "4. Added user message: \"How do I create a list in Python?\"\n\n"
+        args:
+          - literal: "4. Added user message: \"How do I create a list in Python?\"\n\n"
 
       # Step 5: Add second assistant response
       add_assistant_msg_2:
         opcode: chat_add_assistant
         next: print_added_4
-        inputs:
+        kwargs:
           history:
             variable: history
           content:
@@ -118,29 +111,27 @@ workflows:
       print_added_4:
         opcode: io_print
         next: show_count
-        inputs:
-          STRING:
-            literal: "5. Added assistant response: \"You can create a list using...\"\n\n"
+        args:
+          - literal: "5. Added assistant response: \"You can create a list using...\"\n\n"
 
       # Step 6: Show message count
       get_length:
         opcode: chat_length
         isReporter: true
-        inputs:
+        kwargs:
           history:
             variable: history
 
       show_count:
         opcode: io_print
         next: show_last_message
-        inputs:
-          STRING:
-            node: count_text
+        args:
+          - node: count_text
 
       count_text:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "--- Chat now has "
           right:
@@ -149,7 +140,7 @@ workflows:
       count_text_2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: count_as_str
           right:
@@ -158,7 +149,7 @@ workflows:
       count_as_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: get_length
 
@@ -166,21 +157,20 @@ workflows:
       get_last_msg:
         opcode: chat_get_last
         isReporter: true
-        inputs:
+        kwargs:
           history:
             variable: history
 
       show_last_message:
         opcode: io_print
         next: show_last_user
-        inputs:
-          STRING:
-            node: last_msg_text
+        args:
+          - node: last_msg_text
 
       last_msg_text:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "6. Last message (any role): "
           right:
@@ -189,7 +179,7 @@ workflows:
       last_msg_json:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: get_last_msg
 
@@ -197,7 +187,7 @@ workflows:
       get_last_user_msg:
         opcode: chat_get_last
         isReporter: true
-        inputs:
+        kwargs:
           history:
             variable: history
           role:
@@ -206,14 +196,13 @@ workflows:
       show_last_user:
         opcode: io_print
         next: section_divider
-        inputs:
-          STRING:
-            node: last_user_text
+        args:
+          - node: last_user_text
 
       last_user_text:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "\n7. Last USER message: "
           right:
@@ -222,7 +211,7 @@ workflows:
       last_user_json:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: get_last_user_msg
 
@@ -230,73 +219,65 @@ workflows:
       section_divider:
         opcode: io_print
         next: print_format_header
-        inputs:
-          STRING:
-            literal: "\n\n========================================\n"
+        args:
+          - literal: "\n\n========================================\n"
 
       # Step 9: Format history for display
       print_format_header:
         opcode: io_print
         next: print_formatted
-        inputs:
-          STRING:
-            literal: "FORMATTED CONVERSATION:\n========================================\n\n"
+        args:
+          - literal: "FORMATTED CONVERSATION:\n========================================\n\n"
 
       format_for_display:
         opcode: chat_format_for_display
         isReporter: true
-        inputs:
+        kwargs:
           history:
             variable: history
 
       print_formatted:
         opcode: io_print
         next: section_divider_2
-        inputs:
-          STRING:
-            node: format_for_display
+        args:
+          - node: format_for_display
 
       # Another section
       section_divider_2:
         opcode: io_print
         next: print_prompt_header
-        inputs:
-          STRING:
-            literal: "\n\n========================================\n"
+        args:
+          - literal: "\n\n========================================\n"
 
       # Step 10: Convert to AI prompt format
       print_prompt_header:
         opcode: io_print
         next: print_prompt
-        inputs:
-          STRING:
-            literal: "AS AI PROMPT (for context):\n========================================\n\n"
+        args:
+          - literal: "AS AI PROMPT (for context):\n========================================\n\n"
 
       to_prompt:
         opcode: chat_to_prompt
         isReporter: true
-        inputs:
+        kwargs:
           history:
             variable: history
 
       print_prompt:
         opcode: io_print
         next: final_divider
-        inputs:
-          STRING:
-            node: to_prompt
+        args:
+          - node: to_prompt
 
       # Final section
       final_divider:
         opcode: io_print
         next: final_message
-        inputs:
-          STRING:
-            literal: "\n\n========================================\n"
+        args:
+          - literal: "\n\n========================================\n"
 
       final_message:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "=== Demo complete ===\n\nThese opcodes can be combined with pydantic-ai to create\ninteractive AI chat applications with conversation memory.\n\nSee simple_chat.yaml for an interactive example.\n"
+        args:
+          - literal: "=== Demo complete ===\n\nThese opcodes can be combined with pydantic-ai to create\ninteractive AI chat applications with conversation memory.\n\nSee simple_chat.yaml for an interactive example.\n"

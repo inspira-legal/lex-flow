@@ -5,6 +5,16 @@ from rich.tree import Tree
 from rich.panel import Panel
 from rich.console import Console
 
+from .parser import NodeArgs
+
+
+def _labelled_arguments(args: NodeArgs) -> list[tuple[str, Any]]:
+    """Node arguments as (label, value) pairs, positional ones numbered."""
+    if args.legacy:
+        return list(args.kwargs.items())
+    labelled = [(str(i), value) for i, value in enumerate(args.args, 1)]
+    return labelled + list(args.kwargs.items())
+
 
 class WorkflowVisualizer:
     """Visualize LexFlow workflows as hierarchical tree structure."""
@@ -145,7 +155,6 @@ class WorkflowVisualizer:
             Tree or Panel representing the node
         """
         opcode = node.get("opcode", "")
-        inputs = node.get("inputs", {})
 
         # Check if this is a control flow node
         if opcode in (
@@ -160,48 +169,42 @@ class WorkflowVisualizer:
             return self._render_control_flow(node_id, node, all_nodes)
 
         # Regular node - create panel
-        return self._render_regular_node(node_id, opcode, inputs, all_nodes)
+        return self._render_regular_node(node_id, node, all_nodes)
 
     def _render_regular_node(
-        self, node_id: str, opcode: str, inputs: dict, all_nodes: dict
+        self, node_id: str, node: dict, all_nodes: dict
     ) -> Tree | Panel:
         """Render a regular (non-control-flow) node.
 
         Args:
             node_id: Node identifier
-            opcode: Opcode name
-            inputs: Input dictionary
+            node: Node dictionary
             all_nodes: All nodes in workflow
 
         Returns:
             Tree or Panel representing the node
         """
-        # Check if any inputs are reporter nodes (nested nodes)
-        has_reporters = any(
-            isinstance(v, dict) and "node" in v for v in inputs.values()
-        )
+        opcode = node.get("opcode", "")
+        arguments = _labelled_arguments(NodeArgs.from_node(node))
+
+        # Check if any arguments are reporter nodes (nested nodes)
+        has_reporters = any(isinstance(v, dict) and "node" in v for _, v in arguments)
 
         # If we have reporters, use Tree structure for nesting
         if has_reporters:
             header = f"[bold]{opcode}[/bold] [dim]({node_id})[/dim]"
             tree = Tree(Panel(header, border_style="green", expand=False))
 
-            # Render inputs with nested reporters
-            for key, value in inputs.items():
+            # Render arguments with nested reporters
+            for key, value in arguments:
                 if isinstance(value, dict) and "node" in value:
                     # Render reporter as nested node
                     reporter_node_id = value["node"]
                     reporter_node = all_nodes.get(reporter_node_id)
                     if reporter_node:
-                        reporter_opcode = reporter_node.get("opcode", "")
-                        reporter_inputs = reporter_node.get("inputs", {})
-
                         input_tree = tree.add(f"[yellow]{key}:[/yellow]")
                         reporter_tree = self._render_regular_node(
-                            reporter_node_id,
-                            reporter_opcode,
-                            reporter_inputs,
-                            all_nodes,
+                            reporter_node_id, reporter_node, all_nodes
                         )
                         input_tree.add(reporter_tree)
                 else:
@@ -214,11 +217,9 @@ class WorkflowVisualizer:
             # Simple panel for nodes without reporters
             content_parts = [f"[bold]{opcode}[/bold] [dim]({node_id})[/dim]"]
 
-            # Render inputs
-            if inputs:
-                for key, value in inputs.items():
-                    input_text = self._render_value(value, all_nodes)
-                    content_parts.append(f"  [yellow]{key}:[/yellow] {input_text}")
+            for key, value in arguments:
+                input_text = self._render_value(value, all_nodes)
+                content_parts.append(f"  [yellow]{key}:[/yellow] {input_text}")
 
             content = "\n".join(content_parts)
             return Panel(content, border_style="green", expand=False)
@@ -260,21 +261,16 @@ class WorkflowVisualizer:
             Tree representing the loop
         """
         opcode = node.get("opcode", "")
-        inputs = node.get("inputs", {})
+        args = NodeArgs.from_node(node)
 
         # Create header
         header_parts = [f"[bold magenta]{opcode}[/bold magenta] [dim]({node_id})[/dim]"]
 
-        # Add loop-specific inputs (keys are uppercase in YAML)
         if opcode == "control_for":
-            var_name = self._render_value(
-                inputs.get("VAR", inputs.get("var", "i")), all_nodes
-            )
-            start = self._render_value(
-                inputs.get("START", inputs.get("start", 0)), all_nodes
-            )
-            end = self._render_value(inputs.get("END", inputs.get("end", 0)), all_nodes)
-            step = inputs.get("STEP", inputs.get("step"))
+            var_name = self._render_value(args.get("var", "i"), all_nodes)
+            start = self._render_value(args.get("start", 0), all_nodes)
+            end = self._render_value(args.get("end", 0), all_nodes)
+            step = args.get("step")
 
             header_parts.append(f"  [yellow]var:[/yellow] {var_name}")
             header_parts.append(f"  [yellow]start:[/yellow] {start}")
@@ -285,26 +281,19 @@ class WorkflowVisualizer:
                 )
 
         elif opcode == "control_foreach":
-            var_name = self._render_value(
-                inputs.get("VAR", inputs.get("var", "item")), all_nodes
-            )
-            iterable = self._render_value(
-                inputs.get("ITERABLE", inputs.get("iterable", [])), all_nodes
-            )
+            var_name = self._render_value(args.get("var", "item"), all_nodes)
+            iterable = self._render_value(args.get("iterable", []), all_nodes)
             header_parts.append(f"  [yellow]var:[/yellow] {var_name}")
             header_parts.append(f"  [yellow]iterable:[/yellow] {iterable}")
 
         elif opcode == "control_while":
-            condition = self._render_value(
-                inputs.get("CONDITION", inputs.get("condition", True)), all_nodes
-            )
+            condition = self._render_value(args.get("condition", True), all_nodes)
             header_parts.append(f"  [yellow]condition:[/yellow] {condition}")
 
         header = "\n".join(header_parts)
         tree = Tree(Panel(header, border_style="magenta", expand=False))
 
-        # Render body branch (key could be BODY or body)
-        body_input = inputs.get("BODY", inputs.get("body", {}))
+        body_input = args.get("body", {})
         body_branch = body_input.get("branch") if isinstance(body_input, dict) else None
         if body_branch:
             body_tree = tree.add("[bold]BODY:[/bold]")
@@ -324,31 +313,15 @@ class WorkflowVisualizer:
         Returns:
             Tree representing the fork
         """
-        inputs = node.get("inputs", {})
+        args = NodeArgs.from_node(node)
 
         header = f"[bold magenta]control_fork[/bold magenta] [dim]({node_id})[/dim]\n[dim]concurrent execution[/dim]"
         tree = Tree(Panel(header, border_style="magenta", expand=False))
 
-        # Collect all branch keys (BRANCH1, BRANCH2, ..., or branches list)
-        branch_inputs = []
-
-        # Try list format first (BRANCHES or branches key)
-        branches = inputs.get("BRANCHES", inputs.get("branches", []))
-        if branches:
-            branch_inputs = [
-                (i, branch_ref.get("branch") if isinstance(branch_ref, dict) else None)
-                for i, branch_ref in enumerate(branches, 1)
-            ]
-        else:
-            # Try individual keys format (BRANCH1, BRANCH2, etc.)
-            i = 1
-            while f"BRANCH{i}" in inputs:
-                branch_ref = inputs[f"BRANCH{i}"]
-                branch_id = (
-                    branch_ref.get("branch") if isinstance(branch_ref, dict) else None
-                )
-                branch_inputs.append((i, branch_id))
-                i += 1
+        branch_inputs = [
+            (i, branch_ref.get("branch") if isinstance(branch_ref, dict) else None)
+            for i, branch_ref in enumerate(args.sequence("branch"), 1)
+        ]
 
         # Render each branch
         for i, branch_id in branch_inputs:
@@ -371,25 +344,20 @@ class WorkflowVisualizer:
             Tree representing the conditional
         """
         opcode = node.get("opcode", "")
-        inputs = node.get("inputs", {})
+        args = NodeArgs.from_node(node)
 
-        # Create header (keys could be CONDITION or condition)
-        condition = self._render_value(
-            inputs.get("CONDITION", inputs.get("condition", True)), all_nodes
-        )
+        condition = self._render_value(args.get("condition", True), all_nodes)
         header = f"[bold magenta]{opcode}[/bold magenta] [dim]({node_id})[/dim]\n  [yellow]condition:[/yellow] {condition}"
 
         tree = Tree(Panel(header, border_style="magenta", expand=False))
 
-        # Render THEN branch (keys could be THEN or then)
-        then_input = inputs.get("THEN", inputs.get("then", {}))
+        then_input = args.get("then", {})
         then_branch = then_input.get("branch") if isinstance(then_input, dict) else None
         if then_branch:
             then_tree = tree.add("[bold]THEN:[/bold]")
             self._render_branch(then_tree, then_branch, all_nodes, set())
 
-        # Render ELSE branch if present (keys could be ELSE or else)
-        else_input = inputs.get("ELSE", inputs.get("else", {}))
+        else_input = args.get("else", {})
         else_branch = else_input.get("branch") if isinstance(else_input, dict) else None
         if else_branch:
             else_tree = tree.add("[bold]ELSE:[/bold]")
@@ -408,47 +376,35 @@ class WorkflowVisualizer:
         Returns:
             Tree representing the try block
         """
-        inputs = node.get("inputs", {})
+        args = NodeArgs.from_node(node)
 
         header = f"[bold magenta]control_try[/bold magenta] [dim]({node_id})[/dim]"
         tree = Tree(Panel(header, border_style="magenta", expand=False))
 
-        # Render TRY body (keys could be TRY, BODY, or body)
-        try_input = inputs.get("TRY", inputs.get("BODY", inputs.get("body", {})))
+        try_input = args.get("try", args.get("body", {}))
         try_branch = try_input.get("branch") if isinstance(try_input, dict) else None
         if try_branch:
             try_tree = tree.add("[bold]TRY:[/bold]")
             self._render_branch(try_tree, try_branch, all_nodes, set())
 
-        # Collect CATCH handlers from both formats
-        # Format 1: HANDLERS list
-        handlers_list = inputs.get("HANDLERS", inputs.get("handlers", []))
+        # Catch handlers: a 'catch' list, or legacy CATCH1, CATCH2, ...
+        clauses = args.get("catch", []) if not args.legacy else args.sequence("catch")
 
-        # Format 2: Individual CATCH1, CATCH2, etc. keys
-        catch_handlers = []
-        i = 1
-        while f"CATCH{i}" in inputs:
-            catch_input = inputs[f"CATCH{i}"]
+        all_handlers = []
+        for catch_input in clauses:
             if isinstance(catch_input, dict):
-                # Extract handler info
-                exception_type = catch_input.get("exception_type", "Exception")
-                var_name = catch_input.get("var", catch_input.get("var_name"))
                 body_info = catch_input.get("body", {})
-                handler_branch = (
-                    body_info.get("branch") if isinstance(body_info, dict) else None
-                )
-
-                catch_handlers.append(
+                all_handlers.append(
                     {
-                        "exception_type": exception_type,
-                        "var_name": var_name,
-                        "branch": handler_branch,
+                        "exception_type": catch_input.get(
+                            "exception_type", "Exception"
+                        ),
+                        "var_name": catch_input.get("var", catch_input.get("var_name")),
+                        "branch": body_info.get("branch")
+                        if isinstance(body_info, dict)
+                        else None,
                     }
                 )
-            i += 1
-
-        # Use whichever format has data
-        all_handlers = handlers_list if handlers_list else catch_handlers
 
         # Render CATCH handlers
         for handler in all_handlers:
@@ -465,8 +421,7 @@ class WorkflowVisualizer:
                     catch_tree = tree.add(catch_label)
                     self._render_branch(catch_tree, handler_branch, all_nodes, set())
 
-        # Render FINALLY (keys could be FINALLY or finally)
-        finally_input = inputs.get("FINALLY", inputs.get("finally", {}))
+        finally_input = args.get("finally", {})
         finally_branch = (
             finally_input.get("branch") if isinstance(finally_input, dict) else None
         )
@@ -535,11 +490,10 @@ class WorkflowVisualizer:
                 node = all_nodes.get(node_id)
                 if node:
                     opcode = node.get("opcode", "")
-                    inputs = node.get("inputs", {})
 
                     # Render reporter inline
                     input_strs = []
-                    for key, val in inputs.items():
+                    for key, val in _labelled_arguments(NodeArgs.from_node(node)):
                         input_strs.append(
                             f"{key}={self._render_value(val, all_nodes, depth + 1)}"
                         )

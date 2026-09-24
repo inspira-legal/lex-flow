@@ -26,13 +26,12 @@ workflows:
       start:
         opcode: workflow_start
         next: build_greeting
-        inputs: {}
 
       # Build the greeting text: "Hello {name}"
       greeting_text:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Hello "
           right:
@@ -41,29 +40,29 @@ workflows:
       build_greeting:
         opcode: data_set_variable_to
         next: call_build_spans
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "greeting"
-          VALUE:
+          value:
             node: greeting_text
 
       # Call helper to convert greeting into animated <span> elements
       generate_spans:
         opcode: workflow_call
         isReporter: true
-        inputs:
-          WORKFLOW:
-            literal: build_wavy_spans
-          ARG1:
-            variable: greeting
+        args:
+          - variable: greeting
 
+        kwargs:
+          workflow:
+            literal: build_wavy_spans
       call_build_spans:
         opcode: data_set_variable_to
         next: assemble_html
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "spans_html"
-          VALUE:
+          value:
             node: generate_spans
 
       # Assemble the complete HTML document
@@ -77,7 +76,7 @@ workflows:
       html_head:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>Hello "
           right:
@@ -86,7 +85,7 @@ workflows:
       html_head_close:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: name
           right:
@@ -95,7 +94,7 @@ workflows:
       html_body_close:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: spans_html
           right:
@@ -104,7 +103,7 @@ workflows:
       full_html:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: html_head
           right:
@@ -113,23 +112,21 @@ workflows:
       assemble_html:
         opcode: data_set_variable_to
         next: print_result
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "html_result"
-          VALUE:
+          value:
             node: full_html
 
       # Print the HTML so it can be captured with --output-file
       print_result:
         opcode: io_print
         next: return_result
-        inputs:
-          STRING:
-            variable: html_result
+        args:
+          - variable: html_result
 
       # Also return it as the workflow result
       return_result:
         opcode: workflow_return
-        inputs:
-          VALUE:
-            variable: html_result
+        args:
+          - variable: html_result

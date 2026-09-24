@@ -1,0 +1,248 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables:
+      result: 0
+      status: "unknown"
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_intro
+        inputs: {}
+
+      print_intro:
+        opcode: io_print
+        next: example_1
+        inputs:
+          STRING:
+            literal: "=== Exception Handling Examples ===\n\n"
+
+      # Example 1: Safe division with error recovery
+      example_1:
+        opcode: io_print
+        next: safe_divide
+        inputs:
+          STRING:
+            literal: "1. Safe Division:\n"
+
+      safe_divide:
+        opcode: control_try
+        next: example_2
+        inputs:
+          TRY:
+            branch: attempt_divide
+          CATCH1:
+            exception_type: "ZeroDivisionError"
+            var: "err"
+            body:
+              branch: use_default_value
+          FINALLY:
+            branch: log_division_attempt
+
+      attempt_divide:
+        opcode: data_set_variable_to
+        next: null
+        inputs:
+          VARIABLE:
+            literal: result
+          VALUE:
+            node: calc_divide
+
+      calc_divide:
+        opcode: operator_divide
+        inputs:
+          left:
+            literal: 100
+          right:
+            literal: 0
+        isReporter: true
+
+      use_default_value:
+        opcode: data_set_variable_to
+        next: print_recovery
+        inputs:
+          VARIABLE:
+            literal: result
+          VALUE:
+            literal: 0
+
+      print_recovery:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "   ✓ Caught division by zero, using default value\n"
+
+      log_division_attempt:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "   ℹ Finally: Division attempt completed\n\n"
+
+      # Example 2: Validation with assertions
+      example_2:
+        opcode: io_print
+        next: validate_input
+        inputs:
+          STRING:
+            literal: "2. Input Validation:\n"
+
+      validate_input:
+        opcode: control_try
+        next: example_3
+        inputs:
+          TRY:
+            branch: check_assertions
+          CATCH1:
+            exception_type: "AssertionError"
+            var: "msg"
+            body:
+              branch: handle_invalid_input
+
+      check_assertions:
+        opcode: assert_true
+        next: assert_range
+        inputs:
+          condition:
+            node: is_positive
+          message:
+            literal: "Value must be positive"
+
+      is_positive:
+        opcode: operator_greater_than
+        inputs:
+          left:
+            literal: -5
+          right:
+            literal: 0
+        isReporter: true
+
+      assert_range:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "   ✓ Value in valid range\n"
+
+      handle_invalid_input:
+        opcode: io_print
+        next: print_assertion_msg
+        inputs:
+          STRING:
+            literal: "   ✓ Caught assertion failure: "
+
+      print_assertion_msg:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            variable: msg
+
+      # Example 3: Multiple exception types
+      example_3:
+        opcode: io_print
+        next: multi_catch
+        inputs:
+          STRING:
+            literal: "\n\n3. Multiple Exception Types:\n"
+
+      multi_catch:
+        opcode: control_try
+        next: example_4
+        inputs:
+          TRY:
+            branch: risky_operation
+          CATCH1:
+            exception_type: "ValueError"
+            var: "e"
+            body:
+              branch: handle_value_error
+          CATCH2:
+            exception_type: "TypeError"
+            var: "e"
+            body:
+              branch: handle_type_error
+          CATCH3:
+            exception_type: null
+            var: "e"
+            body:
+              branch: handle_unknown
+
+      risky_operation:
+        opcode: throw_type_error
+        next: null
+        inputs:
+          message:
+            literal: "Invalid type provided"
+
+      handle_value_error:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "   ✓ ValueError handler\n"
+
+      handle_type_error:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "   ✓ TypeError handler executed\n"
+
+      handle_unknown:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "   ✓ Catch-all handler\n"
+
+      # Example 4: Custom error messages with control_throw
+      example_4:
+        opcode: io_print
+        next: custom_throw
+        inputs:
+          STRING:
+            literal: "\n4. Custom Error Messages:\n"
+
+      custom_throw:
+        opcode: control_try
+        next: done
+        inputs:
+          TRY:
+            branch: throw_custom
+          CATCH1:
+            exception_type: "RuntimeError"
+            var: "custom_msg"
+            body:
+              branch: show_custom_msg
+
+      throw_custom:
+        opcode: control_throw
+        next: null
+        inputs:
+          VALUE:
+            literal: "User authentication failed: invalid credentials"
+
+      show_custom_msg:
+        opcode: io_print
+        next: print_custom_msg
+        inputs:
+          STRING:
+            literal: "   ✓ Caught custom error: "
+
+      print_custom_msg:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            variable: custom_msg
+
+      done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "\n\n✅ All exception handling examples completed!\n"

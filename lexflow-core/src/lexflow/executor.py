@@ -101,8 +101,8 @@ class Executor:
                     result = await self._exec_expr_stmt(e)
                     return result
 
-                case OpStmt(name=n, args=args):
-                    result = await self._exec_op_stmt(n, args)
+                case OpStmt(name=n, args=args, kwargs=kwargs):
+                    result = await self._exec_op_stmt(n, args, kwargs)
                     return result
 
                 case Try(body=body, handlers=handlers, finally_=finally_):
@@ -214,10 +214,13 @@ class Executor:
         await self.ev.eval(expr)
         return Flow.NEXT
 
-    async def _exec_op_stmt(self, name: str, args: list) -> Flow:
+    async def _exec_op_stmt(
+        self, name: str, args: list, kwargs: Optional[dict] = None
+    ) -> Flow:
         """Execute opcode statement."""
         arg_vals = [await self.ev.eval(a) for a in args]
-        await self.opcodes.call(name, arg_vals)
+        kwarg_vals = {k: await self.ev.eval(v) for k, v in (kwargs or {}).items()}
+        await self.opcodes.call(name, arg_vals, kwarg_vals)
         return Flow.NEXT
 
     async def _exec_throw(self, value) -> Flow:

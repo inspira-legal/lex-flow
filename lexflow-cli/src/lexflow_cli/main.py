@@ -1,7 +1,10 @@
 import argparse
 import asyncio
+import difflib
 import json
+import os
 import sys
+import warnings
 import yaml
 from pathlib import Path
 
@@ -72,6 +75,146 @@ def handle_grammar_command(args) -> int:
             print_error(f"Error syncing grammar: {e}")
             return 1
 
+    return 0
+
+
+def _migrate_error(exc: Exception) -> str:
+    """A message for a file the migration could not read."""
+    text = str(exc)
+    if "found duplicate key" in text:
+        key = text.split('"')[1] if '"' in text else "a key"
+        return (
+            f"duplicate key {key}. Remove the duplicate before migrating; do not "
+            f"allow duplicate keys, which changes which value wins."
+        )
+    return text
+
+
+def _write_all(changed: list) -> list[str]:
+    """Write every migrated file, or none of them.
+
+    Each one lands in a sibling temporary first, so a failure partway through
+    leaves the tree as it was.
+    """
+    written = []
+    errors = []
+    for path, _, migrated, _ in changed:
+        tmp = path.with_suffix(path.suffix + ".lexflow-tmp")
+        try:
+            tmp.write_text(migrated)
+            written.append((tmp, path))
+        except OSError as e:
+            errors.append(f"{path}: {e}")
+
+    if errors:
+        for tmp, _ in written:
+            tmp.unlink(missing_ok=True)
+        errors.append(f"{len(errors)} files could not be written; nothing was changed")
+        return errors
+
+    for tmp, path in written:
+        os.replace(tmp, path)
+    return []
+
+
+def handle_migrate_command(args) -> int:
+    """Handle the 'migrate' subcommand."""
+    outdated = (
+        "The installed lexflow core cannot parse 'args'/'kwargs'. "
+        "Upgrade it before migrating, or the rewritten files will not run."
+    )
+    try:
+        from lexflow_cli.migrate import (
+            collect_files,
+            core_supports_kwargs,
+            migrate_text,
+        )
+    except ImportError:
+        # An older core lacks the grammar helpers this module imports, so the
+        # failure lands here rather than in core_supports_kwargs()
+        print_error(outdated)
+        return 1
+
+    if not core_supports_kwargs():
+        print_error(outdated)
+        return 1
+
+    try:
+        files = collect_files(args.paths)
+    except FileNotFoundError as e:
+        print_error(str(e))
+        return 1
+
+    total_nodes = 0
+    changed = []
+    warnings = []
+    errors = []
+
+    # Migrate everything first, so a failure halfway through writes nothing
+    for path in files:
+        try:
+            original = path.read_text()
+            migrated, nodes, file_warnings = migrate_text(
+                original, path.suffix, args.names
+            )
+        except UnicodeDecodeError:
+            errors.append(f"{path}: not a text file")
+            continue
+        except Exception as e:
+            errors.append(f"{path}: {_migrate_error(e)}")
+            continue
+
+        warnings.extend(f"{path}: {w}" for w in file_warnings)
+        if nodes:
+            total_nodes += nodes
+            changed.append((path, original, migrated, nodes))
+
+    for path, original, migrated, nodes in changed:
+        if args.diff:
+            diff = difflib.unified_diff(
+                original.splitlines(keepends=True),
+                migrated.splitlines(keepends=True),
+                fromfile=str(path),
+                tofile=str(path),
+            )
+            sys.stdout.writelines(diff)
+        else:
+            print(f"{path}: {nodes} nodes")
+
+    if warnings:
+        print()
+        print_info("Inputs whose names do not match the opcode signature order:")
+        for warning in warnings:
+            print(f"  ! {warning}")
+
+    if errors:
+        print()
+        for error in errors:
+            print_error(error)
+        print_error(f"{len(errors)} of {len(files)} files failed; nothing was written")
+        return 1
+
+    if args.write:
+        write_errors = _write_all(changed)
+        if write_errors:
+            print()
+            for error in write_errors:
+                print_error(error)
+            return 1
+
+    changed_files = [path for path, _, _, _ in changed]
+    print()
+    if not changed_files:
+        print_success(f"Nothing to migrate ({len(files)} files scanned)")
+        return 0
+
+    if args.write:
+        print_success(f"Migrated {total_nodes} nodes in {len(changed_files)} files")
+    else:
+        print_info(
+            f"Would migrate {total_nodes} nodes in {len(changed_files)} files "
+            f"(run with --write to apply)"
+        )
     return 0
 
 
@@ -172,6 +315,40 @@ Examples:
         "--path",
         metavar="FILE",
         help="Path to grammar.json (default: auto-detect)",
+    )
+
+    # 'migrate' subcommand
+    migrate_parser = subparsers.add_parser(
+        "migrate",
+        help="Migrate workflow files from 'inputs' to 'args'/'kwargs'",
+        epilog="""
+Examples:
+  lexflow migrate examples/                  # Show what would change
+  lexflow migrate workflow.yaml --diff       # Show a unified diff
+  lexflow migrate examples/ --write          # Rewrite the files in place
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    migrate_parser.add_argument(
+        "paths",
+        nargs="+",
+        metavar="PATH",
+        help="Workflow files or directories to migrate",
+    )
+    migrate_parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Rewrite the files in place (default: report only)",
+    )
+    migrate_parser.add_argument(
+        "--diff",
+        action="store_true",
+        help="Print a unified diff of the changes",
+    )
+    migrate_parser.add_argument(
+        "--names",
+        action="store_true",
+        help="Use 'kwargs' where the input names already match the opcode signature",
     )
 
     return parser
@@ -321,10 +498,15 @@ async def run_workflow(args):
 
         # Parse the workflow(s)
         parser = Parser()
-        if include_files:
-            program = parser.parse_files(str(workflow_file), include_files)
-        else:
-            program = parser.parse_file(str(workflow_file))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", FutureWarning)
+            if include_files:
+                program = parser.parse_files(str(workflow_file), include_files)
+            else:
+                program = parser.parse_file(str(workflow_file))
+
+        for warning in caught:
+            print(f"! {warning.message}", file=sys.stderr)
 
         if args.verbose:
             print_success("Workflow parsed successfully")
@@ -355,6 +537,9 @@ async def run_workflow(args):
             print("\n" + visualization + "\n")
 
         if args.validate_only:
+            # Building the engine runs the binding checks, so --validate-only
+            # cannot pass a workflow that 'run' would reject
+            Engine(program)
             print_success("Workflow is valid!")
             return
 
@@ -469,6 +654,7 @@ async def main():
         "run",
         "docs",
         "grammar",
+        "migrate",
         "-h",
         "--help",
     ):
@@ -485,6 +671,8 @@ async def main():
         else:
             # Show docs help if no subcommand
             arg_parser.parse_args(["docs", "-h"])
+    elif args.command == "migrate":
+        sys.exit(handle_migrate_command(args))
     elif args.command == "grammar":
         if args.grammar_command == "sync":
             sys.exit(handle_grammar_command(args))
