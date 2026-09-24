@@ -31,7 +31,7 @@ from .ast import (
     Expression,
     Statement,
 )
-from .grammar import get_grammar
+from .grammar import get_construct_slots, get_grammar
 
 
 # ============= Error Handling =============
@@ -78,6 +78,14 @@ class NodeArgs:
                 raise ParseError("Node 'args' must be a list", {"args": args})
             if not isinstance(kwargs, dict):
                 raise ParseError("Node 'kwargs' must be a mapping", {"kwargs": kwargs})
+            non_string = [k for k in kwargs if not isinstance(k, str)]
+            if non_string:
+                # YAML turns bare on/yes/no into booleans
+                raise ParseError(
+                    f"Node 'kwargs' keys must be strings, got "
+                    f"{', '.join(repr(k) for k in non_string)}. Quote them.",
+                    {"kwargs": kwargs},
+                )
             return cls(list(args), dict(kwargs), legacy=False)
 
         inputs = node.get("inputs") or {}
@@ -101,6 +109,28 @@ class NodeArgs:
         if self.legacy:
             return {}
         return {k: v for k, v in self.kwargs.items() if k not in reserved}
+
+    def check_slots(self, opcode: str) -> None:
+        """Reject kwargs this construct does not declare.
+
+        Slots are read by name, so a typo or a leftover UPPERCASE slot would
+        otherwise be dropped without a word.
+        """
+        slots = get_construct_slots(opcode)
+        if self.legacy or slots is None:
+            return
+        unknown = sorted(k for k in self.kwargs if k not in slots)
+        if not unknown:
+            return
+        accepts = (
+            f"Accepts: {', '.join(sorted(slots))}"
+            if slots
+            else "It takes no named slots"
+        )
+        raise ParseError(
+            f"{opcode} got unknown slot(s) {', '.join(unknown)}. {accepts}",
+            {"kwargs": self.kwargs},
+        )
 
     def sequence(self, prefix: str) -> list:
         """'args', or a legacy numbered slot family (ARG1, ARG2, ...)."""
@@ -212,10 +242,11 @@ class ExpressionParser:
 
         # Special case: variable getter
         if opcode == "data_get_variable":
+            node_args.check_slots(opcode)
             var_input = node_args.get("variable", {})
-            if isinstance(var_input, dict) and "literal" in var_input:
-                return Variable(name=var_input["literal"])
-            raise ParseError("Invalid 'variable' input in data_get_variable")
+            if not isinstance(var_input, dict) or "literal" not in var_input:
+                raise ParseError("Invalid 'variable' input in data_get_variable")
+            return Variable(name=var_input["literal"])
 
         # Special case: workflow call as expression
         if opcode in ("workflow_call", "call"):
@@ -273,9 +304,10 @@ class ControlFlowHandler(NodeHandler):
         }
 
         handler = handlers.get(opcode)
-        if handler:
-            return handler(node_args, context)
-        return None
+        if not handler:
+            return None
+        node_args.check_slots(opcode)
+        return handler(node_args, context)
 
     def _handle_if(self, node_id: str, args: NodeArgs, context: ParseContext) -> If:
         cond = context.parser._parse_input(args.get("condition", []), context)
@@ -399,11 +431,13 @@ class DataHandler(NodeHandler):
         opcode = node.get("opcode", "")
         node_args = NodeArgs.from_node(node)
 
+        if opcode not in self._opcodes:
+            return None
+        node_args.check_slots(opcode)
+
         if opcode in ("data_set_variable_to", "assign"):
             return self._handle_assign(node_id, node_args, context)
-        elif opcode in ("workflow_return", "return"):
-            return self._handle_return(node_id, node_args, context)
-        return None
+        return self._handle_return(node_id, node_args, context)
 
     def _handle_assign(
         self, node_id: str, args: NodeArgs, context: ParseContext
@@ -427,9 +461,15 @@ class DataHandler(NodeHandler):
             for value in args.sequence("value")
         ]
 
-        # Single value: 'value' slot
-        if not values and args.has("value"):
-            values.append(context.parser._parse_input(args.get("value"), context))
+        # Single value: 'value' slot. The legacy reader ignored it whenever a
+        # numbered family was present, so only the new syntax rejects both.
+        if args.has("value"):
+            if values and not args.legacy:
+                raise ParseError(
+                    "workflow_return takes either 'args' or 'value', not both"
+                )
+            if not values:
+                values.append(context.parser._parse_input(args.get("value"), context))
 
         return Return(values=values, node_id=node_id)
 
@@ -480,8 +520,10 @@ class ExceptionHandler(NodeHandler):
         node_args = NodeArgs.from_node(node)
 
         if opcode in ("control_try", "try_catch"):
+            node_args.check_slots(opcode)
             return self._handle_try(node_id, node_args, context)
         elif opcode == "control_throw":
+            node_args.check_slots(opcode)
             return self._handle_throw(node_id, node_args, context)
         return None
 
@@ -508,6 +550,13 @@ class ExceptionHandler(NodeHandler):
         clauses = args.get("catch", [])
         if not isinstance(clauses, list):
             raise ParseError("'catch' must be a list of handlers", {"catch": clauses})
+        invalid = [c for c in clauses if not isinstance(c, dict)]
+        if invalid:
+            raise ParseError(
+                f"Each 'catch' handler must be a mapping, got "
+                f"{', '.join(repr(c) for c in invalid)}",
+                {"catch": clauses},
+            )
         return clauses
 
     def _handle_throw(

@@ -174,6 +174,17 @@ class TestGetBranchColor:
         assert get_branch_color("ON_TIMEOUT") == get_branch_color("on_timeout")
         assert get_branch_color("BRANCH1") == get_branch_color("args")
 
+    def test_legacy_numbered_branches_normalize_to_args(self, monkeypatch):
+        """BRANCH1 resolves through 'args'.
+
+        'args' happens to share the default color, so give it a distinct one
+        for the duration of the test, or the mapping cannot be observed.
+        """
+        monkeypatch.setitem(get_grammar()["branch_colors"], "args", "#123456")
+        assert get_branch_color("BRANCH1") == "#123456"
+        assert get_branch_color("BRANCH2") == "#123456"
+        assert get_branch_color("nope") != "#123456"
+
     def test_catch_branches_have_same_color(self):
         """All catch branches should have the same color."""
         color1 = get_branch_color("catch")

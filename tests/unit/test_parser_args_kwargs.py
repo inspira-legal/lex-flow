@@ -261,12 +261,20 @@ async def test_workflow_call_positional_args_list():
 
 
 async def test_legacy_inputs_warn_once_per_workflow():
+    """Two legacy nodes, one warning: the count is the point of the test."""
     nodes = {
-        "start": {"opcode": "workflow_start", "next": "show"},
-        "show": {"opcode": "io_print", "inputs": {"STRING": {"literal": "hi"}}},
+        "start": {"opcode": "workflow_start", "next": "first"},
+        "first": {
+            "opcode": "io_print",
+            "inputs": {"STRING": {"literal": "hi"}},
+            "next": "second",
+        },
+        "second": {"opcode": "io_print", "inputs": {"STRING": {"literal": "there"}}},
     }
-    with pytest.warns(DeprecationWarning, match="legacy 'inputs' key"):
+    with pytest.warns(DeprecationWarning, match="legacy 'inputs' key") as record:
         Parser().parse_dict(workflow(nodes))
+    assert len(record) == 1
+    assert "2 nodes" in str(record[0].message)
 
 
 async def test_args_kwargs_workflows_do_not_warn():
@@ -277,3 +285,234 @@ async def test_args_kwargs_workflows_do_not_warn():
     with warnings.catch_warnings():
         warnings.simplefilter("error", DeprecationWarning)
         Parser().parse_dict(workflow(nodes))
+
+
+# ============= Shape validation =============
+
+
+@pytest.mark.parametrize(
+    "node,message",
+    [
+        (
+            {"opcode": "io_print", "args": {"a": {"literal": 1}}},
+            "'args' must be a list",
+        ),
+        (
+            {"opcode": "io_print", "kwargs": [{"literal": 1}]},
+            "'kwargs' must be a mapping",
+        ),
+        (
+            {"opcode": "io_print", "inputs": [{"literal": 1}]},
+            "'inputs' must be a mapping",
+        ),
+        (
+            {"opcode": "io_print", "args": [], "inputs": {}},
+            "mixes 'inputs' with 'args'/'kwargs'",
+        ),
+    ],
+)
+async def test_malformed_node_arguments_are_rejected(node, message):
+    nodes = {"start": {"opcode": "workflow_start", "next": "n"}, "n": node}
+    with pytest.raises(ValueError, match=message):
+        Parser().parse_dict(workflow(nodes))
+
+
+async def test_non_string_kwargs_keys_are_rejected():
+    """YAML turns a bare 'on' into True, which pydantic would reject cryptically."""
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "n"},
+        "n": {"opcode": "io_print", "kwargs": {True: {"literal": 1}}},
+    }
+    with pytest.raises(ValueError, match="keys must be strings"):
+        Parser().parse_dict(workflow(nodes))
+
+
+async def test_catch_must_be_a_list():
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "t"},
+        "t": {
+            "opcode": "control_try",
+            "kwargs": {
+                "try": {"branch": "b"},
+                "catch": {"exception_type": "ValueError"},
+            },
+        },
+        "b": {"opcode": "io_print", "args": [{"literal": "x"}]},
+    }
+    with pytest.raises(ValueError, match="'catch' must be a list"):
+        Parser().parse_dict(workflow(nodes))
+
+
+async def test_catch_handlers_must_be_mappings():
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "t"},
+        "t": {
+            "opcode": "control_try",
+            "kwargs": {"try": {"branch": "b"}, "catch": ["ValueError"]},
+        },
+        "b": {"opcode": "io_print", "args": [{"literal": "x"}]},
+    }
+    with pytest.raises(ValueError, match="handler must be a mapping"):
+        Parser().parse_dict(workflow(nodes))
+
+
+# ============= Unknown construct slots =============
+
+BODY = {"b": {"opcode": "io_print", "args": [{"literal": "x"}]}}
+
+
+@pytest.mark.parametrize(
+    "node,unknown",
+    [
+        (
+            {
+                "opcode": "control_for",
+                "kwargs": {
+                    "var": {"literal": "i"},
+                    "start": {"literal": 0},
+                    "end": {"literal": 3},
+                    "STEP": {"literal": 2},
+                    "body": {"branch": "b"},
+                },
+            },
+            "STEP",
+        ),
+        (
+            {
+                "opcode": "control_if",
+                "kwargs": {"CONDITION": {"literal": True}, "then": {"branch": "b"}},
+            },
+            "CONDITION",
+        ),
+        (
+            {
+                "opcode": "control_try",
+                "kwargs": {
+                    "try": {"branch": "b"},
+                    "catch": [],
+                    "FINALLY": {"branch": "b"},
+                },
+            },
+            "FINALLY",
+        ),
+        (
+            {
+                "opcode": "control_while",
+                "kwargs": {"conditon": {"literal": False}, "body": {"branch": "b"}},
+            },
+            "conditon",
+        ),
+        (
+            {
+                "opcode": "data_set_variable_to",
+                "kwargs": {"variable": {"literal": "x"}, "VALUE": {"literal": 1}},
+            },
+            "VALUE",
+        ),
+    ],
+)
+async def test_unknown_construct_slot_is_rejected(node, unknown):
+    """An UPPERCASE or misspelled slot used to be dropped without a word."""
+    nodes = {"start": {"opcode": "workflow_start", "next": "n"}, "n": node, **BODY}
+    with pytest.raises(ValueError, match=f"unknown slot\\(s\\) {unknown}"):
+        Parser().parse_dict(workflow(nodes))
+
+
+async def test_known_construct_slots_are_accepted():
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "n"},
+        "n": {
+            "opcode": "control_for",
+            "kwargs": {
+                "var": {"literal": "i"},
+                "start": {"literal": 0},
+                "end": {"literal": 2},
+                "step": {"literal": 1},
+                "body": {"branch": "b"},
+            },
+        },
+        **BODY,
+    }
+    assert await run(workflow(nodes)) == "xx"
+
+
+async def test_legacy_uppercase_slots_still_parse():
+    """The rejection must apply to the new syntax only."""
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "n"},
+        "n": {
+            "opcode": "control_for",
+            "inputs": {
+                "VAR": {"literal": "i"},
+                "START": {"literal": 0},
+                "END": {"literal": 2},
+                "STEP": {"literal": 1},
+                "BODY": {"branch": "b"},
+            },
+        },
+        "b": {"opcode": "io_print", "inputs": {"S": {"literal": "x"}}},
+    }
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        assert await run(workflow(nodes)) == "xx"
+
+
+async def test_workflow_return_rejects_args_and_value_together():
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "r"},
+        "r": {
+            "opcode": "workflow_return",
+            "args": [{"literal": 1}],
+            "kwargs": {"value": {"literal": 2}},
+        },
+    }
+    with pytest.raises(ValueError, match="either 'args' or 'value'"):
+        Parser().parse_dict(workflow(nodes))
+
+
+async def test_workflow_call_keeps_accepting_callee_keywords():
+    """workflow_call's extra kwargs are the callee's parameters, not typos."""
+    helper = {
+        "name": "greet",
+        "interface": {"inputs": ["name"], "outputs": []},
+        "variables": {"name": ""},
+        "nodes": {
+            "start": {"opcode": "workflow_start", "next": "p"},
+            "p": {"opcode": "io_print", "args": [{"variable": "name"}]},
+        },
+    }
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "c"},
+        "c": {
+            "opcode": "workflow_call",
+            "kwargs": {"workflow": {"literal": "greet"}, "name": {"literal": "Ana"}},
+        },
+    }
+    assert await run(workflow(nodes, extra=[helper])) == "Ana"
+
+
+# ============= Workflow argument binding =============
+
+GREET = {
+    "name": "greet",
+    "interface": {"inputs": ["name"], "outputs": []},
+    "variables": {"name": ""},
+    "nodes": {
+        "start": {"opcode": "workflow_start", "next": "p"},
+        "p": {"opcode": "io_print", "args": [{"variable": "name"}]},
+    },
+}
+
+
+async def test_workflow_rejects_an_argument_given_twice():
+    """The opcode path has this sensor; the workflow path needs its own."""
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "c"},
+        "c": {
+            "opcode": "workflow_call",
+            "args": [{"literal": "Ana"}],
+            "kwargs": {"workflow": {"literal": "greet"}, "name": {"literal": "Bia"}},
+        },
+    }
+    with pytest.raises(ValueError, match="multiple values for argument"):
+        await run(workflow(nodes, extra=[GREET]))
