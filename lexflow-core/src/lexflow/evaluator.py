@@ -36,16 +36,18 @@ class Evaluator:
                 case Variable(name=n):
                     return self.rt.scope[n]
 
-                case Call(name=n, args=args):
+                case Call(name=n, args=args, kwargs=kwargs):
                     arg_vals = [await self.eval(a) for a in args]
+                    kwarg_vals = {k: await self.eval(v) for k, v in kwargs.items()}
                     # Workflow calls are measured separately in WorkflowManager
-                    return await self.workflows.call(n, arg_vals)
+                    return await self.workflows.call(n, arg_vals, kwarg_vals)
 
-                case Opcode(name=n, args=args):
+                case Opcode(name=n, args=args, kwargs=kwargs):
                     arg_vals = [await self.eval(a) for a in args]
+                    kwarg_vals = {k: await self.eval(v) for k, v in kwargs.items()}
                     # Measure opcode execution separately
                     opcode_start = time.perf_counter()
-                    result = await self.opcodes.call(n, arg_vals)
+                    result = await self.opcodes.call(n, arg_vals, kwarg_vals)
                     opcode_duration = time.perf_counter() - opcode_start
                     self.metrics.record("opcode", n, opcode_duration)
                     return result

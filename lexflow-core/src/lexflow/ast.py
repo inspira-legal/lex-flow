@@ -23,6 +23,7 @@ class Call(BaseModel):
     type: LiteralType["Call"] = "Call"
     name: str
     args: list["Expression"]
+    kwargs: dict[str, "Expression"] = {}
 
 
 class Opcode(BaseModel):
@@ -31,6 +32,7 @@ class Opcode(BaseModel):
     type: LiteralType["Opcode"] = "Opcode"
     name: str
     args: list["Expression"]
+    kwargs: dict[str, "Expression"] = {}
 
 
 # Union type for all expressions
@@ -126,6 +128,7 @@ class OpStmt(BaseModel):
     type: LiteralType["OpStmt"] = "OpStmt"
     name: str
     args: list[Expression]
+    kwargs: dict[str, Expression] = {}
     node_id: Optional[str] = None
 
 

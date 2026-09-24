@@ -21,8 +21,10 @@ class WorkflowManager:
         self.runtime = runtime
         self.metrics = metrics if metrics is not None else NullMetrics()
 
-    async def call(self, name: str, args: list[Any]) -> Any:
-        """Call a workflow with arguments."""
+    async def call(
+        self, name: str, args: list[Any], kwargs: dict[str, Any] = None
+    ) -> Any:
+        """Call a workflow with positional and keyword arguments."""
         start_time = time.perf_counter()
 
         try:
@@ -38,6 +40,9 @@ class WorkflowManager:
             for i, param_name in enumerate(workflow.params):
                 if i < len(args):
                     arg_dict[param_name] = args[i]
+
+            if kwargs:
+                arg_dict.update(self._bind_kwargs(workflow, args, kwargs))
 
             # Enter workflow scope
             self.runtime.call(name, arg_dict)
@@ -65,3 +70,22 @@ class WorkflowManager:
         finally:
             duration = time.perf_counter() - start_time
             self.metrics.record("workflow_call", name, duration)
+
+    @staticmethod
+    def _bind_kwargs(
+        workflow: Workflow, args: list[Any], kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Validate keyword arguments against a workflow's parameters."""
+        unknown = [k for k in kwargs if k not in workflow.params]
+        if unknown:
+            raise ValueError(
+                f"Workflow '{workflow.name}' got unexpected keyword argument(s) "
+                f"{', '.join(sorted(unknown))}. Accepts: {', '.join(workflow.params)}"
+            )
+        duplicated = [p for p in workflow.params[: len(args)] if p in kwargs]
+        if duplicated:
+            raise ValueError(
+                f"Workflow '{workflow.name}' got multiple values for argument(s) "
+                f"{', '.join(duplicated)}"
+            )
+        return kwargs
