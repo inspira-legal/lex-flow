@@ -79,7 +79,14 @@ def handle_grammar_command(args) -> int:
 
 def handle_migrate_command(args) -> int:
     """Handle the 'migrate' subcommand."""
-    from lexflow_cli.migrate import collect_files, migrate_text
+    from lexflow_cli.migrate import collect_files, core_supports_kwargs, migrate_text
+
+    if not core_supports_kwargs():
+        print_error(
+            "The installed lexflow core cannot parse 'args'/'kwargs'. "
+            "Upgrade it before migrating, or the rewritten files will not run."
+        )
+        return 1
 
     try:
         files = collect_files(args.paths)
@@ -88,9 +95,11 @@ def handle_migrate_command(args) -> int:
         return 1
 
     total_nodes = 0
-    changed_files = []
+    changed = []
     warnings = []
+    errors = []
 
+    # Migrate everything first, so a failure halfway through writes nothing
     for path in files:
         original = path.read_text()
         try:
@@ -98,17 +107,15 @@ def handle_migrate_command(args) -> int:
                 original, path.suffix, args.names
             )
         except Exception as e:
-            print_error(f"{path}: {e}")
-            return 1
-
-        warnings.extend(f"{path}: {w}" for w in file_warnings)
-
-        if not nodes:
+            errors.append(f"{path}: {e}")
             continue
 
-        total_nodes += nodes
-        changed_files.append(path)
+        warnings.extend(f"{path}: {w}" for w in file_warnings)
+        if nodes:
+            total_nodes += nodes
+            changed.append((path, original, migrated, nodes))
 
+    for path, original, migrated, nodes in changed:
         if args.diff:
             diff = difflib.unified_diff(
                 original.splitlines(keepends=True),
@@ -120,15 +127,24 @@ def handle_migrate_command(args) -> int:
         else:
             print(f"{path}: {nodes} nodes")
 
-        if args.write:
-            path.write_text(migrated)
-
     if warnings:
         print()
         print_info("Inputs whose names do not match the opcode signature order:")
         for warning in warnings:
             print(f"  ! {warning}")
 
+    if errors:
+        print()
+        for error in errors:
+            print_error(error)
+        print_error(f"{len(errors)} of {len(files)} files failed; nothing was written")
+        return 1
+
+    if args.write:
+        for path, _, migrated, _ in changed:
+            path.write_text(migrated)
+
+    changed_files = [path for path, _, _, _ in changed]
     print()
     if not changed_files:
         print_success(f"Nothing to migrate ({len(files)} files scanned)")
