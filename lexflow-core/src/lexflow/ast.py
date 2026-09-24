@@ -238,8 +238,18 @@ class Program(BaseModel):
     main: Workflow
 
 
-def walk(node: BaseModel):
-    """Yield a node and every AST node nested under it."""
+def walk(node: BaseModel, _seen: Optional[set[int]] = None):
+    """Yield a node and every AST node nested under it, each one once.
+
+    The parser shares one Statement per node id, so the AST is a DAG: two
+    branches that rejoin point at the same object. Without the visited set
+    this walks the path space instead, which is exponential in depth.
+    """
+    _seen = set() if _seen is None else _seen
+    if id(node) in _seen:
+        return
+    _seen.add(id(node))
+
     yield node
     for name in type(node).model_fields:
         value = getattr(node, name, None)
@@ -251,7 +261,7 @@ def walk(node: BaseModel):
             children = [value]
         for child in children:
             if isinstance(child, BaseModel):
-                yield from walk(child)
+                yield from walk(child, _seen)
 
 
 # Enable forward references
