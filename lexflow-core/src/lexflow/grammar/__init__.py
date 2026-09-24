@@ -141,3 +141,15 @@ def get_construct_slots(opcode: str) -> set[str] | None:
     slots |= {b["name"] for b in construct.get("branches", [])}
     slots.discard("args")  # a positional family, not a named slot
     return slots
+
+
+# Constructs that read a positional 'args' list: fork's branches, return's
+# values and a call's arguments. On any other construct 'args' is read by nobody.
+ARGS_FAMILY_OPCODES = {"control_fork", "workflow_return", "workflow_call"}
+
+
+def construct_takes_args(opcode: str) -> bool:
+    """True when a construct reads a positional 'args' list."""
+    if get_construct_slots(opcode) is None and opcode not in OVERRIDE_SLOTS:
+        return True  # not a construct: an ordinary opcode binds positionally
+    return SLOT_ALIASES.get(opcode, opcode) in ARGS_FAMILY_OPCODES

@@ -31,7 +31,7 @@ from .ast import (
     Expression,
     Statement,
 )
-from .grammar import get_construct_slots, get_grammar
+from .grammar import construct_takes_args, get_construct_slots, get_grammar
 
 
 # ============= Error Handling =============
@@ -111,13 +111,24 @@ class NodeArgs:
         return {k: v for k, v in self.kwargs.items() if k not in reserved}
 
     def check_slots(self, opcode: str) -> None:
-        """Reject kwargs this construct does not declare.
+        """Reject arguments this construct does not read.
 
         Slots are read by name, so a typo or a leftover UPPERCASE slot would
-        otherwise be dropped without a word.
+        otherwise be dropped without a word. The same goes for a positional
+        'args' list on a construct that has no positional family: writing one
+        is the natural mistake when migrating 'inputs' by hand.
         """
+        if self.legacy:
+            return
+        if self.args and not construct_takes_args(opcode):
+            raise ParseError(
+                f"{opcode} takes no positional arguments. "
+                f"Name its slots in 'kwargs' instead.",
+                {"args": self.args},
+            )
+
         slots = get_construct_slots(opcode)
-        if self.legacy or slots is None:
+        if slots is None:
             return
         unknown = sorted(k for k in self.kwargs if k not in slots)
         if not unknown:
