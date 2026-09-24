@@ -38,6 +38,27 @@ workflows:
 - O formato antigo **`inputs:`** continua funcionando, mas nele os nomes são
   decorativos — quem liga é a ordem. Um node não pode ter `inputs` junto com
   `args`/`kwargs`. Para converter: `lexflow migrate <arquivo> --names --write`.
+  Ele está depreciado e será removido numa major futura.
+
+### Slots de construct são validados
+
+Um construct só aceita os slots que declara, em minúsculas. Um nome errado ou em
+maiúsculas é rejeitado no parse, com a lista do que vale:
+
+```
+control_for got unknown slot(s) STEP. Accepts: body, end, start, step, var
+```
+
+A exceção é `workflow_call`, onde `workflow` nomeia o workflow chamado e **todo
+outro kwarg liga a um parâmetro dele**. Por isso `workflow` é um nome reservado:
+um workflow que tenha um parâmetro chamado `workflow` não consegue recebê-lo por
+nome, só por posição.
+
+### Nomes de parâmetro são contrato
+
+Com `kwargs:`, renomear o parâmetro de um opcode quebra em runtime todo workflow
+que passa aquele argumento por nome. Trate nome de parâmetro como parte da API
+pública do opcode, junto com a ordem e os tipos.
 
 ## Tipos de Valor
 
@@ -87,8 +108,9 @@ start:
 #### `io_print`
 Imprime valores no output.
 
-**Inputs**:
-- `STRING`: Texto ou valor (literal, variable ou node)
+**Argumentos** (posicionais, via `args:` — `io_print` é variádico e não aceita
+argumentos nomeados):
+- Um ou mais valores (literal, variable ou node)
 
 **Exemplo**:
 ```yaml
@@ -131,12 +153,12 @@ Operadores de comparação.
 #### `control_foreach`
 Itera sobre cada item em uma coleção.
 
-**Inputs**:
-- `VAR`: Nome da variável que receberá cada item
-- `ITERABLE`: Lista/array para iterar
+**Slots** (em `kwargs:`):
+- `var`: Nome da variável que receberá cada item
+- `iterable`: Lista/array para iterar
 
-**Branches**:
-- `BODY`: Node inicial do loop
+**Branches** (em `kwargs:`):
+- `body`: Node inicial do loop
 
 **Exemplo**:
 ```yaml
@@ -155,23 +177,26 @@ iterate_list:
 #### `control_for`
 Loop com contador (for loop).
 
-**Inputs**:
-- `VAR`: Nome da variável do contador
-- `START`: Valor inicial
-- `END`: Valor final
-- `STEP` (opcional): Incremento (padrão: 1)
+**Slots** (em `kwargs:`):
+- `var`: Nome da variável do contador
+- `start`: Valor inicial
+- `end`: Valor final
+- `step` (opcional): Incremento (padrão: 1)
 
-**Branches**:
-- `BODY`: Node inicial do loop
+**Branches** (em `kwargs:`):
+- `body`: Node inicial do loop
 
 #### `control_if`
 Condicional simples (sem else).
 
-**Inputs**:
-- `CONDITION`: Expressão booleana (node reporter)
+**Slots** (em `kwargs:`):
+- `condition`: Expressão booleana (node reporter)
 
-**Branches**:
-- `THEN`: Branch executado se verdadeiro (usa `branch:`, não `node:`)
+**Branches** (em `kwargs:`):
+- `then`: Branch executado se verdadeiro (usa `branch:`, não `node:`)
+
+`control_if` lê apenas `condition` e `then`. Para um else, use `control_if_else` —
+um `else` aqui é rejeitado no parse.
 
 **Exemplo**:
 ```yaml
@@ -203,21 +228,21 @@ print_positive:
 #### `control_if_else`
 Condicional if/else completo.
 
-**Inputs**:
-- `CONDITION`: Expressão booleana
+**Slots** (em `kwargs:`):
+- `condition`: Expressão booleana
 
-**Branches**:
-- `THEN`: Branch executado se verdadeiro
-- `ELSE`: Branch executado se falso
+**Branches** (em `kwargs:`):
+- `then`: Branch executado se verdadeiro
+- `else`: Branch executado se falso
 
 ### Data Operations
 
 #### `data_set_variable_to`
 Define o valor de uma variável.
 
-**Inputs**:
-- `VARIABLE`: Nome da variável
-- `VALUE`: Novo valor (pode ser literal, variable ou node)
+**Slots** (em `kwargs:`):
+- `variable`: Nome da variável
+- `value`: Novo valor (pode ser literal, variable ou node)
 
 **Exemplo**:
 ```yaml
