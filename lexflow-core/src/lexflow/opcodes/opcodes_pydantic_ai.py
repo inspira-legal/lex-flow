@@ -373,7 +373,7 @@ def register_pydantic_ai_opcodes():
             agent_call:
               opcode: ai_agent_with_tools
               isReporter: true
-              inputs:
+              kwargs:
                 agent: {variable: "my_agent"}
                 messages: {literal: "Calculate 15 * 23"}
                 tools:
