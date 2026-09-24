@@ -39,7 +39,7 @@ Before submitting a PR, verify:
 | H1 | Commit messages MUST follow Conventional Commits with scope: `<type>(<scope>): <description>` | [Repo Patterns > Commits](#commits) |
 | H2 | New code MUST include tests: happy path + main error paths / corner cases | [Tests](#tests-and-functional-validation) |
 | H3 | Opcodes MUST be `async def`, fully typed, with docstring, using `@opcode()` | [Repo Patterns > Opcodes](#opcodes) |
-| H4 | Existing opcode signatures MUST NOT change without a major version bump | [Contracts > Backward Compatibility](#backward-compatibility) |
+| H4 | Existing opcode signatures, parameter names included, MUST NOT change without a major version bump | [Contracts > Backward Compatibility](#backward-compatibility) |
 | H5 | Removing or renaming a registered opcode is a BREAKING CHANGE | [Contracts > Backward Compatibility](#backward-compatibility) |
 | H6 | New optional parameters on existing opcodes MUST have default values | [Contracts > Backward Compatibility](#backward-compatibility) |
 | H7 | Changes to `__init__.py` exports require `BREAKING CHANGE` in commit footer | [Contracts > Backward Compatibility](#backward-compatibility) |
@@ -350,9 +350,14 @@ LexFlow is a library — breaking changes affect all consumers.
 
 | Rule | What constitutes a breaking change |
 |------|------------------------------------|
-| H4 | Changing the signature of an existing registered opcode (name, parameter order, parameter types) |
+| H4 | Changing the signature of an existing registered opcode (name, **parameter names**, parameter order, parameter types) |
 | H5 | Removing or renaming a registered opcode |
 | H7 | Changing exports in `lexflow-core/src/lexflow/__init__.py` |
+
+**Parameter names are part of the contract.** Since workflows can bind arguments by
+name (`kwargs:`), renaming `query` to `q` breaks every workflow that passes that
+argument by name — at runtime, not at review time. A rename is as breaking as a
+reordering, and the same rule applies to the opcode libraries outside this repo.
 
 **Current public API** (stable):
 ```python

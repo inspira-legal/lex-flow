@@ -137,10 +137,11 @@ cat docs/GRAMMAR_REFERENCE.md
 ### Essential Workflow Opcodes
 
 - `workflow_start` - Entry point (required in every workflow)
-- `workflow_call(WORKFLOW, ARG1, ARG2, ...)` - Call another workflow
-- `workflow_return(VALUE)` - Return value from workflow
-- `data_set_variable_to(VARIABLE, VALUE)` - Variable assignment
-- `data_get_variable(VARIABLE)` - Get variable value
+- `workflow_call` - Call another workflow: `kwargs.workflow` names it, `args` are
+  its positional arguments, and every other kwarg binds to one of its parameters
+- `workflow_return` - Return values from a workflow, as `args`
+- `data_set_variable_to` - Variable assignment: slots `variable`, `value`
+- `data_get_variable` - Get variable value: slot `variable`
 
 ### Control Flow Opcodes
 
@@ -627,7 +628,7 @@ workflows:
 
 1. **Declare `_shutdown` in inputs** — The platform sets this `asyncio.Event` on stop. Check it in loops or use `sync_event_wait` with a timeout to allow graceful exit.
 
-2. **Use `try/finally` for resource cleanup** — Always wrap the main body in `control_try` with a `FINALLY` branch that closes clients, connections, and other resources.
+2. **Use `try/finally` for resource cleanup** — Always wrap the main body in `control_try` with a `finally` branch that closes clients, connections, and other resources.
 
 3. **Config values become inputs** — The deployment's `config` dict (set at deploy time) is injected as workflow inputs. Declare them in `interface.inputs` so the same workflow can be deployed multiple times with different configurations (e.g. different Pub/Sub subscriptions).
 

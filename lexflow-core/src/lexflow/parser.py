@@ -905,8 +905,9 @@ class Parser:
             warnings.warn(
                 f"Workflow '{self.current_workflow}': {len(legacy)} nodes use the "
                 f"legacy 'inputs' key, where input names are decorative and position "
-                f"binds. Run 'lexflow migrate <path> --names --write' to convert them "
-                f"to 'args'/'kwargs'.",
+                f"binds. It will be removed in a future major release. Run "
+                f"'lexflow migrate <path> --names --write' to convert them to "
+                f"'args'/'kwargs'.",
                 # FutureWarning, not DeprecationWarning: this is aimed at
                 # workflow authors, and DeprecationWarning is hidden by default
                 # for anything raised outside __main__

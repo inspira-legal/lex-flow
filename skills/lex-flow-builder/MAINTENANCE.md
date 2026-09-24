@@ -98,7 +98,7 @@ Siga o formato padrão:
 #### `opcode_name`
 Breve descrição do que faz.
 
-**Inputs**:
+**Parâmetros**:
 - `param1` (tipo, required/optional) - Descrição
 - `param2` (tipo, optional, default: valor) - Descrição
 
@@ -109,12 +109,16 @@ Breve descrição do que faz.
 node_name:
   opcode: opcode_name
   isReporter: true  # Se retorna valor
-  inputs:
+  kwargs:
     param1:
       literal: "valor"
     param2:
       variable: var_name
 \`\`\`
+
+> Use `kwargs:` com os nomes reais dos parâmetros da assinatura, ou `args:` para
+> posicionais. Nunca gere `inputs:` — é o formato legado, onde os nomes são
+> decorativos e quem liga é a ordem.
 ```
 
 ### Passo 4: Atualizar data de sincronização
