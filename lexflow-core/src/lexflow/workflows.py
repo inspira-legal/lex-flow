@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any, Optional, Union
 import time
 from .ast import Workflow
 from .runtime import Runtime
@@ -22,7 +22,7 @@ class WorkflowManager:
         self.metrics = metrics if metrics is not None else NullMetrics()
 
     async def call(
-        self, name: str, args: list[Any], kwargs: dict[str, Any] = None
+        self, name: str, args: list[Any], kwargs: Optional[dict[str, Any]] = None
     ) -> Any:
         """Call a workflow with positional and keyword arguments."""
         start_time = time.perf_counter()

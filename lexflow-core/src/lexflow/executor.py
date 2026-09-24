@@ -214,7 +214,9 @@ class Executor:
         await self.ev.eval(expr)
         return Flow.NEXT
 
-    async def _exec_op_stmt(self, name: str, args: list, kwargs: dict = None) -> Flow:
+    async def _exec_op_stmt(
+        self, name: str, args: list, kwargs: Optional[dict] = None
+    ) -> Flow:
         """Execute opcode statement."""
         arg_vals = [await self.ev.eval(a) for a in args]
         kwarg_vals = {k: await self.ev.eval(v) for k, v in (kwargs or {}).items()}
