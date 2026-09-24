@@ -238,6 +238,22 @@ class Program(BaseModel):
     main: Workflow
 
 
+def walk(node: BaseModel):
+    """Yield a node and every AST node nested under it."""
+    yield node
+    for name in type(node).model_fields:
+        value = getattr(node, name, None)
+        if isinstance(value, dict):
+            children = list(value.values())
+        elif isinstance(value, list):
+            children = value
+        else:
+            children = [value]
+        for child in children:
+            if isinstance(child, BaseModel):
+                yield from walk(child)
+
+
 # Enable forward references
 Block.model_rebuild()
 If.model_rebuild()

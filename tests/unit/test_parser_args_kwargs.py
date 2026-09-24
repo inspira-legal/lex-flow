@@ -516,3 +516,65 @@ async def test_workflow_rejects_an_argument_given_twice():
     }
     with pytest.raises(ValueError, match="multiple values for argument"):
         await run(workflow(nodes, extra=[GREET]))
+
+
+# ============= Load-time validation =============
+
+
+async def test_opcode_keyword_typo_is_caught_before_execution():
+    """A ValueError at call time would be swallowed by the workflow's own catch."""
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "t"},
+        "t": {
+            "opcode": "control_try",
+            "kwargs": {
+                "try": {"branch": "bad"},
+                "catch": [{"exception_type": "ValueError", "body": {"branch": "oops"}}],
+            },
+        },
+        "bad": {
+            "opcode": "operator_subtract",
+            "kwargs": {"left": {"literal": 10}, "rigth": {"literal": 3}},
+        },
+        "oops": {"opcode": "io_print", "args": [{"literal": "swallowed"}]},
+    }
+    with pytest.raises(ValueError, match=r"unexpected keyword argument\(s\) rigth"):
+        await run(workflow(nodes))
+
+
+async def test_workflow_keyword_typo_is_caught_before_execution():
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "c"},
+        "c": {
+            "opcode": "workflow_call",
+            "kwargs": {"workflow": {"literal": "greet"}, "nome": {"literal": "Ana"}},
+        },
+    }
+    program = Parser().parse_dict(workflow(nodes, extra=[GREET]))
+    with pytest.raises(ValueError, match=r"unexpected keyword argument\(s\) nome"):
+        Engine(program)
+
+
+async def test_unregistered_opcodes_are_left_to_the_runtime():
+    """An engine with a custom registry must still load a program it cannot check."""
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "n"},
+        "n": {"opcode": "not_a_real_opcode", "kwargs": {"whatever": {"literal": 1}}},
+    }
+    Engine(Parser().parse_dict(workflow(nodes)))
+
+
+async def test_legacy_return_ignores_a_bare_value_beside_a_numbered_one():
+    """The legacy reader read VALUE1 and ignored VALUE; that must not change."""
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "r"},
+        "r": {
+            "opcode": "workflow_return",
+            "inputs": {"VALUE1": {"literal": "a"}, "VALUE": {"literal": "b"}},
+        },
+    }
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        program = Parser().parse_dict(workflow(nodes))
+    values = program.main.body.stmts[0].values
+    assert [v.value for v in values] == ["a"]
