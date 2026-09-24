@@ -5,13 +5,16 @@ control flow, fork, spawn, timeout, try/catch, workflow calls and reporters,
 all in the legacy 'inputs' form.
 """
 
+import inspect
 import json
+import re
 from pathlib import Path
 
 import pytest
 import yaml
 
 from lexflow import Parser, default_registry
+from lexflow.visualizer import WorkflowVisualizer
 from lexflow_cli.migrate import collect_files, migrate_text
 
 LEGACY = Path(__file__).resolve().parents[1] / "fixtures" / "legacy_workflows"
@@ -37,7 +40,13 @@ def canonical(value):
     if value.get("type") in ("Opcode", "OpStmt"):
         signature = default_registry.signatures.get(value["name"])
         if signature:
-            names = list(signature.parameters)
+            parameters = list(signature.parameters.values())
+            # A variadic opcode takes no keywords, so its arguments stay
+            # positional here too: [x] and {values: x} are not the same call
+            variadic = any(
+                p.kind is inspect.Parameter.VAR_POSITIONAL for p in parameters
+            )
+            names = [] if variadic else [p.name for p in parameters]
             bound = {
                 names[i] if i < len(names) else i: arg
                 for i, arg in enumerate(result.pop("args", []))
@@ -45,6 +54,11 @@ def canonical(value):
             bound.update(result.pop("kwargs", {}))
             result["arguments"] = bound
     return result
+
+
+def nodes_drawn(rendering: str) -> list[str]:
+    """Every 'opcode (node_id)' the visualizer drew, in order."""
+    return re.findall(r"\b(\w+ \(\w+\))", rendering)
 
 
 @pytest.mark.parametrize("use_names", [False, True], ids=["positional", "names"])
@@ -68,3 +82,23 @@ def test_migrated_workflow_parses_to_the_same_ast(path, use_names):
         assert canonical(Parser()._parse_workflow(new_wf).model_dump()) == canonical(
             expected
         )
+
+
+@pytest.mark.parametrize(
+    "path", collect_files([str(LEGACY)]), ids=lambda p: str(p.name)
+)
+def test_visualizer_draws_the_same_tree_before_and_after_migration(path):
+    """The visualizer reads nodes through NodeArgs, so both forms must render alike.
+
+    Argument labels change (VALUES becomes 1), the structure must not.
+    """
+    text = path.read_text()
+    migrated, migrated_nodes, _ = migrate_text(text, path.suffix)
+    if not migrated_nodes:
+        pytest.skip("nothing to migrate")
+
+    visualizer = WorkflowVisualizer()
+    before = visualizer.visualize_program(load(text, path.suffix))
+    after = visualizer.visualize_program(load(migrated, path.suffix))
+
+    assert nodes_drawn(before) == nodes_drawn(after)

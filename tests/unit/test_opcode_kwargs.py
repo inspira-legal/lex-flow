@@ -76,3 +76,40 @@ async def test_privileged_injection_supports_kwargs():
 
     assert await reg.call("needs_engine", [5]) == 10
     assert await reg.call("needs_engine", [5], {"factor": 3}) == 15
+
+
+async def test_implementations_stored_directly_keep_the_single_argument_shape():
+    """Embedders put a bare `async def impl(args)` in registry.opcodes.
+
+    call() must keep passing one argument when there are no keywords, or every
+    such implementation breaks.
+    """
+    reg = OpcodeRegistry()
+
+    async def legacy(args):
+        return sum(args)
+
+    reg.opcodes["legacy_sum"] = legacy
+
+    assert await reg.call("legacy_sum", [1, 2]) == 3
+
+
+async def test_injected_implementation_binds_by_the_stub_parameter_names():
+    """An injected implementation must name its parameters like the stub.
+
+    Names now reach the implementation, so a rename silently breaks binding.
+    """
+    reg = OpcodeRegistry()
+
+    @reg.register(privileged=True)
+    async def needs_engine(value: int) -> int:
+        pass
+
+    async def renamed(other: int) -> int:
+        return other
+
+    reg.inject("needs_engine", renamed)
+
+    assert await reg.call("needs_engine", [5]) == 5
+    with pytest.raises(TypeError):
+        await reg.call("needs_engine", [], {"value": 5})
