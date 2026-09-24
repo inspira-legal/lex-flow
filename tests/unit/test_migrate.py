@@ -4,7 +4,7 @@ import json
 
 import yaml
 
-from lexflow_cli.migrate import find_misbindings, migrate_text
+from lexflow_cli.migrate import collect_files, find_misbindings, migrate_text
 
 
 def migrate_yaml(text: str) -> dict:
@@ -424,3 +424,111 @@ def test_json_output_keeps_non_ascii_readable():
     )
     migrated, _, _ = migrate_text(source, ".json")
     assert "Petição" in migrated
+
+
+def test_zero_padded_family_members_are_not_read():
+    """sequence() looks up the literal 'ARG1', so ARG01 was never a member."""
+    source = (
+        HEADER
+        + """      go:
+        opcode: workflow_call
+        inputs:
+          WORKFLOW:
+            literal: helper
+          ARG01:
+            literal: "x"
+"""
+    )
+    migrated, _, warnings = migrate_text(source, ".yaml")
+    node = yaml.safe_load(migrated)["workflows"][0]["nodes"]["go"]
+    assert "args" not in node
+    assert any("dropped ARG01" in w for w in warnings)
+
+
+def test_a_zero_index_family_member_is_not_read():
+    source = (
+        HEADER
+        + """      fan:
+        opcode: control_fork
+        inputs:
+          BRANCH0:
+            branch: a
+          BRANCH1:
+            branch: b
+"""
+    )
+    migrated, _, warnings = migrate_text(source, ".yaml")
+    node = yaml.safe_load(migrated)["workflows"][0]["nodes"]["fan"]
+    assert node["args"] == [{"branch": "b"}]
+    assert any("dropped BRANCH0" in w for w in warnings)
+
+
+def test_a_bare_value_beside_a_numbered_one_is_dropped():
+    source = (
+        HEADER
+        + """      done:
+        opcode: workflow_return
+        inputs:
+          VALUE1:
+            literal: "a"
+          VALUE:
+            literal: "b"
+"""
+    )
+    migrated, _, warnings = migrate_text(source, ".yaml")
+    node = yaml.safe_load(migrated)["workflows"][0]["nodes"]["done"]
+    assert node["args"] == [{"literal": "a"}]
+    assert any("dropped VALUE" in w for w in warnings)
+
+
+def test_an_unnumbered_catch_is_dropped():
+    """The legacy reader only ever read the CATCH1..n family."""
+    source = (
+        HEADER
+        + """      guard:
+        opcode: control_try
+        inputs:
+          TRY:
+            branch: risky
+          CATCH:
+            exception_type: RuntimeError
+"""
+    )
+    migrated, _, warnings = migrate_text(source, ".yaml")
+    node = yaml.safe_load(migrated)["workflows"][0]["nodes"]["guard"]
+    assert "catch" not in node.get("kwargs", {})
+    assert any("dropped CATCH" in w for w in warnings)
+
+
+def test_names_mode_leaves_unknown_opcodes_positional():
+    """The CLI registry does not know user opcodes; their names may be decorative."""
+    source = (
+        HEADER
+        + """      custom:
+        opcode: some_user_opcode
+        inputs:
+          a:
+            literal: 1
+          b:
+            literal: 2
+"""
+    )
+    migrated, _, _ = migrate_text(source, ".yaml", use_names=True)
+    node = yaml.safe_load(migrated)["workflows"][0]["nodes"]["custom"]
+    assert node["args"] == [{"literal": 1}, {"literal": 2}]
+    assert "kwargs" not in node
+
+
+def test_vendored_and_hidden_directories_are_skipped(tmp_path):
+    for rel in (
+        "wf.yaml",
+        "node_modules/pkg/wf.yaml",
+        ".venv/lib/wf.yaml",
+        ".hidden/wf.yaml",
+        "sub/wf.yaml",
+    ):
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("workflows: []\n")
+    found = {p.relative_to(tmp_path).as_posix() for p in collect_files([str(tmp_path)])}
+    assert found == {"wf.yaml", "sub/wf.yaml"}

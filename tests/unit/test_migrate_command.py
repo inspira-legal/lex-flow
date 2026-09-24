@@ -194,3 +194,39 @@ workflows:
     assert run_migrate(str(tmp_path), "--names", "--write") == 0
     node = yaml.safe_load((tmp_path / "a.yaml").read_text())["workflows"][0]["nodes"]
     assert node["op"]["kwargs"] == {"left": {"literal": 10}, "right": {"literal": 3}}
+
+
+def test_a_write_failure_rolls_back_every_other_file(workspace, capsys):
+    """--write is all-or-nothing for write errors too, not just migration errors."""
+    locked = workspace / "locked"
+    locked.mkdir()
+    (locked / "b.yaml").write_text(LEGACY)
+    locked.chmod(0o555)
+    try:
+        assert run_migrate(str(workspace), "--write") == 1
+        assert (workspace / "a.yaml").read_text() == LEGACY
+        assert "nothing was changed" in capsys.readouterr().err
+    finally:
+        locked.chmod(0o755)
+
+
+def test_no_temporary_files_are_left_behind(workspace):
+    assert run_migrate(str(workspace), "--write") == 0
+    assert not list(workspace.glob("*.lexflow-tmp"))
+
+
+def test_a_binary_file_fails_that_file_only(workspace, capsys):
+    (workspace / "blob.json").write_bytes(b"\xff\xfe\x00binary")
+    assert run_migrate(str(workspace), "--write") == 1
+    assert (workspace / "a.yaml").read_text() == LEGACY
+    assert "not a text file" in capsys.readouterr().err
+
+
+def test_a_duplicate_key_gets_its_own_message(workspace, capsys):
+    (workspace / "dup.yaml").write_text(
+        "workflows:\n  - name: main\n    nodes: {}\n    nodes: {}\n"
+    )
+    assert run_migrate(str(workspace)) == 1
+    err = capsys.readouterr().err
+    assert "duplicate key" in err
+    assert "allow_duplicate_keys" not in err

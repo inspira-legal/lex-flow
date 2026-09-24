@@ -74,6 +74,9 @@ def test_migrated_workflow_parses_to_the_same_ast(path, use_names):
     before = load(text, path.suffix)
     after = load(migrated, path.suffix)
 
+    assert len(before["workflows"]) == len(after["workflows"])
+
+    compared = 0
     for old_wf, new_wf in zip(before["workflows"], after["workflows"]):
         try:
             expected = Parser()._parse_workflow(old_wf).model_dump()
@@ -82,6 +85,10 @@ def test_migrated_workflow_parses_to_the_same_ast(path, use_names):
         assert canonical(Parser()._parse_workflow(new_wf).model_dump()) == canonical(
             expected
         )
+        compared += 1
+
+    # Otherwise a fixture whose workflows all fail to parse passes vacuously
+    assert compared, "no workflow in this fixture could be compared"
 
 
 @pytest.mark.parametrize(

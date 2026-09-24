@@ -578,3 +578,199 @@ async def test_legacy_return_ignores_a_bare_value_beside_a_numbered_one():
         program = Parser().parse_dict(workflow(nodes))
     values = program.main.body.stmts[0].values
     assert [v.value for v in values] == ["a"]
+
+
+# ============= Positional args on constructs =============
+
+
+@pytest.mark.parametrize(
+    "opcode,kwargs",
+    [
+        ("control_if", {"then": {"branch": "b"}}),
+        ("control_while", {"body": {"branch": "b"}}),
+        ("control_try", {"try": {"branch": "b"}}),
+        ("data_set_variable_to", {"variable": {"literal": "x"}}),
+    ],
+)
+async def test_constructs_without_a_positional_family_reject_args(opcode, kwargs):
+    """Writing 'args' on a construct is the natural mistake when migrating by hand."""
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "n"},
+        "n": {"opcode": opcode, "args": [{"literal": True}], "kwargs": kwargs},
+        "b": {"opcode": "io_print", "args": [{"literal": "x"}]},
+    }
+    with pytest.raises(ValueError, match="takes no positional arguments"):
+        Parser().parse_dict(workflow(nodes))
+
+
+async def test_fork_and_return_still_take_args():
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "f"},
+        "f": {"opcode": "control_fork", "args": [{"branch": "a"}, {"branch": "b"}]},
+        "a": {"opcode": "io_print", "args": [{"literal": "A"}]},
+        "b": {"opcode": "io_print", "args": [{"literal": "B"}]},
+    }
+    assert await run(workflow(nodes)) == "AB"
+
+
+# ============= Load-time validation, remaining shapes =============
+
+
+def _in_try(bad_node: dict, extra=None) -> dict:
+    """Put a node inside try/catch ValueError, where a runtime error is swallowed."""
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "t"},
+        "t": {
+            "opcode": "control_try",
+            "kwargs": {
+                "try": {"branch": "bad"},
+                "catch": [{"exception_type": "ValueError", "body": {"branch": "h"}}],
+            },
+        },
+        "bad": bad_node,
+        "h": {"opcode": "io_print", "args": [{"literal": "swallowed"}]},
+    }
+    return workflow(nodes, extra=extra)
+
+
+@pytest.mark.parametrize(
+    "node,message",
+    [
+        (
+            {"opcode": "io_print", "kwargs": {"values": {"literal": "x"}}},
+            "variadic",
+        ),
+        (
+            {
+                "opcode": "operator_subtract",
+                "args": [{"literal": 1}],
+                "kwargs": {"left": {"literal": 2}},
+            },
+            "multiple values",
+        ),
+        (
+            {"opcode": "operator_subtract", "args": [{"literal": 1}]},
+            "requires 2 arguments",
+        ),
+        (
+            {"opcode": "workflow_call", "kwargs": {"workflow": {"literal": "nope"}}},
+            "unknown workflow",
+        ),
+    ],
+)
+async def test_binding_errors_are_caught_before_the_catch_can_swallow_them(
+    node, message
+):
+    with pytest.raises(ValueError, match=message):
+        Engine(Parser().parse_dict(_in_try(node)))
+
+
+async def test_a_typo_in_a_reporter_is_caught_too():
+    """The OpStmt case had a sensor; the Opcode (reporter) case did not."""
+    node = {
+        "opcode": "io_print",
+        "args": [{"node": "sub"}],
+    }
+    program = workflow(
+        {
+            "start": {"opcode": "workflow_start", "next": "p"},
+            "p": node,
+            "sub": {
+                "opcode": "operator_subtract",
+                "isReporter": True,
+                "kwargs": {"left": {"literal": 10}, "rigth": {"literal": 3}},
+            },
+        }
+    )
+    with pytest.raises(ValueError, match=r"keyword argument\(s\) rigth"):
+        Engine(Parser().parse_dict(program))
+
+
+async def test_a_typo_nested_inside_a_kwargs_value_is_caught():
+    """walk() must descend into dict-valued fields, not just lists."""
+    program = workflow(
+        {
+            "start": {"opcode": "workflow_start", "next": "a"},
+            "a": {
+                "opcode": "data_set_variable_to",
+                "kwargs": {"variable": {"literal": "x"}, "value": {"node": "sub"}},
+            },
+            "sub": {
+                "opcode": "operator_subtract",
+                "isReporter": True,
+                "kwargs": {"left": {"literal": 10}, "rigth": {"literal": 3}},
+            },
+        }
+    )
+    with pytest.raises(ValueError, match=r"keyword argument\(s\) rigth"):
+        Engine(Parser().parse_dict(program))
+
+
+async def test_a_rejected_program_is_not_left_on_the_engine():
+    good = workflow(
+        {
+            "start": {"opcode": "workflow_start", "next": "p"},
+            "p": {"opcode": "io_print", "args": [{"literal": "ok"}]},
+        }
+    )
+    bad = workflow(
+        {
+            "start": {"opcode": "workflow_start", "next": "s"},
+            "s": {
+                "opcode": "operator_subtract",
+                "kwargs": {"left": {"literal": 1}, "rigth": {"literal": 2}},
+            },
+        }
+    )
+    engine = Engine(Parser().parse_dict(good))
+    loaded = engine.program
+    with pytest.raises(ValueError):
+        engine.load_program(Parser().parse_dict(bad))
+    assert engine.program is loaded
+
+
+# ============= Slot table sensors =============
+
+
+async def test_data_get_variable_is_accepted_as_a_reporter():
+    """A positive case: the override slot must not reject every valid reporter."""
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "p"},
+        "p": {"opcode": "io_print", "args": [{"node": "get"}]},
+        "get": {
+            "opcode": "data_get_variable",
+            "isReporter": True,
+            "kwargs": {"variable": {"literal": "x"}},
+        },
+    }
+    assert await run(workflow(nodes, variables={"x": "value"})) == "value"
+
+
+@pytest.mark.parametrize(
+    "opcode,kwargs,unknown",
+    [
+        ("try_catch", {"try": {"branch": "b"}, "FINALLY": {"branch": "b"}}, "FINALLY"),
+        ("return", {"VALUE": {"literal": 1}}, "VALUE"),
+        ("assign", {"variable": {"literal": "x"}, "VALUE": {"literal": 1}}, "VALUE"),
+    ],
+)
+async def test_alias_opcodes_share_the_slot_table(opcode, kwargs, unknown):
+    """Dropping an alias would send FINALLY/VALUE back to being silently ignored."""
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "n"},
+        "n": {"opcode": opcode, "kwargs": kwargs},
+        "b": {"opcode": "io_print", "args": [{"literal": "x"}]},
+    }
+    with pytest.raises(ValueError, match=f"unknown slot\\(s\\) {unknown}"):
+        Parser().parse_dict(workflow(nodes))
+
+
+async def test_fork_rejects_args_named_as_a_slot():
+    """'args' is a positional family, never a named slot."""
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "f"},
+        "f": {"opcode": "control_fork", "kwargs": {"args": [{"branch": "b"}]}},
+        "b": {"opcode": "io_print", "args": [{"literal": "x"}]},
+    }
+    with pytest.raises(ValueError, match=r"unknown slot\(s\) args"):
+        Parser().parse_dict(workflow(nodes))
