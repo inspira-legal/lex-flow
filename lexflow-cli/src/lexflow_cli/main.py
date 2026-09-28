@@ -3,6 +3,7 @@ import asyncio
 import difflib
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -84,11 +85,13 @@ def handle_grammar_command(args) -> int:
 def _migrate_error(exc: Exception) -> str:
     """A message for a file the migration could not read."""
     text = str(exc)
-    if "found duplicate key" in text:
-        key = text.split('"')[1] if '"' in text else "a key"
+    duplicate = re.search(r'found duplicate key "(.*?)"', text)
+    if duplicate:
+        mark = getattr(exc, "problem_mark", None)
+        where = f" on line {mark.line + 1}" if mark else ""
         return (
-            f"duplicate key {key}. Remove the duplicate before migrating; do not "
-            f"allow duplicate keys, which changes which value wins."
+            f"duplicate key '{duplicate.group(1)}'{where}. Remove the duplicate "
+            f"before migrating: suppressing the check changes which value wins."
         )
     return text
 
@@ -175,6 +178,7 @@ def handle_migrate_command(args) -> int:
     )
     try:
         from lexflow_cli.migrate import (
+            SKIPPED_DIRS,
             collect_files,
             migrate_text,
         )
@@ -251,6 +255,11 @@ def handle_migrate_command(args) -> int:
     print()
     if not changed_files:
         print_success(f"Nothing to migrate ({len(files)} files scanned)")
+        if not files:
+            print_info(
+                f"Skipped: {', '.join(sorted(SKIPPED_DIRS))} and hidden directories. "
+                f"Pass a path inside one to migrate it anyway."
+            )
         return 0
 
     if args.write:

@@ -82,6 +82,21 @@ def test_already_migrated_files_report_nothing_to_do(tmp_path, capsys):
     assert "Nothing to migrate" in capsys.readouterr().out
 
 
+def test_scanning_only_skipped_directories_says_so(tmp_path, capsys):
+    """'0 files scanned' on a tree full of workflows is otherwise baffling."""
+    vendored = tmp_path / "node_modules"
+    vendored.mkdir()
+    (vendored / "a.yaml").write_text(LEGACY)
+
+    assert run_migrate(str(tmp_path)) == 0
+    out = capsys.readouterr().out
+    assert "0 files scanned" in out
+    assert "node_modules" in out
+    # And the escape hatch, since the file really is there
+    assert run_migrate(str(vendored / "a.yaml")) == 0
+    assert "1 nodes" in capsys.readouterr().out
+
+
 def test_missing_path_is_reported(tmp_path, capsys):
     assert run_migrate(str(tmp_path / "nope.yaml")) == 1
     assert "No such file or directory" in capsys.readouterr().err
@@ -250,12 +265,14 @@ def test_a_binary_file_fails_that_file_only(workspace, capsys):
 
 def test_a_duplicate_key_gets_its_own_message(workspace, capsys):
     (workspace / "dup.yaml").write_text(
-        "workflows:\n  - name: main\n    nodes: {}\n    nodes: {}\n"
+        "workflows:\n  - name: main\n    nodes: {}\n    interface: {}\n    nodes: {}\n"
     )
     assert run_migrate(str(workspace)) == 1
     err = capsys.readouterr().err
-    assert "duplicate key" in err
-    assert "allow_duplicate_keys" not in err
+    # The key and its line, which ruamel's own text has and the old message lost
+    assert "duplicate key 'nodes'" in err
+    assert "line 5" in err
+    assert "yaml.dev" not in err
 
 
 @pytest.mark.parametrize("mode", [0o600, 0o640])
