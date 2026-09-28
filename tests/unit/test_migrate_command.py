@@ -5,6 +5,8 @@ file collection, reporting, --diff, --write and the all-or-nothing guarantee.
 """
 
 import json
+import os
+import shutil
 
 import pytest
 import yaml
@@ -210,9 +212,32 @@ def test_a_write_failure_rolls_back_every_other_file(workspace, capsys):
         locked.chmod(0o755)
 
 
+def temporaries(directory):
+    """The migration's temporaries are hidden, so a bare '*' glob misses them."""
+    return list(directory.glob(".*.tmp")) + list(directory.glob("*.tmp"))
+
+
 def test_no_temporary_files_are_left_behind(workspace):
     assert run_migrate(str(workspace), "--write") == 0
-    assert not list(workspace.glob("*.lexflow-tmp"))
+    assert temporaries(workspace) == []
+
+
+def test_an_interrupt_mid_write_leaves_no_temporaries(workspace, monkeypatch):
+    """Ctrl-C is not an OSError, so only the cleanup on the way out catches it."""
+    (workspace / "b.yaml").write_text(LEGACY)
+    real = shutil.copymode
+    seen = []
+
+    def interrupt_on_the_second(*args, **kwargs):
+        seen.append(args)
+        if len(seen) == 2:
+            raise KeyboardInterrupt
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr("lexflow_cli.main.shutil.copymode", interrupt_on_the_second)
+    with pytest.raises(KeyboardInterrupt):
+        run_migrate(str(workspace), "--write")
+    assert temporaries(workspace) == []
 
 
 def test_a_binary_file_fails_that_file_only(workspace, capsys):
@@ -230,3 +255,46 @@ def test_a_duplicate_key_gets_its_own_message(workspace, capsys):
     err = capsys.readouterr().err
     assert "duplicate key" in err
     assert "allow_duplicate_keys" not in err
+
+
+@pytest.mark.parametrize("mode", [0o600, 0o640])
+def test_the_file_mode_survives_the_rewrite(workspace, mode):
+    """A file its owner locked down must not come back more readable.
+
+    0o640 is the case that senses the copymode: mkstemp already creates at 0o600.
+    """
+    private = workspace / "a.yaml"
+    private.chmod(mode)
+    assert run_migrate(str(workspace), "--write") == 0
+    assert private.stat().st_mode & 0o777 == mode
+
+
+def test_a_symlink_is_migrated_through_not_replaced(workspace, tmp_path):
+    target = tmp_path / "target.yaml"
+    target.write_text(LEGACY)
+    link = workspace / "link.yaml"
+    link.symlink_to(target)
+
+    assert run_migrate(str(workspace), "--write") == 0
+    assert link.is_symlink()
+    assert "args:" in target.read_text()
+
+
+def test_a_hard_linked_file_is_refused(workspace, capsys):
+    other = workspace / "other.yaml"
+    os.link(workspace / "a.yaml", other)
+    assert run_migrate(str(workspace), "--write") == 1
+    assert (workspace / "a.yaml").read_text() == LEGACY
+    assert "hard links" in capsys.readouterr().err
+
+
+def test_an_unwritable_file_is_refused_cleanly(workspace, capsys):
+    (workspace / "a.yaml").chmod(0o444)
+    try:
+        assert run_migrate(str(workspace), "--write") == 1
+        assert "not writable" in capsys.readouterr().err
+        assert (workspace / "a.yaml").read_text() == LEGACY
+        # The protection the user put on the file is still there
+        assert (workspace / "a.yaml").stat().st_mode & 0o777 == 0o444
+    finally:
+        (workspace / "a.yaml").chmod(0o644)
