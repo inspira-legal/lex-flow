@@ -5,6 +5,7 @@ import warnings
 
 import pytest
 from lexflow import Parser, Engine
+from lexflow.engine import WorkflowValidationError
 
 pytestmark = pytest.mark.asyncio
 
@@ -552,6 +553,21 @@ async def test_workflow_keyword_typo_is_caught_before_execution():
     }
     program = Parser().parse_dict(workflow(nodes, extra=[GREET]))
     with pytest.raises(ValueError, match=r"unexpected keyword argument\(s\) nome"):
+        Engine(program)
+
+
+async def test_a_load_time_rejection_is_told_apart_from_a_runtime_one():
+    """Without this, swapping the raise for a plain ValueError stays green.
+
+    Imported from lexflow.engine on purpose: the class is deliberately not
+    exported from the package root (H7).
+    """
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "c"},
+        "c": {"opcode": "workflow_call", "kwargs": {"workflow": {"literal": "gone"}}},
+    }
+    program = Parser().parse_dict(workflow(nodes))
+    with pytest.raises(WorkflowValidationError):
         Engine(program)
 
 
