@@ -629,6 +629,17 @@ async def test_fork_and_return_still_take_args():
     assert await run(workflow(nodes)) == "AB"
 
 
+@pytest.mark.parametrize("opcode", ["workflow_return", "return"])
+async def test_return_and_its_alias_take_args(opcode):
+    """The alias resolves through SLOT_ALIASES; without it 'return' is rejected."""
+    nodes = {
+        "start": {"opcode": "workflow_start", "next": "r"},
+        "r": {"opcode": opcode, "args": [{"literal": 7}]},
+    }
+    program = Parser().parse_dict(workflow(nodes))
+    assert await Engine(program).run() == 7
+
+
 # ============= Load-time validation, remaining shapes =============
 
 
@@ -672,13 +683,24 @@ def _in_try(bad_node: dict, extra=None) -> dict:
             {"opcode": "workflow_call", "kwargs": {"workflow": {"literal": "nope"}}},
             "unknown workflow",
         ),
+        (
+            {
+                "opcode": "workflow_call",
+                "args": [{"literal": "Ana"}],
+                "kwargs": {
+                    "workflow": {"literal": "greet"},
+                    "name": {"literal": "Bia"},
+                },
+            },
+            "multiple values",
+        ),
     ],
 )
 async def test_binding_errors_are_caught_before_the_catch_can_swallow_them(
     node, message
 ):
     with pytest.raises(ValueError, match=message):
-        Engine(Parser().parse_dict(_in_try(node)))
+        Engine(Parser().parse_dict(_in_try(node, extra=[GREET])))
 
 
 async def test_a_typo_in_a_reporter_is_caught_too():
@@ -703,13 +725,20 @@ async def test_a_typo_in_a_reporter_is_caught_too():
 
 
 async def test_a_typo_nested_inside_a_kwargs_value_is_caught():
-    """walk() must descend into dict-valued fields, not just lists."""
+    """walk() must descend into dict fields.
+
+    Opcode.kwargs, OpStmt.kwargs and Call.kwargs are the only dict fields in
+    the AST, so the bad reporter has to sit inside one of them: hanging it off
+    Assign.value would be reached through an ordinary model field instead.
+    """
     program = workflow(
         {
-            "start": {"opcode": "workflow_start", "next": "a"},
-            "a": {
-                "opcode": "data_set_variable_to",
-                "kwargs": {"variable": {"literal": "x"}, "value": {"node": "sub"}},
+            "start": {"opcode": "workflow_start", "next": "p"},
+            "p": {"opcode": "io_print", "args": [{"node": "add"}]},
+            "add": {
+                "opcode": "operator_add",
+                "isReporter": True,
+                "kwargs": {"left": {"node": "sub"}, "right": {"literal": 1}},
             },
             "sub": {
                 "opcode": "operator_subtract",

@@ -534,6 +534,77 @@ def test_vendored_and_hidden_directories_are_skipped(tmp_path):
     assert found == {"wf.yaml", "sub/wf.yaml"}
 
 
+def test_a_node_with_both_args_and_inputs_is_left_alone():
+    """Without the guard the user's own 'args' is overwritten by the legacy key."""
+    source = (
+        HEADER
+        + """      show:
+        opcode: io_print
+        args:
+          - literal: "user"
+        inputs:
+          V:
+            literal: "legacy"
+"""
+    )
+    migrated, count, _ = migrate_text(source, ".yaml")
+    assert count == 0
+    assert yaml.safe_load(migrated)["workflows"][0]["nodes"]["show"]["args"] == [
+        {"literal": "user"}
+    ]
+
+
+def test_lowercase_numbered_slots_are_still_a_family():
+    """The legacy lookup is case-insensitive, so 'branch1' is BRANCH1."""
+    source = (
+        HEADER
+        + """      fan:
+        opcode: control_fork
+        inputs:
+          branch1:
+            branch: show
+      show:
+        opcode: io_print
+        inputs:
+          S:
+            literal: "P"
+"""
+    )
+    migrated, _, _ = migrate_text(source, ".yaml")
+    node = yaml.safe_load(migrated)["workflows"][0]["nodes"]["fan"]
+    assert node["args"] == [{"branch": "show"}]
+
+
+def test_a_non_ascii_digit_is_not_a_family_member():
+    source = (
+        HEADER
+        + """      done:
+        opcode: workflow_return
+        inputs:
+          "VALUE١":
+            literal: 7
+"""
+    )
+    migrated, _, warnings = migrate_text(source, ".yaml")
+    node = yaml.safe_load(migrated)["workflows"][0]["nodes"]["done"]
+    assert "args" not in node
+    assert any("dropped" in w for w in warnings)
+
+
+def test_a_comment_on_the_inputs_key_survives():
+    source = (
+        HEADER
+        + """      show:
+        opcode: io_print
+        inputs:  # keep me
+          S:
+            literal: "hi"
+"""
+    )
+    migrated, _, _ = migrate_text(source, ".yaml")
+    assert "# keep me" in migrated
+
+
 def test_a_file_that_is_not_a_workflow_is_skipped(tmp_path):
     """A tsconfig.json with // comments shares the extension but is not ours."""
     text = '{\n  // a comment\n  "compilerOptions": {}\n}\n'

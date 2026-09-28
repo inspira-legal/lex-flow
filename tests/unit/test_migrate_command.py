@@ -4,6 +4,7 @@ migrate_text is covered in test_migrate.py; this covers the command around it:
 file collection, reporting, --diff, --write and the all-or-nothing guarantee.
 """
 
+import asyncio
 import json
 import os
 import shutil
@@ -12,7 +13,7 @@ import sys
 import pytest
 import yaml
 
-from lexflow_cli.main import create_parser, handle_migrate_command
+from lexflow_cli.main import create_parser, handle_migrate_command, run_workflow
 
 LEGACY = """\
 workflows:
@@ -316,6 +317,29 @@ def test_an_unwritable_file_is_refused_cleanly(workspace, capsys):
         assert (workspace / "a.yaml").stat().st_mode & 0o777 == 0o444
     finally:
         (workspace / "a.yaml").chmod(0o644)
+
+
+def test_validate_only_rejects_what_run_rejects(tmp_path, capsys):
+    """Without the Engine build, --validate-only printed 'valid' and exited 0."""
+    bad = tmp_path / "bad.yaml"
+    bad.write_text(
+        """\
+workflows:
+  - name: main
+    interface: {inputs: [], outputs: []}
+    variables: {}
+    nodes:
+      start: {opcode: workflow_start, next: s}
+      s:
+        opcode: operator_subtract
+        kwargs: {left: {literal: 10}, rigth: {literal: 3}}
+"""
+    )
+    args = create_parser().parse_args(["run", str(bad), "--validate-only"])
+    with pytest.raises(SystemExit) as exit_info:
+        asyncio.run(run_workflow(args))
+    assert exit_info.value.code == 1
+    assert "Workflow is valid" not in capsys.readouterr().out
 
 
 def test_an_outdated_core_refuses_the_rewrite(workspace, capsys, monkeypatch):
