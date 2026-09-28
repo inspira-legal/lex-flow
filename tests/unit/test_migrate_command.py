@@ -7,6 +7,7 @@ file collection, reporting, --diff, --write and the all-or-nothing guarantee.
 import json
 import os
 import shutil
+import sys
 
 import pytest
 import yaml
@@ -298,3 +299,11 @@ def test_an_unwritable_file_is_refused_cleanly(workspace, capsys):
         assert (workspace / "a.yaml").stat().st_mode & 0o777 == 0o444
     finally:
         (workspace / "a.yaml").chmod(0o644)
+
+
+def test_an_outdated_core_refuses_the_rewrite(workspace, capsys, monkeypatch):
+    """A core without the grammar helpers would accept the rewrite then reject it."""
+    monkeypatch.setitem(sys.modules, "lexflow_cli.migrate", None)
+    assert run_migrate(str(workspace), "--write") == 1
+    assert (workspace / "a.yaml").read_text() == LEGACY
+    assert "cannot parse 'args'/'kwargs'" in capsys.readouterr().err

@@ -176,16 +176,11 @@ def handle_migrate_command(args) -> int:
     try:
         from lexflow_cli.migrate import (
             collect_files,
-            core_supports_kwargs,
             migrate_text,
         )
     except ImportError:
-        # An older core lacks the grammar helpers this module imports, so the
-        # failure lands here rather than in core_supports_kwargs()
-        print_error(outdated)
-        return 1
-
-    if not core_supports_kwargs():
+        # An older core lacks the grammar helpers this module imports, and it
+        # would accept the rewrite then reject every file it produced
         print_error(outdated)
         return 1
 
