@@ -532,3 +532,10 @@ def test_vendored_and_hidden_directories_are_skipped(tmp_path):
         path.write_text("workflows: []\n")
     found = {p.relative_to(tmp_path).as_posix() for p in collect_files([str(tmp_path)])}
     assert found == {"wf.yaml", "sub/wf.yaml"}
+
+
+def test_a_file_that_is_not_a_workflow_is_skipped(tmp_path):
+    """A tsconfig.json with // comments shares the extension but is not ours."""
+    text = '{\n  // a comment\n  "compilerOptions": {}\n}\n'
+    migrated, count, warnings = migrate_text(text, ".json")
+    assert (migrated, count, warnings) == (text, 0, [])

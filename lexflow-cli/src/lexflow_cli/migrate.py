@@ -291,6 +291,9 @@ def migrate_text(
     text: str, suffix: str, use_names: bool = False
 ) -> tuple[str, int, list[str]]:
     """Migrate one workflow document. Returns (new text, nodes migrated, warnings)."""
+    if "workflows" not in text:
+        return text, 0, []  # not a workflow document; do not even parse it
+
     if suffix.lower() in YAML_SUFFIXES:
         yaml = _yaml()
         data = yaml.load(text)
