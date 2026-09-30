@@ -16,126 +16,125 @@ workflows:
       start:
         opcode: workflow_start
         next: print_start
-        inputs: {}
 
       print_start:
         opcode: io_print
         next: spawn_counter
-        inputs:
-          STRING: { literal: "Starting background counter...\n" }
+        args:
+          - {literal: "Starting background counter...\n"}
 
       spawn_counter:
         opcode: control_spawn
         next: main_loop
-        inputs:
-          VAR: { literal: "counter_task" }
-          BODY: { branch: counter_loop }
+        kwargs:
+          var: {literal: "counter_task"}
+          body: {branch: counter_loop}
 
       # Background task: increment counter every 100ms
       counter_loop:
         opcode: control_while
         next: null
-        inputs:
-          CONDITION: { variable: running }
-          BODY: { branch: increment_counter }
+        kwargs:
+          condition: {variable: running}
+          body: {branch: increment_counter}
 
       increment_counter:
         opcode: data_set_variable_to
         next: counter_sleep
-        inputs:
-          VARIABLE: { literal: "counter" }
-          VALUE: { node: add_one }
+        kwargs:
+          variable: {literal: "counter"}
+          value: {node: add_one}
 
       add_one:
         opcode: operator_add
-        inputs:
-          A: { variable: counter }
-          B: { literal: 1 }
+        args:
+          - {variable: counter}
+          - {literal: 1}
 
       counter_sleep:
         opcode: task_sleep
         next: null
-        inputs:
-          SECONDS: { literal: 0.1 }
+        kwargs:
+          seconds: {literal: 0.1}
 
       # Main loop: print counter 5 times, then stop
       main_loop:
         opcode: control_for
         next: stop_counter
-        inputs:
-          VAR: { literal: "i" }
-          START: { literal: 0 }
-          END: { literal: 5 }
-          BODY: { branch: print_and_wait }
+        kwargs:
+          var: {literal: "i"}
+          start: {literal: 0}
+          end: {literal: 5}
+          body: {branch: print_and_wait}
 
       print_and_wait:
         opcode: io_print
         next: main_sleep
-        inputs:
-          STRING: { node: format_counter }
+        args:
+          - {node: format_counter}
 
       format_counter:
         opcode: operator_add
-        inputs:
-          A: { node: add_prefix }
-          B: { literal: "\n" }
+        args:
+          - {node: add_prefix}
+          - {literal: "\n"}
 
       add_prefix:
         opcode: operator_add
-        inputs:
-          A: { literal: "Counter: " }
-          B: { node: counter_str }
+        args:
+          - {literal: "Counter: "}
+          - {node: counter_str}
 
       counter_str:
         opcode: str
-        inputs:
-          VALUE: { variable: counter }
+        kwargs:
+          value: {variable: counter}
 
       main_sleep:
         opcode: task_sleep
         next: null
-        inputs:
-          SECONDS: { literal: 0.25 }
+        kwargs:
+          seconds: {literal: 0.25}
 
       stop_counter:
         opcode: data_set_variable_to
         next: wait_for_task
-        inputs:
-          VARIABLE: { literal: "running" }
-          VALUE: { literal: false }
+        kwargs:
+          variable: {literal: "running"}
+          value: {literal: false}
 
       wait_for_task:
         opcode: task_await
         next: print_final
-        inputs:
-          TASK: { variable: counter_task }
-          TIMEOUT: { literal: 1.0 }
+        kwargs:
+          task: {variable: counter_task}
+          timeout: {literal: 1.0}
 
       print_final:
         opcode: io_print
         next: return_count
-        inputs:
-          STRING: { node: final_msg }
+        args:
+          - {node: final_msg}
 
       final_msg:
         opcode: operator_add
-        inputs:
-          A: { node: final_prefix }
-          B: { literal: "\n" }
+        args:
+          - {node: final_prefix}
+          - {literal: "\n"}
 
       final_prefix:
         opcode: operator_add
-        inputs:
-          A: { literal: "Final counter value: " }
-          B: { node: final_str }
+        args:
+          - {literal: "Final counter value: "}
+          - {node: final_str}
 
       final_str:
         opcode: str
-        inputs:
-          VALUE: { variable: counter }
+        kwargs:
+          value: {variable: counter}
 
       return_count:
         opcode: workflow_return
         next: null
-        inputs:
-          VALUE: { variable: counter }
+        args:
+          - {variable: counter}

@@ -1,13 +1,22 @@
-from .ast import Program
+from .ast import Call, Opcode, OpStmt, Program, walk
 from .runtime import Runtime
 from .evaluator import Evaluator
 from .executor import Executor
 from .opcodes import OpcodeRegistry, default_registry
+from .opcodes.opcodes import bind_arguments
 from .workflows import WorkflowManager
 from .metrics import ExecutionMetrics, NullMetrics
 from .tasks import TaskManager
 from contextlib import redirect_stdout
 from typing import Any, Optional, TextIO, Union
+
+
+class WorkflowValidationError(ValueError):
+    """A program cannot bind its arguments and will fail at runtime.
+
+    A ValueError subclass, so consumers catching ValueError keep working while
+    a load-time rejection can be told apart from a runtime one.
+    """
 
 
 class Engine:
@@ -49,6 +58,10 @@ class Engine:
         Args:
             program: The program to load
         """
+        # Validate before touching any state, so a rejected program cannot be
+        # left behind on the engine
+        self._validate_bindings(program)
+
         self.program = program
 
         # Reinitialize runtime with new program state
@@ -71,6 +84,63 @@ class Engine:
 
         # Setup privileged opcodes with engine-internal access
         self._setup_privileged_opcodes()
+
+    def _validate_bindings(self, program: Program) -> None:
+        """Reject a call whose arguments cannot bind, before anything runs.
+
+        Binding fails with a ValueError at call time, which the workflow's own
+        catch would swallow and handle as a domain error. Argument counts and
+        names are known statically, so the whole class is decided here.
+        """
+        workflows = {program.main.name: program.main, **program.externals}
+
+        for workflow in workflows.values():
+            for node in walk(workflow.body):
+                if isinstance(node, (Opcode, OpStmt)):
+                    error = self._opcode_binding_error(node)
+                elif isinstance(node, Call):
+                    error = self._call_binding_error(node, workflows)
+                else:
+                    continue
+
+                if error:
+                    raise WorkflowValidationError(
+                        f"In workflow '{workflow.name}', {error}"
+                    )
+
+    def _opcode_binding_error(self, node: Union[Opcode, OpStmt]) -> Optional[str]:
+        """Why this opcode call cannot bind, or None when it can."""
+        sig = self.opcodes.signatures.get(node.name)
+        if sig is None:
+            return None  # a custom registry may register it later
+        try:
+            # The values never reach the opcode; only the shape is checked
+            bind_arguments(
+                node.name, sig, [None] * len(node.args), dict.fromkeys(node.kwargs)
+            )
+        except ValueError as e:
+            return str(e)
+        return None
+
+    def _call_binding_error(self, node: Call, workflows: dict) -> Optional[str]:
+        """Why this workflow call cannot bind, or None when it can."""
+        target = workflows.get(node.name)
+        if target is None:
+            return f"calls unknown workflow '{node.name}'"
+
+        unknown = sorted(k for k in node.kwargs if k not in target.params)
+        if unknown:
+            return (
+                f"workflow '{node.name}' got unexpected keyword argument(s) "
+                f"{', '.join(unknown)}. Accepts: {', '.join(target.params) or '(none)'}"
+            )
+        duplicated = [p for p in target.params[: len(node.args)] if p in node.kwargs]
+        if duplicated:
+            return (
+                f"workflow '{node.name}' got multiple values for argument(s) "
+                f"{', '.join(duplicated)}"
+            )
+        return None
 
     def _setup_privileged_opcodes(self) -> None:
         """Inject implementations for privileged opcodes that need engine access."""

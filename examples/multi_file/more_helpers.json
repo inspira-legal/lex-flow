@@ -10,15 +10,16 @@
       "nodes": {
         "start": {
           "opcode": "workflow_start",
-          "next": "print_bye",
-          "inputs": {}
+          "next": "print_bye"
         },
         "print_bye": {
           "opcode": "io_print",
           "next": null,
-          "inputs": {
-            "STRING": { "literal": "Goodbye from JSON file!\n" }
-          }
+          "args": [
+            {
+              "literal": "Goodbye from JSON file!\n"
+            }
+          ]
         }
       }
     }

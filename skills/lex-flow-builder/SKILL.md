@@ -176,19 +176,17 @@ workflows:
       start:
         opcode: workflow_start  # ⚠️ SEMPRE o primeiro node!
         next: node1
-        inputs: {}
 
       node1:
         opcode: io_print
         next: node2
-        inputs:
-          STRING:  # ⚠️ Parâmetros em MAIÚSCULAS quando necessário
-            literal: "Hello"
+        args:                    # Argumentos posicionais
+          - literal: "Hello"
 
       compute:
         opcode: operator_add
         isReporter: true  # ⚠️ Necessário para nodes que retornam valores
-        inputs:
+        kwargs:                  # Argumentos por nome do parâmetro
           left:
             literal: 10
           right:
@@ -197,20 +195,23 @@ workflows:
       node2:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "result"
-          VALUE:
+          value:
             node: compute  # Usa resultado de outro node
 ```
 
 **Padrões Importantes** (validados com exemplos oficiais):
 - ⚠️ **SEMPRE comece com `workflow_start`** como primeiro node
 - Nodes são **objetos** (não arrays): `nodes: { start: {}, node1: {} }`
-- Inputs usam **3 formas**: `literal:`, `variable:`, `node:`
-- Alguns parâmetros usam **MAIÚSCULAS** (ex: `STRING`, `CONDITION`, `VARIABLE`)
+- Argumentos usam **3 formas**: `literal:`, `variable:`, `node:`
+- Cada node passa argumentos com **`args:`** (lista posicional) e/ou **`kwargs:`**
+  (por nome do parâmetro do opcode). O `inputs:` antigo ainda funciona, mas nele
+  os nomes são decorativos — quem liga é a ordem; use `lexflow migrate` para converter
+- Constructs usam slots em **minúsculas** em `kwargs:` (ex: `condition`, `then`, `body`, `variable`)
 - **Reporter nodes** precisam de `isReporter: true`
-- Control flow usa `branch:` não `node:` (ex: `THEN: { branch: nome_branch }`)
+- Control flow usa `branch:` não `node:` (ex: `then: { branch: nome_branch }`)
 
 ### 4. VALIDAÇÃO (Testar o Workflow)
 

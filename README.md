@@ -45,11 +45,12 @@ workflows:
     variables: {}
     nodes:
       start:
+        opcode: workflow_start
         next: greet
       greet:
         opcode: io_print
-        inputs:
-          MESSAGE: { literal: "Hello, World!" }
+        args:
+          - literal: "Hello, World!\n"
 """
 
 parser = Parser()
@@ -70,23 +71,38 @@ workflows:
       counter: 0
     nodes:
       start:
+        opcode: workflow_start
         next: loop
+
+      # Constructs take their slots by name in `kwargs`
       loop:
-        opcode: control_repeat
-        inputs:
-          TIMES: { literal: 5 }
-        branches:
-          BODY: increment
+        opcode: control_for
         next: done
+        kwargs:
+          var: { literal: "i" }
+          start: { literal: 0 }
+          end: { literal: 5 }
+          body: { branch: increment }
+
       increment:
-        opcode: data_change_variable_by
-        inputs:
-          VARIABLE: { literal: "counter" }
-          VALUE: { literal: 1 }
+        opcode: data_set_variable_to
+        kwargs:
+          variable: { literal: "counter" }
+          value: { node: next_count }
+
+      # Opcodes take `args` positionally, `kwargs` by parameter name
+      next_count:
+        opcode: operator_add
+        isReporter: true
+        kwargs:
+          left: { variable: "counter" }
+          right: { literal: 1 }
+
       done:
         opcode: io_print
-        inputs:
-          MESSAGE: { variable: "counter" }
+        args:
+          - variable: "counter"
+          - literal: "\n"
 ```
 
 ## Documentation

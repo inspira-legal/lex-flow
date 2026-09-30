@@ -2,7 +2,7 @@
 
 import importlib.util
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from lexflow import default_registry
 
 
@@ -14,7 +14,6 @@ try:
         _build_excluded_brazilian_states,
         _check_aiohttp,
         ApolloClient,
-        APOLLO_AVAILABLE,
         BRAZILIAN_STATES,
         DEFAULT_LEGAL_INDUSTRIES,
         DEFAULT_LEGAL_KEYWORDS,
@@ -74,11 +73,13 @@ class TestBuildQueryParams:
 
     @pytest.mark.skipif(not HELPERS_AVAILABLE, reason="helpers not available")
     def test_mixed_scalars_and_lists(self):
-        result = _build_query_params({
-            "page": 1,
-            "organization_ids": ["org1", "org2"],
-            "skip": None,
-        })
+        result = _build_query_params(
+            {
+                "page": 1,
+                "organization_ids": ["org1", "org2"],
+                "skip": None,
+            }
+        )
         assert len(result) == 3
         assert ("page", "1") in result
         assert ("organization_ids[]", "org1") in result
@@ -97,10 +98,12 @@ class TestBuildExcludedBrazilianStates:
 
     @pytest.mark.skipif(not HELPERS_AVAILABLE, reason="helpers not available")
     def test_multiple_selected_states(self):
-        excluded = _build_excluded_brazilian_states([
-            "são paulo, Brazil",
-            "rio de janeiro, Brazil",
-        ])
+        excluded = _build_excluded_brazilian_states(
+            [
+                "são paulo, Brazil",
+                "rio de janeiro, Brazil",
+            ]
+        )
         assert "são paulo" not in excluded
         assert "rio de janeiro" not in excluded
         assert len(excluded) == len(BRAZILIAN_STATES) - 2
@@ -239,17 +242,17 @@ class TestSearchCompanies:
             "apollo_search_companies",
             [
                 client,
-                ["Brazil"],           # organization_locations
-                ["acre"],             # organization_not_locations
-                ["1,10"],             # organization_num_employees_ranges
-                ["legal services"],   # organization_industries
-                ["law firm"],         # q_organization_keyword_tags
-                ["8111"],             # q_organization_sic_codes
-                None,                 # currently_using_any_of_technology_uids
-                None,                 # organization_ids
-                ["Test"],             # q_organization_name
-                1000,                 # revenue_range_min
-                50000,                # revenue_range_max
+                ["Brazil"],  # organization_locations
+                ["acre"],  # organization_not_locations
+                ["1,10"],  # organization_num_employees_ranges
+                ["legal services"],  # organization_industries
+                ["law firm"],  # q_organization_keyword_tags
+                ["8111"],  # q_organization_sic_codes
+                None,  # currently_using_any_of_technology_uids
+                None,  # organization_ids
+                ["Test"],  # q_organization_name
+                1000,  # revenue_range_min
+                50000,  # revenue_range_max
             ],
         )
 

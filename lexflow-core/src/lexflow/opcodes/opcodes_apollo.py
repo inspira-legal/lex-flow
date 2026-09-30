@@ -30,17 +30,39 @@ def _check_aiohttp():
             "aiohttp is required for Apollo opcodes. Install with: uv add 'lexflow[http]'"
         )
 
+
 # =============================================================================
 # Legal industry defaults (used by apollo_search_law_firms / legal_people)
 # =============================================================================
 
 BRAZILIAN_STATES = [
-    "acre", "alagoas", "amapá", "amazonas", "bahia", "ceará",
-    "distrito federal", "espírito santo", "goiás", "maranhão",
-    "mato grosso", "mato grosso do sul", "minas gerais", "pará",
-    "paraíba", "paraná", "pernambuco", "piauí", "rio de janeiro",
-    "rio grande do norte", "rio grande do sul", "rondônia", "roraima",
-    "santa catarina", "são paulo", "sergipe", "tocantins",
+    "acre",
+    "alagoas",
+    "amapá",
+    "amazonas",
+    "bahia",
+    "ceará",
+    "distrito federal",
+    "espírito santo",
+    "goiás",
+    "maranhão",
+    "mato grosso",
+    "mato grosso do sul",
+    "minas gerais",
+    "pará",
+    "paraíba",
+    "paraná",
+    "pernambuco",
+    "piauí",
+    "rio de janeiro",
+    "rio grande do norte",
+    "rio grande do sul",
+    "rondônia",
+    "roraima",
+    "santa catarina",
+    "são paulo",
+    "sergipe",
+    "tocantins",
 ]
 
 DEFAULT_LEGAL_INDUSTRIES = ["law practice", "legal services"]
@@ -50,98 +72,217 @@ DEFAULT_LEGAL_SIC_CODES = ["8111"]
 # Apollo accepts up to 150 keyword tags per request.
 DEFAULT_LEGAL_KEYWORDS = [
     # Português: áreas de atuação e serviços jurídicos
-    "advocacia empresarial", "assessoria jurídica", "consultoria jurídica",
-    "consultoria empresarial", "direito civil", "direito penal",
-    "direito tributário", "direito trabalhista",
-    "direito trabalhista empresarial", "direito administrativo",
-    "direito previdenciario", "direito societário",
-    "direito penal economico", "direito do consumidor",
-    "direito imobiliário", "contencioso estrategico", "contencioso civel",
-    "recuperacao judicial", "restruturacao e insolvencia",
-    "societario e ma", "concorrencial", "contratos comerciais",
-    "contratos empresariais", "compliance empresarial",
+    "advocacia empresarial",
+    "assessoria jurídica",
+    "consultoria jurídica",
+    "consultoria empresarial",
+    "direito civil",
+    "direito penal",
+    "direito tributário",
+    "direito trabalhista",
+    "direito trabalhista empresarial",
+    "direito administrativo",
+    "direito previdenciario",
+    "direito societário",
+    "direito penal economico",
+    "direito do consumidor",
+    "direito imobiliário",
+    "contencioso estrategico",
+    "contencioso civel",
+    "recuperacao judicial",
+    "restruturacao e insolvencia",
+    "societario e ma",
+    "concorrencial",
+    "contratos comerciais",
+    "contratos empresariais",
+    "compliance empresarial",
     "consultoria em compliance e governança corporativa",
-    "reorganizacao societaria", "fusão e aquisição de empresas",
-    "responsabilidade civil", "propriedade intelectual",
-    "planejamento tributario", "planejamento sucessório", "due diligence",
+    "reorganizacao societaria",
+    "fusão e aquisição de empresas",
+    "responsabilidade civil",
+    "propriedade intelectual",
+    "planejamento tributario",
+    "planejamento sucessório",
+    "due diligence",
     "due diligence em operações societárias",
-    "gestão de riscos jurídicos", "proteção empresarial",
-    "defesa judicial", "ações judiciais", "ações de despejo",
+    "gestão de riscos jurídicos",
+    "proteção empresarial",
+    "defesa judicial",
+    "ações judiciais",
+    "ações de despejo",
     "ações de responsabilidade civil empresarial",
-    "fiscal e tributário", "recuperação de créditos fiscais",
-    "recuperação de créditos tributários", "negociação de créditos",
-    "negociação de créditos homologados", "análise de créditos de icms",
+    "fiscal e tributário",
+    "recuperação de créditos fiscais",
+    "recuperação de créditos tributários",
+    "negociação de créditos",
+    "negociação de créditos homologados",
+    "análise de créditos de icms",
     "defesas administrativas e judiciais tributárias",
-    "direitos creditorios", "regularização imobiliária",
+    "direitos creditorios",
+    "regularização imobiliária",
     "regularização de imóveis e loteamentos",
     "análise e elaboração de contratos de franquia",
-    "registro de marcas e patentes", "registro de direitos autorais",
+    "registro de marcas e patentes",
+    "registro de direitos autorais",
     "arbitragem comercial",
     # Inglês: termos core de escritórios de advocacia
-    "law firm", "law practice", "legal services", "offices of lawyers",
-    "corporate law", "business law", "litigation", "litigation strategy",
-    "strategic litigation", "high-stakes litigation",
-    "complex corporate litigation", "litigation support",
-    "judicial litigation", "tax litigation", "mergers and acquisitions",
-    "m&a", "corporate governance", "regulatory compliance",
-    "legal compliance", "corporate legal compliance", "legal counsel",
-    "legal advisory", "legal advisory services", "legal consulting",
-    "legal consulting services", "legal consultancy",
-    "legal representation", "legal defense", "legal advocacy",
-    "legal strategy", "strategic legal planning", "legal planning",
-    "corporate legal strategy", "legal technology",
-    "law firm technology", "law firm management",
-    "legal risk management", "corporate legal risk mitigation",
-    "corporate legal advice", "corporate criminal defense",
-    "corporate criminal law", "criminal business law",
-    "legal case strategy", "legal case management", "legal analysis",
-    "legal research", "legal expertise", "legal innovation",
-    "legal advice", "legal documentation", "legal document review",
-    "legal process automation", "legal project management",
-    "legal negotiations", "lawyer expertise", "lawyer team",
+    "law firm",
+    "law practice",
+    "legal services",
+    "offices of lawyers",
+    "corporate law",
+    "business law",
+    "litigation",
+    "litigation strategy",
+    "strategic litigation",
+    "high-stakes litigation",
+    "complex corporate litigation",
+    "litigation support",
+    "judicial litigation",
+    "tax litigation",
+    "mergers and acquisitions",
+    "m&a",
+    "corporate governance",
+    "regulatory compliance",
+    "legal compliance",
+    "corporate legal compliance",
+    "legal counsel",
+    "legal advisory",
+    "legal advisory services",
+    "legal consulting",
+    "legal consulting services",
+    "legal consultancy",
+    "legal representation",
+    "legal defense",
+    "legal advocacy",
+    "legal strategy",
+    "strategic legal planning",
+    "legal planning",
+    "corporate legal strategy",
+    "legal technology",
+    "law firm technology",
+    "law firm management",
+    "legal risk management",
+    "corporate legal risk mitigation",
+    "corporate legal advice",
+    "corporate criminal defense",
+    "corporate criminal law",
+    "criminal business law",
+    "legal case strategy",
+    "legal case management",
+    "legal analysis",
+    "legal research",
+    "legal expertise",
+    "legal innovation",
+    "legal advice",
+    "legal documentation",
+    "legal document review",
+    "legal process automation",
+    "legal project management",
+    "legal negotiations",
+    "lawyer expertise",
+    "lawyer team",
     # Inglês: áreas especializadas
-    "labor law", "tax law", "tax planning", "tax dispute resolution",
-    "tax transaction advisory", "administrative law",
-    "administrative appeals", "environmental law",
-    "environmental law for companies", "financial law",
-    "financial compliance", "public law", "public law compliance",
-    "public procurement law", "public bidding",
-    "public tender interpretation", "insolvency law",
-    "restructuring and insolvency", "company restructuring",
-    "debt restructuring", "company debt renegotiation",
-    "contract drafting", "contract negotiation", "commercial contracts",
-    "commercial leases", "franchising", "intellectual property",
-    "consumer protection", "arbitration", "dispute resolution",
-    "conflict resolution", "dispute management",
-    "legal dispute handling", "legal dispute resolution",
-    "complex legal disputes", "court representation", "trial advocacy",
-    "judicial recovery", "judicial process",
-    "judicial and administrative litigation", "corporate transactions",
+    "labor law",
+    "tax law",
+    "tax planning",
+    "tax dispute resolution",
+    "tax transaction advisory",
+    "administrative law",
+    "administrative appeals",
+    "environmental law",
+    "environmental law for companies",
+    "financial law",
+    "financial compliance",
+    "public law",
+    "public law compliance",
+    "public procurement law",
+    "public bidding",
+    "public tender interpretation",
+    "insolvency law",
+    "restructuring and insolvency",
+    "company restructuring",
+    "debt restructuring",
+    "company debt renegotiation",
+    "contract drafting",
+    "contract negotiation",
+    "commercial contracts",
+    "commercial leases",
+    "franchising",
+    "intellectual property",
+    "consumer protection",
+    "arbitration",
+    "dispute resolution",
+    "conflict resolution",
+    "dispute management",
+    "legal dispute handling",
+    "legal dispute resolution",
+    "complex legal disputes",
+    "court representation",
+    "trial advocacy",
+    "judicial recovery",
+    "judicial process",
+    "judicial and administrative litigation",
+    "corporate transactions",
 ]
 
 DEFAULT_LEGAL_TITLES = [
     # Português — Sócios e Fundadores (Decisores)
-    "Sócio", "Socia", "Sócio Fundador", "Sócia Fundadora",
-    "Sócio Diretor", "Sócia Diretora", "Sócio Administrador",
-    "Sócia Administradora", "Advogado Sócio", "Advogada Sócia",
+    "Sócio",
+    "Socia",
+    "Sócio Fundador",
+    "Sócia Fundadora",
+    "Sócio Diretor",
+    "Sócia Diretora",
+    "Sócio Administrador",
+    "Sócia Administradora",
+    "Advogado Sócio",
+    "Advogada Sócia",
     # Inglês — Sócios (Decisores)
-    "Partner", "Managing Partner", "Founding Partner",
-    "Senior Partner", "Equity Partner", "Name Partner",
+    "Partner",
+    "Managing Partner",
+    "Founding Partner",
+    "Senior Partner",
+    "Equity Partner",
+    "Name Partner",
     # Português — Advogados Seniores
-    "Advogado", "Advogada", "Advogado Senior", "Advogada Senior",
-    "Advogado Sênior", "Advogada Sênior", "Advogado Pleno",
-    "Advogada Plena", "Advogado Associado", "Advogada Associada",
+    "Advogado",
+    "Advogada",
+    "Advogado Senior",
+    "Advogada Senior",
+    "Advogado Sênior",
+    "Advogada Sênior",
+    "Advogado Pleno",
+    "Advogada Plena",
+    "Advogado Associado",
+    "Advogada Associada",
     # Inglês — Advogados
-    "Lawyer", "Attorney", "Senior Lawyer", "Senior Attorney",
-    "Associate", "Senior Associate", "Of Counsel",
+    "Lawyer",
+    "Attorney",
+    "Senior Lawyer",
+    "Senior Attorney",
+    "Associate",
+    "Senior Associate",
+    "Of Counsel",
     # Português — Liderança Jurídica (Decisores)
-    "Diretor Jurídico", "Diretora Jurídica", "Coordenador Jurídico",
-    "Coordenadora Jurídica", "Gerente Jurídico", "Gerente Jurídica",
-    "Consultor Jurídico", "Consultora Jurídica", "Conselheiro",
+    "Diretor Jurídico",
+    "Diretora Jurídica",
+    "Coordenador Jurídico",
+    "Coordenadora Jurídica",
+    "Gerente Jurídico",
+    "Gerente Jurídica",
+    "Consultor Jurídico",
+    "Consultora Jurídica",
+    "Conselheiro",
     "Conselheira",
     # Inglês — Liderança Jurídica (Decisores)
-    "Counsel", "Legal Counsel", "General Counsel", "Senior Counsel",
-    "Chief Legal Officer", "Legal Director", "Legal Manager",
+    "Counsel",
+    "Legal Counsel",
+    "General Counsel",
+    "Senior Counsel",
+    "Chief Legal Officer",
+    "Legal Director",
+    "Legal Manager",
     "Legal Consultant",
 ]
 
@@ -163,7 +304,8 @@ def _build_excluded_brazilian_states(
     locations_lower = [loc.lower() for loc in locations]
 
     matched = [
-        state for state in BRAZILIAN_STATES
+        state
+        for state in BRAZILIAN_STATES
         if any(state in loc for loc in locations_lower)
     ]
 
@@ -213,9 +355,7 @@ class ApolloClient:
         """
         url = f"{self.base_url}{endpoint}"
 
-        async with self._session.post(
-            url, json=json_data, params=params
-        ) as response:
+        async with self._session.post(url, json=json_data, params=params) as response:
             if response.status == 204:
                 return {}
 
@@ -223,9 +363,7 @@ class ApolloClient:
 
             if response.status >= 400:
                 error_msg = data.get("message", data.get("error", "Unknown error"))
-                raise ValueError(
-                    f"Apollo API error ({response.status}): {error_msg}"
-                )
+                raise ValueError(f"Apollo API error ({response.status}): {error_msg}")
 
             return data
 
@@ -291,8 +429,7 @@ def register_apollo_opcodes():
         _check_aiohttp()
         if not api_key:
             raise ValueError(
-                "api_key is required. "
-                "Get your key at: https://developer.apollo.io"
+                "api_key is required. Get your key at: https://developer.apollo.io"
             )
 
         return ApolloClient(api_key)
@@ -374,7 +511,9 @@ def register_apollo_opcodes():
         if organization_not_locations:
             body["organization_not_locations"] = organization_not_locations
         if organization_num_employees_ranges:
-            body["organization_num_employees_ranges"] = organization_num_employees_ranges
+            body["organization_num_employees_ranges"] = (
+                organization_num_employees_ranges
+            )
         if organization_industries:
             body["organization_industries"] = organization_industries
         if q_organization_keyword_tags:
@@ -514,9 +653,7 @@ def register_apollo_opcodes():
                     params=params,
                 )
                 matches = response.get("matches", [])
-                all_results.extend(
-                    match for match in matches if match is not None
-                )
+                all_results.extend(match for match in matches if match is not None)
             except ValueError:
                 # Skip failed chunks, continue with remaining
                 continue
@@ -575,9 +712,7 @@ def register_apollo_opcodes():
             organization_not_locations=not_locations or None,
             organization_num_employees_ranges=employee_ranges,
             organization_industries=industries or DEFAULT_LEGAL_INDUSTRIES,
-            q_organization_keyword_tags=(
-                keyword_tags or DEFAULT_LEGAL_KEYWORDS
-            ),
+            q_organization_keyword_tags=(keyword_tags or DEFAULT_LEGAL_KEYWORDS),
             q_organization_sic_codes=sic_codes or DEFAULT_LEGAL_SIC_CODES,
             currently_using_any_of_technology_uids=technology_uids,
             per_page=per_page,

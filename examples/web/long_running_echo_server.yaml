@@ -47,127 +47,125 @@ workflows:
       start:
         opcode: workflow_start
         next: connection_loop
-        inputs: {}
 
       # ── Main loop: receive connections until the channel closes ──
       connection_loop:
         opcode: control_while
         next: end
-        inputs:
-          CONDITION: { variable: running }
-          BODY: { branch: receive_conn }
+        kwargs:
+          condition: {variable: running}
+          body: {branch: receive_conn}
 
       # ── Receive a connection dict from the channel ──
       receive_conn:
         opcode: data_set_variable_to
         next: extract_body
-        inputs:
-          VARIABLE: { literal: "conn" }
-          VALUE: { node: do_recv }
+        kwargs:
+          variable: {literal: "conn"}
+          value: {node: do_recv}
 
       do_recv:
         opcode: channel_receive
-        inputs:
-          CHANNEL: { variable: _connections }
+        kwargs:
+          channel: {variable: _connections}
 
       # ── Extract fields from the connection dict ──
       extract_body:
         opcode: data_set_variable_to
         next: extract_method
-        inputs:
-          VARIABLE: { literal: "body" }
-          VALUE: { node: get_body }
+        kwargs:
+          variable: {literal: "body"}
+          value: {node: get_body}
 
       get_body:
         opcode: dict_get
         isReporter: true
-        inputs:
-          d: { variable: conn }
-          key: { literal: "body" }
+        kwargs:
+          d: {variable: conn}
+          key: {literal: "body"}
 
       extract_method:
         opcode: data_set_variable_to
         next: extract_path
-        inputs:
-          VARIABLE: { literal: "method" }
-          VALUE: { node: get_method }
+        kwargs:
+          variable: {literal: "method"}
+          value: {node: get_method}
 
       get_method:
         opcode: dict_get
         isReporter: true
-        inputs:
-          d: { variable: conn }
-          key: { literal: "method" }
+        kwargs:
+          d: {variable: conn}
+          key: {literal: "method"}
 
       extract_path:
         opcode: data_set_variable_to
         next: extract_response_ch
-        inputs:
-          VARIABLE: { literal: "path" }
-          VALUE: { node: get_path }
+        kwargs:
+          variable: {literal: "path"}
+          value: {node: get_path}
 
       get_path:
         opcode: dict_get
         isReporter: true
-        inputs:
-          d: { variable: conn }
-          key: { literal: "path" }
+        kwargs:
+          d: {variable: conn}
+          key: {literal: "path"}
 
       extract_response_ch:
         opcode: data_set_variable_to
         next: send_response
-        inputs:
-          VARIABLE: { literal: "response_ch" }
-          VALUE: { node: get_response_ch }
+        kwargs:
+          variable: {literal: "response_ch"}
+          value: {node: get_response_ch}
 
       get_response_ch:
         opcode: dict_get
         isReporter: true
-        inputs:
-          d: { variable: conn }
-          key: { literal: "_response" }
+        kwargs:
+          d: {variable: conn}
+          key: {literal: "_response"}
 
       # ── Build and send the response ──
       send_response:
         opcode: channel_send
         next: null
-        inputs:
-          CHANNEL: { variable: response_ch }
-          VALUE: { node: build_response }
+        kwargs:
+          channel: {variable: response_ch}
+          value: {node: build_response}
 
       # Build response dict: {"echo": body, "method": method, "path": path}
       build_response:
         opcode: dict_set
         isReporter: true
-        inputs:
-          d: { node: response_with_method }
-          key: { literal: "path" }
-          value: { variable: path }
+        kwargs:
+          d: {node: response_with_method}
+          key: {literal: "path"}
+          value: {variable: path}
 
       response_with_method:
         opcode: dict_set
         isReporter: true
-        inputs:
-          d: { node: response_with_echo }
-          key: { literal: "method" }
-          value: { variable: method }
+        kwargs:
+          d: {node: response_with_echo}
+          key: {literal: "method"}
+          value: {variable: method}
 
       response_with_echo:
         opcode: dict_set
         isReporter: true
-        inputs:
-          d: { node: response_base }
-          key: { literal: "echo" }
-          value: { variable: body }
+        kwargs:
+          d: {node: response_base}
+          key: {literal: "echo"}
+          value: {variable: body}
 
       response_base:
         opcode: dict_create
         isReporter: true
-        inputs: {}
 
       # ── End (reached when _connections channel is closed) ──
       end:
         opcode: workflow_return
         next: null
-        inputs:
-          VALUE: { literal: "server stopped" }
+        args:
+          - {literal: "server stopped"}

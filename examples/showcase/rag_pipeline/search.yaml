@@ -23,72 +23,63 @@ workflows:
       start:
         opcode: workflow_start
         next: print_search_header
-        inputs: {}
 
       # Print search header with query
       print_search_header:
         opcode: io_print
         next: connect_qdrant
-        inputs:
-          STRING:
-            node: search_header_text
+        args:
+          - node: search_header_text
 
       search_header_text:
         opcode: operator_add
         isReporter: true
-        inputs:
-          a:
-            literal: "\n"
-          b:
-            node: search_header_with_query
+        args:
+          - literal: "\n"
+          - node: search_header_with_query
 
       search_header_with_query:
         opcode: operator_add
         isReporter: true
-        inputs:
-          a:
-            literal: "Searching for: \""
-          b:
-            node: query_with_suffix
+        args:
+          - literal: "Searching for: \""
+          - node: query_with_suffix
 
       query_with_suffix:
         opcode: operator_add
         isReporter: true
-        inputs:
-          a:
-            variable: query
-          b:
-            literal: "\"\n"
+        args:
+          - variable: query
+          - literal: "\"\n"
 
       # Connect to Qdrant
       connect_qdrant:
         opcode: data_set_variable_to
         next: create_query_embedding
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: client
-          VALUE:
+          value:
             node: qdrant_client
 
       qdrant_client:
         opcode: qdrant_connect
         isReporter: true
-        inputs: {}
 
       # Create embedding for the query
       create_query_embedding:
         opcode: data_set_variable_to
         next: search_qdrant
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: query_embedding
-          VALUE:
+          value:
             node: embed_query
 
       embed_query:
         opcode: embedding_create
         isReporter: true
-        inputs:
+        kwargs:
           text:
             variable: query
           project:
@@ -102,16 +93,16 @@ workflows:
       search_qdrant:
         opcode: data_set_variable_to
         next: check_rerank
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: results
-          VALUE:
+          value:
             node: qdrant_search_results
 
       qdrant_search_results:
         opcode: qdrant_search
         isReporter: true
-        inputs:
+        kwargs:
           client:
             variable: client
           collection:
@@ -125,17 +116,17 @@ workflows:
       check_rerank:
         opcode: control_if
         next: get_result_count
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             variable: rerank
-          THEN:
+          then:
             branch: store_reranked_results
 
       # BM25 rerank search results
       bm25_rerank_results:
         opcode: bm25_rerank
         isReporter: true
-        inputs:
+        kwargs:
           query:
             variable: query
           results:
@@ -146,180 +137,161 @@ workflows:
       store_reranked_results:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: results
-          VALUE:
+          value:
             node: bm25_rerank_results
 
       # Get number of results
       get_result_count:
         opcode: data_set_variable_to
         next: print_results_header
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: result_count
-          VALUE:
+          value:
             node: count_results
 
       count_results:
         opcode: list_length
         isReporter: true
-        inputs:
-          list:
-            variable: results
+        args:
+          - variable: results
 
       # Print results header
       print_results_header:
         opcode: io_print
         next: print_separator_header
-        inputs:
-          STRING:
-            node: results_header_text
+        args:
+          - node: results_header_text
 
       results_header_text:
         opcode: operator_add
         isReporter: true
-        inputs:
-          a:
-            literal: "\nFound "
-          b:
-            node: count_with_suffix
+        args:
+          - literal: "\nFound "
+          - node: count_with_suffix
 
       count_with_suffix:
         opcode: operator_add
         isReporter: true
-        inputs:
-          a:
-            node: count_as_str
-          b:
-            literal: " results:\n"
+        args:
+          - node: count_as_str
+          - literal: " results:\n"
 
       count_as_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: result_count
 
       print_separator_header:
         opcode: io_print
         next: init_result_index
-        inputs:
-          STRING:
-            literal: "\n"
+        args:
+          - literal: "\n"
 
       # Initialize result index for loop
       init_result_index:
         opcode: data_set_variable_to
         next: loop_results
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: result_index
-          VALUE:
+          value:
             literal: 0
 
       # Loop through results
       loop_results:
         opcode: control_foreach
         next: print_footer
-        inputs:
-          VAR:
+        kwargs:
+          var:
             literal: "current_result"
-          ITERABLE:
+          iterable:
             variable: results
-          BODY:
+          body:
             branch: increment_index
 
       # Increment result index first
       increment_index:
         opcode: data_set_variable_to
         next: print_result_separator
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: result_index
-          VALUE:
+          value:
             node: index_plus_one
 
       index_plus_one:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            variable: result_index
-          OPERAND2:
-            literal: 1
+        args:
+          - variable: result_index
+          - literal: 1
 
       # Print result separator line
       print_result_separator:
         opcode: io_print
         next: print_result_header
-        inputs:
-          STRING:
-            literal: "------------------------------------------------------------\n"
+        args:
+          - literal: "------------------------------------------------------------\n"
 
       # Print result header: #N | Score: X.XX | Source: filename
       print_result_header:
         opcode: io_print
         next: print_text_label
-        inputs:
-          STRING:
-            node: result_header_line
+        args:
+          - node: result_header_line
 
       result_header_line:
         opcode: operator_add
         isReporter: true
-        inputs:
-          a:
-            node: result_number_part
-          b:
-            node: score_and_source_part
+        args:
+          - node: result_number_part
+          - node: score_and_source_part
 
       result_number_part:
         opcode: operator_add
         isReporter: true
-        inputs:
-          a:
-            literal: "#"
-          b:
-            node: index_as_str
+        args:
+          - literal: "#"
+          - node: index_as_str
 
       index_as_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: result_index
 
       score_and_source_part:
         opcode: operator_add
         isReporter: true
-        inputs:
-          a:
-            node: score_part
-          b:
-            node: source_part_with_newline
+        args:
+          - node: score_part
+          - node: source_part_with_newline
 
       score_part:
         opcode: operator_add
         isReporter: true
-        inputs:
-          a:
-            literal: " | Score: "
-          b:
-            node: score_formatted
+        args:
+          - literal: " | Score: "
+          - node: score_formatted
 
       score_formatted:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: get_score
 
       get_score:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: current_result
           key:
@@ -330,25 +302,21 @@ workflows:
       source_part_with_newline:
         opcode: operator_add
         isReporter: true
-        inputs:
-          a:
-            node: source_part
-          b:
-            literal: "\n"
+        args:
+          - node: source_part
+          - literal: "\n"
 
       source_part:
         opcode: operator_add
         isReporter: true
-        inputs:
-          a:
-            literal: " | Source: "
-          b:
-            node: get_source
+        args:
+          - literal: " | Source: "
+          - node: get_source
 
       get_source:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: get_payload
           key:
@@ -359,7 +327,7 @@ workflows:
       get_payload:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: current_result
           key:
@@ -371,51 +339,42 @@ workflows:
       print_text_label:
         opcode: io_print
         next: print_text_content
-        inputs:
-          STRING:
-            literal: "------------------------------------------------------------\n"
+        args:
+          - literal: "------------------------------------------------------------\n"
 
       # Print text content (truncated)
       print_text_content:
         opcode: io_print
         next: print_result_end
-        inputs:
-          STRING:
-            node: text_content_formatted
+        args:
+          - node: text_content_formatted
 
       text_content_formatted:
         opcode: operator_add
         isReporter: true
-        inputs:
-          a:
-            literal: "Text: "
-          b:
-            node: text_with_newlines
+        args:
+          - literal: "Text: "
+          - node: text_with_newlines
 
       text_with_newlines:
         opcode: operator_add
         isReporter: true
-        inputs:
-          a:
-            node: truncated_text
-          b:
-            literal: "\n"
+        args:
+          - node: truncated_text
+          - literal: "\n"
 
       truncated_text:
         opcode: string_substring
         isReporter: true
-        inputs:
-          s:
-            node: get_text
-          start:
-            literal: 0
-          end:
-            literal: 200
+        args:
+          - node: get_text
+          - literal: 0
+          - literal: 200
 
       get_text:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: get_payload_for_text
           key:
@@ -426,7 +385,7 @@ workflows:
       get_payload_for_text:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: current_result
           key:
@@ -438,14 +397,12 @@ workflows:
       print_result_end:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n"
+        args:
+          - literal: "\n"
 
       # Print footer
       print_footer:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "------------------------------------------------------------\n"
+        args:
+          - literal: "------------------------------------------------------------\n"

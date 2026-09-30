@@ -58,7 +58,6 @@ workflows:
       start:
         opcode: workflow_start
         next: print_question_header
-        inputs: {}
 
       # ========================================================================
       # HEADER - Print the question
@@ -66,14 +65,13 @@ workflows:
       print_question_header:
         opcode: io_print
         next: print_question_value
-        inputs:
-          STRING:
-            literal: "\n"
+        args:
+          - literal: "\n"
 
       format_question_display:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Question: "
           right:
@@ -82,7 +80,7 @@ workflows:
       format_question_display_2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: question
           right:
@@ -91,9 +89,8 @@ workflows:
       print_question_value:
         opcode: io_print
         next: print_retrieving
-        inputs:
-          STRING:
-            node: format_question_display
+        args:
+          - node: format_question_display
 
       # ========================================================================
       # RETRIEVAL - Connect to Qdrant and search
@@ -101,32 +98,31 @@ workflows:
       print_retrieving:
         opcode: io_print
         next: store_qdrant_client
-        inputs:
-          STRING:
-            literal: "Retrieving relevant context...\n"
+        args:
+          - literal: "Retrieving relevant context...\n"
 
       # Connect to Qdrant
       connect_qdrant:
         opcode: qdrant_connect
         isReporter: true
-        inputs:
+        kwargs:
           url:
             literal: "http://localhost:6333"
 
       store_qdrant_client:
         opcode: data_set_variable_to
         next: store_question_embedding
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "qdrant_client"
-          VALUE:
+          value:
             node: connect_qdrant
 
       # Create embedding for the question
       create_question_embedding:
         opcode: embedding_create
         isReporter: true
-        inputs:
+        kwargs:
           text:
             variable: question
           project:
@@ -139,17 +135,17 @@ workflows:
       store_question_embedding:
         opcode: data_set_variable_to
         next: store_search_results
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "question_embedding"
-          VALUE:
+          value:
             node: create_question_embedding
 
       # Search Qdrant for relevant chunks
       search_qdrant:
         opcode: qdrant_search
         isReporter: true
-        inputs:
+        kwargs:
           client:
             variable: qdrant_client
           collection:
@@ -162,27 +158,27 @@ workflows:
       store_search_results:
         opcode: data_set_variable_to
         next: check_rerank
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "search_results"
-          VALUE:
+          value:
             node: search_qdrant
 
       # Conditionally apply BM25 reranking
       check_rerank:
         opcode: control_if
         next: store_results_count
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             variable: rerank
-          THEN:
+          then:
             branch: rerank_results
 
       # BM25 rerank search results
       do_rerank:
         opcode: bm25_rerank
         isReporter: true
-        inputs:
+        kwargs:
           query:
             variable: question
           results:
@@ -193,42 +189,41 @@ workflows:
       rerank_results:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "search_results"
-          VALUE:
+          value:
             node: do_rerank
 
       # Get results count
       get_results_count:
         opcode: list_length
         isReporter: true
-        inputs:
+        kwargs:
           items:
             variable: search_results
 
       store_results_count:
         opcode: data_set_variable_to
         next: init_sources_set
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "results_count"
-          VALUE:
+          value:
             node: get_results_count
 
       # Initialize sources set (using a dict to track unique sources)
       create_sources_set:
         opcode: dict_create
         isReporter: true
-        inputs: {}
 
       init_sources_set:
         opcode: data_set_variable_to
         next: build_context_loop
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "sources_set"
-          VALUE:
+          value:
             node: create_sources_set
 
       # ========================================================================
@@ -237,16 +232,16 @@ workflows:
       build_context_loop:
         opcode: control_while
         next: print_found_context
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             node: check_context_index
-          BODY:
+          body:
             branch: process_result
 
       check_context_index:
         opcode: operator_less_than
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: current_index
           right:
@@ -256,16 +251,16 @@ workflows:
       process_result:
         opcode: data_set_variable_to
         next: extract_payload
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "current_result"
-          VALUE:
+          value:
             node: get_current_result
 
       get_current_result:
         opcode: list_get
         isReporter: true
-        inputs:
+        kwargs:
           items:
             variable: search_results
           index:
@@ -275,16 +270,16 @@ workflows:
       extract_payload:
         opcode: data_set_variable_to
         next: extract_text
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "current_payload"
-          VALUE:
+          value:
             node: get_payload
 
       get_payload:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: current_result
           key:
@@ -294,16 +289,16 @@ workflows:
       extract_text:
         opcode: data_set_variable_to
         next: extract_source
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "current_text"
-          VALUE:
+          value:
             node: get_text
 
       get_text:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: current_payload
           key:
@@ -315,16 +310,16 @@ workflows:
       extract_source:
         opcode: data_set_variable_to
         next: add_source_to_set
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "current_source"
-          VALUE:
+          value:
             node: get_source
 
       get_source:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: current_payload
           key:
@@ -336,7 +331,7 @@ workflows:
       add_source_to_set:
         opcode: dict_set
         next: append_to_context
-        inputs:
+        kwargs:
           d:
             variable: sources_set
           key:
@@ -348,16 +343,16 @@ workflows:
       append_to_context:
         opcode: data_set_variable_to
         next: increment_context_index
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "context_text"
-          VALUE:
+          value:
             node: build_context_entry
 
       build_context_entry:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: context_text
           right:
@@ -366,7 +361,7 @@ workflows:
       format_context_entry:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "[Source: "
           right:
@@ -375,7 +370,7 @@ workflows:
       format_context_entry_2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: current_source
           right:
@@ -384,7 +379,7 @@ workflows:
       format_context_entry_3:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "]\n"
           right:
@@ -393,7 +388,7 @@ workflows:
       format_context_entry_4:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: current_text
           right:
@@ -403,16 +398,16 @@ workflows:
       increment_context_index:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "current_index"
-          VALUE:
+          value:
             node: next_context_index
 
       next_context_index:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: current_index
           right:
@@ -424,43 +419,42 @@ workflows:
       print_found_context:
         opcode: io_print
         next: print_generating
-        inputs:
-          STRING:
-            node: format_found_context
+        args:
+          - node: format_found_context
 
       # Get number of unique sources
       get_sources_keys:
         opcode: dict_keys
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: sources_set
 
       get_sources_count:
         opcode: list_length
         isReporter: true
-        inputs:
+        kwargs:
           items:
             node: get_sources_keys
 
       results_count_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: results_count
 
       sources_count_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: get_sources_count
 
       format_found_context:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "   Found "
           right:
@@ -469,7 +463,7 @@ workflows:
       format_found_context_2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: results_count_str
           right:
@@ -478,7 +472,7 @@ workflows:
       format_found_context_3:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: " relevant passages from "
           right:
@@ -487,7 +481,7 @@ workflows:
       format_found_context_4:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: sources_count_str
           right:
@@ -499,15 +493,14 @@ workflows:
       print_generating:
         opcode: io_print
         next: store_model
-        inputs:
-          STRING:
-            literal: "Generating answer...\n"
+        args:
+          - literal: "Generating answer...\n"
 
       # Create Vertex AI Model
       create_model:
         opcode: pydantic_ai_create_vertex_model
         isReporter: true
-        inputs:
+        kwargs:
           model_name:
             literal: "gemini-2.5-flash"
           project:
@@ -518,17 +511,17 @@ workflows:
       store_model:
         opcode: data_set_variable_to
         next: store_rag_agent
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "model"
-          VALUE:
+          value:
             node: create_model
 
       # Create RAG Agent with specialized system prompt
       create_rag_agent:
         opcode: pydantic_ai_create_agent
         isReporter: true
-        inputs:
+        kwargs:
           model:
             variable: model
           instructions:
@@ -541,17 +534,17 @@ workflows:
       store_rag_agent:
         opcode: data_set_variable_to
         next: store_full_prompt
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "rag_agent"
-          VALUE:
+          value:
             node: create_rag_agent
 
       # Build the full prompt with context and question
       build_full_prompt:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "CONTEXT:\n"
           right:
@@ -560,7 +553,7 @@ workflows:
       build_full_prompt_2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: context_text
           right:
@@ -569,7 +562,7 @@ workflows:
       build_full_prompt_3:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "\nQUESTION: "
           right:
@@ -578,7 +571,7 @@ workflows:
       build_full_prompt_4:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: question
           right:
@@ -587,17 +580,17 @@ workflows:
       store_full_prompt:
         opcode: data_set_variable_to
         next: store_answer
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "full_prompt"
-          VALUE:
+          value:
             node: build_full_prompt
 
       # Run the AI agent
       run_rag_agent:
         opcode: pydantic_ai_run
         isReporter: true
-        inputs:
+        kwargs:
           agent:
             variable: rag_agent
           prompt:
@@ -606,10 +599,10 @@ workflows:
       store_answer:
         opcode: data_set_variable_to
         next: print_answer_header
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "answer"
-          VALUE:
+          value:
             node: run_rag_agent
 
       # ========================================================================
@@ -618,14 +611,13 @@ workflows:
       print_answer_header:
         opcode: io_print
         next: print_answer
-        inputs:
-          STRING:
-            literal: "\n--------------------------------------------------------------------------------\nANSWER\n--------------------------------------------------------------------------------\n\n"
+        args:
+          - literal: "\n--------------------------------------------------------------------------------\nANSWER\n--------------------------------------------------------------------------------\n\n"
 
       format_answer_output:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: answer
           right:
@@ -634,32 +626,28 @@ workflows:
       print_answer:
         opcode: io_print
         next: print_sources_header
-        inputs:
-          STRING:
-            node: format_answer_output
+        args:
+          - node: format_answer_output
 
       # Print sources
       print_sources_header:
         opcode: io_print
         next: print_sources_list
-        inputs:
-          STRING:
-            literal: "\nSources: "
+        args:
+          - literal: "\nSources: "
 
       # Join source names
       join_sources:
         opcode: string_join
         isReporter: true
-        inputs:
-          items:
-            node: get_sources_keys
-          separator:
-            literal: ", "
+        args:
+          - node: get_sources_keys
+          - literal: ", "
 
       format_sources_output:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: join_sources
           right:
@@ -668,14 +656,12 @@ workflows:
       print_sources_list:
         opcode: io_print
         next: print_footer
-        inputs:
-          STRING:
-            node: format_sources_output
+        args:
+          - node: format_sources_output
 
       # Footer
       print_footer:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "--------------------------------------------------------------------------------\n\n"
+        args:
+          - literal: "--------------------------------------------------------------------------------\n\n"

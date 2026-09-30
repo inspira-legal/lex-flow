@@ -8,40 +8,38 @@ workflows:
       start:
         opcode: workflow_start
         next: print_intro
-        inputs: {}
 
       print_intro:
         opcode: io_print
         next: safe_divide
-        inputs:
-          STRING:
-            literal: "=== Accessing Exception Variable ===\n\n"
+        args:
+          - literal: "=== Accessing Exception Variable ===\n\n"
 
       # The catch block binds the exception message to variable "err"
       safe_divide:
         opcode: control_try
         next: done
-        inputs:
-          TRY:
+        kwargs:
+          try:
             branch: attempt_divide
-          CATCH1:
-            exception_type: "ZeroDivisionError"
-            var: "err" # This creates a variable named "err"
-            body:
-              branch: handle_error
+          catch:
+            - exception_type: "ZeroDivisionError"
+              var: "err" # This creates a variable named "err"
+              body:
+                branch: handle_error
 
       attempt_divide:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: result
-          VALUE:
+          value:
             node: calc_divide
 
       calc_divide:
         opcode: operator_divide
-        inputs:
+        kwargs:
           left:
             literal: 100
           right:
@@ -52,35 +50,30 @@ workflows:
       handle_error:
         opcode: io_print
         next: print_error_message
-        inputs:
-          STRING:
-            literal: "Caught exception!\n"
+        args:
+          - literal: "Caught exception!\n"
 
       print_error_message:
         opcode: io_print
         next: print_error_value
-        inputs:
-          STRING:
-            literal: "Error message: "
+        args:
+          - literal: "Error message: "
 
       # Access the exception message via the variable
       print_error_value:
         opcode: io_print
         next: print_newline
-        inputs:
-          STRING:
-            variable: err # <-- This is how you access it!
+        args:
+          - variable: err # <-- This is how you access it!
 
       print_newline:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n"
+        args:
+          - literal: "\n"
 
       done:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n✅ Exception variable access example complete!\n"
+        args:
+          - literal: "\n✅ Exception variable access example complete!\n"

@@ -189,6 +189,7 @@ def generate_grammar_reference() -> str:
     lines.append("## Table of Contents")
     lines.append("")
     lines.append("- [Categories](#categories)")
+    lines.append("- [Node Syntax](#node-syntax)")
     lines.append("- [Control Flow Constructs](#control-flow-constructs)")
     lines.append("- [Data Operations](#data-operations)")
     lines.append("- [Workflow Operations](#workflow-operations)")
@@ -206,6 +207,8 @@ def generate_grammar_reference() -> str:
             f"`{cat['color']}` | {cat['icon']} |"
         )
     lines.append("")
+
+    lines.extend(_node_syntax_section())
 
     # Group constructs by category
     control_flow = []
@@ -280,6 +283,50 @@ def generate_grammar_reference() -> str:
     lines.append("")
 
     return "\n".join(lines)
+
+
+def _node_syntax_section() -> list[str]:
+    """The node-level syntax: how arguments reach an opcode or construct."""
+    return [
+        "## Node Syntax",
+        "",
+        "A node passes its arguments with `args` (a positional list), `kwargs`",
+        "(a mapping of parameter names), or both:",
+        "",
+        "```yaml",
+        "greet:",
+        "  opcode: string_join",
+        "  args:",
+        '    - literal: ["Hello", "World"]',
+        "  kwargs:",
+        '    delimiter: { literal: " " }',
+        "```",
+        "",
+        "Constructs use the slot names in the tables below, all lowercase:",
+        "",
+        "```yaml",
+        "gate:",
+        "  opcode: control_if_else",
+        "  kwargs:",
+        "    condition: { node: is_ready }",
+        "    then: { branch: run }",
+        "    else: { branch: skip }",
+        "```",
+        "",
+        "Slots that hold several values are lists: `args` for a fork's branches,",
+        "a call's arguments and a return's values, and `catch` for a try's",
+        "handlers. `workflow_call` names the callee in `workflow` and passes any",
+        "other keyword straight to the workflow's parameters.",
+        "",
+        "### Legacy `inputs`",
+        "",
+        "The older form is a single `inputs` mapping, still accepted and still",
+        "parsed exactly as before: for an opcode its keys are labels only and",
+        "the order binds, and for a construct the slots are UPPERCASE",
+        "(`CONDITION`, `THEN`, `BRANCH1`, `CATCH1`, ...). A node may not carry",
+        "both forms. Run `lexflow migrate <path>` to convert.",
+        "",
+    ]
 
 
 def _format_construct(construct: dict) -> list[str]:

@@ -7,6 +7,56 @@ import inspect
 import random
 
 
+def bind_arguments(
+    name: str,
+    sig: inspect.Signature,
+    args: list[Any],
+    kwargs: Optional[dict[str, Any]] = None,
+) -> tuple[list[Any], dict[str, Any]]:
+    """Bind positional and keyword arguments to an opcode signature.
+
+    Extra positional arguments are dropped and missing optional ones fall back
+    to the function's own defaults. Variadic opcodes (*args) take no keywords.
+    """
+    kwargs = dict(kwargs or {})
+    params = list(sig.parameters.values())
+
+    if params and params[-1].kind == inspect.Parameter.VAR_POSITIONAL:
+        if kwargs:
+            raise ValueError(
+                f"{name} takes variadic arguments and cannot be called with "
+                f"keyword arguments: {', '.join(sorted(kwargs))}"
+            )
+        return list(args), {}
+
+    param_names = [p.name for p in params]
+    unknown = [k for k in kwargs if k not in param_names]
+    if unknown:
+        raise ValueError(
+            f"{name} got unexpected keyword argument(s) {', '.join(sorted(unknown))}. "
+            f"Accepts: {', '.join(param_names)}"
+        )
+
+    duplicated = [p.name for p in params[: len(args)] if p.name in kwargs]
+    if duplicated:
+        raise ValueError(
+            f"{name} got multiple values for argument(s) {', '.join(duplicated)}"
+        )
+
+    missing = [
+        p.name
+        for p in params[len(args) :]
+        if p.name not in kwargs and p.default == inspect.Parameter.empty
+    ]
+    if missing:
+        raise ValueError(
+            f"{name} requires {len(params)} arguments, got {len(args)}. "
+            f"Missing: {', '.join(missing)}"
+        )
+
+    return list(args[: len(params)]), kwargs
+
+
 @dataclass
 class CategoryInfo:
     """Metadata for an opcode category."""
@@ -165,7 +215,12 @@ class OpcodeRegistry:
         return sorted(self.categories.values(), key=lambda c: (c.order, c.id))
 
     def register(
-        self, name: str = None, *, category: str = None, privileged: bool = False, description: str = ""
+        self,
+        name: str = None,
+        *,
+        category: str = None,
+        privileged: bool = False,
+        description: str = "",
     ):
         """
         Decorator to register an opcode with automatic argument unpacking.
@@ -215,7 +270,9 @@ class OpcodeRegistry:
 
                 # Create placeholder that raises if called without injection
                 @wraps(func)
-                async def placeholder(args: list[Any]) -> Any:
+                async def placeholder(
+                    args: list[Any], kwargs: Optional[dict[str, Any]] = None
+                ) -> Any:
                     raise RuntimeError(
                         f"Privileged opcode '{opcode_name}' requires injection. "
                         f"This opcode must be called within an Engine context."
@@ -223,31 +280,15 @@ class OpcodeRegistry:
 
                 self.opcodes[opcode_name] = placeholder
             else:
-                # wrapper that handles list unpacking
+                # wrapper that binds positional and keyword arguments
                 @wraps(func)
-                async def wrapper(args: list[Any]) -> Any:
-                    # Get parameter information
-                    params = list(sig.parameters.values())
-
-                    # Handle different parameter patterns
-                    if params and params[-1].kind == inspect.Parameter.VAR_POSITIONAL:
-                        # Function accepts *args
-                        return await func(*args)
-                    else:
-                        # Fixed parameters - unpack what we have
-                        # Handle optional parameters with defaults
-                        bound_args = []
-                        for i, param in enumerate(params):
-                            if i < len(args):
-                                bound_args.append(args[i])
-                            elif param.default != inspect.Parameter.empty:
-                                bound_args.append(param.default)
-                            else:
-                                raise ValueError(
-                                    f"{opcode_name} requires {len(params)} arguments, got {len(args)}"
-                                )
-
-                        return await func(*bound_args)
+                async def wrapper(
+                    args: list[Any], kwargs: Optional[dict[str, Any]] = None
+                ) -> Any:
+                    bound_args, bound_kwargs = bind_arguments(
+                        opcode_name, sig, args, kwargs
+                    )
+                    return await func(*bound_args, **bound_kwargs)
 
                 # Store the wrapper
                 self.opcodes[opcode_name] = wrapper
@@ -257,14 +298,18 @@ class OpcodeRegistry:
 
         return decorator
 
-    async def call(self, name: str, args: list[Any]) -> Any:
-        """Call an opcode with arguments."""
+    async def call(
+        self, name: str, args: list[Any], kwargs: Optional[dict[str, Any]] = None
+    ) -> Any:
+        """Call an opcode with positional and keyword arguments."""
         if name not in self.opcodes:
             raise ValueError(f"Unknown opcode: {name}")
         # Check for injected implementation first (for privileged opcodes)
-        if name in self._injected:
-            return await self._injected[name](args)
-        return await self.opcodes[name](args)
+        impl = self._injected.get(name, self.opcodes.get(name))
+        # Keep the single-argument call shape for implementations that predate kwargs
+        if kwargs:
+            return await impl(args, kwargs)
+        return await impl(args)
 
     def inject(self, name: str, implementation: Callable) -> None:
         """Inject implementation for a privileged opcode.
@@ -286,24 +331,13 @@ class OpcodeRegistry:
         # Get the signature for argument unpacking
         sig = self.signatures[name]
 
-        # Create wrapper with argument unpacking
+        # Create wrapper with argument binding
         @wraps(implementation)
-        async def wrapper(args: list[Any]) -> Any:
-            params = list(sig.parameters.values())
-            if params and params[-1].kind == inspect.Parameter.VAR_POSITIONAL:
-                return await implementation(*args)
-            else:
-                bound_args = []
-                for i, param in enumerate(params):
-                    if i < len(args):
-                        bound_args.append(args[i])
-                    elif param.default != inspect.Parameter.empty:
-                        bound_args.append(param.default)
-                    else:
-                        raise ValueError(
-                            f"{name} requires {len(params)} arguments, got {len(args)}"
-                        )
-                return await implementation(*bound_args)
+        async def wrapper(
+            args: list[Any], kwargs: Optional[dict[str, Any]] = None
+        ) -> Any:
+            bound_args, bound_kwargs = bind_arguments(name, sig, args, kwargs)
+            return await implementation(*bound_args, **bound_kwargs)
 
         self._injected[name] = wrapper
 

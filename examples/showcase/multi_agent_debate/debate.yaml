@@ -45,7 +45,6 @@ workflows:
       start:
         opcode: workflow_start
         next: print_header
-        inputs: {}
 
       # ========================================================================
       # HEADER
@@ -53,35 +52,31 @@ workflows:
       print_header:
         opcode: io_print
         next: print_separator_1
-        inputs:
-          STRING:
-            literal: "\n================================================================================\n"
+        args:
+          - literal: "\n================================================================================\n"
 
       print_separator_1:
         opcode: io_print
         next: print_title
-        inputs:
-          STRING:
-            literal: "                         MULTI-AGENT AI DEBATE\n"
+        args:
+          - literal: "                         MULTI-AGENT AI DEBATE\n"
 
       print_title:
         opcode: io_print
         next: print_topic_label
-        inputs:
-          STRING:
-            literal: "================================================================================\n\n"
+        args:
+          - literal: "================================================================================\n\n"
 
       print_topic_label:
         opcode: io_print
         next: print_topic_value
-        inputs:
-          STRING:
-            literal: "TOPIC: "
+        args:
+          - literal: "TOPIC: "
 
       format_topic:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: topic
           right:
@@ -90,14 +85,13 @@ workflows:
       print_topic_value:
         opcode: io_print
         next: print_rounds_info
-        inputs:
-          STRING:
-            node: format_topic
+        args:
+          - node: format_topic
 
       format_rounds:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Rounds: "
           right:
@@ -106,14 +100,14 @@ workflows:
       rounds_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: rounds
 
       format_rounds_full:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: format_rounds
           right:
@@ -122,9 +116,8 @@ workflows:
       print_rounds_info:
         opcode: io_print
         next: print_setup_header
-        inputs:
-          STRING:
-            node: format_rounds_full
+        args:
+          - node: format_rounds_full
 
       # ========================================================================
       # SETUP: Create AI Model and Agents
@@ -132,15 +125,14 @@ workflows:
       print_setup_header:
         opcode: io_print
         next: store_model
-        inputs:
-          STRING:
-            literal: "Setting up debate participants...\n\n"
+        args:
+          - literal: "Setting up debate participants...\n\n"
 
       # Create Vertex AI Model
       create_model:
         opcode: pydantic_ai_create_vertex_model
         isReporter: true
-        inputs:
+        kwargs:
           model_name:
             literal: "gemini-2.5-flash"
           project:
@@ -151,17 +143,17 @@ workflows:
       store_model:
         opcode: data_set_variable_to
         next: store_advocate
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "model"
-          VALUE:
+          value:
             node: create_model
 
       # Create ADVOCATE Agent (argues IN FAVOR)
       create_advocate:
         opcode: pydantic_ai_create_agent
         isReporter: true
-        inputs:
+        kwargs:
           model:
             variable: "model"
           instructions:
@@ -184,24 +176,23 @@ workflows:
       store_advocate:
         opcode: data_set_variable_to
         next: print_advocate_ready
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "advocate_agent"
-          VALUE:
+          value:
             node: create_advocate
 
       print_advocate_ready:
         opcode: io_print
         next: store_critic
-        inputs:
-          STRING:
-            literal: "  [+] ADVOCATE ready (argues IN FAVOR)\n"
+        args:
+          - literal: "  [+] ADVOCATE ready (argues IN FAVOR)\n"
 
       # Create CRITIC Agent (argues AGAINST)
       create_critic:
         opcode: pydantic_ai_create_agent
         isReporter: true
-        inputs:
+        kwargs:
           model:
             variable: "model"
           instructions:
@@ -223,24 +214,23 @@ workflows:
       store_critic:
         opcode: data_set_variable_to
         next: print_critic_ready
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "critic_agent"
-          VALUE:
+          value:
             node: create_critic
 
       print_critic_ready:
         opcode: io_print
         next: store_judge
-        inputs:
-          STRING:
-            literal: "  [-] CRITIC ready (argues AGAINST)\n"
+        args:
+          - literal: "  [-] CRITIC ready (argues AGAINST)\n"
 
       # Create JUDGE Agent (evaluates the debate)
       create_judge:
         opcode: pydantic_ai_create_agent
         isReporter: true
-        inputs:
+        kwargs:
           model:
             variable: "model"
           instructions:
@@ -262,32 +252,30 @@ workflows:
       store_judge:
         opcode: data_set_variable_to
         next: print_judge_ready
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "judge_agent"
-          VALUE:
+          value:
             node: create_judge
 
       print_judge_ready:
         opcode: io_print
         next: store_history
-        inputs:
-          STRING:
-            literal: "  [=] JUDGE ready (will evaluate)\n\n"
+        args:
+          - literal: "  [=] JUDGE ready (will evaluate)\n\n"
 
       # Create empty debate history
       create_history:
         opcode: chat_create
         isReporter: true
-        inputs: {}
 
       store_history:
         opcode: data_set_variable_to
         next: print_debate_start
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "debate_history"
-          VALUE:
+          value:
             node: create_history
 
       # ========================================================================
@@ -296,24 +284,23 @@ workflows:
       print_debate_start:
         opcode: io_print
         next: debate_loop
-        inputs:
-          STRING:
-            literal: "================================================================================\n                              LET THE DEBATE BEGIN!\n================================================================================\n"
+        args:
+          - literal: "================================================================================\n                              LET THE DEBATE BEGIN!\n================================================================================\n"
 
       # Main debate loop
       debate_loop:
         opcode: control_while
         next: print_judge_section
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             node: check_continue
-          BODY:
+          body:
             branch: print_round_header
 
       check_continue:
         opcode: operator_and
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: continue_debate
           right:
@@ -322,7 +309,7 @@ workflows:
       round_not_exceeded:
         opcode: operator_less_than_or_equals
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: current_round
           right:
@@ -334,14 +321,13 @@ workflows:
       print_round_header:
         opcode: io_print
         next: print_round_separator
-        inputs:
-          STRING:
-            node: round_header_text
+        args:
+          - node: round_header_text
 
       round_header_text:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "\n--------------------------------------------------------------------------------\n                                   ROUND "
           right:
@@ -350,7 +336,7 @@ workflows:
       round_header_end:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: current_round_str
           right:
@@ -359,16 +345,15 @@ workflows:
       current_round_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: current_round
 
       print_round_separator:
         opcode: io_print
         next: get_advocate_argument
-        inputs:
-          STRING:
-            literal: "\n"
+        args:
+          - literal: "\n"
 
       # ========================================================================
       # ADVOCATE'S TURN
@@ -376,7 +361,7 @@ workflows:
       build_advocate_prompt:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "DEBATE TOPIC: "
           right:
@@ -385,7 +370,7 @@ workflows:
       advocate_prompt_with_topic:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: topic
           right:
@@ -394,7 +379,7 @@ workflows:
       advocate_prompt_history:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "\n\n"
           right:
@@ -403,7 +388,7 @@ workflows:
       advocate_prompt_context:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: history_as_prompt
           right:
@@ -412,14 +397,14 @@ workflows:
       history_as_prompt:
         opcode: chat_to_prompt
         isReporter: true
-        inputs:
+        kwargs:
           history:
             variable: debate_history
 
       run_advocate:
         opcode: pydantic_ai_run
         isReporter: true
-        inputs:
+        kwargs:
           agent:
             variable: advocate_agent
           prompt:
@@ -428,23 +413,22 @@ workflows:
       get_advocate_argument:
         opcode: data_set_variable_to
         next: print_advocate_label
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "advocate_argument"
-          VALUE:
+          value:
             node: run_advocate
 
       print_advocate_label:
         opcode: io_print
         next: print_advocate_argument
-        inputs:
-          STRING:
-            literal: "ADVOCATE [IN FAVOR]:\n\n"
+        args:
+          - literal: "ADVOCATE [IN FAVOR]:\n\n"
 
       format_advocate_output:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: advocate_argument
           right:
@@ -453,15 +437,14 @@ workflows:
       print_advocate_argument:
         opcode: io_print
         next: add_advocate_to_history
-        inputs:
-          STRING:
-            node: format_advocate_output
+        args:
+          - node: format_advocate_output
 
       # Add advocate's argument to history (as "user" from critic's perspective)
       add_advocate_to_history:
         opcode: chat_add_message
         next: get_critic_argument
-        inputs:
+        kwargs:
           history:
             variable: debate_history
           role:
@@ -472,7 +455,7 @@ workflows:
       format_advocate_history:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "[ADVOCATE]: "
           right:
@@ -484,7 +467,7 @@ workflows:
       build_critic_prompt:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "DEBATE TOPIC: "
           right:
@@ -493,7 +476,7 @@ workflows:
       critic_prompt_with_topic:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: topic
           right:
@@ -502,7 +485,7 @@ workflows:
       critic_prompt_history:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "\n\n"
           right:
@@ -511,7 +494,7 @@ workflows:
       critic_prompt_context:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: history_as_prompt_critic
           right:
@@ -520,14 +503,14 @@ workflows:
       history_as_prompt_critic:
         opcode: chat_to_prompt
         isReporter: true
-        inputs:
+        kwargs:
           history:
             variable: debate_history
 
       run_critic:
         opcode: pydantic_ai_run
         isReporter: true
-        inputs:
+        kwargs:
           agent:
             variable: critic_agent
           prompt:
@@ -536,23 +519,22 @@ workflows:
       get_critic_argument:
         opcode: data_set_variable_to
         next: print_critic_label
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "critic_argument"
-          VALUE:
+          value:
             node: run_critic
 
       print_critic_label:
         opcode: io_print
         next: print_critic_argument
-        inputs:
-          STRING:
-            literal: "\nCRITIC [AGAINST]:\n\n"
+        args:
+          - literal: "\nCRITIC [AGAINST]:\n\n"
 
       format_critic_output:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: critic_argument
           right:
@@ -561,15 +543,14 @@ workflows:
       print_critic_argument:
         opcode: io_print
         next: add_critic_to_history
-        inputs:
-          STRING:
-            node: format_critic_output
+        args:
+          - node: format_critic_output
 
       # Add critic's argument to history
       add_critic_to_history:
         opcode: chat_add_message
         next: increment_round
-        inputs:
+        kwargs:
           history:
             variable: debate_history
           role:
@@ -580,7 +561,7 @@ workflows:
       format_critic_history:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "[CRITIC]: "
           right:
@@ -590,16 +571,16 @@ workflows:
       increment_round:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "current_round"
-          VALUE:
+          value:
             node: next_round
 
       next_round:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: current_round
           right:
@@ -611,21 +592,19 @@ workflows:
       print_judge_section:
         opcode: io_print
         next: print_judge_header
-        inputs:
-          STRING:
-            literal: "\n\n================================================================================\n                              JUDGE'S VERDICT\n================================================================================\n\n"
+        args:
+          - literal: "\n\n================================================================================\n                              JUDGE'S VERDICT\n================================================================================\n\n"
 
       print_judge_header:
         opcode: io_print
         next: get_judge_verdict
-        inputs:
-          STRING:
-            literal: "The judge is reviewing the debate...\n\n"
+        args:
+          - literal: "The judge is reviewing the debate...\n\n"
 
       build_judge_prompt:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "DEBATE TOPIC: "
           right:
@@ -634,7 +613,7 @@ workflows:
       judge_prompt_with_topic:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: topic
           right:
@@ -643,7 +622,7 @@ workflows:
       judge_prompt_transcript:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "\n\nFULL DEBATE TRANSCRIPT:\n\n"
           right:
@@ -652,7 +631,7 @@ workflows:
       judge_prompt_history:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: format_history_for_judge
           right:
@@ -661,14 +640,14 @@ workflows:
       format_history_for_judge:
         opcode: chat_format_for_display
         isReporter: true
-        inputs:
+        kwargs:
           history:
             variable: debate_history
 
       run_judge:
         opcode: pydantic_ai_run
         isReporter: true
-        inputs:
+        kwargs:
           agent:
             variable: judge_agent
           prompt:
@@ -677,23 +656,22 @@ workflows:
       get_judge_verdict:
         opcode: data_set_variable_to
         next: print_verdict_label
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "judge_verdict"
-          VALUE:
+          value:
             node: run_judge
 
       print_verdict_label:
         opcode: io_print
         next: print_verdict
-        inputs:
-          STRING:
-            literal: "--------------------------------------------------------------------------------\n                              FINAL VERDICT\n--------------------------------------------------------------------------------\n\n"
+        args:
+          - literal: "--------------------------------------------------------------------------------\n                              FINAL VERDICT\n--------------------------------------------------------------------------------\n\n"
 
       format_verdict:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: judge_verdict
           right:
@@ -702,9 +680,8 @@ workflows:
       print_verdict:
         opcode: io_print
         next: print_footer
-        inputs:
-          STRING:
-            node: format_verdict
+        args:
+          - node: format_verdict
 
       # ========================================================================
       # FOOTER
@@ -712,6 +689,5 @@ workflows:
       print_footer:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n================================================================================\n                           DEBATE CONCLUDED\n================================================================================\n\n"
+        args:
+          - literal: "\n================================================================================\n                           DEBATE CONCLUDED\n================================================================================\n\n"

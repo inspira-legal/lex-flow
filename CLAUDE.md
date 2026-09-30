@@ -216,6 +216,11 @@ lexflow workflow.yaml --verbose
 # Combine multiple options
 lexflow workflow.yaml --input name=Alice --output-file result.txt --verbose
 
+# Migrate workflows from the legacy 'inputs' key to args/kwargs
+lexflow migrate examples/                   # Report what would change
+lexflow migrate workflow.yaml --diff        # Show a unified diff
+lexflow migrate examples/ --names --write   # Rewrite in place, keeping valid input names
+
 # Performance metrics
 lexflow workflow.yaml --metrics                          # Show performance report
 lexflow workflow.yaml --metrics --metrics-top 20         # Show top 20 operations
@@ -525,6 +530,18 @@ JSON/YAML nodes use special input formats:
 - `{"node": "node_id"}` - Reporter node reference (including workflow calls on reporters)
 - `{"branch": "node_id"}` - Branch reference (control flow)
 - `{"workflow_call": "name"}` - Workflow call (expression or statement)
+
+### Node Arguments
+A node passes those values with `args` (a positional list), `kwargs` (a mapping of
+the opcode's parameter names), or both. Constructs use lowercase slots in `kwargs`
+(`condition`, `then`, `else`, `body`, `var`, `start`, `end`, `step`, `iterable`,
+`value`, `variable`, `resource`, `timeout`, `on_timeout`, `try`, `finally`,
+`workflow`); list-shaped slots are `args` (fork branches, call arguments, return
+values) and `catch` (try handlers).
+
+The legacy `inputs` mapping is still parsed exactly as before — for an opcode its
+keys are labels and the order binds, for a construct the slots are UPPERCASE — but
+a node may not carry both forms. Convert with `lexflow migrate <path> --names --write`.
 
 ### File Format Support
 - JSON files: `.json` extension

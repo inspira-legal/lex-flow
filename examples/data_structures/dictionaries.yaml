@@ -8,21 +8,19 @@ workflows:
       start:
         opcode: workflow_start
         next: test_intro
-        inputs: {}
 
       test_intro:
         opcode: io_print
         next: test_dict_from_lists
-        inputs:
-          STRING:
-            literal: "=== Dictionary Operations Examples ===\n\n1. Creating dictionaries from lists:\n"
+        args:
+          - literal: "=== Dictionary Operations Examples ===\n\n1. Creating dictionaries from lists:\n"
 
       # Test 1: Create from parallel lists
       test_dict_from_lists:
         opcode: dict_from_lists
         next: print_user_dict
         isReporter: true
-        inputs:
+        kwargs:
           keys:
             literal: ["name", "age", "role"]
           values:
@@ -31,14 +29,13 @@ workflows:
       print_user_dict:
         opcode: io_print
         next: test_dict_operations
-        inputs:
-          STRING:
-            node: user_dict_str
+        args:
+          - node: user_dict_str
 
       user_dict_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Created user dict: "
           right:
@@ -47,7 +44,7 @@ workflows:
       user_dict_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: test_dict_from_lists
 
@@ -55,15 +52,14 @@ workflows:
       test_dict_operations:
         opcode: io_print
         next: get_name
-        inputs:
-          STRING:
-            literal: "\n2. Getting and setting values:\n"
+        args:
+          - literal: "\n2. Getting and setting values:\n"
 
       get_name:
         opcode: dict_get
         next: print_name
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: test_dict_from_lists
           key:
@@ -72,14 +68,13 @@ workflows:
       print_name:
         opcode: io_print
         next: set_email
-        inputs:
-          STRING:
-            node: name_str
+        args:
+          - node: name_str
 
       name_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Name: "
           right:
@@ -89,7 +84,7 @@ workflows:
         opcode: dict_set
         next: print_with_email
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: test_dict_from_lists
           key:
@@ -100,14 +95,13 @@ workflows:
       print_with_email:
         opcode: io_print
         next: test_default_value
-        inputs:
-          STRING:
-            node: with_email_str
+        args:
+          - node: with_email_str
 
       with_email_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "After adding email: "
           right:
@@ -116,7 +110,7 @@ workflows:
       with_email_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: set_email
 
@@ -124,15 +118,14 @@ workflows:
       test_default_value:
         opcode: io_print
         next: get_missing
-        inputs:
-          STRING:
-            literal: "\n3. Getting with default value:\n"
+        args:
+          - literal: "\n3. Getting with default value:\n"
 
       get_missing:
         opcode: dict_get
         next: print_missing
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: set_email
           key:
@@ -143,14 +136,13 @@ workflows:
       print_missing:
         opcode: io_print
         next: test_dict_merge
-        inputs:
-          STRING:
-            node: missing_str
+        args:
+          - node: missing_str
 
       missing_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Phone (missing, with default): "
           right:
@@ -160,15 +152,14 @@ workflows:
       test_dict_merge:
         opcode: io_print
         next: create_updates
-        inputs:
-          STRING:
-            literal: "\n4. Merging dictionaries:\n"
+        args:
+          - literal: "\n4. Merging dictionaries:\n"
 
       create_updates:
         opcode: dict_from_lists
         next: merge_dicts
         isReporter: true
-        inputs:
+        kwargs:
           keys:
             literal: ["role", "department"]
           values:
@@ -178,7 +169,7 @@ workflows:
         opcode: dict_update
         next: print_merged
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: set_email
           other:
@@ -187,14 +178,13 @@ workflows:
       print_merged:
         opcode: io_print
         next: test_query
-        inputs:
-          STRING:
-            node: merged_str
+        args:
+          - node: merged_str
 
       merged_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "After merge: "
           right:
@@ -203,7 +193,7 @@ workflows:
       merged_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: merge_dicts
 
@@ -211,29 +201,27 @@ workflows:
       test_query:
         opcode: io_print
         next: get_keys
-        inputs:
-          STRING:
-            literal: "\n5. Querying dictionary:\n"
+        args:
+          - literal: "\n5. Querying dictionary:\n"
 
       get_keys:
         opcode: dict_keys
         next: print_keys
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: merge_dicts
 
       print_keys:
         opcode: io_print
         next: check_contains
-        inputs:
-          STRING:
-            node: keys_str
+        args:
+          - node: keys_str
 
       keys_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "All keys: "
           right:
@@ -242,7 +230,7 @@ workflows:
       keys_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: get_keys
 
@@ -250,7 +238,7 @@ workflows:
         opcode: dict_contains
         next: print_contains
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: merge_dicts
           key:
@@ -259,14 +247,13 @@ workflows:
       print_contains:
         opcode: io_print
         next: get_size
-        inputs:
-          STRING:
-            node: contains_str
+        args:
+          - node: contains_str
 
       contains_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Contains 'email': "
           right:
@@ -275,7 +262,7 @@ workflows:
       contains_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: check_contains
 
@@ -283,21 +270,20 @@ workflows:
         opcode: dict_len
         next: print_size
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: merge_dicts
 
       print_size:
         opcode: io_print
         next: test_copy
-        inputs:
-          STRING:
-            node: size_str
+        args:
+          - node: size_str
 
       size_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Dictionary size: "
           right:
@@ -306,7 +292,7 @@ workflows:
       size_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: get_size
 
@@ -314,15 +300,14 @@ workflows:
       test_copy:
         opcode: io_print
         next: copy_dict
-        inputs:
-          STRING:
-            literal: "\n6. Copying and modifying:\n"
+        args:
+          - literal: "\n6. Copying and modifying:\n"
 
       copy_dict:
         opcode: dict_copy
         next: modify_copy
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: merge_dicts
 
@@ -330,7 +315,7 @@ workflows:
         opcode: dict_set
         next: print_both
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: copy_dict
           key:
@@ -341,14 +326,13 @@ workflows:
       print_both:
         opcode: io_print
         next: print_original
-        inputs:
-          STRING:
-            node: copy_str
+        args:
+          - node: copy_str
 
       copy_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Modified copy: "
           right:
@@ -357,21 +341,20 @@ workflows:
       copy_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: modify_copy
 
       print_original:
         opcode: io_print
         next: final_message
-        inputs:
-          STRING:
-            node: orig_str
+        args:
+          - node: orig_str
 
       orig_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Original unchanged: "
           right:
@@ -380,13 +363,12 @@ workflows:
       orig_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: merge_dicts
 
       final_message:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n=== All dictionary tests completed! ===\n"
+        args:
+          - literal: "\n=== All dictionary tests completed! ===\n"

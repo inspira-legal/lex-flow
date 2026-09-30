@@ -163,13 +163,25 @@ All node types, opcodes, and branches should come from `grammar.json`.
 
 ```python
 # BAD: Hardcoded branch names
-if node.get("THEN"):
+if node.get("then"):
     ...
 
 # GOOD: Use grammar to discover branches
 construct = get_construct(opcode)
 for branch in construct.get("branches", []):
     branch_name = branch["name"]
+```
+
+Read a node's arguments through `NodeArgs`, never from `node["inputs"]` or
+`node["kwargs"]` directly — it is what resolves both syntaxes and the legacy
+UPPERCASE slot names:
+
+```python
+from lexflow.parser import NodeArgs
+
+args = NodeArgs.from_node(node)
+condition = args.get("condition")   # 'CONDITION' in a legacy workflow
+branches = args.sequence("branch")  # 'args', or BRANCH1, BRANCH2, ...
 ```
 
 ### Don't Over-Engineer

@@ -20,39 +20,38 @@ workflows:
       start:
         opcode: workflow_start
         next: get_text_length
-        inputs: {}
 
       # Get the length of the input text
       compute_length:
         opcode: string_length
         isReporter: true
-        inputs:
+        kwargs:
           text:
             variable: text
 
       get_text_length:
         opcode: data_set_variable_to
         next: loop_chars
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "text_len"
-          VALUE:
+          value:
             node: compute_length
 
       # Loop over each character index
       loop_chars:
         opcode: control_for
         next: return_spans
-        inputs:
-          VAR:
+        kwargs:
+          var:
             literal: "i"
-          START:
+          start:
             literal: 0
-          END:
+          end:
             variable: text_len
-          STEP:
+          step:
             literal: 1
-          BODY:
+          body:
             branch: extract_char
 
       # -- Loop body: build a <span> for the current character --
@@ -61,7 +60,7 @@ workflows:
       char_at_i:
         opcode: string_substring
         isReporter: true
-        inputs:
+        kwargs:
           text:
             variable: text
           start:
@@ -72,26 +71,24 @@ workflows:
       i_plus_one:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            variable: i
-          OPERAND2:
-            literal: 1
+        args:
+          - variable: i
+          - literal: 1
 
       extract_char:
         opcode: data_set_variable_to
         next: check_space
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "char"
-          VALUE:
+          value:
             node: char_at_i
 
       # Check if the character is a space (needs special handling)
       is_space:
         opcode: operator_equals
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: char
           right:
@@ -100,53 +97,50 @@ workflows:
       check_space:
         opcode: control_if_else
         next: compute_delay
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             node: is_space
-          THEN:
+          then:
             branch: set_space_char
-          ELSE:
+          else:
             branch: keep_char
 
       # Replace space with &nbsp; for HTML
       set_space_char:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "char"
-          VALUE:
+          value:
             literal: "&nbsp;"
 
       keep_char:
         opcode: noop
         next: null
-        inputs: {}
 
       # Compute the animation delay: i * 0.08 seconds
       delay_value:
         opcode: operator_multiply
         isReporter: true
-        inputs:
-          OPERAND1:
-            variable: i
-          OPERAND2:
-            literal: 0.08
+        args:
+          - variable: i
+          - literal: 0.08
 
       delay_as_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: delay_value
 
       compute_delay:
         opcode: data_set_variable_to
         next: build_span
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "delay_str"
-          VALUE:
+          value:
             node: delay_as_str
 
       # Build: <span style="animation-delay:{delay}s">{char}</span>
@@ -154,7 +148,7 @@ workflows:
       span_part1:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "<span style=\"animation-delay:"
           right:
@@ -163,7 +157,7 @@ workflows:
       span_part2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: span_part1
           right:
@@ -172,7 +166,7 @@ workflows:
       span_part3:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: span_part2
           right:
@@ -181,7 +175,7 @@ workflows:
       span_complete:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: span_part3
           right:
@@ -190,17 +184,17 @@ workflows:
       build_span:
         opcode: data_set_variable_to
         next: append_span
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "span_tag"
-          VALUE:
+          value:
             node: span_complete
 
       # Append this span to the accumulated HTML
       accumulated:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: spans_html
           right:
@@ -209,15 +203,14 @@ workflows:
       append_span:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "spans_html"
-          VALUE:
+          value:
             node: accumulated
 
       # Return the complete spans HTML
       return_spans:
         opcode: workflow_return
-        inputs:
-          VALUE:
-            variable: spans_html
+        args:
+          - variable: spans_html

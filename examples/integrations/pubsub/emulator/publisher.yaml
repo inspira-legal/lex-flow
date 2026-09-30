@@ -31,42 +31,38 @@ workflows:
       start:
         opcode: workflow_start
         next: intro
-        inputs: {}
 
       intro:
         opcode: io_print
         next: store_publisher
-        inputs:
-          STRING:
-            literal: "=== Local Pub/Sub Publisher ===\n\n"
+        args:
+          - literal: "=== Local Pub/Sub Publisher ===\n\n"
 
       # Create Publisher Client
       create_publisher:
         opcode: pubsub_create_publisher
         isReporter: true
-        inputs: {}
 
       store_publisher:
         opcode: data_set_variable_to
         next: print_created
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "publisher"
-          VALUE:
+          value:
             node: create_publisher
 
       print_created:
         opcode: io_print
         next: store_message_id
-        inputs:
-          STRING:
-            literal: "Publisher created\n\n"
+        args:
+          - literal: "Publisher created\n\n"
 
       # Publish message with attributes
       publish_message:
         opcode: pubsub_publish_message_with_attributes
         isReporter: true
-        inputs:
+        kwargs:
           publisher:
             variable: "publisher"
           project_id:
@@ -81,43 +77,39 @@ workflows:
       store_message_id:
         opcode: data_set_variable_to
         next: print_published
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "message_id"
-          VALUE:
+          value:
             node: publish_message
 
       print_published:
         opcode: io_print
         next: print_id
-        inputs:
-          STRING:
-            literal: "Message published!\nID: "
+        args:
+          - literal: "Message published!\nID: "
 
       print_id:
         opcode: io_print
         next: print_attrs_info
-        inputs:
-          STRING:
-            variable: "message_id"
+        args:
+          - variable: "message_id"
 
       print_attrs_info:
         opcode: io_print
         next: close_publisher
-        inputs:
-          STRING:
-            literal: "\nAttributes: source=lexflow-test, env=local\n"
+        args:
+          - literal: "\nAttributes: source=lexflow-test, env=local\n"
 
       # Close publisher client
       close_publisher:
         opcode: pubsub_close_publisher
         next: done
-        inputs:
+        kwargs:
           publisher:
             variable: "publisher"
 
       done:
         opcode: io_print
-        inputs:
-          STRING:
-            literal: "\nDone!\n"
+        args:
+          - literal: "\nDone!\n"
