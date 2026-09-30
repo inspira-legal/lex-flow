@@ -2,6 +2,34 @@
 
 <!-- version list -->
 
+## v1.20.0 (2026-09-30)
+
+### Chores
+
+- Apply the pytest config, drop pygame ([#122](https://github.com/inspira-legal/lex-flow/pull/122),
+  [`2d2967c`](https://github.com/inspira-legal/lex-flow/commit/2d2967c90dffed96539b0070f86e7cfd37b4dcde))
+
+- **ci**: Update GitHub Actions to their current majors
+  ([#110](https://github.com/inspira-legal/lex-flow/pull/110),
+  [`5de07bb`](https://github.com/inspira-legal/lex-flow/commit/5de07bbd31dd137b2969aab0f72f1ec0eb2b5d7b))
+
+- **deps**: Clear all 49 open Dependabot alerts
+  ([#109](https://github.com/inspira-legal/lex-flow/pull/109),
+  [`3b9d29b`](https://github.com/inspira-legal/lex-flow/commit/3b9d29b797a7820afc9258a0002ae7939ab12129))
+
+- **web**: Build frontend library [skip ci]
+  ([`63f1c42`](https://github.com/inspira-legal/lex-flow/commit/63f1c42f56b2bb5cc46b1d8f16003a4764e5bf92))
+
+- **web**: Release 1.16.1
+  ([`0819cfe`](https://github.com/inspira-legal/lex-flow/commit/0819cfebfeda10d41bbd65e2fb24999b145f91ff))
+
+### Features
+
+- Bind workflow arguments by name with args/kwargs
+  ([#128](https://github.com/inspira-legal/lex-flow/pull/128),
+  [`03dde92`](https://github.com/inspira-legal/lex-flow/commit/03dde929de87919a1531addde5e0e76db95e4dfb))
+
+
 ## v1.19.1 (2026-09-15)
 
 ### Bug Fixes
