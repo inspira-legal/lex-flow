@@ -2,6 +2,34 @@
 
 <!-- version list -->
 
+## v1.17.0 (2026-10-19)
+
+### Chores
+
+- **ci**: Update GitHub Actions to their current majors
+  ([#110](https://github.com/inspira-legal/lex-flow/pull/110),
+  [`5de07bb`](https://github.com/inspira-legal/lex-flow/commit/5de07bbd31dd137b2969aab0f72f1ec0eb2b5d7b))
+
+- **cli**: Release 1.7.0
+  ([`bf9bc8b`](https://github.com/inspira-legal/lex-flow/commit/bf9bc8baf06716aa152dd12d2fb980ee7bfd4509))
+
+- **core**: Release 1.20.0
+  ([`c6a4458`](https://github.com/inspira-legal/lex-flow/commit/c6a44581227ce08eaa3691979d26e0023c8a51a9))
+
+- **deps**: Update packages and fix dependabot alerts
+  ([#139](https://github.com/inspira-legal/lex-flow/pull/139),
+  [`3489e63`](https://github.com/inspira-legal/lex-flow/commit/3489e63fd38d66809f9fe6688e04863baab431b4))
+
+- **web**: Build frontend library [skip ci]
+  ([`fcadab3`](https://github.com/inspira-legal/lex-flow/commit/fcadab33d818d5304a69b82cfa1bbbb662cc1302))
+
+### Features
+
+- Bind workflow arguments by name with args/kwargs
+  ([#128](https://github.com/inspira-legal/lex-flow/pull/128),
+  [`03dde92`](https://github.com/inspira-legal/lex-flow/commit/03dde929de87919a1531addde5e0e76db95e4dfb))
+
+
 ## v1.16.1 (2026-09-22)
 
 ### Bug Fixes
