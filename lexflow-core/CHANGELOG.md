@@ -2,6 +2,34 @@
 
 <!-- version list -->
 
+## v1.20.1 (2026-10-22)
+
+### Bug Fixes
+
+- **deps**: Aiohttp >= 3.14.4 no core e na raiz (WAVE-863)
+  ([#145](https://github.com/inspira-legal/lex-flow/pull/145),
+  [`2326acc`](https://github.com/inspira-legal/lex-flow/commit/2326accbb5cda13e00882422429741e94e16ed3c))
+
+### Chores
+
+- **ci**: Bump astral-sh/setup-uv to v10.3.0
+  ([#143](https://github.com/inspira-legal/lex-flow/pull/143),
+  [`3677eab`](https://github.com/inspira-legal/lex-flow/commit/3677eabae4baaf60bdc8de8819925cda11bf54c7))
+
+- **cli**: Release 1.7.0
+  ([`bf9bc8b`](https://github.com/inspira-legal/lex-flow/commit/bf9bc8baf06716aa152dd12d2fb980ee7bfd4509))
+
+- **deps**: Update packages and fix dependabot alerts
+  ([#139](https://github.com/inspira-legal/lex-flow/pull/139),
+  [`3489e63`](https://github.com/inspira-legal/lex-flow/commit/3489e63fd38d66809f9fe6688e04863baab431b4))
+
+- **web**: Build frontend library [skip ci]
+  ([`fcadab3`](https://github.com/inspira-legal/lex-flow/commit/fcadab33d818d5304a69b82cfa1bbbb662cc1302))
+
+- **web**: Release 1.17.0
+  ([`ac6c4f4`](https://github.com/inspira-legal/lex-flow/commit/ac6c4f4a6096378a2f64472aa1c66b4722c4ca40))
+
+
 ## v1.20.0 (2026-09-30)
 
 ### Chores
