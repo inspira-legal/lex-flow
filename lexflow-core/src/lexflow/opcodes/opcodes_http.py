@@ -10,6 +10,7 @@ Installation:
 import json as json_module
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
+from ..sessions import open_session
 from .opcodes import opcode, register_category
 
 try:
@@ -333,23 +334,31 @@ def register_http_opcodes():
                 self.headers = headers or {}
                 self._session: Optional[aiohttp.ClientSession] = None
 
+            def _get_session(self) -> aiohttp.ClientSession:
+                """Open the session on first use, or again after it was closed."""
+                if self._session is None or self._session.closed:
+                    self._session = open_session(
+                        timeout=aiohttp.ClientTimeout(total=self.timeout),
+                        headers=self.headers,
+                    )
+                return self._session
+
+            async def close(self) -> None:
+                """Close the session if one was opened. Safe to call more than once."""
+                if self._session is not None:
+                    await self._session.close()
+
             async def __aenter__(self):
-                client_timeout = aiohttp.ClientTimeout(total=self.timeout)
-                self._session = aiohttp.ClientSession(
-                    timeout=client_timeout, headers=self.headers
-                )
                 return self
 
             async def __aexit__(self, exc_type, exc_val, exc_tb):
-                if self._session:
-                    await self._session.close()
-                    self._session = None
+                await self.close()
 
             async def get(
                 self, url: str, headers: Optional[Dict[str, str]] = None
             ) -> Dict:
                 """Perform GET request using this session."""
-                async with self._session.get(url, headers=headers) as response:
+                async with self._get_session().get(url, headers=headers) as response:
                     text = await response.text()
                     json_data = None
                     if "application/json" in response.headers.get("Content-Type", ""):
@@ -372,7 +381,7 @@ def register_http_opcodes():
                 headers: Optional[Dict[str, str]] = None,
             ) -> Dict:
                 """Perform POST request using this session."""
-                async with self._session.post(
+                async with self._get_session().post(
                     url, data=data, json=json, headers=headers
                 ) as response:
                     text = await response.text()

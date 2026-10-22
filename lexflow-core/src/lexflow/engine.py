@@ -7,6 +7,7 @@ from .opcodes.opcodes import bind_arguments
 from .workflows import WorkflowManager
 from .metrics import ExecutionMetrics, NullMetrics
 from .tasks import TaskManager
+from .sessions import RunSessions, current_run_sessions
 from contextlib import redirect_stdout
 from typing import Any, Optional, TextIO, Union
 
@@ -218,6 +219,8 @@ class Engine:
     async def _run_internal(self) -> Any:
         # Start metrics collection
         self.metrics.start_execution()
+        sessions = RunSessions()
+        sessions_token = current_run_sessions.set(sessions)
 
         try:
             # Execute main workflow body
@@ -228,6 +231,9 @@ class Engine:
         finally:
             # Cleanup background tasks
             await self.tasks.cleanup()
+            # Close HTTP sessions opened by opcode clients during the run
+            current_run_sessions.reset(sessions_token)
+            await sessions.close()
             # End metrics collection
             self.metrics.end_execution()
 
