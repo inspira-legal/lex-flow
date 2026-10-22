@@ -29,10 +29,12 @@ CONTACT_IDS = ["1", "2", "3", "4", "5"]
 async def hubspot_server():
     """Local stand-in for the HubSpot API, recording each request's connection."""
     peers = []
+    auth_headers = []
     slow = asyncio.Event()
 
     async def get_contact(request):
         peers.append(request.transport.get_extra_info("peername"))
+        auth_headers.append(request.headers.get("Authorization"))
         if request.match_info["contact_id"] == "slow":
             slow.set()
             await asyncio.sleep(30)
@@ -44,7 +46,7 @@ async def hubspot_server():
     await server.start_server()
     base_url = str(server.make_url("")).rstrip("/")
     with patch("lexflow.opcodes.opcodes_hubspot.HUBSPOT_API_BASE_URL", base_url):
-        yield {"peers": peers, "slow": slow}
+        yield {"peers": peers, "auth_headers": auth_headers, "slow": slow}
     await server.close()
 
 
@@ -126,6 +128,9 @@ class TestNoLeakedSessions:
 
         assert len(hubspot_server["peers"]) == len(CONTACT_IDS)
         assert len(set(hubspot_server["peers"])) == 1
+        assert hubspot_server["auth_headers"] == ["Bearer test-token"] * len(
+            CONTACT_IDS
+        )
 
     async def test_sessions_closed_when_the_run_fails(
         self, hubspot_server, opened_sessions
@@ -151,6 +156,17 @@ class TestNoLeakedSessions:
             await run
 
         assert len(opened_sessions) == 2
+        assert all(s.closed for s in opened_sessions)
+
+    async def test_sessions_closed_when_task_cleanup_is_interrupted(
+        self, hubspot_server, opened_sessions
+    ):
+        engine = Engine(_hubspot_loop_program(CONTACT_IDS))
+        with patch.object(engine.tasks, "cleanup", side_effect=asyncio.CancelledError):
+            with pytest.raises(asyncio.CancelledError):
+                await engine.run()
+
+        assert len(opened_sessions) == len(CONTACT_IDS)
         assert all(s.closed for s in opened_sessions)
 
     async def test_run_tracking_ends_with_the_run(self, hubspot_server):
@@ -184,6 +200,24 @@ class TestLazySession:
 
         assert await client.get("/crm/v3/objects/contacts/2") == {"id": "2"}
         await client.close()
+
+
+class TestSessionSettings:
+    async def test_apollo_sends_api_key(self):
+        client = ApolloClient("key")
+        try:
+            assert client._get_session().headers["X-Api-Key"] == "key"
+        finally:
+            await client.close()
+
+    async def test_clicksign_sends_token_with_timeout(self):
+        client = ClicksignClient("token")
+        try:
+            session = client._get_session()
+            assert session.headers["Authorization"] == "token"
+            assert session.timeout.total == 30
+        finally:
+            await client.close()
 
 
 class TestCloseClient:
@@ -243,6 +277,15 @@ class TestOpenSession:
         await run.close()
         assert first.closed and second.closed
         assert first.connector is None or first.connector.closed
+
+    async def test_closed_sessions_are_dropped_during_the_run(self):
+        run = RunSessions()
+        await run.open().close()
+        await run.open().close()
+        open_one = run.open()
+
+        assert run._sessions == [open_one]
+        await run.close()
 
     async def test_run_close_is_idempotent(self):
         run = RunSessions()

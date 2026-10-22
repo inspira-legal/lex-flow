@@ -229,13 +229,16 @@ class Engine:
             # Return final stack value
             return self.runtime.pop() if self.runtime.stack else None
         finally:
-            # Cleanup background tasks
-            await self.tasks.cleanup()
-            # Close HTTP sessions opened by opcode clients during the run
-            current_run_sessions.reset(sessions_token)
-            await sessions.close()
-            # End metrics collection
-            self.metrics.end_execution()
+            try:
+                # Cleanup background tasks
+                await self.tasks.cleanup()
+            finally:
+                # Close HTTP sessions opened by opcode clients during the run,
+                # even when cleanup is interrupted by a second cancellation
+                current_run_sessions.reset(sessions_token)
+                await sessions.close()
+                # End metrics collection
+                self.metrics.end_execution()
 
     def get_metrics_report(self, top_n: int = 10) -> str:
         """Generate formatted metrics report.

@@ -16,11 +16,13 @@ class RunSessions:
 
     def open(self, **kwargs: Any) -> aiohttp.ClientSession:
         """Open a session on the run's connector and track it."""
-        if self._connector is None or self._connector.closed:
+        if self._connector is None:
             self._connector = aiohttp.TCPConnector()
         session = aiohttp.ClientSession(
             connector=self._connector, connector_owner=False, **kwargs
         )
+        # Clients closed mid-run (e.g. one per loop iteration) are dropped here
+        self._sessions = [s for s in self._sessions if not s.closed]
         self._sessions.append(session)
         return session
 
