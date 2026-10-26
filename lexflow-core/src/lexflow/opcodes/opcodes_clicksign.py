@@ -10,6 +10,7 @@ Authentication:
 
 from typing import Any, Dict, List, Optional
 
+from ..sessions import open_session
 from .opcodes import opcode, register_category
 
 try:
@@ -43,17 +44,29 @@ class ClicksignClient:
         )
         self.base_url = f"{base}/api/v3"
         self.sandbox = sandbox
-        self._session = aiohttp.ClientSession(
-            headers={
+        self._session_kwargs = {
+            "headers": {
                 "Authorization": access_token,
                 "Content-Type": "application/vnd.api+json",
                 "Accept": "application/vnd.api+json",
             },
-            timeout=aiohttp.ClientTimeout(total=30),
-        )
+            "timeout": aiohttp.ClientTimeout(total=30),
+        }
+        self._session: Optional["aiohttp.ClientSession"] = None
 
     def __repr__(self) -> str:
         return f"ClicksignClient(sandbox={self.sandbox})"
+
+    def _get_session(self) -> "aiohttp.ClientSession":
+        """Open the session on first use, or again after it was closed."""
+        if self._session is None or self._session.closed:
+            self._session = open_session(**self._session_kwargs)
+        return self._session
+
+    async def close(self) -> None:
+        """Close the session if one was opened. Safe to call more than once."""
+        if self._session is not None:
+            await self._session.close()
 
     __str__ = __repr__
 
@@ -67,7 +80,7 @@ class ClicksignClient:
         """Make an HTTP request to Clicksign API."""
         url = f"{self.base_url}{endpoint}"
 
-        async with self._session.request(
+        async with self._get_session().request(
             method, url, params=params, json=json_data
         ) as response:
             if response.status == 204:
@@ -168,7 +181,7 @@ def register_clicksign_opcodes():
         Returns:
             True when the client session is closed
         """
-        await client._session.close()
+        await client.close()
         return True
 
     # ============================================================================

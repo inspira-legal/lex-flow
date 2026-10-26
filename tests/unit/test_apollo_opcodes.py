@@ -172,7 +172,7 @@ class TestApolloClient:
         result = await default_registry.call("apollo_create_client", ["test-key"])
         assert isinstance(result, ApolloClient)
         assert result.api_key == "test-key"
-        await result._session.close()
+        await result.close()
 
     async def test_empty_key_raises_error(self):
         with pytest.raises(ValueError, match="api_key is required"):
@@ -182,7 +182,7 @@ class TestApolloClient:
         result = await default_registry.call("apollo_create_client", ["secret-key"])
         assert repr(result) == "ApolloClient(api_key=***)"
         assert "secret-key" not in repr(result)
-        await result._session.close()
+        await result.close()
 
     async def test_close_client(self):
         client = await default_registry.call("apollo_create_client", ["test-key"])
@@ -193,7 +193,8 @@ class TestApolloClient:
         client = ApolloClient("test-key")
         async with client as c:
             assert c is client
-        assert client._session.closed
+            session = c._get_session()
+        assert session.closed
 
 
 # =============================================================================
