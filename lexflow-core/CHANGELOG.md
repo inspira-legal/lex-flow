@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.20.2 (2026-10-26)
+
+### Bug Fixes
+
+- **core**: Sessões aiohttp dos clientes não vazam mais (WAVE-875)
+  ([#149](https://github.com/inspira-legal/lex-flow/pull/149),
+  [`31029c9`](https://github.com/inspira-legal/lex-flow/commit/31029c948e9cb8b6812b8f1790db2d10c87fbf40))
+
+
 ## v1.20.1 (2026-10-22)
 
 ### Bug Fixes
