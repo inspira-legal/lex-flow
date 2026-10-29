@@ -85,7 +85,7 @@ def register_http_opcodes():
                 Response dict with keys: status, headers, text, json
             """
             client_timeout = aiohttp.ClientTimeout(total=timeout)
-            async with aiohttp.ClientSession(timeout=client_timeout) as session:
+            async with open_session(timeout=client_timeout) as session:
                 async with session.get(url, headers=headers) as response:
                     text = await response.text()
                     json_data = None
@@ -129,7 +129,7 @@ def register_http_opcodes():
                 Response dict with keys: status, headers, text, json
             """
             client_timeout = aiohttp.ClientTimeout(total=timeout)
-            async with aiohttp.ClientSession(timeout=client_timeout) as session:
+            async with open_session(timeout=client_timeout) as session:
                 async with session.post(
                     url, data=data, json=json, headers=headers
                 ) as response:
@@ -167,7 +167,7 @@ def register_http_opcodes():
                 Response dict with keys: status, headers, text, json
             """
             client_timeout = aiohttp.ClientTimeout(total=timeout)
-            async with aiohttp.ClientSession(timeout=client_timeout) as session:
+            async with open_session(timeout=client_timeout) as session:
                 async with session.post(url, json=json, headers=headers) as response:
                     text = await response.text()
                     json_data = None
@@ -203,7 +203,7 @@ def register_http_opcodes():
                 Response dict with keys: status, headers, text, json
             """
             client_timeout = aiohttp.ClientTimeout(total=timeout)
-            async with aiohttp.ClientSession(timeout=client_timeout) as session:
+            async with open_session(timeout=client_timeout) as session:
                 async with session.post(url, data=data, headers=headers) as response:
                     text = await response.text()
                     json_data = None
@@ -244,7 +244,7 @@ def register_http_opcodes():
             """
             method = method.upper()
             client_timeout = aiohttp.ClientTimeout(total=timeout)
-            async with aiohttp.ClientSession(timeout=client_timeout) as session:
+            async with open_session(timeout=client_timeout) as session:
                 async with session.request(
                     method, url, data=data, json=json, headers=headers
                 ) as response:
@@ -287,7 +287,7 @@ def register_http_opcodes():
                 Each line from the response (stripped of newlines)
             """
             client_timeout = aiohttp.ClientTimeout(total=timeout)
-            async with aiohttp.ClientSession(timeout=client_timeout) as session:
+            async with open_session(timeout=client_timeout) as session:
                 async with session.get(url, headers=headers) as response:
                     async for line in response.content:
                         decoded = line.decode("utf-8").strip()
@@ -313,7 +313,7 @@ def register_http_opcodes():
                 Byte chunks from the response
             """
             client_timeout = aiohttp.ClientTimeout(total=timeout)
-            async with aiohttp.ClientSession(timeout=client_timeout) as session:
+            async with open_session(timeout=client_timeout) as session:
                 async with session.get(url, headers=headers) as response:
                     async for chunk in response.content.iter_chunked(chunk_size):
                         yield chunk

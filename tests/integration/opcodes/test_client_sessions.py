@@ -20,7 +20,7 @@ from lexflow.opcodes.opcodes_clicksign import ClicksignClient
 from lexflow.opcodes.opcodes_hubspot import HubSpotClient
 from lexflow.sessions import RunSessions, current_run_sessions, open_session
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.usefixtures("allow_loopback")]
 
 CONTACT_IDS = ["1", "2", "3", "4", "5"]
 
