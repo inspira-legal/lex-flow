@@ -14,6 +14,7 @@ import json
 import re
 from typing import Any, Dict, List, Optional
 
+from ..secret import REVEAL
 from .opcodes import opcode, register_category
 
 try:
@@ -61,7 +62,7 @@ def register_pgvector_opcodes():
     if not PGVECTOR_AVAILABLE:
         return
 
-    @opcode(category="pgvector")
+    @opcode(category="pgvector", secret_mode=REVEAL)
     async def pgvector_connect(
         dsn: str,
         min_size: int = 1,

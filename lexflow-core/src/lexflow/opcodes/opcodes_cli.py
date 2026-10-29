@@ -7,6 +7,7 @@ No external dependencies - uses standard library only.
 import asyncio
 import sys
 
+from ..secret import PASS
 from .opcodes import opcode, register_category
 
 # Register category at module load time
@@ -63,7 +64,7 @@ class Spinner:
         sys.stdout.flush()
 
 
-@opcode(category="cli")
+@opcode(category="cli", secret_mode=PASS)
 async def spinner_start(message: str = "Loading") -> Spinner:
     """Start an animated spinner.
 
@@ -79,7 +80,7 @@ async def spinner_start(message: str = "Loading") -> Spinner:
     return spinner
 
 
-@opcode(category="cli")
+@opcode(category="cli", secret_mode=PASS)
 async def spinner_update(spinner: Spinner, message: str) -> None:
     """Update the message of a running spinner.
 
@@ -90,7 +91,7 @@ async def spinner_update(spinner: Spinner, message: str) -> None:
     spinner.message = message
 
 
-@opcode(category="cli")
+@opcode(category="cli", secret_mode=PASS)
 async def spinner_stop(
     spinner: Spinner, message: str = "", success: bool = True
 ) -> None:
@@ -104,7 +105,7 @@ async def spinner_stop(
     await spinner.stop(message, success)
 
 
-@opcode(category="cli")
+@opcode(category="cli", secret_mode=PASS)
 async def spinner_fail(spinner: Spinner, message: str = "Failed") -> None:
     """Stop a spinner with failure indicator.
 
@@ -115,7 +116,7 @@ async def spinner_fail(spinner: Spinner, message: str = "Failed") -> None:
     await spinner.stop(message, success=False)
 
 
-@opcode(category="cli")
+@opcode(category="cli", secret_mode=PASS)
 async def progress_bar(
     current: int, total: int, message: str = "", width: int = 30
 ) -> None:
@@ -143,35 +144,35 @@ async def progress_bar(
         sys.stdout.flush()
 
 
-@opcode(category="cli")
+@opcode(category="cli", secret_mode=PASS)
 async def clear_line() -> None:
     """Clear the current terminal line."""
     sys.stdout.write("\r\033[K")
     sys.stdout.flush()
 
 
-@opcode(category="cli")
+@opcode(category="cli", secret_mode=PASS)
 async def print_success(message: str) -> None:
     """Print a success message with green checkmark."""
     sys.stdout.write(f"✓ {message}\n")
     sys.stdout.flush()
 
 
-@opcode(category="cli")
+@opcode(category="cli", secret_mode=PASS)
 async def print_error(message: str) -> None:
     """Print an error message with red X."""
     sys.stdout.write(f"✗ {message}\n")
     sys.stdout.flush()
 
 
-@opcode(category="cli")
+@opcode(category="cli", secret_mode=PASS)
 async def print_warning(message: str) -> None:
     """Print a warning message with yellow indicator."""
     sys.stdout.write(f"⚠ {message}\n")
     sys.stdout.flush()
 
 
-@opcode(category="cli")
+@opcode(category="cli", secret_mode=PASS)
 async def print_info(message: str) -> None:
     """Print an info message with blue indicator."""
     sys.stdout.write(f"ℹ {message}\n")

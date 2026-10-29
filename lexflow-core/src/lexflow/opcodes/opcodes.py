@@ -6,6 +6,16 @@ import asyncio
 import inspect
 import random
 
+from ..secret import (
+    PASS,
+    SECRET_MODES,
+    TAINT,
+    SecretMode,
+    contains_secret,
+    reveal_secrets,
+    taint,
+)
+
 
 def bind_arguments(
     name: str,
@@ -57,6 +67,13 @@ def bind_arguments(
     return list(args[: len(params)]), kwargs
 
 
+def _check_secret_mode(mode: Optional[str]) -> None:
+    if mode is not None and mode not in SECRET_MODES:
+        raise ValueError(
+            f"Unknown secret_mode '{mode}'. Use one of: {', '.join(SECRET_MODES)}"
+        )
+
+
 @dataclass
 class CategoryInfo:
     """Metadata for an opcode category."""
@@ -95,6 +112,8 @@ class OpcodeRegistry:
         self.opcode_categories: dict[str, str] = {}  # opcode_name -> category_id
         self._privileged: set[str] = set()
         self._injected: dict[str, Callable] = {}
+        # opcode_name -> secret mode; TAINT when absent
+        self.secret_modes: dict[str, SecretMode] = {}
         self.descriptions: dict[str, str] = {}  # opcode_name -> user-facing description
         self._register_builtin_categories()
         self._register_builtins()
@@ -221,6 +240,7 @@ class OpcodeRegistry:
         category: str = None,
         privileged: bool = False,
         description: str = "",
+        secret_mode: Optional[SecretMode] = None,
     ):
         """
         Decorator to register an opcode with automatic argument unpacking.
@@ -246,11 +266,19 @@ class OpcodeRegistry:
             name: Custom opcode name (default: function name)
             category: Explicit category ID (default: auto-detect from prefix)
             privileged: If True, opcode requires injection before use
+            secret_mode: How the opcode treats a Secret: "pass", "reveal" or
+                "taint" (the default when omitted). See lexflow.secret.
         """
+        _check_secret_mode(secret_mode)
 
         def decorator(func: Callable) -> Callable:
             # Get opcode name
             opcode_name = name if name else func.__name__
+
+            if secret_mode:
+                self.secret_modes[opcode_name] = secret_mode
+            else:
+                self.secret_modes.pop(opcode_name, None)
 
             # Store category mapping if explicit
             if category:
@@ -288,7 +316,9 @@ class OpcodeRegistry:
                     bound_args, bound_kwargs = bind_arguments(
                         opcode_name, sig, args, kwargs
                     )
-                    return await func(*bound_args, **bound_kwargs)
+                    return await self._invoke(
+                        opcode_name, func, bound_args, bound_kwargs
+                    )
 
                 # Store the wrapper
                 self.opcodes[opcode_name] = wrapper
@@ -337,9 +367,43 @@ class OpcodeRegistry:
             args: list[Any], kwargs: Optional[dict[str, Any]] = None
         ) -> Any:
             bound_args, bound_kwargs = bind_arguments(name, sig, args, kwargs)
-            return await implementation(*bound_args, **bound_kwargs)
+            return await self._invoke(name, implementation, bound_args, bound_kwargs)
 
         self._injected[name] = wrapper
+
+    async def _invoke(
+        self,
+        name: str,
+        func: Callable,
+        args: list[Any],
+        kwargs: dict[str, Any],
+    ) -> Any:
+        """Call an opcode function applying its secret mode."""
+        mode = self.get_secret_mode(name)
+        if mode == PASS or not (contains_secret(args) or contains_secret(kwargs)):
+            return await func(*args, **kwargs)
+
+        try:
+            result = await func(
+                *[reveal_secrets(a) for a in args],
+                **{k: reveal_secrets(v) for k, v in kwargs.items()},
+            )
+        except Exception as e:
+            # The message may carry the real value; control_try binds it as Secret
+            e.__lexflow_secret__ = True
+            raise
+        return taint(result) if mode == TAINT else result
+
+    def set_secret_mode(self, name: str, mode: SecretMode) -> None:
+        """Declare or override how a registered opcode treats a Secret."""
+        if name not in self.opcodes:
+            raise ValueError(f"Unknown opcode: {name}")
+        _check_secret_mode(mode)
+        self.secret_modes[name] = mode
+
+    def get_secret_mode(self, name: str) -> SecretMode:
+        """How an opcode treats a Secret; TAINT when it declared nothing."""
+        return self.secret_modes.get(name, TAINT)
 
     def clear_injection(self, name: str) -> None:
         """Remove injected implementation for a privileged opcode."""
@@ -419,7 +483,7 @@ class OpcodeRegistry:
         """Register built-in opcodes using the decorator pattern."""
 
         # ============ IO Operations ============
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def io_print(*values: Any) -> None:
             """Print values to stdout."""
             print(*values, end="")
@@ -618,29 +682,29 @@ class OpcodeRegistry:
             return str(text).endswith(suffix)
 
         # ============ List Operations ============
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def list_length(items: list) -> int:
             """Get list length."""
             return len(items)
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def list_get(items: list, index: int) -> Any:
             """Get item at index."""
             return items[int(index)]
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def list_append(items: list, value: Any) -> list:
             """Append value to list (returns new list)."""
             new_list = items.copy()
             new_list.append(value)
             return new_list
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def list_contains(items: list, value: Any) -> bool:
             """Check if list contains value."""
             return value in items
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def list_range(start: int, stop: int = None, step: int = 1) -> list[int]:
             """Create a range as list."""
             if stop is None:
@@ -648,7 +712,7 @@ class OpcodeRegistry:
             return list(range(int(start), int(stop), int(step)))
 
         # ============ Dictionary Operations ============
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_create(*args) -> dict:
             """Create dictionary from key-value pair arguments."""
             if not args:
@@ -663,91 +727,91 @@ class OpcodeRegistry:
                 result[args[i]] = args[i + 1]
             return result
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_from_lists(keys: list, values: list) -> dict:
             """Create dict from parallel lists of keys and values."""
             return dict(zip(keys, values))
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_set(d: dict, key: Any, value: Any) -> dict:
             """Set key-value pair (mutates and returns dict for chaining)."""
             d[key] = value
             return d
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_get(d: dict, key: Any, default: Any = None) -> Any:
             """Get value by key with optional default."""
             return d.get(key, default)
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_pop(d: dict, key: Any, default: Any = None) -> Any:
             """Remove and return value by key."""
             return d.pop(key, default)
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_setdefault(d: dict, key: Any, default: Any = None) -> Any:
             """Set key to default if not present, return value."""
             return d.setdefault(key, default)
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_update(d: dict, other: dict) -> dict:
             """Update dict with key-value pairs from other dict."""
             d.update(other)
             return d
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_clear(d: dict) -> dict:
             """Clear all items from dict."""
             d.clear()
             return d
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_copy(d: dict) -> dict:
             """Create a shallow copy of the dict."""
             return d.copy()
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_keys(d: dict) -> list:
             """Get list of all keys."""
             return list(d.keys())
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_values(d: dict) -> list:
             """Get list of all values."""
             return list(d.values())
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_items(d: dict) -> list:
             """Get list of (key, value) tuples."""
             return list(d.items())
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_contains(d: dict, key: Any) -> bool:
             """Check if key exists in dict."""
             return key in d
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_len(d: dict) -> int:
             """Get number of items in dict."""
             return len(d)
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def dict_is_empty(d: dict) -> bool:
             """Check if dict is empty."""
             return len(d) == 0
 
         # ============ Object Operations ============
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def object_create() -> SimpleNamespace:
             """Create empty object (SimpleNamespace)."""
             return SimpleNamespace()
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def object_from_dict(d: dict) -> SimpleNamespace:
             """Create object from dictionary."""
             return SimpleNamespace(**d)
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def object_get(
             obj: Union[SimpleNamespace, dict], key: str, default: Any = None
         ) -> Any:
@@ -761,7 +825,7 @@ class OpcodeRegistry:
                     f"object_get only works with SimpleNamespace or dict, not {type(obj).__name__}"
                 )
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def object_set(
             obj: Union[SimpleNamespace, dict], key: str, value: Any
         ) -> Union[SimpleNamespace, dict]:
@@ -777,7 +841,7 @@ class OpcodeRegistry:
                     f"object_set only works with SimpleNamespace or dict, not {type(obj).__name__}"
                 )
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def object_has(obj: Union[SimpleNamespace, dict], key: str) -> bool:
             """Check if object has property."""
             if isinstance(obj, SimpleNamespace):
@@ -787,7 +851,7 @@ class OpcodeRegistry:
             else:
                 raise TypeError("object_has only works with SimpleNamespace or dict")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def object_remove(
             obj: Union[SimpleNamespace, dict], key: str
         ) -> Union[SimpleNamespace, dict]:
@@ -802,7 +866,7 @@ class OpcodeRegistry:
             else:
                 raise TypeError("object_remove only works with SimpleNamespace or dict")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def object_keys(obj: Union[SimpleNamespace, dict]) -> list:
             """Get list of all property names."""
             if isinstance(obj, SimpleNamespace):
@@ -812,7 +876,7 @@ class OpcodeRegistry:
             else:
                 raise TypeError("object_keys only works with SimpleNamespace or dict")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def object_to_dict(obj: Union[SimpleNamespace, dict]) -> dict:
             """Convert object to dictionary."""
             if isinstance(obj, SimpleNamespace):
@@ -856,38 +920,38 @@ class OpcodeRegistry:
             return list(range(*[int(a) for a in args]))
 
         # ============ Workflow Operations ============
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def workflow_start() -> None:
             """Workflow entry point marker (no-op)."""
             pass
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def noop() -> None:
             """No operation."""
             pass
 
         # ============ Exception Operations ============
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def throw(message: str) -> None:
             """Throw a runtime error with message."""
             raise RuntimeError(message)
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def throw_value_error(message: str) -> None:
             """Throw a ValueError."""
             raise ValueError(message)
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def throw_type_error(message: str) -> None:
             """Throw a TypeError."""
             raise TypeError(message)
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def throw_assertion_error(message: str) -> None:
             """Throw an AssertionError."""
             raise AssertionError(message)
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def assert_true(
             condition: bool, message: str = "Assertion failed"
         ) -> None:
@@ -895,7 +959,7 @@ class OpcodeRegistry:
             if not bool(condition):
                 raise AssertionError(message)
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def assert_equals(
             left: Any, right: Any, message: str = "Values not equal"
         ) -> None:
@@ -907,104 +971,104 @@ class OpcodeRegistry:
         # These opcodes exist for introspection/documentation purposes.
         # Actual execution is handled by the parser and executor, not opcode dispatch.
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def data_get_variable(var_name: str) -> Any:
             """Get variable value - handled by parser as Variable reference."""
             raise NotImplementedError(
                 "data_get_variable should be handled by parser as Variable"
             )
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def data_set_variable_to(variable: str, value: Any) -> None:
             """Set variable to a value."""
             raise NotImplementedError(
                 "data_set_variable_to should be handled by parser"
             )
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def workflow_return(value: Any = None) -> None:
             """Return a value from the current workflow."""
             raise NotImplementedError("workflow_return should be handled by parser")
 
         # ============ Control Flow (handled by parser/executor) ============
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def control_if(condition: bool, then_branch: Any) -> None:
             """Execute branch if condition is true."""
             raise NotImplementedError("control_if should be handled by parser")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def control_if_else(
             condition: bool, then_branch: Any, else_branch: Any
         ) -> None:
             """Execute then_branch if condition is true, else_branch otherwise."""
             raise NotImplementedError("control_if_else should be handled by parser")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def control_while(condition: bool, body: Any) -> None:
             """Repeat body while condition is true."""
             raise NotImplementedError("control_while should be handled by parser")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def control_for(
             var: str, start: int, end: int, step: int = 1, body: Any = None
         ) -> None:
             """Loop from start to end with step, binding each value to var."""
             raise NotImplementedError("control_for should be handled by parser")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def control_foreach(var: str, iterable: Any, body: Any) -> None:
             """Iterate over items in iterable, binding each to var."""
             raise NotImplementedError("control_foreach should be handled by parser")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def control_fork(*branches: Any) -> None:
             """Execute multiple branches concurrently."""
             raise NotImplementedError("control_fork should be handled by parser")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def control_try(
             try_body: Any, catch_handlers: Any = None, finally_body: Any = None
         ) -> None:
             """Execute try_body with exception handling."""
             raise NotImplementedError("control_try should be handled by parser")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def control_throw(message: str) -> None:
             """Throw a runtime error with the given message."""
             raise NotImplementedError("control_throw should be handled by parser")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def workflow_call(workflow: str, *args: Any) -> Any:
             """Call another workflow by name with arguments."""
             raise NotImplementedError("workflow_call should be handled by parser")
 
         # ============ Async Control Flow (handled by parser/executor) ============
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def control_spawn(body: Any, var: str = None) -> None:
             """Spawn body as a background task, optionally storing handle in var."""
             raise NotImplementedError("control_spawn should be handled by parser")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def control_async_foreach(var: str, iterable: Any, body: Any) -> None:
             """Async iterate over items in async iterable, binding each to var."""
             raise NotImplementedError(
                 "control_async_foreach should be handled by parser"
             )
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def async_timeout(
             timeout: float, body: Any, on_timeout: Any = None
         ) -> None:
             """Execute body with timeout, optionally running on_timeout if exceeded."""
             raise NotImplementedError("async_timeout should be handled by parser")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def control_with(resource: Any, var: str, body: Any) -> None:
             """Execute body with resource as async context manager, binding to var."""
             raise NotImplementedError("control_with should be handled by parser")
 
         # ============ Async Utility Operations ============
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def async_range(
             start: int, stop: int = None, step: int = 1, delay: float = 0
         ) -> AsyncGenerator[int, None]:
@@ -1036,7 +1100,7 @@ class OpcodeRegistry:
 
             return gen()
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def async_from_list(
             items: List[Any], delay: float = 0
         ) -> AsyncGenerator[Any, None]:
@@ -1092,7 +1156,13 @@ class OpcodeRegistry:
 default_registry = OpcodeRegistry()
 
 
-def opcode(name: str = None, *, category: str = None, description: str = ""):
+def opcode(
+    name: str = None,
+    *,
+    category: str = None,
+    description: str = "",
+    secret_mode: Optional[SecretMode] = None,
+):
     """Convenience decorator for registering opcodes to the default global registry.
 
     Usage:
@@ -1104,7 +1174,9 @@ def opcode(name: str = None, *, category: str = None, description: str = ""):
         async def my_category_op(x: int) -> int:
             return x * 2
     """
-    return default_registry.register(name, category=category, description=description)
+    return default_registry.register(
+        name, category=category, description=description, secret_mode=secret_mode
+    )
 
 
 def register_category(

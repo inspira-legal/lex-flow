@@ -8,6 +8,7 @@ No external dependencies - uses standard library only.
 import asyncio
 from typing import Any, List, Optional
 
+from ..secret import PASS
 from .opcodes import opcode, register_category
 from ..channel import Channel
 
@@ -45,7 +46,7 @@ register_category(
 # ============================================================================
 
 
-@opcode(category="task")
+@opcode(category="task", secret_mode=PASS)
 async def task_is_done(task) -> bool:
     """Check if a background task has completed.
 
@@ -58,7 +59,7 @@ async def task_is_done(task) -> bool:
     return task.done
 
 
-@opcode(category="task")
+@opcode(category="task", secret_mode=PASS)
 async def task_cancel(task) -> bool:
     """Request cancellation of a background task.
 
@@ -74,7 +75,7 @@ async def task_cancel(task) -> bool:
     return False
 
 
-@opcode(category="task")
+@opcode(category="task", secret_mode=PASS)
 async def task_await(task, timeout: Optional[float] = None) -> Any:
     """Wait for a background task to complete and get its result.
 
@@ -92,7 +93,7 @@ async def task_await(task, timeout: Optional[float] = None) -> Any:
     return await asyncio.wait_for(task._task, timeout=timeout)
 
 
-@opcode(category="task")
+@opcode(category="task", secret_mode=PASS)
 async def task_await_all(tasks: List, timeout: Optional[float] = None) -> List[Any]:
     """Wait for multiple tasks to complete.
 
@@ -110,7 +111,7 @@ async def task_await_all(tasks: List, timeout: Optional[float] = None) -> List[A
     return await asyncio.wait_for(wait_all(), timeout=timeout)
 
 
-@opcode(category="task")
+@opcode(category="task", secret_mode=PASS)
 async def task_result(task) -> Any:
     """Get the result of a completed task.
 
@@ -126,7 +127,7 @@ async def task_result(task) -> Any:
     return task.result()
 
 
-@opcode(category="task")
+@opcode(category="task", secret_mode=PASS)
 async def task_exception(task) -> Optional[str]:
     """Get the exception message from a failed task.
 
@@ -140,7 +141,7 @@ async def task_exception(task) -> Optional[str]:
     return str(exc) if exc else None
 
 
-@opcode(category="task")
+@opcode(category="task", secret_mode=PASS)
 async def task_sleep(seconds: float) -> None:
     """Sleep for the specified number of seconds.
 
@@ -150,13 +151,13 @@ async def task_sleep(seconds: float) -> None:
     await asyncio.sleep(seconds)
 
 
-@opcode(category="task")
+@opcode(category="task", secret_mode=PASS)
 async def task_yield() -> None:
     """Yield control to other tasks momentarily."""
     await asyncio.sleep(0)
 
 
-@opcode(category="task")
+@opcode(category="task", secret_mode=PASS)
 async def task_id(task) -> int:
     """Get the ID of a task.
 
@@ -169,7 +170,7 @@ async def task_id(task) -> int:
     return task.id
 
 
-@opcode(category="task")
+@opcode(category="task", secret_mode=PASS)
 async def task_name(task) -> str:
     """Get the name of a task.
 
@@ -187,7 +188,7 @@ async def task_name(task) -> str:
 # ============================================================================
 
 
-@opcode(category="channel")
+@opcode(category="channel", secret_mode=PASS)
 async def channel_create(size: int = 0) -> Channel:
     """Create a new channel for inter-task communication.
 
@@ -200,7 +201,7 @@ async def channel_create(size: int = 0) -> Channel:
     return Channel(maxsize=size)
 
 
-@opcode(category="channel")
+@opcode(category="channel", secret_mode=PASS)
 async def channel_send(channel: Channel, value: Any) -> None:
     """Send a value through a channel.
 
@@ -216,7 +217,7 @@ async def channel_send(channel: Channel, value: Any) -> None:
     await channel.send(value)
 
 
-@opcode(category="channel")
+@opcode(category="channel", secret_mode=PASS)
 async def channel_receive(channel: Channel, timeout: Optional[float] = None) -> Any:
     """Receive a value from a channel.
 
@@ -236,7 +237,7 @@ async def channel_receive(channel: Channel, timeout: Optional[float] = None) -> 
     return await channel.receive(timeout=timeout)
 
 
-@opcode(category="channel")
+@opcode(category="channel", secret_mode=PASS)
 async def channel_try_receive(channel: Channel) -> dict:
     """Try to receive a value without blocking.
 
@@ -250,7 +251,7 @@ async def channel_try_receive(channel: Channel) -> dict:
     return {"value": value, "ok": ok}
 
 
-@opcode(category="channel")
+@opcode(category="channel", secret_mode=PASS)
 async def channel_close(channel: Channel) -> None:
     """Close a channel.
 
@@ -260,7 +261,7 @@ async def channel_close(channel: Channel) -> None:
     channel.close()
 
 
-@opcode(category="channel")
+@opcode(category="channel", secret_mode=PASS)
 async def channel_len(channel: Channel) -> int:
     """Get the number of items in the channel buffer.
 
@@ -273,7 +274,7 @@ async def channel_len(channel: Channel) -> int:
     return len(channel)
 
 
-@opcode(category="channel")
+@opcode(category="channel", secret_mode=PASS)
 async def channel_is_closed(channel: Channel) -> bool:
     """Check if a channel is closed.
 
@@ -286,7 +287,7 @@ async def channel_is_closed(channel: Channel) -> bool:
     return channel.closed
 
 
-@opcode(category="channel")
+@opcode(category="channel", secret_mode=PASS)
 async def channel_is_empty(channel: Channel) -> bool:
     """Check if a channel buffer is empty.
 
@@ -304,7 +305,7 @@ async def channel_is_empty(channel: Channel) -> bool:
 # ============================================================================
 
 
-@opcode(category="sync")
+@opcode(category="sync", secret_mode=PASS)
 async def sync_semaphore_create(permits: int = 1) -> asyncio.Semaphore:
     """Create a semaphore for limiting concurrent access.
 
@@ -317,7 +318,7 @@ async def sync_semaphore_create(permits: int = 1) -> asyncio.Semaphore:
     return asyncio.Semaphore(permits)
 
 
-@opcode(category="sync")
+@opcode(category="sync", secret_mode=PASS)
 async def sync_semaphore_acquire(
     semaphore: asyncio.Semaphore, timeout: Optional[float] = None
 ) -> bool:
@@ -341,7 +342,7 @@ async def sync_semaphore_acquire(
         return True
 
 
-@opcode(category="sync")
+@opcode(category="sync", secret_mode=PASS)
 async def sync_semaphore_release(semaphore: asyncio.Semaphore) -> None:
     """Release a semaphore permit.
 
@@ -351,7 +352,7 @@ async def sync_semaphore_release(semaphore: asyncio.Semaphore) -> None:
     semaphore.release()
 
 
-@opcode(category="sync")
+@opcode(category="sync", secret_mode=PASS)
 async def sync_event_create() -> asyncio.Event:
     """Create an event for signaling between tasks.
 
@@ -361,7 +362,7 @@ async def sync_event_create() -> asyncio.Event:
     return asyncio.Event()
 
 
-@opcode(category="sync")
+@opcode(category="sync", secret_mode=PASS)
 async def sync_event_set(event: asyncio.Event) -> None:
     """Set an event (signal waiting tasks).
 
@@ -371,7 +372,7 @@ async def sync_event_set(event: asyncio.Event) -> None:
     event.set()
 
 
-@opcode(category="sync")
+@opcode(category="sync", secret_mode=PASS)
 async def sync_event_wait(
     event: asyncio.Event, timeout: Optional[float] = None
 ) -> bool:
@@ -395,7 +396,7 @@ async def sync_event_wait(
         return True
 
 
-@opcode(category="sync")
+@opcode(category="sync", secret_mode=PASS)
 async def sync_event_clear(event: asyncio.Event) -> None:
     """Clear an event (reset to unset state).
 
@@ -405,7 +406,7 @@ async def sync_event_clear(event: asyncio.Event) -> None:
     event.clear()
 
 
-@opcode(category="sync")
+@opcode(category="sync", secret_mode=PASS)
 async def sync_event_is_set(event: asyncio.Event) -> bool:
     """Check if an event is set.
 

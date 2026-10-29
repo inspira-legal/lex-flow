@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, TypedDict
 
+from ..secret import REVEAL
+
 if TYPE_CHECKING:
     from gcloud.aio.storage import Storage
 
@@ -63,7 +65,7 @@ def register_gcs_opcodes():
         order=220,
     )
 
-    @opcode(category="gcs")
+    @opcode(category="gcs", secret_mode=REVEAL)
     async def gcs_create_client(
         service_file: Optional[str] = None,
     ) -> Storage:
