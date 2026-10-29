@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.20.3 (2026-10-29)
+
+### Bug Fixes
+
+- **core**: Http_* e clientes de opcode só alcançam hosts públicos (WAVE-988)
+  ([#150](https://github.com/inspira-legal/lex-flow/pull/150),
+  [`82859b5`](https://github.com/inspira-legal/lex-flow/commit/82859b58f634c25f00bcbc35fbed688bb6b2d4c6))
+
+
 ## v1.20.2 (2026-10-26)
 
 ### Bug Fixes
