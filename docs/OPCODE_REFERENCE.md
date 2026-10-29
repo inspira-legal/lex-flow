@@ -5645,9 +5645,10 @@ Args:
     task: LexFlowTask handle from control_spawn
 
 Returns:
-    Exception message as string, or None if succeeded/not done
+    Exception message as string (a Secret when the failing opcode saw one),
+    or None if succeeded/not done
 
-**Returns:** `Optional[str]`
+**Returns:** `Union[str, lexflow.secret.Secret, NoneType]`
 
 ---
 

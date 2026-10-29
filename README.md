@@ -59,6 +59,26 @@ engine = Engine(program)
 result = await engine.run()
 ```
 
+### Secret Values
+
+Wrap a credential in `lexflow.secret.Secret` before passing it as an input. A `Secret`
+prints, formats and is returned as `***`; `.reveal()` gives the real value, and
+`redact_secrets(value)` replaces every `Secret` in a structure by `***` before you
+serialize it (a bare `json.dumps` raises on a `Secret`).
+
+Each opcode declares a `secret_mode` that decides what it does with one:
+
+- `pass`: moves the object without opening it (`dict_get`, `list_append`, `io_print`).
+- `reveal`: receives the real value and returns its result as is (`http_*`, client
+  constructors that take a credential).
+- `taint` (the default): receives the real value; if any argument held a `Secret`,
+  every string in the result comes back as a `Secret`. Numbers and booleans come back
+  raw.
+
+When a `taint` opcode that saw a `Secret` raises, the message a `catch` gets (and
+`task_exception` returns) is a `Secret` too. See the "Secret Values" section of
+[`lexflow-core/CLAUDE.md`](./lexflow-core/CLAUDE.md) to declare the mode of a new opcode.
+
 ## Example Workflow
 
 ```yaml

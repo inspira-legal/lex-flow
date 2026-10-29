@@ -114,6 +114,35 @@ This pattern:
 - Makes testing easier (can inject mock implementations)
 - Clearly marks which opcodes require engine context
 
+#### Secret Values
+
+`lexflow.secret.Secret` wraps a `str` that prints, formats and redacts as `***`;
+`.reveal()` returns the real value. `redact_secrets(value)` returns a structure with
+every `Secret` (dict keys included) replaced by `***`, for logs and responses. Import
+both from `lexflow.secret`.
+
+Each opcode declares how it treats a `Secret` with `secret_mode` on `@opcode(...)` or
+`registry.register(...)`:
+
+- `"taint"` (default): arguments arrive with real values; when any carried a `Secret`,
+  every `str` in the result comes back as a `Secret` (dict keys stay `str`).
+- `"reveal"`: arguments arrive with real values; the result is untouched. Use it for
+  opcodes that send credentials out (HTTP headers, client constructors).
+- `"pass"`: arguments and result are untouched; the opcode sees `Secret` objects. Use it
+  for opcodes that only move values around (`dict_get`, `list_append`, `io_print`).
+
+```python
+@opcode(secret_mode="reveal")
+async def acme_create_client(api_key: str) -> AcmeClient:
+    return AcmeClient(api_key)
+
+registry.set_secret_mode("acme_create_client", "pass")  # override by name
+```
+
+When a `"taint"` opcode that saw a `Secret` raises, the message a `catch` binds (and
+`task_exception` returns) is a `Secret`. A `"reveal"` opcode's message stays plain text;
+consumers redact secret values from it by equality.
+
 ### 3. Pattern Matching in Executor
 
 Use Python's `match/case` for statement execution. Keep each case simple.

@@ -26,6 +26,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 if TYPE_CHECKING:
     from google.auth.credentials import Credentials
 
+from ..secret import REVEAL
+
 try:
     from google.oauth2.service_account import Credentials
     from google.auth import default as google_auth_default
@@ -76,7 +78,7 @@ def register_sheets_opcodes():
     # Authentication
     # ============================================================================
 
-    @opcode(category="sheets")
+    @opcode(category="sheets", secret_mode=REVEAL)
     async def sheets_create_client(
         credentials_path: Optional[str] = None,
     ) -> SheetsClient:

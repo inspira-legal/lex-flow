@@ -12,6 +12,7 @@ Chat History Format:
 
 from typing import Any, List, Optional
 
+from ..secret import PASS
 from .opcodes import opcode, register_category
 
 # Register category at module load time (no external deps)
@@ -25,7 +26,7 @@ register_category(
 )
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_create() -> List[dict]:
     """Create a new empty chat history.
 
@@ -35,7 +36,7 @@ async def chat_create() -> List[dict]:
     return []
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_add_message(history: List[dict], role: str, content: str) -> List[dict]:
     """Add a message to chat history.
 
@@ -56,7 +57,7 @@ async def chat_add_message(history: List[dict], role: str, content: str) -> List
     return history
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_add_user(history: List[dict], content: str) -> List[dict]:
     """Add a user message to chat history.
 
@@ -71,7 +72,7 @@ async def chat_add_user(history: List[dict], content: str) -> List[dict]:
     return history
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_add_assistant(history: List[dict], content: str) -> List[dict]:
     """Add an assistant message to chat history.
 
@@ -86,7 +87,7 @@ async def chat_add_assistant(history: List[dict], content: str) -> List[dict]:
     return history
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_get_last(
     history: List[dict], role: Optional[str] = None
 ) -> Optional[dict]:
@@ -112,7 +113,7 @@ async def chat_get_last(
     return None
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_length(history: List[dict]) -> int:
     """Get the number of messages in chat history.
 
@@ -125,7 +126,7 @@ async def chat_length(history: List[dict]) -> int:
     return len(history)
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_clear(history: List[dict]) -> List[dict]:
     """Clear all messages from chat history.
 

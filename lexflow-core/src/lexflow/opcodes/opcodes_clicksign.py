@@ -11,6 +11,7 @@ Authentication:
 from typing import Any, Dict, List, Optional
 
 from ..sessions import open_session
+from ..secret import REVEAL
 from .opcodes import opcode, register_category
 
 try:
@@ -143,7 +144,7 @@ def register_clicksign_opcodes():
     # Authentication
     # ============================================================================
 
-    @opcode(category="clicksign")
+    @opcode(category="clicksign", secret_mode=REVEAL)
     async def clicksign_create_client(
         access_token: str,
         sandbox: bool = True,
