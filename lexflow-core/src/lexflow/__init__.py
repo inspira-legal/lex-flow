@@ -9,6 +9,7 @@ from .executor import Executor
 from .workflows import WorkflowManager
 from .metrics import ExecutionMetrics, NullMetrics
 from .opcodes import default_registry, OpcodeRegistry, opcode
+from .secret import Secret, redact_secrets
 from .grammar import (
     get_grammar,
     get_construct,
@@ -33,6 +34,8 @@ __all__ = [
     "OpcodeRegistry",
     "default_registry",
     "opcode",
+    "Secret",
+    "redact_secrets",
     "WorkflowManager",
     "ExecutionMetrics",
     "NullMetrics",
