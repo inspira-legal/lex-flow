@@ -98,6 +98,17 @@ class TestRegisterWrapper:
             await reg.call("t_fail", [Secret(VALUE)])
         assert is_secret_exception(exc.value)
 
+    async def test_reveal_exception_is_not_marked(self):
+        reg = OpcodeRegistry()
+
+        @reg.register(secret_mode="reveal")
+        async def r_fail(value) -> str:
+            raise ValueError("request failed")
+
+        with pytest.raises(ValueError) as exc:
+            await reg.call("r_fail", [Secret(VALUE)])
+        assert not is_secret_exception(exc.value)
+
     async def test_exception_is_not_marked_without_secret(self):
         reg, _ = make_registry()
         with pytest.raises(ValueError) as exc:

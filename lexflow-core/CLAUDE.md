@@ -139,8 +139,9 @@ async def acme_create_client(api_key: str) -> AcmeClient:
 registry.set_secret_mode("acme_create_client", "pass")  # override by name
 ```
 
-When a `"reveal"` or `"taint"` opcode that saw a `Secret` raises, the message a
-`catch` binds (and `task_exception` returns) is a `Secret`.
+When a `"taint"` opcode that saw a `Secret` raises, the message a `catch` binds (and
+`task_exception` returns) is a `Secret`. A `"reveal"` opcode's message stays plain text;
+consumers redact secret values from it by equality.
 
 ### 3. Pattern Matching in Executor
 

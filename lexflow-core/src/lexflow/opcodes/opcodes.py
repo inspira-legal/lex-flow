@@ -390,8 +390,11 @@ class OpcodeRegistry:
                 **{k: reveal_secrets(v) for k, v in kwargs.items()},
             )
         except Exception as e:
-            # The message may carry the real value; control_try binds it as Secret
-            mark_secret_exception(e)
+            # A taint opcode's message may carry the real value; control_try binds
+            # it as Secret. Reveal opcodes keep plain text, covered by the
+            # consumer's equality redaction.
+            if mode == TAINT:
+                mark_secret_exception(e)
             raise
         return taint(result) if mode == TAINT else result
 
