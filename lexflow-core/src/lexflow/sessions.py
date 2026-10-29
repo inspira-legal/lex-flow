@@ -6,6 +6,8 @@ from typing import Any, List, Optional
 
 import aiohttp
 
+from .egress import GuardedConnector
+
 
 class RunSessions:
     """Sessions opened during one run, sharing one connection pool."""
@@ -17,7 +19,7 @@ class RunSessions:
     def open(self, **kwargs: Any) -> aiohttp.ClientSession:
         """Open a session on the run's connector and track it."""
         if self._connector is None:
-            self._connector = aiohttp.TCPConnector()
+            self._connector = GuardedConnector()
         session = aiohttp.ClientSession(
             connector=self._connector, connector_owner=False, **kwargs
         )
@@ -42,8 +44,8 @@ current_run_sessions: ContextVar[Optional[RunSessions]] = ContextVar(
 
 
 def open_session(**kwargs: Any) -> aiohttp.ClientSession:
-    """Open a ClientSession, tracked by the current run when there is one."""
+    """Open a ClientSession that only reaches public hosts, tracked by the current run when there is one."""
     run = current_run_sessions.get()
     if run is None:
-        return aiohttp.ClientSession(**kwargs)
+        return aiohttp.ClientSession(connector=GuardedConnector(), **kwargs)
     return run.open(**kwargs)
