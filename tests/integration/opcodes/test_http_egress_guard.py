@@ -26,7 +26,7 @@ BLOCKED_ADDRESSES = [
     ("metadata", "169.254.169.254"),
     ("link-local", "169.254.1.1"),
     ("loopback", "127.0.0.1"),
-    ("private 10/8", "10.171.51.99"),
+    ("private 10/8", "10.20.30.40"),
     ("private 172.16/12", "172.16.0.1"),
     ("private 192.168/16", "192.168.1.1"),
     ("cgnat", "100.64.0.1"),
@@ -110,9 +110,7 @@ class TestAddressCheck:
         with pytest.raises(BlockedDestinationError, match="internal address"):
             check_address("evil.example", address)
 
-    @pytest.mark.parametrize(
-        "address", ["8.8.8.8", "34.111.121.76", "2001:4860:4860::8888"]
-    )
+    @pytest.mark.parametrize("address", ["8.8.8.8", "1.1.1.1", "2001:4860:4860::8888"])
     def test_public_address_passes(self, address):
         check_address("api.example.com", address)
 
@@ -135,7 +133,7 @@ class TestHttpOpcodesRefuseInternalDestinations:
         "opcode,args",
         [
             ("http_get", ["http://169.254.169.254/computeMetadata/v1/"]),
-            ("http_post", ["http://10.171.51.99:6379/"]),
+            ("http_post", ["http://10.20.30.40:6379/"]),
             ("http_post_json", ["http://127.0.0.1:8080/", {"a": 1}]),
             ("http_post_data", ["http://192.168.0.10/", "x=1"]),
             ("http_request", ["PUT", "http://[::1]:8080/"]),
@@ -153,7 +151,7 @@ class TestHttpOpcodesRefuseInternalDestinations:
             )
 
     async def test_hostname_resolving_to_internal_ip_is_refused(self, fake_dns):
-        fake_dns["rebind.example"] = "10.171.51.99"
+        fake_dns["rebind.example"] = "10.20.30.40"
         with pytest.raises(BlockedDestinationError, match="rebind.example"):
             await default_registry.call("http_get", ["http://rebind.example/"])
 
