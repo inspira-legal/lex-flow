@@ -5,7 +5,7 @@ from typing import Any, List, Optional, Sequence
 
 import aiohttp
 
-BLOCKED_HOSTNAMES = {"metadata.google.internal"}
+BLOCKED_HOSTNAMES = {"metadata.google.internal", "metadata"}
 
 BLOCKED_NETWORKS = [
     ipaddress.ip_network(net)
@@ -19,8 +19,12 @@ BLOCKED_NETWORKS = [
         "192.168.0.0/16",
         "224.0.0.0/4",
         "240.0.0.0/4",
-        "::/128",
+        "::/96",  # unspecified, loopback and IPv4-compatible
         "::1/128",
+        "64:ff9b::/96",  # NAT64 embeds an IPv4 address
+        "64:ff9b:1::/48",
+        "2001::/32",  # Teredo
+        "2002::/16",  # 6to4
         "fc00::/7",
         "fe80::/10",
         "ff00::/8",

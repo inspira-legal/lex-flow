@@ -41,6 +41,10 @@ BLOCKED_ADDRESSES = [
     ("ipv6 multicast", "ff02::1"),
     ("ipv4-mapped metadata", "::ffff:169.254.169.254"),
     ("ipv4-mapped private", "::ffff:10.0.0.1"),
+    ("ipv4-compatible", "::127.0.0.1"),
+    ("nat64 metadata", "64:ff9b::a9fe:a9fe"),
+    ("6to4 loopback", "2002:7f00:1::"),
+    ("teredo", "2001:0:4136:e378::1"),
 ]
 
 
@@ -116,6 +120,7 @@ class TestAddressCheck:
         "host",
         [
             "metadata.google.internal",
+            "metadata",
             "metadata.google.internal.",
             "METADATA.google.internal",
         ],
