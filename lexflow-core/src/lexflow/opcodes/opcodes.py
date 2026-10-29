@@ -12,6 +12,7 @@ from ..secret import (
     TAINT,
     SecretMode,
     contains_secret,
+    mark_secret_exception,
     reveal_secrets,
     taint,
 )
@@ -113,7 +114,7 @@ class OpcodeRegistry:
         self._privileged: set[str] = set()
         self._injected: dict[str, Callable] = {}
         # opcode_name -> secret mode; TAINT when absent
-        self.secret_modes: dict[str, SecretMode] = {}
+        self._secret_modes: dict[str, SecretMode] = {}
         self.descriptions: dict[str, str] = {}  # opcode_name -> user-facing description
         self._register_builtin_categories()
         self._register_builtins()
@@ -276,9 +277,9 @@ class OpcodeRegistry:
             opcode_name = name if name else func.__name__
 
             if secret_mode:
-                self.secret_modes[opcode_name] = secret_mode
+                self._secret_modes[opcode_name] = secret_mode
             else:
-                self.secret_modes.pop(opcode_name, None)
+                self._secret_modes.pop(opcode_name, None)
 
             # Store category mapping if explicit
             if category:
@@ -390,7 +391,7 @@ class OpcodeRegistry:
             )
         except Exception as e:
             # The message may carry the real value; control_try binds it as Secret
-            e.__lexflow_secret__ = True
+            mark_secret_exception(e)
             raise
         return taint(result) if mode == TAINT else result
 
@@ -399,11 +400,11 @@ class OpcodeRegistry:
         if name not in self.opcodes:
             raise ValueError(f"Unknown opcode: {name}")
         _check_secret_mode(mode)
-        self.secret_modes[name] = mode
+        self._secret_modes[name] = mode
 
     def get_secret_mode(self, name: str) -> SecretMode:
         """How an opcode treats a Secret; TAINT when it declared nothing."""
-        return self.secret_modes.get(name, TAINT)
+        return self._secret_modes.get(name, TAINT)
 
     def clear_injection(self, name: str) -> None:
         """Remove injected implementation for a privileged opcode."""
@@ -488,7 +489,7 @@ class OpcodeRegistry:
             """Print values to stdout."""
             print(*values, end="")
 
-        @self.register()
+        @self.register(secret_mode=PASS)
         async def io_input(prompt: str = "") -> str:
             """Get input from user."""
             return input(prompt)

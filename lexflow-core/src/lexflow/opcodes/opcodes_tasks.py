@@ -6,9 +6,9 @@ No external dependencies - uses standard library only.
 """
 
 import asyncio
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
-from ..secret import PASS
+from ..secret import PASS, Secret, is_secret_exception
 from .opcodes import opcode, register_category
 from ..channel import Channel
 
@@ -128,17 +128,20 @@ async def task_result(task) -> Any:
 
 
 @opcode(category="task", secret_mode=PASS)
-async def task_exception(task) -> Optional[str]:
+async def task_exception(task) -> Optional[Union[str, Secret]]:
     """Get the exception message from a failed task.
 
     Args:
         task: LexFlowTask handle from control_spawn
 
     Returns:
-        Exception message as string, or None if succeeded/not done
+        Exception message as string (a Secret when the failing opcode saw one),
+        or None if succeeded/not done
     """
     exc = task.exception()
-    return str(exc) if exc else None
+    if not exc:
+        return None
+    return Secret(str(exc)) if is_secret_exception(exc) else str(exc)
 
 
 @opcode(category="task", secret_mode=PASS)

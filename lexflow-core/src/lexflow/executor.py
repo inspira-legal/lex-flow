@@ -25,7 +25,7 @@ from .ast import (
     Statement,
 )
 from .opcodes import OpcodeRegistry
-from .secret import Secret
+from .secret import Secret, is_secret_exception
 from .metrics import ExecutionMetrics, NullMetrics
 
 if TYPE_CHECKING:
@@ -260,12 +260,10 @@ class Executor:
                 await self.exec(finally_)
 
     @staticmethod
-    def _catch_message(exception: Exception) -> Union[str, Secret]:
+    def _catch_message(exception: Exception) -> str | Secret:
         """The message a catch binds; a Secret when the opcode that raised saw one."""
         message = str(exception)
-        if getattr(exception, "__lexflow_secret__", False):
-            return Secret(message)
-        return message
+        return Secret(message) if is_secret_exception(exception) else message
 
     def _matches_exception(
         self, exception: Exception, expected_type: Optional[str]

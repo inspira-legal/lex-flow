@@ -1,13 +1,16 @@
 """How opcodes treat a Secret: pass, reveal or taint (WAVE-989)."""
 
+import asyncio
 import io
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 
 import pytest
 
-from lexflow import Engine, OpcodeRegistry, Parser, Secret, default_registry, opcode
-from lexflow import redact_secrets
+from lexflow import Engine, OpcodeRegistry, Parser, default_registry, opcode
 from lexflow.opcodes import opcodes_http
+from lexflow.tasks import TaskManager
+from lexflow.secret import Secret, is_secret_exception, redact_secrets
 
 pytestmark = pytest.mark.asyncio
 
@@ -93,13 +96,54 @@ class TestRegisterWrapper:
         reg, _ = make_registry()
         with pytest.raises(ValueError) as exc:
             await reg.call("t_fail", [Secret(VALUE)])
-        assert getattr(exc.value, "__lexflow_secret__", False)
+        assert is_secret_exception(exc.value)
 
     async def test_exception_is_not_marked_without_secret(self):
         reg, _ = make_registry()
         with pytest.raises(ValueError) as exc:
             await reg.call("t_fail", ["plain"])
-        assert not getattr(exc.value, "__lexflow_secret__", False)
+        assert not is_secret_exception(exc.value)
+
+    async def test_kwargs_are_unwrapped_for_reveal_and_taint(self):
+        reg, seen = make_registry()
+        secret = Secret(VALUE)
+        await reg.call("t_reveal", ["v"], {"extra": {"h": secret}})
+        assert seen["reveal"][1] == {"h": VALUE}
+        assert type(seen["reveal"][1]["h"]) is str
+        result = await reg.call("t_taint", [], {"value": secret})
+        assert seen["taint"][0] == VALUE and type(seen["taint"][0]) is str
+        assert isinstance(result["echo"], Secret)
+
+    async def test_containers_are_unwrapped(self):
+        reg, seen = make_registry()
+        secret = Secret(VALUE)
+        cyclic = {"k": secret}
+        cyclic["self"] = cyclic
+        extra = {
+            "tuple": (secret, 1),
+            "set": {secret},
+            "ns": SimpleNamespace(token=secret),
+            "cyclic": cyclic,
+            "keys": {secret: 1},
+        }
+        await reg.call("t_reveal", ["v"], {"extra": extra})
+        got = seen["reveal"][1]
+        assert got["tuple"] == (VALUE, 1) and type(got["tuple"][0]) is str
+        assert got["set"] == {VALUE} and type(next(iter(got["set"]))) is str
+        assert type(got["ns"].token) is str
+        assert type(got["cyclic"]["k"]) is str
+        assert got["cyclic"]["self"] is got["cyclic"]
+        assert type(next(iter(got["keys"]))) is str
+        assert extra["ns"].token is secret
+
+    async def test_deep_argument_without_secret(self):
+        reg, seen = make_registry()
+        value = "x"
+        for _ in range(5000):
+            value = [value]
+        result = await reg.call("t_taint", [[1]], {"extra": value})
+        assert seen["taint"][1] is value
+        assert result["n"] == 1
 
 
 class TestInjectWrapper:
@@ -130,6 +174,21 @@ class TestInjectWrapper:
         result = await reg.call("priv", [Secret(VALUE)])
         assert type(seen["value"]) is str
         assert result == f"got {VALUE}" and type(result) is str
+
+    async def test_exception_is_marked(self):
+        reg = OpcodeRegistry()
+
+        @reg.register(privileged=True)
+        async def priv(value) -> str:
+            pass
+
+        async def impl(value):
+            raise ValueError(f"bad {value}")
+
+        reg.inject("priv", impl)
+        with pytest.raises(ValueError) as exc:
+            await reg.call("priv", [Secret(VALUE)])
+        assert is_secret_exception(exc.value)
 
     async def test_pass(self):
         reg, seen = self.make("pass")
@@ -173,13 +232,14 @@ class TestDeclaringModes:
         finally:
             default_registry.opcodes.pop("_test_secret_helper_op")
             default_registry.signatures.pop("_test_secret_helper_op")
-            default_registry.secret_modes.pop("_test_secret_helper_op")
+            default_registry._secret_modes.pop("_test_secret_helper_op")
 
 
 class TestCoreClassification:
     @pytest.mark.parametrize(
         "name",
-        ["dict_get", "list_append", "object_get", "io_print", "throw", "assert_equals"]
+        ["dict_get", "list_append", "object_get", "io_print", "io_input", "throw"]
+        + ["assert_equals", "task_exception"]
         + ["channel_send", "task_result", "print_info", "workflow_start"],
     )
     async def test_pass(self, name):
@@ -260,6 +320,23 @@ class TestCoreOpcodes:
         with pytest.raises(RuntimeError) as exc:
             await self.call("throw", Secret(VALUE))
         assert str(exc.value) == "***"
+
+    async def test_io_input_prompt_prints_mask(self, monkeypatch, capsys):
+        monkeypatch.setattr("sys.stdin", io.StringIO("typed\n"))
+        result = await self.call("io_input", Secret(VALUE))
+        assert result == "typed" and type(result) is str
+        out = capsys.readouterr().out
+        assert out == "***" and VALUE not in out
+
+    async def test_task_exception_is_secret_when_opcode_saw_one(self):
+        manager = TaskManager()
+        failing = manager.spawn(self.call("int", Secret(VALUE)))
+        plain = manager.spawn(self.call("int", "abc"))
+        await asyncio.gather(failing._task, plain._task, return_exceptions=True)
+        message = await self.call("task_exception", failing)
+        assert isinstance(message, Secret) and VALUE in message.reveal()
+        message = await self.call("task_exception", plain)
+        assert type(message) is str and "abc" in message
 
 
 class FakeResponse:
