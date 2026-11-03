@@ -27,7 +27,7 @@ def _mock_client():
     with patch("lexflow.opcodes.opcodes_clicksign.aiohttp.ClientSession"):
         client = ClicksignClient("test-token", sandbox=True)
 
-    client._session = MagicMock()
+    client._session = MagicMock(closed=False)
     return client
 
 

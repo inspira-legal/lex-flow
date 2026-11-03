@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Any, Optional
 
-from lexflow import Parser, default_registry, get_grammar
+from lexflow import default_registry, get_grammar
 from lexflow.grammar import SLOT_ALIASES, get_construct_slots
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
@@ -31,32 +31,6 @@ BARE_SLOT_OPCODES = {"workflow_return", "return"}
 
 YAML_SUFFIXES = (".yaml", ".yml")
 WORKFLOW_SUFFIXES = YAML_SUFFIXES + (".json",)
-
-
-def core_supports_kwargs() -> bool:
-    """True when the installed core can parse the syntax this migration emits.
-
-    The CLI depends on the core by git URL, which carries no version floor, so
-    an older core would accept the rewrite and then reject the rewritten file.
-    """
-    probe = {
-        "workflows": [
-            {
-                "name": "main",
-                "interface": {"inputs": [], "outputs": []},
-                "variables": {},
-                "nodes": {
-                    "start": {"opcode": "workflow_start", "next": "p"},
-                    "p": {"opcode": "io_print", "args": [{"literal": "probe"}]},
-                },
-            }
-        ]
-    }
-    try:
-        Parser().parse_dict(probe)
-        return True
-    except Exception:
-        return False
 
 
 def named_slot_opcodes() -> set[str]:
@@ -317,6 +291,9 @@ def migrate_text(
     text: str, suffix: str, use_names: bool = False
 ) -> tuple[str, int, list[str]]:
     """Migrate one workflow document. Returns (new text, nodes migrated, warnings)."""
+    if "workflows" not in text:
+        return text, 0, []  # not a workflow document; do not even parse it
+
     if suffix.lower() in YAML_SUFFIXES:
         yaml = _yaml()
         data = yaml.load(text)

@@ -4,12 +4,16 @@ migrate_text is covered in test_migrate.py; this covers the command around it:
 file collection, reporting, --diff, --write and the all-or-nothing guarantee.
 """
 
+import asyncio
 import json
+import os
+import shutil
+import sys
 
 import pytest
 import yaml
 
-from lexflow_cli.main import create_parser, handle_migrate_command
+from lexflow_cli.main import create_parser, handle_migrate_command, run_workflow
 
 LEGACY = """\
 workflows:
@@ -77,6 +81,21 @@ def test_already_migrated_files_report_nothing_to_do(tmp_path, capsys):
     (tmp_path / "a.yaml").write_text(MIGRATED)
     assert run_migrate(str(tmp_path)) == 0
     assert "Nothing to migrate" in capsys.readouterr().out
+
+
+def test_scanning_only_skipped_directories_says_so(tmp_path, capsys):
+    """'0 files scanned' on a tree full of workflows is otherwise baffling."""
+    vendored = tmp_path / "node_modules"
+    vendored.mkdir()
+    (vendored / "a.yaml").write_text(LEGACY)
+
+    assert run_migrate(str(tmp_path)) == 0
+    out = capsys.readouterr().out
+    assert "0 files scanned" in out
+    assert "node_modules" in out
+    # And the escape hatch, since the file really is there
+    assert run_migrate(str(vendored / "a.yaml")) == 0
+    assert "1 nodes" in capsys.readouterr().out
 
 
 def test_missing_path_is_reported(tmp_path, capsys):
@@ -210,9 +229,32 @@ def test_a_write_failure_rolls_back_every_other_file(workspace, capsys):
         locked.chmod(0o755)
 
 
+def temporaries(directory):
+    """The migration's temporaries are hidden, so a bare '*' glob misses them."""
+    return list(directory.glob(".*.tmp")) + list(directory.glob("*.tmp"))
+
+
 def test_no_temporary_files_are_left_behind(workspace):
     assert run_migrate(str(workspace), "--write") == 0
-    assert not list(workspace.glob("*.lexflow-tmp"))
+    assert temporaries(workspace) == []
+
+
+def test_an_interrupt_mid_write_leaves_no_temporaries(workspace, monkeypatch):
+    """Ctrl-C is not an OSError, so only the cleanup on the way out catches it."""
+    (workspace / "b.yaml").write_text(LEGACY)
+    real = shutil.copymode
+    seen = []
+
+    def interrupt_on_the_second(*args, **kwargs):
+        seen.append(args)
+        if len(seen) == 2:
+            raise KeyboardInterrupt
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr("lexflow_cli.main.shutil.copymode", interrupt_on_the_second)
+    with pytest.raises(KeyboardInterrupt):
+        run_migrate(str(workspace), "--write")
+    assert temporaries(workspace) == []
 
 
 def test_a_binary_file_fails_that_file_only(workspace, capsys):
@@ -224,9 +266,85 @@ def test_a_binary_file_fails_that_file_only(workspace, capsys):
 
 def test_a_duplicate_key_gets_its_own_message(workspace, capsys):
     (workspace / "dup.yaml").write_text(
-        "workflows:\n  - name: main\n    nodes: {}\n    nodes: {}\n"
+        "workflows:\n  - name: main\n    nodes: {}\n    interface: {}\n    nodes: {}\n"
     )
     assert run_migrate(str(workspace)) == 1
     err = capsys.readouterr().err
-    assert "duplicate key" in err
-    assert "allow_duplicate_keys" not in err
+    # The key and its line, which ruamel's own text has and the old message lost
+    assert "duplicate key 'nodes'" in err
+    assert "line 5" in err
+    assert "yaml.dev" not in err
+
+
+@pytest.mark.parametrize("mode", [0o600, 0o640])
+def test_the_file_mode_survives_the_rewrite(workspace, mode):
+    """A file its owner locked down must not come back more readable.
+
+    0o640 is the case that senses the copymode: mkstemp already creates at 0o600.
+    """
+    private = workspace / "a.yaml"
+    private.chmod(mode)
+    assert run_migrate(str(workspace), "--write") == 0
+    assert private.stat().st_mode & 0o777 == mode
+
+
+def test_a_symlink_is_migrated_through_not_replaced(workspace, tmp_path):
+    target = tmp_path / "target.yaml"
+    target.write_text(LEGACY)
+    link = workspace / "link.yaml"
+    link.symlink_to(target)
+
+    assert run_migrate(str(workspace), "--write") == 0
+    assert link.is_symlink()
+    assert "args:" in target.read_text()
+
+
+def test_a_hard_linked_file_is_refused(workspace, capsys):
+    other = workspace / "other.yaml"
+    os.link(workspace / "a.yaml", other)
+    assert run_migrate(str(workspace), "--write") == 1
+    assert (workspace / "a.yaml").read_text() == LEGACY
+    assert "hard links" in capsys.readouterr().err
+
+
+def test_an_unwritable_file_is_refused_cleanly(workspace, capsys):
+    (workspace / "a.yaml").chmod(0o444)
+    try:
+        assert run_migrate(str(workspace), "--write") == 1
+        assert "not writable" in capsys.readouterr().err
+        assert (workspace / "a.yaml").read_text() == LEGACY
+        # The protection the user put on the file is still there
+        assert (workspace / "a.yaml").stat().st_mode & 0o777 == 0o444
+    finally:
+        (workspace / "a.yaml").chmod(0o644)
+
+
+def test_validate_only_rejects_what_run_rejects(tmp_path, capsys):
+    """Without the Engine build, --validate-only printed 'valid' and exited 0."""
+    bad = tmp_path / "bad.yaml"
+    bad.write_text(
+        """\
+workflows:
+  - name: main
+    interface: {inputs: [], outputs: []}
+    variables: {}
+    nodes:
+      start: {opcode: workflow_start, next: s}
+      s:
+        opcode: operator_subtract
+        kwargs: {left: {literal: 10}, rigth: {literal: 3}}
+"""
+    )
+    args = create_parser().parse_args(["run", str(bad), "--validate-only"])
+    with pytest.raises(SystemExit) as exit_info:
+        asyncio.run(run_workflow(args))
+    assert exit_info.value.code == 1
+    assert "Workflow is valid" not in capsys.readouterr().out
+
+
+def test_an_outdated_core_refuses_the_rewrite(workspace, capsys, monkeypatch):
+    """A core without the grammar helpers would accept the rewrite then reject it."""
+    monkeypatch.setitem(sys.modules, "lexflow_cli.migrate", None)
+    assert run_migrate(str(workspace), "--write") == 1
+    assert (workspace / "a.yaml").read_text() == LEGACY
+    assert "cannot parse 'args'/'kwargs'" in capsys.readouterr().err

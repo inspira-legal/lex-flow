@@ -10,6 +10,7 @@ Authentication:
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..sessions import open_session
 from .opcodes import opcode, register_category
 
 try:
@@ -321,18 +322,28 @@ class ApolloClient:
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.base_url = APOLLO_API_BASE_URL
-        self._session = aiohttp.ClientSession(
-            headers={"X-Api-Key": api_key},
-        )
+        self._session_kwargs = {"headers": {"X-Api-Key": api_key}}
+        self._session: Optional["aiohttp.ClientSession"] = None
 
     def __repr__(self) -> str:
         return "ApolloClient(api_key=***)"
+
+    def _get_session(self) -> "aiohttp.ClientSession":
+        """Open the session on first use, or again after it was closed."""
+        if self._session is None or self._session.closed:
+            self._session = open_session(**self._session_kwargs)
+        return self._session
+
+    async def close(self) -> None:
+        """Close the session if one was opened. Safe to call more than once."""
+        if self._session is not None:
+            await self._session.close()
 
     async def __aenter__(self) -> "ApolloClient":
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        await self._session.close()
+        await self.close()
 
     async def post(
         self,
@@ -355,7 +366,9 @@ class ApolloClient:
         """
         url = f"{self.base_url}{endpoint}"
 
-        async with self._session.post(url, json=json_data, params=params) as response:
+        async with self._get_session().post(
+            url, json=json_data, params=params
+        ) as response:
             if response.status == 204:
                 return {}
 
@@ -444,7 +457,7 @@ def register_apollo_opcodes():
         Returns:
             True when the client session is closed.
         """
-        await client._session.close()
+        await client.close()
         return True
 
     # ============================================================================

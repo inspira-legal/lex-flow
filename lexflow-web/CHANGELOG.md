@@ -2,6 +2,58 @@
 
 <!-- version list -->
 
+## v1.17.0 (2026-10-19)
+
+### Chores
+
+- **ci**: Update GitHub Actions to their current majors
+  ([#110](https://github.com/inspira-legal/lex-flow/pull/110),
+  [`5de07bb`](https://github.com/inspira-legal/lex-flow/commit/5de07bbd31dd137b2969aab0f72f1ec0eb2b5d7b))
+
+- **cli**: Release 1.7.0
+  ([`bf9bc8b`](https://github.com/inspira-legal/lex-flow/commit/bf9bc8baf06716aa152dd12d2fb980ee7bfd4509))
+
+- **core**: Release 1.20.0
+  ([`c6a4458`](https://github.com/inspira-legal/lex-flow/commit/c6a44581227ce08eaa3691979d26e0023c8a51a9))
+
+- **deps**: Update packages and fix dependabot alerts
+  ([#139](https://github.com/inspira-legal/lex-flow/pull/139),
+  [`3489e63`](https://github.com/inspira-legal/lex-flow/commit/3489e63fd38d66809f9fe6688e04863baab431b4))
+
+- **web**: Build frontend library [skip ci]
+  ([`fcadab3`](https://github.com/inspira-legal/lex-flow/commit/fcadab33d818d5304a69b82cfa1bbbb662cc1302))
+
+### Features
+
+- Bind workflow arguments by name with args/kwargs
+  ([#128](https://github.com/inspira-legal/lex-flow/pull/128),
+  [`03dde92`](https://github.com/inspira-legal/lex-flow/commit/03dde929de87919a1531addde5e0e76db95e4dfb))
+
+
+## v1.16.1 (2026-09-22)
+
+### Bug Fixes
+
+- **core**: Parse a node once, however many paths flow into it
+  ([#121](https://github.com/inspira-legal/lex-flow/pull/121),
+  [`2f0ca82`](https://github.com/inspira-legal/lex-flow/commit/2f0ca824befa40d524cd5239dfc72e8be725912c))
+
+### Chores
+
+- Apply the pytest config, drop pygame ([#122](https://github.com/inspira-legal/lex-flow/pull/122),
+  [`2d2967c`](https://github.com/inspira-legal/lex-flow/commit/2d2967c90dffed96539b0070f86e7cfd37b4dcde))
+
+- **core**: Release 1.19.1
+  ([`4ac5431`](https://github.com/inspira-legal/lex-flow/commit/4ac543177c690f32ef28c7f6186e88477f649ca9))
+
+- **deps**: Clear all 49 open Dependabot alerts
+  ([#109](https://github.com/inspira-legal/lex-flow/pull/109),
+  [`3b9d29b`](https://github.com/inspira-legal/lex-flow/commit/3b9d29b797a7820afc9258a0002ae7939ab12129))
+
+- **web**: Build frontend library [skip ci]
+  ([`63f1c42`](https://github.com/inspira-legal/lex-flow/commit/63f1c42f56b2bb5cc46b1d8f16003a4764e5bf92))
+
+
 ## v1.16.0 (2026-06-23)
 
 ### Bug Fixes

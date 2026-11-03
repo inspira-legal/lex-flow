@@ -3,10 +3,14 @@ import asyncio
 import difflib
 import json
 import os
+import re
+import shutil
 import sys
+import tempfile
 import warnings
 import yaml
 from pathlib import Path
+from typing import Optional
 
 from lexflow import Parser, Engine
 from lexflow.visualizer import WorkflowVisualizer
@@ -81,40 +85,89 @@ def handle_grammar_command(args) -> int:
 def _migrate_error(exc: Exception) -> str:
     """A message for a file the migration could not read."""
     text = str(exc)
-    if "found duplicate key" in text:
-        key = text.split('"')[1] if '"' in text else "a key"
+    duplicate = re.search(r'found duplicate key "(.*?)"', text)
+    if duplicate:
+        mark = getattr(exc, "problem_mark", None)
+        where = f" on line {mark.line + 1}" if mark else ""
         return (
-            f"duplicate key {key}. Remove the duplicate before migrating; do not "
-            f"allow duplicate keys, which changes which value wins."
+            f"duplicate key '{duplicate.group(1)}'{where}. Remove the duplicate "
+            f"before migrating: suppressing the check changes which value wins."
         )
     return text
 
 
-def _write_all(changed: list) -> list[str]:
-    """Write every migrated file, or none of them.
+def _unwritable(path: Path, target: Path) -> Optional[str]:
+    """Why this file must not be rewritten, or None when it can be."""
+    if not os.access(target, os.W_OK):
+        return f"{path}: not writable"
+    if target.stat().st_nlink > 1:
+        # Replacing the inode would leave the other names on the old content
+        return f"{path}: has other hard links; migrate it separately"
+    return None
 
-    Each one lands in a sibling temporary first, so a failure partway through
-    leaves the tree as it was.
+
+def _write_all(changed: list) -> list[str]:
+    """Write every migrated file, or leave the tree as it was.
+
+    Each file lands in a temporary beside its real path and is moved into
+    place only once all of them are written, so a write that fails changes
+    nothing. The move itself is resolved through symlinks and carries the
+    original mode across, since the replacement is a new inode.
     """
-    written = []
+    targets = []
     errors = []
     for path, _, migrated, _ in changed:
-        tmp = path.with_suffix(path.suffix + ".lexflow-tmp")
-        try:
-            tmp.write_text(migrated)
-            written.append((tmp, path))
-        except OSError as e:
-            errors.append(f"{path}: {e}")
+        target = path.resolve()  # migrate through a symlink, do not replace it
+        refusal = _unwritable(path, target)
+        if refusal:
+            errors.append(refusal)
+        else:
+            targets.append((path, target, migrated))
 
     if errors:
-        for tmp, _ in written:
-            tmp.unlink(missing_ok=True)
-        errors.append(f"{len(errors)} files could not be written; nothing was changed")
+        errors.append(f"{len(errors)} files cannot be written; nothing was changed")
         return errors
 
-    for tmp, path in written:
-        os.replace(tmp, path)
-    return []
+    written = []
+    try:
+        for path, target, migrated in targets:
+            try:
+                handle, raw = tempfile.mkstemp(
+                    dir=target.parent, prefix=f".{target.name}.", suffix=".tmp"
+                )
+                os.close(handle)
+                tmp = Path(raw)
+                # Registered before the first write, so the cleanup below owns
+                # it however this loop is left, Ctrl-C included
+                written.append((tmp, target, path))
+                tmp.write_text(migrated)
+                shutil.copymode(target, tmp)
+            except OSError as e:
+                errors.append(f"{path}: {e}")
+                break
+
+        if errors:
+            errors.append(
+                f"{len(errors)} files could not be written; nothing was changed"
+            )
+            return errors
+
+        # Nothing makes a multi-file replace atomic, so report what happened
+        replaced = []
+        for tmp, target, path in written:
+            try:
+                os.replace(tmp, target)
+                replaced.append(path)
+            except OSError as e:
+                errors.append(f"{path}: {e}")
+        if errors:
+            kept = ", ".join(str(p) for p in replaced) or "none"
+            errors.append(f"replaced before failing: {kept}")
+        return errors
+    finally:
+        # Covers a partial write, a failed replace and Ctrl-C alike
+        for tmp, _, _ in written:
+            tmp.unlink(missing_ok=True)
 
 
 def handle_migrate_command(args) -> int:
@@ -125,17 +178,13 @@ def handle_migrate_command(args) -> int:
     )
     try:
         from lexflow_cli.migrate import (
+            SKIPPED_DIRS,
             collect_files,
-            core_supports_kwargs,
             migrate_text,
         )
     except ImportError:
-        # An older core lacks the grammar helpers this module imports, so the
-        # failure lands here rather than in core_supports_kwargs()
-        print_error(outdated)
-        return 1
-
-    if not core_supports_kwargs():
+        # An older core lacks the grammar helpers this module imports, and it
+        # would accept the rewrite then reject every file it produced
         print_error(outdated)
         return 1
 
@@ -206,6 +255,11 @@ def handle_migrate_command(args) -> int:
     print()
     if not changed_files:
         print_success(f"Nothing to migrate ({len(files)} files scanned)")
+        if not files:
+            print_info(
+                f"Skipped: {', '.join(sorted(SKIPPED_DIRS))} and hidden directories. "
+                f"Pass a path inside one to migrate it anyway."
+            )
         return 0
 
     if args.write:
