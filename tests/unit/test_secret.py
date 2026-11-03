@@ -156,6 +156,33 @@ class TestHelpers:
         assert contains_secret({Secret(VALUE): 1})
         assert contains_secret({(1, Secret(VALUE)): 1})
 
+    def test_contains_secret_skips_the_walk_before_any_secret(self, monkeypatch):
+        class Unwalkable(list):
+            def __iter__(self):
+                raise AssertionError("walked")
+
+        monkeypatch.setattr(Secret, "_built", False)
+        assert not contains_secret(Unwalkable([1]))
+        Secret(VALUE)
+        assert Secret._built
+        with pytest.raises(AssertionError, match="walked"):
+            contains_secret(Unwalkable([1]))
+
+    def test_contains_secret_stops_at_the_first_secret(self):
+        class Unwalkable(list):
+            def __iter__(self):
+                raise AssertionError("walked")
+
+        # the Secret is met before the nested list is popped and walked
+        assert contains_secret([Unwalkable([1]), Secret(VALUE)])
+
+    def test_contains_secret_survives_cycles(self):
+        items = [1]
+        items.append(items)
+        assert not contains_secret(items)
+        items.append({"k": (Secret(VALUE),)})
+        assert contains_secret(items)
+
     def test_reveal_unwraps_keys(self):
         out = reveal_secrets({Secret("k"): Secret(VALUE)})
         assert out == {"k": VALUE}

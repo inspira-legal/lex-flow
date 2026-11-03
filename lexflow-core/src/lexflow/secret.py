@@ -14,6 +14,7 @@ object. A container they do change is rebuilt as its base type (``dict``,
 subclass such as ``OrderedDict`` or a namedtuple is not kept then.
 """
 
+import itertools
 from types import SimpleNamespace
 from typing import Any, Callable, Iterator, Literal, get_args
 
@@ -33,12 +34,18 @@ class Secret:
 
     __slots__ = ("_value",)
 
+    # Whether any Secret was ever built in this process. Only goes False -> True,
+    # so ``contains_secret`` can skip the walk in a process that never holds one.
+    _built = False
+
     def __init__(self, value: "str | Secret"):
         if isinstance(value, Secret):
             value = value.reveal()
         if not isinstance(value, str):
             raise TypeError(f"Secret wraps a str, not {type(value).__name__}")
         object.__setattr__(self, "_value", value)
+        if not Secret._built:
+            Secret._built = True
 
     def reveal(self) -> str:
         """Return the real value."""
@@ -120,16 +127,34 @@ def _containers(value: Any, keys: bool) -> Iterator[tuple[Any, list]]:
 
 
 def contains_secret(value: Any) -> bool:
-    """Whether a Secret sits anywhere in dict keys or values, lists, tuples, sets or objects."""
+    """Whether a Secret sits anywhere in dict keys or values, lists, tuples, sets or objects.
+
+    Answers ``False`` without walking while no Secret was ever built in this
+    process, and otherwise stops at the first Secret it meets.
+    """
     if isinstance(value, Secret):
         return True
-    if not isinstance(value, _CONTAINERS):
+    if not Secret._built or not isinstance(value, _CONTAINERS):
         return False
-    return any(
-        isinstance(child, Secret)
-        for _, children in _containers(value, keys=True)
-        for child in children
-    )
+
+    stack, seen = [value], set()
+    while stack:
+        container = stack.pop()
+        if id(container) in seen:
+            continue
+        seen.add(id(container))
+        if isinstance(container, dict):
+            children = itertools.chain(container.keys(), container.values())
+        elif isinstance(container, SimpleNamespace):
+            children = vars(container).values()
+        else:
+            children = container
+        for child in children:
+            if isinstance(child, Secret):
+                return True
+            if isinstance(child, _CONTAINERS):
+                stack.append(child)
+    return False
 
 
 def _walk(value: Any, leaf: Callable[[Any], Any], keys: bool) -> Any:
