@@ -50,7 +50,6 @@ workflows:
       start:
         opcode: workflow_start
         next: print_header
-        inputs: {}
 
       # ========================================================================
       # HEADER
@@ -58,23 +57,20 @@ workflows:
       print_header:
         opcode: io_print
         next: print_header_2
-        inputs:
-          STRING:
-            literal: "\n================================================================================\n"
+        args:
+          - literal: "\n================================================================================\n"
 
       print_header_2:
         opcode: io_print
         next: print_header_3
-        inputs:
-          STRING:
-            literal: "                    AI-POWERED CODE REVIEWER\n"
+        args:
+          - literal: "                    AI-POWERED CODE REVIEWER\n"
 
       print_header_3:
         opcode: io_print
         next: print_fetching
-        inputs:
-          STRING:
-            literal: "================================================================================\n\n"
+        args:
+          - literal: "================================================================================\n\n"
 
       # ========================================================================
       # FETCH PR DATA
@@ -82,14 +78,13 @@ workflows:
       print_fetching:
         opcode: io_print
         next: store_pr_info
-        inputs:
-          STRING:
-            node: format_fetching_msg
+        args:
+          - node: format_fetching_msg
 
       format_fetching_msg:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Fetching PR #"
           right:
@@ -98,7 +93,7 @@ workflows:
       format_fetching_msg_2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: pr_str
           right:
@@ -107,14 +102,14 @@ workflows:
       pr_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: pr
 
       format_fetching_msg_3:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: " from "
           right:
@@ -123,7 +118,7 @@ workflows:
       format_fetching_msg_4:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: owner
           right:
@@ -132,7 +127,7 @@ workflows:
       format_fetching_msg_5:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "/"
           right:
@@ -141,7 +136,7 @@ workflows:
       format_fetching_msg_6:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: repo
           right:
@@ -151,7 +146,7 @@ workflows:
       fetch_pr_info:
         opcode: github_get_pr_info
         isReporter: true
-        inputs:
+        kwargs:
           owner:
             variable: owner
           repo:
@@ -162,17 +157,17 @@ workflows:
       store_pr_info:
         opcode: data_set_variable_to
         next: store_pr_files
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "pr_info"
-          VALUE:
+          value:
             node: fetch_pr_info
 
       # Fetch PR files
       fetch_pr_files:
         opcode: github_get_pr_files
         isReporter: true
-        inputs:
+        kwargs:
           owner:
             variable: owner
           repo:
@@ -183,34 +178,34 @@ workflows:
       store_pr_files:
         opcode: data_set_variable_to
         next: store_files_count
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "pr_files"
-          VALUE:
+          value:
             node: fetch_pr_files
 
       # Store files count
       get_files_count:
         opcode: list_length
         isReporter: true
-        inputs:
+        kwargs:
           items:
             variable: pr_files
 
       store_files_count:
         opcode: data_set_variable_to
         next: store_pr_diff
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "files_count"
-          VALUE:
+          value:
             node: get_files_count
 
       # Fetch PR diff
       fetch_pr_diff:
         opcode: github_get_pr_diff
         isReporter: true
-        inputs:
+        kwargs:
           owner:
             variable: owner
           repo:
@@ -221,10 +216,10 @@ workflows:
       store_pr_diff:
         opcode: data_set_variable_to
         next: print_pr_title_label
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "pr_diff"
-          VALUE:
+          value:
             node: fetch_pr_diff
 
       # ========================================================================
@@ -233,14 +228,13 @@ workflows:
       print_pr_title_label:
         opcode: io_print
         next: print_pr_author
-        inputs:
-          STRING:
-            node: format_pr_title
+        args:
+          - node: format_pr_title
 
       get_pr_title:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: pr_info
           key:
@@ -249,7 +243,7 @@ workflows:
       format_pr_title:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "PULL REQUEST: "
           right:
@@ -258,7 +252,7 @@ workflows:
       format_pr_title_2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: get_pr_title
           right:
@@ -267,14 +261,13 @@ workflows:
       print_pr_author:
         opcode: io_print
         next: print_pr_url
-        inputs:
-          STRING:
-            node: format_pr_author
+        args:
+          - node: format_pr_author
 
       get_pr_author:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: pr_info
           key:
@@ -283,7 +276,7 @@ workflows:
       format_pr_author:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Author: @"
           right:
@@ -292,7 +285,7 @@ workflows:
       format_pr_author_2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: get_pr_author
           right:
@@ -301,14 +294,13 @@ workflows:
       print_pr_url:
         opcode: io_print
         next: print_pr_branches
-        inputs:
-          STRING:
-            node: format_pr_url
+        args:
+          - node: format_pr_url
 
       get_pr_url:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: pr_info
           key:
@@ -317,7 +309,7 @@ workflows:
       format_pr_url:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "URL: "
           right:
@@ -326,7 +318,7 @@ workflows:
       format_pr_url_2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: get_pr_url
           right:
@@ -335,14 +327,13 @@ workflows:
       print_pr_branches:
         opcode: io_print
         next: print_files_separator
-        inputs:
-          STRING:
-            node: format_pr_branches
+        args:
+          - node: format_pr_branches
 
       get_pr_head:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: pr_info
           key:
@@ -351,7 +342,7 @@ workflows:
       get_pr_base:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: pr_info
           key:
@@ -360,7 +351,7 @@ workflows:
       format_pr_branches:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Branch: "
           right:
@@ -369,7 +360,7 @@ workflows:
       format_pr_branches_2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: get_pr_head
           right:
@@ -378,7 +369,7 @@ workflows:
       format_pr_branches_3:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: " -> "
           right:
@@ -387,7 +378,7 @@ workflows:
       format_pr_branches_4:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: get_pr_base
           right:
@@ -399,24 +390,23 @@ workflows:
       print_files_separator:
         opcode: io_print
         next: calculate_stats_loop
-        inputs:
-          STRING:
-            literal: "--------------------------------------------------------------------------------\n                         CHANGED FILES\n--------------------------------------------------------------------------------\n\n"
+        args:
+          - literal: "--------------------------------------------------------------------------------\n                         CHANGED FILES\n--------------------------------------------------------------------------------\n\n"
 
       # Loop through files to calculate stats and build summary
       calculate_stats_loop:
         opcode: control_while
         next: print_stats_total
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             node: check_file_index
-          BODY:
+          body:
             branch: process_file_stats
 
       check_file_index:
         opcode: operator_less_than
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: file_index
           right:
@@ -426,16 +416,16 @@ workflows:
       process_file_stats:
         opcode: data_set_variable_to
         next: get_file_path
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "current_file"
-          VALUE:
+          value:
             node: get_current_file
 
       get_current_file:
         opcode: list_get
         isReporter: true
-        inputs:
+        kwargs:
           items:
             variable: pr_files
           index:
@@ -444,16 +434,16 @@ workflows:
       get_file_path:
         opcode: data_set_variable_to
         next: update_additions
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "current_path"
-          VALUE:
+          value:
             node: extract_file_path
 
       extract_file_path:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: current_file
           key:
@@ -463,7 +453,7 @@ workflows:
       extract_additions:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: current_file
           key:
@@ -472,7 +462,7 @@ workflows:
       calc_new_additions:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: total_additions
           right:
@@ -481,17 +471,17 @@ workflows:
       update_additions:
         opcode: data_set_variable_to
         next: update_deletions
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "total_additions"
-          VALUE:
+          value:
             node: calc_new_additions
 
       # Update total deletions
       extract_deletions:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: current_file
           key:
@@ -500,7 +490,7 @@ workflows:
       calc_new_deletions:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: total_deletions
           right:
@@ -509,24 +499,23 @@ workflows:
       update_deletions:
         opcode: data_set_variable_to
         next: print_file_entry
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "total_deletions"
-          VALUE:
+          value:
             node: calc_new_deletions
 
       # Print file entry
       print_file_entry:
         opcode: io_print
         next: increment_file_index
-        inputs:
-          STRING:
-            node: format_file_entry
+        args:
+          - node: format_file_entry
 
       extract_status:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: current_file
           key:
@@ -535,7 +524,7 @@ workflows:
       format_file_entry:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "  "
           right:
@@ -544,7 +533,7 @@ workflows:
       format_file_entry_2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: extract_file_path
           right:
@@ -553,7 +542,7 @@ workflows:
       format_file_entry_3:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: " ("
           right:
@@ -562,7 +551,7 @@ workflows:
       format_file_entry_4:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: extract_status
           right:
@@ -571,7 +560,7 @@ workflows:
       format_file_entry_5:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: ": +"
           right:
@@ -580,21 +569,21 @@ workflows:
       additions_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: extract_additions
 
       deletions_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: extract_deletions
 
       format_file_entry_6:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: additions_str
           right:
@@ -603,7 +592,7 @@ workflows:
       format_file_entry_7:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "/-"
           right:
@@ -612,7 +601,7 @@ workflows:
       format_file_entry_8:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: deletions_str
           right:
@@ -621,16 +610,16 @@ workflows:
       increment_file_index:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "file_index"
-          VALUE:
+          value:
             node: next_file_index
 
       next_file_index:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: file_index
           right:
@@ -640,35 +629,34 @@ workflows:
       print_stats_total:
         opcode: io_print
         next: setup_ai
-        inputs:
-          STRING:
-            node: format_stats_total
+        args:
+          - node: format_stats_total
 
       total_additions_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: total_additions
 
       total_deletions_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: total_deletions
 
       files_count_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: files_count
 
       format_stats_total:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "\nTotal: "
           right:
@@ -677,7 +665,7 @@ workflows:
       format_stats_total_2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: files_count_str
           right:
@@ -686,7 +674,7 @@ workflows:
       format_stats_total_3:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: " files changed, +"
           right:
@@ -695,7 +683,7 @@ workflows:
       format_stats_total_4:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: total_additions_str
           right:
@@ -704,7 +692,7 @@ workflows:
       format_stats_total_5:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: " additions, -"
           right:
@@ -713,7 +701,7 @@ workflows:
       format_stats_total_6:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: total_deletions_str
           right:
@@ -725,15 +713,14 @@ workflows:
       setup_ai:
         opcode: io_print
         next: store_model
-        inputs:
-          STRING:
-            literal: "--------------------------------------------------------------------------------\n                         AI CODE REVIEW\n--------------------------------------------------------------------------------\n\nInitializing AI reviewer...\n"
+        args:
+          - literal: "--------------------------------------------------------------------------------\n                         AI CODE REVIEW\n--------------------------------------------------------------------------------\n\nInitializing AI reviewer...\n"
 
       # Create Vertex AI Model
       create_model:
         opcode: pydantic_ai_create_vertex_model
         isReporter: true
-        inputs:
+        kwargs:
           model_name:
             literal: "gemini-2.5-flash"
           project:
@@ -744,17 +731,17 @@ workflows:
       store_model:
         opcode: data_set_variable_to
         next: store_reviewer
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "model"
-          VALUE:
+          value:
             node: create_model
 
       # Create Code Reviewer Agent
       create_reviewer:
         opcode: pydantic_ai_create_agent
         isReporter: true
-        inputs:
+        kwargs:
           model:
             variable: model
           instructions:
@@ -801,18 +788,17 @@ workflows:
       store_reviewer:
         opcode: data_set_variable_to
         next: print_analyzing
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "reviewer_agent"
-          VALUE:
+          value:
             node: create_reviewer
 
       print_analyzing:
         opcode: io_print
         next: run_review
-        inputs:
-          STRING:
-            literal: "Analyzing code changes...\n\n"
+        args:
+          - literal: "Analyzing code changes...\n\n"
 
       # ========================================================================
       # RUN AI REVIEW
@@ -820,7 +806,7 @@ workflows:
       build_review_prompt:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Please review the following pull request:\n\n"
           right:
@@ -829,7 +815,7 @@ workflows:
       build_review_prompt_2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "## PR Title\n"
           right:
@@ -838,7 +824,7 @@ workflows:
       build_review_prompt_3:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: get_pr_title
           right:
@@ -847,7 +833,7 @@ workflows:
       build_review_prompt_4:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "\n\n## PR Description\n"
           right:
@@ -856,7 +842,7 @@ workflows:
       get_pr_body:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: pr_info
           key:
@@ -865,7 +851,7 @@ workflows:
       build_review_prompt_5:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: get_pr_body
           right:
@@ -874,7 +860,7 @@ workflows:
       build_review_prompt_6:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "\n\n## Diff\n```diff\n"
           right:
@@ -883,7 +869,7 @@ workflows:
       build_review_prompt_7:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: pr_diff
           right:
@@ -892,7 +878,7 @@ workflows:
       build_review_prompt_8:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "\n```\n\n"
           right:
@@ -901,7 +887,7 @@ workflows:
       execute_review:
         opcode: pydantic_ai_run
         isReporter: true
-        inputs:
+        kwargs:
           agent:
             variable: reviewer_agent
           prompt:
@@ -910,10 +896,10 @@ workflows:
       run_review:
         opcode: data_set_variable_to
         next: print_review_result
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "review_result"
-          VALUE:
+          value:
             node: execute_review
 
       # ========================================================================
@@ -922,14 +908,13 @@ workflows:
       print_review_result:
         opcode: io_print
         next: print_footer
-        inputs:
-          STRING:
-            node: format_review_output
+        args:
+          - node: format_review_output
 
       format_review_output:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: review_result
           right:
@@ -941,6 +926,5 @@ workflows:
       print_footer:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n================================================================================\n                         REVIEW COMPLETE\n================================================================================\n\n"
+        args:
+          - literal: "\n================================================================================\n                         REVIEW COMPLETE\n================================================================================\n\n"

@@ -1,6 +1,5 @@
 """Tests for the description field on CategoryInfo and OpcodeRegistry."""
 
-import pytest
 from lexflow.opcodes.opcodes import CategoryInfo, OpcodeRegistry
 
 
@@ -10,11 +9,15 @@ class TestCategoryInfoDescription:
         assert cat.description == ""
 
     def test_description_is_stored(self):
-        cat = CategoryInfo(id="test", label="Test", prefix="test_", description="Uma descricao")
+        cat = CategoryInfo(
+            id="test", label="Test", prefix="test_", description="Uma descricao"
+        )
         assert cat.description == "Uma descricao"
 
     def test_to_dict_includes_description(self):
-        cat = CategoryInfo(id="test", label="Test", prefix="test_", description="Descricao")
+        cat = CategoryInfo(
+            id="test", label="Test", prefix="test_", description="Descricao"
+        )
         d = cat.to_dict()
         assert "description" in d
         assert d["description"] == "Descricao"
@@ -29,7 +32,9 @@ class TestCategoryInfoDescription:
 class TestRegisterCategoryDescription:
     def test_register_category_with_description(self):
         reg = OpcodeRegistry()
-        reg.register_category(id="test", label="Test", prefix="test_", description="Descricao teste")
+        reg.register_category(
+            id="test", label="Test", prefix="test_", description="Descricao teste"
+        )
         cat = reg.categories["test"]
         assert cat.description == "Descricao teste"
 

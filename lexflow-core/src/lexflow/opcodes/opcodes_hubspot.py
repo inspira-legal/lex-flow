@@ -10,6 +10,7 @@ Authentication:
 
 from typing import Any, Dict, List, Optional, Union
 
+from ..sessions import open_session
 from .opcodes import opcode, register_category
 
 try:
@@ -102,15 +103,27 @@ class HubSpotClient:
     def __init__(self, access_token: str):
         self.access_token = access_token
         self.base_url = HUBSPOT_API_BASE_URL
-        self._session = aiohttp.ClientSession(
-            headers={
+        self._session_kwargs = {
+            "headers": {
                 "Authorization": f"Bearer {access_token}",
                 "Content-Type": "application/json",
             },
-        )
+        }
+        self._session: Optional["aiohttp.ClientSession"] = None
 
     def __repr__(self) -> str:
         return "HubSpotClient(token=***)"
+
+    def _get_session(self) -> "aiohttp.ClientSession":
+        """Open the session on first use, or again after it was closed."""
+        if self._session is None or self._session.closed:
+            self._session = open_session(**self._session_kwargs)
+        return self._session
+
+    async def close(self) -> None:
+        """Close the session if one was opened. Safe to call more than once."""
+        if self._session is not None:
+            await self._session.close()
 
     async def _request(
         self,
@@ -122,7 +135,7 @@ class HubSpotClient:
         """Make an HTTP request to HubSpot API."""
         url = f"{self.base_url}{endpoint}"
 
-        async with self._session.request(
+        async with self._get_session().request(
             method, url, params=params, json=json_data
         ) as response:
             if response.status == 204:
@@ -232,7 +245,7 @@ def register_hubspot_opcodes():
         Returns:
             True when the client session is closed
         """
-        await client._session.close()
+        await client.close()
         return True
 
     # ============================================================================

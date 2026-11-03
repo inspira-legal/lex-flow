@@ -1,9 +1,16 @@
 import argparse
 import asyncio
+import difflib
 import json
+import os
+import re
+import shutil
 import sys
+import tempfile
+import warnings
 import yaml
 from pathlib import Path
+from typing import Optional
 
 from lexflow import Parser, Engine
 from lexflow.visualizer import WorkflowVisualizer
@@ -72,6 +79,196 @@ def handle_grammar_command(args) -> int:
             print_error(f"Error syncing grammar: {e}")
             return 1
 
+    return 0
+
+
+def _migrate_error(exc: Exception) -> str:
+    """A message for a file the migration could not read."""
+    text = str(exc)
+    duplicate = re.search(r'found duplicate key "(.*?)"', text)
+    if duplicate:
+        mark = getattr(exc, "problem_mark", None)
+        where = f" on line {mark.line + 1}" if mark else ""
+        return (
+            f"duplicate key '{duplicate.group(1)}'{where}. Remove the duplicate "
+            f"before migrating: suppressing the check changes which value wins."
+        )
+    return text
+
+
+def _unwritable(path: Path, target: Path) -> Optional[str]:
+    """Why this file must not be rewritten, or None when it can be."""
+    if not os.access(target, os.W_OK):
+        return f"{path}: not writable"
+    if target.stat().st_nlink > 1:
+        # Replacing the inode would leave the other names on the old content
+        return f"{path}: has other hard links; migrate it separately"
+    return None
+
+
+def _write_all(changed: list) -> list[str]:
+    """Write every migrated file, or leave the tree as it was.
+
+    Each file lands in a temporary beside its real path and is moved into
+    place only once all of them are written, so a write that fails changes
+    nothing. The move itself is resolved through symlinks and carries the
+    original mode across, since the replacement is a new inode.
+    """
+    targets = []
+    errors = []
+    for path, _, migrated, _ in changed:
+        target = path.resolve()  # migrate through a symlink, do not replace it
+        refusal = _unwritable(path, target)
+        if refusal:
+            errors.append(refusal)
+        else:
+            targets.append((path, target, migrated))
+
+    if errors:
+        errors.append(f"{len(errors)} files cannot be written; nothing was changed")
+        return errors
+
+    written = []
+    try:
+        for path, target, migrated in targets:
+            try:
+                handle, raw = tempfile.mkstemp(
+                    dir=target.parent, prefix=f".{target.name}.", suffix=".tmp"
+                )
+                os.close(handle)
+                tmp = Path(raw)
+                # Registered before the first write, so the cleanup below owns
+                # it however this loop is left, Ctrl-C included
+                written.append((tmp, target, path))
+                tmp.write_text(migrated)
+                shutil.copymode(target, tmp)
+            except OSError as e:
+                errors.append(f"{path}: {e}")
+                break
+
+        if errors:
+            errors.append(
+                f"{len(errors)} files could not be written; nothing was changed"
+            )
+            return errors
+
+        # Nothing makes a multi-file replace atomic, so report what happened
+        replaced = []
+        for tmp, target, path in written:
+            try:
+                os.replace(tmp, target)
+                replaced.append(path)
+            except OSError as e:
+                errors.append(f"{path}: {e}")
+        if errors:
+            kept = ", ".join(str(p) for p in replaced) or "none"
+            errors.append(f"replaced before failing: {kept}")
+        return errors
+    finally:
+        # Covers a partial write, a failed replace and Ctrl-C alike
+        for tmp, _, _ in written:
+            tmp.unlink(missing_ok=True)
+
+
+def handle_migrate_command(args) -> int:
+    """Handle the 'migrate' subcommand."""
+    outdated = (
+        "The installed lexflow core cannot parse 'args'/'kwargs'. "
+        "Upgrade it before migrating, or the rewritten files will not run."
+    )
+    try:
+        from lexflow_cli.migrate import (
+            SKIPPED_DIRS,
+            collect_files,
+            migrate_text,
+        )
+    except ImportError:
+        # An older core lacks the grammar helpers this module imports, and it
+        # would accept the rewrite then reject every file it produced
+        print_error(outdated)
+        return 1
+
+    try:
+        files = collect_files(args.paths)
+    except FileNotFoundError as e:
+        print_error(str(e))
+        return 1
+
+    total_nodes = 0
+    changed = []
+    warnings = []
+    errors = []
+
+    # Migrate everything first, so a failure halfway through writes nothing
+    for path in files:
+        try:
+            original = path.read_text()
+            migrated, nodes, file_warnings = migrate_text(
+                original, path.suffix, args.names
+            )
+        except UnicodeDecodeError:
+            errors.append(f"{path}: not a text file")
+            continue
+        except Exception as e:
+            errors.append(f"{path}: {_migrate_error(e)}")
+            continue
+
+        warnings.extend(f"{path}: {w}" for w in file_warnings)
+        if nodes:
+            total_nodes += nodes
+            changed.append((path, original, migrated, nodes))
+
+    for path, original, migrated, nodes in changed:
+        if args.diff:
+            diff = difflib.unified_diff(
+                original.splitlines(keepends=True),
+                migrated.splitlines(keepends=True),
+                fromfile=str(path),
+                tofile=str(path),
+            )
+            sys.stdout.writelines(diff)
+        else:
+            print(f"{path}: {nodes} nodes")
+
+    if warnings:
+        print()
+        print_info("Inputs whose names do not match the opcode signature order:")
+        for warning in warnings:
+            print(f"  ! {warning}")
+
+    if errors:
+        print()
+        for error in errors:
+            print_error(error)
+        print_error(f"{len(errors)} of {len(files)} files failed; nothing was written")
+        return 1
+
+    if args.write:
+        write_errors = _write_all(changed)
+        if write_errors:
+            print()
+            for error in write_errors:
+                print_error(error)
+            return 1
+
+    changed_files = [path for path, _, _, _ in changed]
+    print()
+    if not changed_files:
+        print_success(f"Nothing to migrate ({len(files)} files scanned)")
+        if not files:
+            print_info(
+                f"Skipped: {', '.join(sorted(SKIPPED_DIRS))} and hidden directories. "
+                f"Pass a path inside one to migrate it anyway."
+            )
+        return 0
+
+    if args.write:
+        print_success(f"Migrated {total_nodes} nodes in {len(changed_files)} files")
+    else:
+        print_info(
+            f"Would migrate {total_nodes} nodes in {len(changed_files)} files "
+            f"(run with --write to apply)"
+        )
     return 0
 
 
@@ -172,6 +369,40 @@ Examples:
         "--path",
         metavar="FILE",
         help="Path to grammar.json (default: auto-detect)",
+    )
+
+    # 'migrate' subcommand
+    migrate_parser = subparsers.add_parser(
+        "migrate",
+        help="Migrate workflow files from 'inputs' to 'args'/'kwargs'",
+        epilog="""
+Examples:
+  lexflow migrate examples/                  # Show what would change
+  lexflow migrate workflow.yaml --diff       # Show a unified diff
+  lexflow migrate examples/ --write          # Rewrite the files in place
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    migrate_parser.add_argument(
+        "paths",
+        nargs="+",
+        metavar="PATH",
+        help="Workflow files or directories to migrate",
+    )
+    migrate_parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Rewrite the files in place (default: report only)",
+    )
+    migrate_parser.add_argument(
+        "--diff",
+        action="store_true",
+        help="Print a unified diff of the changes",
+    )
+    migrate_parser.add_argument(
+        "--names",
+        action="store_true",
+        help="Use 'kwargs' where the input names already match the opcode signature",
     )
 
     return parser
@@ -321,10 +552,15 @@ async def run_workflow(args):
 
         # Parse the workflow(s)
         parser = Parser()
-        if include_files:
-            program = parser.parse_files(str(workflow_file), include_files)
-        else:
-            program = parser.parse_file(str(workflow_file))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", FutureWarning)
+            if include_files:
+                program = parser.parse_files(str(workflow_file), include_files)
+            else:
+                program = parser.parse_file(str(workflow_file))
+
+        for warning in caught:
+            print(f"! {warning.message}", file=sys.stderr)
 
         if args.verbose:
             print_success("Workflow parsed successfully")
@@ -355,6 +591,9 @@ async def run_workflow(args):
             print("\n" + visualization + "\n")
 
         if args.validate_only:
+            # Building the engine runs the binding checks, so --validate-only
+            # cannot pass a workflow that 'run' would reject
+            Engine(program)
             print_success("Workflow is valid!")
             return
 
@@ -469,6 +708,7 @@ async def main():
         "run",
         "docs",
         "grammar",
+        "migrate",
         "-h",
         "--help",
     ):
@@ -485,6 +725,8 @@ async def main():
         else:
             # Show docs help if no subcommand
             arg_parser.parse_args(["docs", "-h"])
+    elif args.command == "migrate":
+        sys.exit(handle_migrate_command(args))
     elif args.command == "grammar":
         if args.grammar_command == "sync":
             sys.exit(handle_grammar_command(args))

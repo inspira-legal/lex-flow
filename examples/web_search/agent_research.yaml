@@ -25,21 +25,19 @@ workflows:
       start:
         opcode: workflow_start
         next: print_header
-        inputs: {}
 
       print_header:
         opcode: io_print
         next: store_model
-        inputs:
-          STRING:
-            literal: "\n=== AI Research Agent with Web Search ===\n\n"
+        args:
+          - literal: "\n=== AI Research Agent with Web Search ===\n\n"
 
       # === Setup: Create Model and Agent ===
 
       create_model:
         opcode: pydantic_ai_create_vertex_model
         isReporter: true
-        inputs:
+        kwargs:
           model_name:
             literal: "gemini-2.5-flash"
           project:
@@ -50,23 +48,22 @@ workflows:
       store_model:
         opcode: data_set_variable_to
         next: print_model_created
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "model"
-          VALUE:
+          value:
             node: create_model
 
       print_model_created:
         opcode: io_print
         next: store_agent
-        inputs:
-          STRING:
-            literal: "1. Created Vertex AI model: gemini-2.5-flash\n"
+        args:
+          - literal: "1. Created Vertex AI model: gemini-2.5-flash\n"
 
       create_agent:
         opcode: pydantic_ai_create_agent
         isReporter: true
-        inputs:
+        kwargs:
           model:
             variable: "model"
           instructions:
@@ -86,49 +83,46 @@ workflows:
       store_agent:
         opcode: data_set_variable_to
         next: print_agent_created
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "agent"
-          VALUE:
+          value:
             node: create_agent
 
       print_agent_created:
         opcode: io_print
         next: run_with_try
-        inputs:
-          STRING:
-            literal: "2. Created AI research agent with web search capabilities\n\n"
+        args:
+          - literal: "2. Created AI research agent with web search capabilities\n\n"
 
       # === Execute Agent with Error Handling ===
 
       run_with_try:
         opcode: control_try
         next: show_success
-        inputs:
-          TRY:
+        kwargs:
+          try:
             branch: execute_agent
-          CATCH1:
-            exception_type: "TimeoutError"
-            var: "error_msg"
-            body:
-              branch: handle_timeout
-          CATCH2:
-            exception_type: "ValueError"
-            var: "error_msg"
-            body:
-              branch: handle_value_error
-          CATCH3:
-            exception_type: null
-            var: "error_msg"
-            body:
-              branch: handle_generic
+          catch:
+            - exception_type: "TimeoutError"
+              var: "error_msg"
+              body:
+                branch: handle_timeout
+            - exception_type: "ValueError"
+              var: "error_msg"
+              body:
+                branch: handle_value_error
+            - exception_type: null
+              var: "error_msg"
+              body:
+                branch: handle_generic
 
       # === Agent Call ===
 
       agent_call:
         opcode: ai_agent_with_tools
         isReporter: true
-        inputs:
+        kwargs:
           agent:
             variable: "agent"
           messages:
@@ -150,10 +144,10 @@ workflows:
       execute_agent:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "result"
-          VALUE:
+          value:
             node: agent_call
 
       # === Error Handlers ===
@@ -161,51 +155,45 @@ workflows:
       handle_timeout:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n[ERROR] Agent execution timed out. Try increasing timeout_seconds.\n"
+        args:
+          - literal: "\n[ERROR] Agent execution timed out. Try increasing timeout_seconds.\n"
 
       handle_value_error:
         opcode: io_print
         next: print_value_error_detail
-        inputs:
-          STRING:
-            literal: "\n[ERROR] Configuration error: "
+        args:
+          - literal: "\n[ERROR] Configuration error: "
 
       print_value_error_detail:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            variable: error_msg
+        args:
+          - variable: error_msg
 
       handle_generic:
         opcode: io_print
         next: print_generic_detail
-        inputs:
-          STRING:
-            literal: "\n[ERROR] Unexpected error: "
+        args:
+          - literal: "\n[ERROR] Unexpected error: "
 
       print_generic_detail:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            variable: error_msg
+        args:
+          - variable: error_msg
 
       # === Success Path ===
 
       show_success:
         opcode: io_print
         next: show_response
-        inputs:
-          STRING:
-            literal: "\n=== Research Results ===\n\n"
+        args:
+          - literal: "\n=== Research Results ===\n\n"
 
       get_text:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: result
           key:
@@ -214,13 +202,11 @@ workflows:
       show_response:
         opcode: io_print
         next: show_footer
-        inputs:
-          STRING:
-            node: get_text
+        args:
+          - node: get_text
 
       show_footer:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n\n=== Research Complete ===\n"
+        args:
+          - literal: "\n\n=== Research Complete ===\n"

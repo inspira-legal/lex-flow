@@ -2,6 +2,80 @@
 
 <!-- version list -->
 
+## v1.20.3 (2026-10-29)
+
+### Bug Fixes
+
+- **core**: Http_* e clientes de opcode só alcançam hosts públicos (WAVE-988)
+  ([#150](https://github.com/inspira-legal/lex-flow/pull/150),
+  [`82859b5`](https://github.com/inspira-legal/lex-flow/commit/82859b58f634c25f00bcbc35fbed688bb6b2d4c6))
+
+
+## v1.20.2 (2026-10-26)
+
+### Bug Fixes
+
+- **core**: Sessões aiohttp dos clientes não vazam mais (WAVE-875)
+  ([#149](https://github.com/inspira-legal/lex-flow/pull/149),
+  [`31029c9`](https://github.com/inspira-legal/lex-flow/commit/31029c948e9cb8b6812b8f1790db2d10c87fbf40))
+
+
+## v1.20.1 (2026-10-22)
+
+### Bug Fixes
+
+- **deps**: Aiohttp >= 3.14.4 no core e na raiz (WAVE-863)
+  ([#145](https://github.com/inspira-legal/lex-flow/pull/145),
+  [`2326acc`](https://github.com/inspira-legal/lex-flow/commit/2326accbb5cda13e00882422429741e94e16ed3c))
+
+### Chores
+
+- **ci**: Bump astral-sh/setup-uv to v10.3.0
+  ([#143](https://github.com/inspira-legal/lex-flow/pull/143),
+  [`3677eab`](https://github.com/inspira-legal/lex-flow/commit/3677eabae4baaf60bdc8de8819925cda11bf54c7))
+
+- **cli**: Release 1.7.0
+  ([`bf9bc8b`](https://github.com/inspira-legal/lex-flow/commit/bf9bc8baf06716aa152dd12d2fb980ee7bfd4509))
+
+- **deps**: Update packages and fix dependabot alerts
+  ([#139](https://github.com/inspira-legal/lex-flow/pull/139),
+  [`3489e63`](https://github.com/inspira-legal/lex-flow/commit/3489e63fd38d66809f9fe6688e04863baab431b4))
+
+- **web**: Build frontend library [skip ci]
+  ([`fcadab3`](https://github.com/inspira-legal/lex-flow/commit/fcadab33d818d5304a69b82cfa1bbbb662cc1302))
+
+- **web**: Release 1.17.0
+  ([`ac6c4f4`](https://github.com/inspira-legal/lex-flow/commit/ac6c4f4a6096378a2f64472aa1c66b4722c4ca40))
+
+
+## v1.20.0 (2026-09-30)
+
+### Chores
+
+- Apply the pytest config, drop pygame ([#122](https://github.com/inspira-legal/lex-flow/pull/122),
+  [`2d2967c`](https://github.com/inspira-legal/lex-flow/commit/2d2967c90dffed96539b0070f86e7cfd37b4dcde))
+
+- **ci**: Update GitHub Actions to their current majors
+  ([#110](https://github.com/inspira-legal/lex-flow/pull/110),
+  [`5de07bb`](https://github.com/inspira-legal/lex-flow/commit/5de07bbd31dd137b2969aab0f72f1ec0eb2b5d7b))
+
+- **deps**: Clear all 49 open Dependabot alerts
+  ([#109](https://github.com/inspira-legal/lex-flow/pull/109),
+  [`3b9d29b`](https://github.com/inspira-legal/lex-flow/commit/3b9d29b797a7820afc9258a0002ae7939ab12129))
+
+- **web**: Build frontend library [skip ci]
+  ([`63f1c42`](https://github.com/inspira-legal/lex-flow/commit/63f1c42f56b2bb5cc46b1d8f16003a4764e5bf92))
+
+- **web**: Release 1.16.1
+  ([`0819cfe`](https://github.com/inspira-legal/lex-flow/commit/0819cfebfeda10d41bbd65e2fb24999b145f91ff))
+
+### Features
+
+- Bind workflow arguments by name with args/kwargs
+  ([#128](https://github.com/inspira-legal/lex-flow/pull/128),
+  [`03dde92`](https://github.com/inspira-legal/lex-flow/commit/03dde929de87919a1531addde5e0e76db95e4dfb))
+
+
 ## v1.19.1 (2026-09-15)
 
 ### Bug Fixes

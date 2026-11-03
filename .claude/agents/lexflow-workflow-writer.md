@@ -35,6 +35,44 @@ You have comprehensive knowledge of:
 
 5. **Clear Node Naming**: Use descriptive, lowercase, underscore-separated node IDs that indicate purpose.
 
+6. **Bind Arguments by Name**: Pass a node's arguments with `kwargs` (a mapping of
+   the opcode's own parameter names) whenever the call has more than one argument or
+   skips an optional one; `args` (a positional list) is for short, obvious calls.
+   Never use the legacy `inputs` key in new workflows — there the keys are decorative
+   and the order is what binds, which is how arguments silently land in the wrong
+   parameter. A node may not carry both forms.
+
+## Node Arguments
+
+```yaml
+# Positional: fills the opcode's parameters in order
+show:
+  opcode: io_print
+  args:
+    - literal: "hello\n"
+
+# By name: the keys are the opcode's parameter names (see OPCODE_REFERENCE.md)
+search:
+  opcode: web_search
+  isReporter: true
+  kwargs:
+    query: { variable: question }
+    max_results: { literal: 5 }
+
+# Constructs take their slots by name, all lowercase
+gate:
+  opcode: control_if_else
+  kwargs:
+    condition: { node: is_ready }
+    then: { branch: run }
+    else: { branch: skip }
+```
+
+Slots that hold several values are lists: `args` for a fork's branches, a call's
+arguments and a return's values, and `catch` for a try's handlers. `workflow_call`
+names the callee in `workflow` and passes every other keyword to the workflow's
+own parameters.
+
 ## Workflow Structure Template
 
 ```yaml
@@ -52,25 +90,22 @@ workflows:
       start:
         opcode: workflow_start
         next: first_operation
-        inputs: {}
 
       first_operation:
         opcode: opcode_name
         next: next_node_id
-        inputs:
-          ARG1:
-            literal: value
-          ARG2:
-            variable: param1
+        args:
+          - literal: value
+          - variable: param1
 
       # Reporter nodes (expression nodes) use isReporter: true
       calculate_value:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
+        kwargs:
+          left:
             variable: param1
-          OPERAND2:
+          right:
             literal: 10
       # ... more nodes
 ```
@@ -130,19 +165,19 @@ cat docs/GRAMMAR_REFERENCE.md
 check_condition:
   opcode: control_if
   next: continue_after
-  inputs:
-    CONDITION:
+  kwargs:
+    condition:
       node: some_comparison
-    THEN:
+    then:
       branch: do_if_true
 
 some_comparison:
   opcode: operator_greater_than
   isReporter: true
-  inputs:
-    OPERAND1:
+  kwargs:
+    left:
       variable: x
-    OPERAND2:
+    right:
       variable: y
 ```
 
@@ -150,18 +185,18 @@ some_comparison:
 ```yaml
 check_condition:
   opcode: control_if_else
-  inputs:
-    CONDITION:
+  kwargs:
+    condition:
       node: some_comparison
-    THEN:
+    then:
       branch: do_if_true
-    ELSE:
+    else:
       branch: do_if_false
 
 some_comparison:
   opcode: operator_equals
   isReporter: true
-  inputs:
+  kwargs:
     left:
       variable: x
     right:
@@ -173,19 +208,19 @@ some_comparison:
 loop:
   opcode: control_while
   next: after_loop
-  inputs:
-    CONDITION:
+  kwargs:
+    condition:
       node: check_loop_condition
-    BODY:
+    body:
       branch: loop_body
 
 check_loop_condition:
   opcode: operator_less_than
   isReporter: true
-  inputs:
-    OPERAND1:
+  kwargs:
+    left:
       variable: counter
-    OPERAND2:
+    right:
       literal: 10
 ```
 
@@ -194,16 +229,16 @@ check_loop_condition:
 for_loop:
   opcode: control_for
   next: after_loop
-  inputs:
-    VAR:
+  kwargs:
+    var:
       literal: "i"
-    START:
+    start:
       literal: 0
-    END:
+    end:
       literal: 10
-    STEP:
+    step:
       literal: 1
-    BODY:
+    body:
       branch: loop_body
 ```
 
@@ -212,12 +247,12 @@ for_loop:
 iterate_items:
   opcode: control_foreach
   next: after_iteration
-  inputs:
-    VAR:
+  kwargs:
+    var:
       literal: "current_item"
-    ITERABLE:
+    iterable:
       variable: items
-    BODY:
+    body:
       branch: process_item
 ```
 
@@ -226,14 +261,14 @@ iterate_items:
 safe_operation:
   opcode: control_try
   next: continue_execution
-  inputs:
-    TRY:
+  kwargs:
+    try:
       branch: risky_operation
-    CATCH1:
-      exception_type: "ValueError"
-      var: "error_msg"
-      body:
-        branch: handle_value_error
+    catch:
+      - exception_type: "ValueError"
+        var: "error_msg"
+        body:
+          branch: handle_value_error
 ```
 
 **Try-Catch with Multiple Handlers:**
@@ -241,19 +276,18 @@ safe_operation:
 safe_operation:
   opcode: control_try
   next: continue_execution
-  inputs:
-    TRY:
+  kwargs:
+    try:
       branch: risky_operation
-    CATCH1:
-      exception_type: "ValueError"
-      var: "e"
-      body:
-        branch: handle_value_error
-    CATCH2:
-      exception_type: "TypeError"
-      var: "e"
-      body:
-        branch: handle_type_error
+    catch:
+      - exception_type: "ValueError"
+        var: "e"
+        body:
+          branch: handle_value_error
+      - exception_type: "TypeError"
+        var: "e"
+        body:
+          branch: handle_type_error
 ```
 
 **Try-Catch-Finally:**
@@ -261,16 +295,16 @@ safe_operation:
 safe_operation:
   opcode: control_try
   next: continue_execution
-  inputs:
-    TRY:
+  kwargs:
+    try:
       branch: risky_operation
-    CATCH1:
-      exception_type: "ValueError"
-      var: "error"
-      body:
-        branch: handle_error
-    FINALLY:
+    finally:
       branch: cleanup
+    catch:
+      - exception_type: "ValueError"
+        var: "error"
+        body:
+          branch: handle_error
 ```
 
 **Try-Finally (no catch):**
@@ -278,10 +312,10 @@ safe_operation:
 ensure_cleanup:
   opcode: control_try
   next: continue_execution
-  inputs:
-    TRY:
+  kwargs:
+    try:
       branch: do_work
-    FINALLY:
+    finally:
       branch: cleanup
 ```
 
@@ -292,13 +326,12 @@ ensure_cleanup:
 call_helper:
   opcode: workflow_call
   next: use_result
-  inputs:
-    WORKFLOW:
+  args:
+    - variable: my_list
+    - literal: "some_value"
+  kwargs:
+    workflow:
       literal: helper_workflow_name
-    ARG1:
-      variable: my_list
-    ARG2:
-      literal: "some_value"
 ```
 
 **Helper Workflow with Return:**
@@ -315,22 +348,20 @@ call_helper:
     start:
       opcode: workflow_start
       next: calculate
-      inputs: {}
 
     calculate:
       opcode: operator_add
       isReporter: true
-      inputs:
-        OPERAND1:
+      kwargs:
+        left:
           variable: a
-        OPERAND2:
+        right:
           variable: b
 
     return_result:
       opcode: workflow_return
-      inputs:
-        VALUE:
-          node: calculate
+      args:
+        - node: calculate
 ```
 
 ## Critical: Statement vs Reporter Nodes
@@ -364,10 +395,10 @@ Then the opcode will execute **TWICE** - once as a statement, once as a reporter
 # Loop body starts here - executes get_input as statement
 chat_loop:
   opcode: control_while
-  inputs:
-    CONDITION:
+  kwargs:
+    condition:
       variable: running
-    BODY:
+    body:
       branch: get_input  # <-- Executes get_input as statement
 
 # This node is BOTH a statement (has next) AND a reporter (isReporter)
@@ -375,17 +406,17 @@ get_input:
   opcode: io_input
   next: store_input      # <-- Makes it a statement
   isReporter: true       # <-- Also makes it a reporter
-  inputs:
+  kwargs:
     prompt:
       literal: "You: "
 
 store_input:
   opcode: data_set_variable_to
   next: check_quit
-  inputs:
-    VARIABLE:
+  kwargs:
+    variable:
       literal: "user_input"
-    VALUE:
+    value:
       node: get_input    # <-- Evaluates get_input AGAIN as reporter!
 ```
 
@@ -394,17 +425,17 @@ store_input:
 # Loop body starts at store_input, which references get_input
 chat_loop:
   opcode: control_while
-  inputs:
-    CONDITION:
+  kwargs:
+    condition:
       variable: running
-    BODY:
+    body:
       branch: store_input  # <-- Start at the assignment node
 
 # Pure reporter - no next pointer, only evaluated when referenced
 get_input:
   opcode: io_input
   isReporter: true         # <-- Reporter only
-  inputs:
+  kwargs:
     prompt:
       literal: "You: "
   # NO next pointer!
@@ -412,10 +443,10 @@ get_input:
 store_input:
   opcode: data_set_variable_to
   next: check_quit
-  inputs:
-    VARIABLE:
+  kwargs:
+    variable:
       literal: "user_input"
-    VALUE:
+    value:
       node: get_input      # <-- Only execution of io_input
 ```
 
@@ -434,7 +465,7 @@ For opcodes with side effects (`io_input`, `io_print`, `http_get`, `chat_with_ag
 fetch_data:
   opcode: http_get
   isReporter: true
-  inputs:
+  kwargs:
     url:
       literal: "https://api.example.com/data"
 
@@ -442,10 +473,10 @@ fetch_data:
 store_response:
   opcode: data_set_variable_to
   next: process_data
-  inputs:
-    VARIABLE:
+  kwargs:
+    variable:
       literal: "response"
-    VALUE:
+    value:
       node: fetch_data  # <-- Only place http_get is evaluated
 ```
 
@@ -482,29 +513,27 @@ workflows:
       start:
         opcode: workflow_start
         next: accept_loop
-        inputs: {}
 
       # Main server loop — receive connections until shutdown
       accept_loop:
         opcode: control_while
         next: done
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             node: not_shutdown
-          BODY:
+          body:
             branch: receive_conn
 
       not_shutdown:
         opcode: operator_not
         isReporter: true
-        inputs:
-          OPERAND:
-            node: check_shutdown
+        args:
+          - node: check_shutdown
 
       check_shutdown:
         opcode: sync_event_is_set
         isReporter: true
-        inputs:
+        kwargs:
           event:
             variable: "_shutdown"
 
@@ -512,7 +541,7 @@ workflows:
       get_conn:
         opcode: channel_receive
         isReporter: true
-        inputs:
+        kwargs:
           channel:
             variable: "_connections"
           timeout:
@@ -521,13 +550,13 @@ workflows:
       receive_conn:
         opcode: data_set_variable_to
         next: handle_conn
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "conn"
-          VALUE:
+          value:
             node: get_conn
 
-      handle_conn:
+      handle_conn: null
         # ... process the connection dict ...
         # conn has keys: id, type, method, path, headers, query_params, body
         # Use dict_get to access fields
@@ -562,36 +591,34 @@ workflows:
       start:
         opcode: workflow_start
         next: safe_run
-        inputs: {}
 
       # Always wrap resource-heavy work in try/finally for cleanup
       safe_run:
         opcode: control_try
-        inputs:
-          TRY:
+        kwargs:
+          try:
             branch: store_subscriber
-          FINALLY:
+          finally:
             branch: cleanup
 
       create_subscriber:
         opcode: pubsub_create_subscriber
         isReporter: true
-        inputs: {}
 
       store_subscriber:
         opcode: data_set_variable_to
         next: process_messages
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "subscriber"
-          VALUE:
+          value:
             node: create_subscriber
 
       # ... streaming loop using control_async_foreach ...
 
       cleanup:
         opcode: pubsub_close_subscriber
-        inputs:
+        kwargs:
           subscriber:
             variable: "subscriber"
 ```

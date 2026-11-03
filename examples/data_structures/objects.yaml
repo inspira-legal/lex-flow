@@ -8,27 +8,24 @@ workflows:
       start:
         opcode: workflow_start
         next: test_intro
-        inputs: {}
 
       test_intro:
         opcode: io_print
         next: set_name
-        inputs:
-          STRING:
-            literal: "=== Object Operations Examples ===\n\n1. Creating objects:\n"
+        args:
+          - literal: "=== Object Operations Examples ===\n\n1. Creating objects:\n"
 
       # Test 1: Create empty object
       test_object_create:
         opcode: object_create
         next: null
         isReporter: true
-        inputs: {}
 
       set_name:
         opcode: object_set
         next: set_age
         isReporter: true
-        inputs:
+        kwargs:
           obj:
             node: test_object_create
           key:
@@ -40,7 +37,7 @@ workflows:
         opcode: object_set
         next: set_active
         isReporter: true
-        inputs:
+        kwargs:
           obj:
             node: set_name
           key:
@@ -52,7 +49,7 @@ workflows:
         opcode: object_set
         next: print_person
         isReporter: true
-        inputs:
+        kwargs:
           obj:
             node: set_age
           key:
@@ -63,14 +60,13 @@ workflows:
       print_person:
         opcode: io_print
         next: test_from_dict
-        inputs:
-          STRING:
-            node: person_str
+        args:
+          - node: person_str
 
       person_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Created person object: "
           right:
@@ -79,7 +75,7 @@ workflows:
       person_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: set_active
 
@@ -87,15 +83,14 @@ workflows:
       test_from_dict:
         opcode: io_print
         next: create_user_dict
-        inputs:
-          STRING:
-            literal: "\n2. Creating from dictionary:\n"
+        args:
+          - literal: "\n2. Creating from dictionary:\n"
 
       create_user_dict:
         opcode: dict_from_lists
         next: user_from_dict
         isReporter: true
-        inputs:
+        kwargs:
           keys:
             literal: ["username", "email", "role"]
           values:
@@ -105,21 +100,20 @@ workflows:
         opcode: object_from_dict
         next: print_user
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: create_user_dict
 
       print_user:
         opcode: io_print
         next: test_object_get
-        inputs:
-          STRING:
-            node: user_str
+        args:
+          - node: user_str
 
       user_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "User object: "
           right:
@@ -128,7 +122,7 @@ workflows:
       user_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: user_from_dict
 
@@ -136,15 +130,14 @@ workflows:
       test_object_get:
         opcode: io_print
         next: get_username
-        inputs:
-          STRING:
-            literal: "\n3. Getting properties:\n"
+        args:
+          - literal: "\n3. Getting properties:\n"
 
       get_username:
         opcode: object_get
         next: print_username
         isReporter: true
-        inputs:
+        kwargs:
           obj:
             node: user_from_dict
           key:
@@ -153,14 +146,13 @@ workflows:
       print_username:
         opcode: io_print
         next: get_missing
-        inputs:
-          STRING:
-            node: username_str
+        args:
+          - node: username_str
 
       username_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Username: "
           right:
@@ -170,7 +162,7 @@ workflows:
         opcode: object_get
         next: print_missing
         isReporter: true
-        inputs:
+        kwargs:
           obj:
             node: user_from_dict
           key:
@@ -181,14 +173,13 @@ workflows:
       print_missing:
         opcode: io_print
         next: test_object_has
-        inputs:
-          STRING:
-            node: missing_str
+        args:
+          - node: missing_str
 
       missing_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Missing property (with default): "
           right:
@@ -198,15 +189,14 @@ workflows:
       test_object_has:
         opcode: io_print
         next: check_has_email
-        inputs:
-          STRING:
-            literal: "\n4. Checking properties:\n"
+        args:
+          - literal: "\n4. Checking properties:\n"
 
       check_has_email:
         opcode: object_has
         next: print_has_email
         isReporter: true
-        inputs:
+        kwargs:
           obj:
             node: user_from_dict
           key:
@@ -215,14 +205,13 @@ workflows:
       print_has_email:
         opcode: io_print
         next: check_has_phone
-        inputs:
-          STRING:
-            node: has_email_str
+        args:
+          - node: has_email_str
 
       has_email_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Has email: "
           right:
@@ -231,7 +220,7 @@ workflows:
       has_email_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: check_has_email
 
@@ -239,7 +228,7 @@ workflows:
         opcode: object_has
         next: print_has_phone
         isReporter: true
-        inputs:
+        kwargs:
           obj:
             node: user_from_dict
           key:
@@ -248,14 +237,13 @@ workflows:
       print_has_phone:
         opcode: io_print
         next: test_object_keys
-        inputs:
-          STRING:
-            node: has_phone_str
+        args:
+          - node: has_phone_str
 
       has_phone_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Has phone: "
           right:
@@ -264,7 +252,7 @@ workflows:
       has_phone_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: check_has_phone
 
@@ -272,29 +260,27 @@ workflows:
       test_object_keys:
         opcode: io_print
         next: get_user_keys
-        inputs:
-          STRING:
-            literal: "\n5. Listing properties:\n"
+        args:
+          - literal: "\n5. Listing properties:\n"
 
       get_user_keys:
         opcode: object_keys
         next: print_user_keys
         isReporter: true
-        inputs:
+        kwargs:
           obj:
             node: user_from_dict
 
       print_user_keys:
         opcode: io_print
         next: test_conversion
-        inputs:
-          STRING:
-            node: keys_str
+        args:
+          - node: keys_str
 
       keys_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Object properties: "
           right:
@@ -303,7 +289,7 @@ workflows:
       keys_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: get_user_keys
 
@@ -311,29 +297,27 @@ workflows:
       test_conversion:
         opcode: io_print
         next: obj_to_dict
-        inputs:
-          STRING:
-            literal: "\n6. Converting between objects and dicts:\n"
+        args:
+          - literal: "\n6. Converting between objects and dicts:\n"
 
       obj_to_dict:
         opcode: object_to_dict
         next: print_as_dict
         isReporter: true
-        inputs:
+        kwargs:
           obj:
             node: user_from_dict
 
       print_as_dict:
         opcode: io_print
         next: modify_dict
-        inputs:
-          STRING:
-            node: as_dict_str
+        args:
+          - node: as_dict_str
 
       as_dict_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "As dictionary: "
           right:
@@ -342,7 +326,7 @@ workflows:
       dict_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: obj_to_dict
 
@@ -350,7 +334,7 @@ workflows:
         opcode: dict_set
         next: dict_to_obj
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: obj_to_dict
           key:
@@ -362,21 +346,20 @@ workflows:
         opcode: object_from_dict
         next: print_new_obj
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: modify_dict
 
       print_new_obj:
         opcode: io_print
         next: test_remove
-        inputs:
-          STRING:
-            node: new_obj_str
+        args:
+          - node: new_obj_str
 
       new_obj_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Modified as object: "
           right:
@@ -385,7 +368,7 @@ workflows:
       new_obj_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: dict_to_obj
 
@@ -393,21 +376,19 @@ workflows:
       test_remove:
         opcode: io_print
         next: create_temp_obj
-        inputs:
-          STRING:
-            literal: "\n7. Removing properties:\n"
+        args:
+          - literal: "\n7. Removing properties:\n"
 
       create_temp_obj:
         opcode: object_create
         next: add_temp_props
         isReporter: true
-        inputs: {}
 
       add_temp_props:
         opcode: object_set
         next: add_more_props
         isReporter: true
-        inputs:
+        kwargs:
           obj:
             node: create_temp_obj
           key:
@@ -419,7 +400,7 @@ workflows:
         opcode: object_set
         next: print_before_remove
         isReporter: true
-        inputs:
+        kwargs:
           obj:
             node: add_temp_props
           key:
@@ -430,14 +411,13 @@ workflows:
       print_before_remove:
         opcode: io_print
         next: remove_prop
-        inputs:
-          STRING:
-            node: before_str
+        args:
+          - node: before_str
 
       before_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Before removal: "
           right:
@@ -446,7 +426,7 @@ workflows:
       before_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: add_more_props
 
@@ -454,7 +434,7 @@ workflows:
         opcode: object_remove
         next: print_after_remove
         isReporter: true
-        inputs:
+        kwargs:
           obj:
             node: add_more_props
           key:
@@ -463,14 +443,13 @@ workflows:
       print_after_remove:
         opcode: io_print
         next: final_message
-        inputs:
-          STRING:
-            node: after_str
+        args:
+          - node: after_str
 
       after_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "After removal: "
           right:
@@ -479,13 +458,12 @@ workflows:
       after_repr:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: remove_prop
 
       final_message:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n=== All object tests completed! ===\n"
+        args:
+          - literal: "\n=== All object tests completed! ===\n"

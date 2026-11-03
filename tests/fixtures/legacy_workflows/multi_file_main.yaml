@@ -1,0 +1,48 @@
+workflows:
+  - name: main
+    interface:
+      inputs: []
+      outputs: []
+    variables: {}
+    nodes:
+      start:
+        opcode: workflow_start
+        next: print_intro
+        inputs: {}
+
+      print_intro:
+        opcode: io_print
+        next: call_greet
+        inputs:
+          STRING:
+            literal: "Testing multi-file imports:\n"
+
+      call_greet:
+        opcode: workflow_call
+        next: print_newline
+        inputs:
+          WORKFLOW:
+            literal: greet
+          ARG1:
+            literal: "Alice"
+
+      print_newline:
+        opcode: io_print
+        next: call_helper_main
+        inputs:
+          STRING:
+            literal: "\n"
+
+      call_helper_main:
+        opcode: workflow_call
+        next: print_done
+        inputs:
+          WORKFLOW:
+            literal: main
+
+      print_done:
+        opcode: io_print
+        next: null
+        inputs:
+          STRING:
+            literal: "Done!\n"

@@ -99,7 +99,7 @@ def _mock_client():
         client = HubSpotClient("test-token")
 
     # Replace session with a mock
-    client._session = MagicMock()
+    client._session = MagicMock(closed=False)
     return client
 
 

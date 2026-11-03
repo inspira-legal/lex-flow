@@ -8,41 +8,37 @@ workflows:
       start:
         opcode: workflow_start
         next: print_intro
-        inputs: {}
 
       print_intro:
         opcode: io_print
         next: call_greet
-        inputs:
-          STRING:
-            literal: "Testing multi-file imports:\n"
+        args:
+          - literal: "Testing multi-file imports:\n"
 
       call_greet:
         opcode: workflow_call
         next: print_newline
-        inputs:
-          WORKFLOW:
-            literal: greet
-          ARG1:
-            literal: "Alice"
+        args:
+          - literal: "Alice"
 
+        kwargs:
+          workflow:
+            literal: greet
       print_newline:
         opcode: io_print
         next: call_helper_main
-        inputs:
-          STRING:
-            literal: "\n"
+        args:
+          - literal: "\n"
 
       call_helper_main:
         opcode: workflow_call
         next: print_done
-        inputs:
-          WORKFLOW:
+        kwargs:
+          workflow:
             literal: main
 
       print_done:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "Done!\n"
+        args:
+          - literal: "Done!\n"

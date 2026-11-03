@@ -29,73 +29,72 @@ workflows:
       start:
         opcode: workflow_start
         next: print_start
-        inputs: {}
 
       print_start:
         opcode: io_print
         next: store_client
-        inputs:
-          MESSAGE: { literal: "Creating contact in HubSpot..." }
+        args:
+          - {literal: "Creating contact in HubSpot..."}
 
       # Criar cliente HubSpot
       create_client:
         opcode: hubspot_create_client
         isReporter: true
-        inputs:
-          access_token: { variable: token }
+        kwargs:
+          access_token: {variable: token}
 
       store_client:
         opcode: data_set_variable_to
         next: store_contact_id
-        inputs:
-          VARIABLE: { literal: "client" }
-          VALUE: { node: create_client }
+        kwargs:
+          variable: {literal: "client"}
+          value: {node: create_client}
 
       # Criar novo contato
       create_contact:
         opcode: hubspot_create_contact
         isReporter: true
-        inputs:
-          client: { variable: client }
+        kwargs:
+          client: {variable: client}
           properties:
-            firstname: { variable: firstname }
-            lastname: { variable: lastname }
-            email: { variable: email }
+            firstname: {variable: firstname}
+            lastname: {variable: lastname}
+            email: {variable: email}
 
       # Extrair ID do contato criado
       get_contact_id:
         opcode: dict_get
         isReporter: true
-        inputs:
-          dict: { node: create_contact }
-          key: { literal: "id" }
+        args:
+          - {node: create_contact}
+          - {literal: "id"}
 
       store_contact_id:
         opcode: data_set_variable_to
         next: do_associate
-        inputs:
-          VARIABLE: { literal: "contact_id" }
-          VALUE: { node: get_contact_id }
+        kwargs:
+          variable: {literal: "contact_id"}
+          value: {node: get_contact_id}
 
       # Associar contato à empresa
       # association_type é inferido automaticamente: contacts→companies = 1
       do_associate:
         opcode: hubspot_associate
         next: print_result
-        inputs:
-          client: { variable: client }
-          from_type: { literal: "contacts" }
-          from_id: { variable: contact_id }
-          to_type: { literal: "companies" }
-          to_id: { variable: company_id }
+        kwargs:
+          client: {variable: client}
+          from_type: {literal: "contacts"}
+          from_id: {variable: contact_id}
+          to_type: {literal: "companies"}
+          to_id: {variable: company_id}
 
       # Imprimir resultado
       print_result:
         opcode: io_print
         next: null
-        inputs:
+        kwargs:
           values:
-            - { literal: "Contact created with ID: " }
-            - { variable: contact_id }
-            - { literal: " and associated with company: " }
-            - { variable: company_id }
+            - {literal: "Contact created with ID: "}
+            - {variable: contact_id}
+            - {literal: " and associated with company: "}
+            - {variable: company_id}

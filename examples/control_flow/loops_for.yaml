@@ -8,104 +8,95 @@ workflows:
       start:
         opcode: workflow_start
         next: print_header
-        inputs: {}
 
       print_header:
         opcode: io_print
         next: test_basic_for
-        inputs:
-          STRING:
-            literal: "=== Testing control_for ===\n\n"
+        args:
+          - literal: "=== Testing control_for ===\n\n"
 
       # Test 1: Basic for loop 0 to 5
       test_basic_for:
         opcode: io_print
         next: for_loop_1
-        inputs:
-          STRING:
-            literal: "Test 1: Basic for loop (0 to 5):\n"
+        args:
+          - literal: "Test 1: Basic for loop (0 to 5):\n"
 
       for_loop_1:
         opcode: control_for
         next: test_with_step
-        inputs:
-          VAR:
+        kwargs:
+          var:
             literal: "i"
-          START:
+          start:
             literal: 0
-          END:
+          end:
             literal: 5
-          BODY:
+          body:
             branch: print_i
 
       print_i:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            variable: i
+        args:
+          - variable: i
 
       # Test 2: For loop with step
       test_with_step:
         opcode: io_print
         next: for_loop_2
-        inputs:
-          STRING:
-            literal: "\n\nTest 2: For loop with step=2 (0 to 10):\n"
+        args:
+          - literal: "\n\nTest 2: For loop with step=2 (0 to 10):\n"
 
       for_loop_2:
         opcode: control_for
         next: test_with_start
-        inputs:
-          VAR:
+        kwargs:
+          var:
             literal: "j"
-          START:
+          start:
             literal: 0
-          END:
+          end:
             literal: 10
-          STEP:
+          step:
             literal: 2
-          BODY:
+          body:
             branch: print_j
 
       print_j:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            variable: j
+        args:
+          - variable: j
 
       # Test 3: For loop with start != 0
       test_with_start:
         opcode: io_print
         next: for_loop_3
-        inputs:
-          STRING:
-            literal: "\n\nTest 3: For loop (5 to 8):\n"
+        args:
+          - literal: "\n\nTest 3: For loop (5 to 8):\n"
 
       for_loop_3:
         opcode: control_for
         next: print_footer
-        inputs:
-          VAR:
+        kwargs:
+          var:
             literal: "k"
-          START:
+          start:
             literal: 5
-          END:
+          end:
             literal: 8
-          BODY:
+          body:
             branch: print_k
 
       print_k:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            variable: k
+        args:
+          - variable: k
 
       print_footer:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n\n✅ All control_for tests passed!\n"
+        args:
+          - literal: "\n\n✅ All control_for tests passed!\n"

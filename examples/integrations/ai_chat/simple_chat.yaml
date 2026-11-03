@@ -27,21 +27,19 @@ workflows:
       start:
         opcode: workflow_start
         next: print_intro
-        inputs: {}
 
       # Introduction
       print_intro:
         opcode: io_print
         next: store_model
-        inputs:
-          STRING:
-            literal: "=== AI Chat with History ===\n\nType your message and press Enter.\nType 'quit' to exit.\n\n"
+        args:
+          - literal: "=== AI Chat with History ===\n\nType your message and press Enter.\nType 'quit' to exit.\n\n"
 
       # Step 1: Create Vertex AI Model
       create_model:
         opcode: pydantic_ai_create_vertex_model
         isReporter: true
-        inputs:
+        kwargs:
           model_name:
             literal: "gemini-2.5-flash"
           project:
@@ -52,17 +50,17 @@ workflows:
       store_model:
         opcode: data_set_variable_to
         next: store_agent
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "model"
-          VALUE:
+          value:
             node: create_model
 
       # Step 2: Create AI Agent
       create_agent:
         opcode: pydantic_ai_create_agent
         isReporter: true
-        inputs:
+        kwargs:
           model:
             variable: "model"
           instructions:
@@ -71,49 +69,47 @@ workflows:
       store_agent:
         opcode: data_set_variable_to
         next: store_history
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "agent"
-          VALUE:
+          value:
             node: create_agent
 
       # Step 3: Create empty chat history
       create_history:
         opcode: chat_create
         isReporter: true
-        inputs: {}
 
       store_history:
         opcode: data_set_variable_to
         next: print_ready
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "history"
-          VALUE:
+          value:
             node: create_history
 
       print_ready:
         opcode: io_print
         next: chat_loop
-        inputs:
-          STRING:
-            literal: "Chat initialized. Start chatting!\n\n"
+        args:
+          - literal: "Chat initialized. Start chatting!\n\n"
 
       # Main chat loop
       chat_loop:
         opcode: control_while
         next: print_goodbye
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             variable: running
-          BODY:
+          body:
             branch: store_input
 
       # Get user input (reporter only - evaluated when referenced)
       get_input:
         opcode: io_input
         isReporter: true
-        inputs:
+        kwargs:
           prompt:
             literal: "You: "
 
@@ -121,28 +117,28 @@ workflows:
       store_input:
         opcode: data_set_variable_to
         next: check_quit
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "user_input"
-          VALUE:
+          value:
             node: get_input
 
       # Check if user wants to quit
       check_quit:
         opcode: control_if_else
         next: null
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             node: is_quit
-          THEN:
+          then:
             branch: set_quit
-          ELSE:
+          else:
             branch: process_message
 
       is_quit:
         opcode: operator_equals
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: user_input
           right:
@@ -152,10 +148,10 @@ workflows:
       set_quit:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "running"
-          VALUE:
+          value:
             literal: false
 
       # Process user message with AI
@@ -163,7 +159,7 @@ workflows:
         opcode: chat_with_agent
         next: store_response
         isReporter: true
-        inputs:
+        kwargs:
           agent:
             variable: agent
           history:
@@ -174,23 +170,22 @@ workflows:
       store_response:
         opcode: data_set_variable_to
         next: print_response
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "response"
-          VALUE:
+          value:
             node: process_message
 
       print_response:
         opcode: io_print
         next: print_newline
-        inputs:
-          STRING:
-            node: format_response
+        args:
+          - node: format_response
 
       format_response:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "AI: "
           right:
@@ -199,43 +194,38 @@ workflows:
       print_newline:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n\n"
+        args:
+          - literal: "\n\n"
 
       # Goodbye message
       print_goodbye:
         opcode: io_print
         next: show_history
-        inputs:
-          STRING:
-            literal: "\n--- Chat ended ---\n\n"
+        args:
+          - literal: "\n--- Chat ended ---\n\n"
 
       # Show final chat history
       show_history:
         opcode: io_print
         next: print_formatted_history
-        inputs:
-          STRING:
-            literal: "Full conversation:\n\n"
+        args:
+          - literal: "Full conversation:\n\n"
 
       format_history:
         opcode: chat_format_for_display
         isReporter: true
-        inputs:
+        kwargs:
           history:
             variable: history
 
       print_formatted_history:
         opcode: io_print
         next: final_message
-        inputs:
-          STRING:
-            node: format_history
+        args:
+          - node: format_history
 
       final_message:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n\n=== Chat session complete ===\n"
+        args:
+          - literal: "\n\n=== Chat session complete ===\n"

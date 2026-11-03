@@ -10,19 +10,17 @@ workflows:
       start:
         opcode: workflow_start
         next: print_greeting
-        inputs: {}
 
       print_greeting:
         opcode: io_print
         next: print_age_msg
-        inputs:
-          STRING:
-            node: greeting_text
+        args:
+          - node: greeting_text
 
       greeting_text:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "Hello, "
           right:
@@ -31,14 +29,13 @@ workflows:
       print_age_msg:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            node: age_text
+        args:
+          - node: age_text
 
       age_text:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "! You are "
           right:
@@ -47,7 +44,7 @@ workflows:
       age_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: age_as_str
           right:
@@ -56,6 +53,6 @@ workflows:
       age_as_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: age

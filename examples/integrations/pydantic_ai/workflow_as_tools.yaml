@@ -30,21 +30,19 @@ workflows:
       start:
         opcode: workflow_start
         next: print_header
-        inputs: {}
 
       print_header:
         opcode: io_print
         next: store_model
-        inputs:
-          STRING:
-            literal: "\n=== Workflows as Tools Demo ===\n\nThis demo shows how AI agents can use custom workflows as tools.\n\n"
+        args:
+          - literal: "\n=== Workflows as Tools Demo ===\n\nThis demo shows how AI agents can use custom workflows as tools.\n\n"
 
       # === Setup: Create Model and Agent ===
 
       create_model:
         opcode: pydantic_ai_create_vertex_model
         isReporter: true
-        inputs:
+        kwargs:
           model_name:
             literal: "gemini-2.5-flash"
           project:
@@ -55,23 +53,22 @@ workflows:
       store_model:
         opcode: data_set_variable_to
         next: print_model_created
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "model"
-          VALUE:
+          value:
             node: create_model
 
       print_model_created:
         opcode: io_print
         next: store_agent
-        inputs:
-          STRING:
-            literal: "1. Created Vertex AI model\n"
+        args:
+          - literal: "1. Created Vertex AI model\n"
 
       create_agent:
         opcode: pydantic_ai_create_agent
         isReporter: true
-        inputs:
+        kwargs:
           model:
             variable: "model"
           instructions:
@@ -84,25 +81,23 @@ workflows:
       store_agent:
         opcode: data_set_variable_to
         next: print_agent_created
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "agent"
-          VALUE:
+          value:
             node: create_agent
 
       print_agent_created:
         opcode: io_print
         next: print_tools_info
-        inputs:
-          STRING:
-            literal: "2. Created AI agent with shopping assistant instructions\n"
+        args:
+          - literal: "2. Created AI agent with shopping assistant instructions\n"
 
       print_tools_info:
         opcode: io_print
         next: print_user_prompt_header
-        inputs:
-          STRING:
-            literal: |
+        args:
+          - literal: |
               3. Available tools for the agent:
                  - operator_add (opcode): Add two numbers
                  - operator_multiply (opcode): Multiply two numbers
@@ -112,16 +107,14 @@ workflows:
       print_user_prompt_header:
         opcode: io_print
         next: print_user_prompt
-        inputs:
-          STRING:
-            literal: "\n4. User prompt being sent to agent:\n   ---\n"
+        args:
+          - literal: "\n4. User prompt being sent to agent:\n   ---\n"
 
       print_user_prompt:
         opcode: io_print
         next: print_user_prompt_footer
-        inputs:
-          STRING:
-            literal: |
+        args:
+          - literal: |
               I want to buy a laptop that costs $1200.
               There's a 15% discount available.
               My budget is $1100.
@@ -133,42 +126,39 @@ workflows:
       print_user_prompt_footer:
         opcode: io_print
         next: print_executing
-        inputs:
-          STRING:
-            literal: "   ---\n"
+        args:
+          - literal: "   ---\n"
 
       print_executing:
         opcode: io_print
         next: run_with_try
-        inputs:
-          STRING:
-            literal: "\n5. Executing agent (tool calls will be shown below)...\n"
+        args:
+          - literal: "\n5. Executing agent (tool calls will be shown below)...\n"
 
       # === Execute Agent with Error Handling ===
 
       run_with_try:
         opcode: control_try
         next: show_success
-        inputs:
-          TRY:
+        kwargs:
+          try:
             branch: execute_agent
-          CATCH1:
-            exception_type: "RuntimeError"
-            var: "error_msg"
-            body:
-              branch: handle_runtime
-          CATCH2:
-            exception_type: null
-            var: "error_msg"
-            body:
-              branch: handle_generic
+          catch:
+            - exception_type: "RuntimeError"
+              var: "error_msg"
+              body:
+                branch: handle_runtime
+            - exception_type: null
+              var: "error_msg"
+              body:
+                branch: handle_generic
 
       # === Agent Call with Workflow Tools ===
 
       agent_call:
         opcode: ai_agent_with_tools
         isReporter: true
-        inputs:
+        kwargs:
           agent:
             variable: "agent"
           messages:
@@ -186,8 +176,8 @@ workflows:
               - operator_add
               - operator_multiply
               # Workflows (dicts with workflow key)
-              - { workflow: "calcular_desconto" }
-              - { workflow: "verificar_orcamento" }
+              - {workflow: "calcular_desconto"}
+              - {workflow: "verificar_orcamento"}
           output:
             literal: null
           max_tool_calls:
@@ -198,10 +188,10 @@ workflows:
       execute_agent:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "result"
-          VALUE:
+          value:
             node: agent_call
 
       # === Error Handlers ===
@@ -209,44 +199,39 @@ workflows:
       handle_runtime:
         opcode: io_print
         next: print_runtime_detail
-        inputs:
-          STRING:
-            literal: "\n[ERROR] Runtime error: "
+        args:
+          - literal: "\n[ERROR] Runtime error: "
 
       print_runtime_detail:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            variable: error_msg
+        args:
+          - variable: error_msg
 
       handle_generic:
         opcode: io_print
         next: print_generic_detail
-        inputs:
-          STRING:
-            literal: "\n[ERROR] Unexpected error: "
+        args:
+          - literal: "\n[ERROR] Unexpected error: "
 
       print_generic_detail:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            variable: error_msg
+        args:
+          - variable: error_msg
 
       # === Success Path ===
 
       show_success:
         opcode: io_print
         next: show_response
-        inputs:
-          STRING:
-            literal: "\n\n=== Agent Response ===\n\n"
+        args:
+          - literal: "\n\n=== Agent Response ===\n\n"
 
       get_text:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: result
           key:
@@ -255,16 +240,14 @@ workflows:
       show_response:
         opcode: io_print
         next: show_footer
-        inputs:
-          STRING:
-            node: get_text
+        args:
+          - node: get_text
 
       show_footer:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n\n=== Demo Complete ===\n"
+        args:
+          - literal: "\n\n=== Demo Complete ===\n"
 
   # === Helper Workflow: Calculate Discount ===
   # This workflow is used as a tool by the AI agent
@@ -283,51 +266,41 @@ workflows:
       start:
         opcode: workflow_start
         next: print_start
-        inputs: {}
 
       # Print workflow invocation - build message with operator_add
       concat_msg_1:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            literal: "\n   [TOOL] calcular_desconto called (price="
-          OPERAND2:
-            variable: preco_original
+        args:
+          - literal: "\n   [TOOL] calcular_desconto called (price="
+          - variable: preco_original
 
       concat_msg_2:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            node: concat_msg_1
-          OPERAND2:
-            literal: ", discount="
+        args:
+          - node: concat_msg_1
+          - literal: ", discount="
 
       concat_msg_3:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            node: concat_msg_2
-          OPERAND2:
-            variable: percentual_desconto
+        args:
+          - node: concat_msg_2
+          - variable: percentual_desconto
 
       concat_msg_4:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            node: concat_msg_3
-          OPERAND2:
-            literal: "%)\n"
+        args:
+          - node: concat_msg_3
+          - literal: "%)\n"
 
       print_start:
         opcode: io_print
         next: calc_multiplicador
-        inputs:
-          STRING:
-            node: concat_msg_4
+        args:
+          - node: concat_msg_4
 
       # Calculate multiplier: (100 - discount) / 100
       # e.g., 15% discount = 0.85 multiplier
@@ -335,28 +308,24 @@ workflows:
       subtract_discount:
         opcode: operator_subtract
         isReporter: true
-        inputs:
-          OPERAND1:
-            literal: 100
-          OPERAND2:
-            variable: percentual_desconto
+        args:
+          - literal: 100
+          - variable: percentual_desconto
 
       divide_by_100:
         opcode: operator_divide
         isReporter: true
-        inputs:
-          OPERAND1:
-            node: subtract_discount
-          OPERAND2:
-            literal: 100
+        args:
+          - node: subtract_discount
+          - literal: 100
 
       calc_multiplicador:
         opcode: data_set_variable_to
         next: calc_preco_final
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "multiplicador"
-          VALUE:
+          value:
             node: divide_by_100
 
       # Calculate final price: original * multiplier
@@ -364,53 +333,45 @@ workflows:
       multiply_price:
         opcode: operator_multiply
         isReporter: true
-        inputs:
-          OPERAND1:
-            variable: preco_original
-          OPERAND2:
-            variable: multiplicador
+        args:
+          - variable: preco_original
+          - variable: multiplicador
 
       calc_preco_final:
         opcode: data_set_variable_to
         next: print_result
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "preco_final"
-          VALUE:
+          value:
             node: multiply_price
 
       # Print result before returning - build message with operator_add
       concat_result_1:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            literal: "   [TOOL] calcular_desconto returning: $"
-          OPERAND2:
-            variable: preco_final
+        args:
+          - literal: "   [TOOL] calcular_desconto returning: $"
+          - variable: preco_final
 
       concat_result_2:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            node: concat_result_1
-          OPERAND2:
-            literal: "\n"
+        args:
+          - node: concat_result_1
+          - literal: "\n"
 
       print_result:
         opcode: io_print
         next: return_result
-        inputs:
-          STRING:
-            node: concat_result_2
+        args:
+          - node: concat_result_2
 
       return_result:
         opcode: workflow_return
         next: null
-        inputs:
-          VALUE:
-            variable: preco_final
+        args:
+          - variable: preco_final
 
   # === Helper Workflow: Check Budget ===
   # This workflow checks if a price fits within a budget
@@ -428,101 +389,83 @@ workflows:
       start:
         opcode: workflow_start
         next: print_start
-        inputs: {}
 
       # Print workflow invocation - build message with operator_add
       concat_params_1:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            literal: "\n   [TOOL] verificar_orcamento called (price=$"
-          OPERAND2:
-            variable: preco
+        args:
+          - literal: "\n   [TOOL] verificar_orcamento called (price=$"
+          - variable: preco
 
       concat_params_2:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            node: concat_params_1
-          OPERAND2:
-            literal: ", budget=$"
+        args:
+          - node: concat_params_1
+          - literal: ", budget=$"
 
       concat_params_3:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            node: concat_params_2
-          OPERAND2:
-            variable: orcamento
+        args:
+          - node: concat_params_2
+          - variable: orcamento
 
       concat_params_4:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            node: concat_params_3
-          OPERAND2:
-            literal: ")\n"
+        args:
+          - node: concat_params_3
+          - literal: ")\n"
 
       print_start:
         opcode: io_print
         next: store_resultado
-        inputs:
-          STRING:
-            node: concat_params_4
+        args:
+          - node: concat_params_4
 
       # Check if price <= budget
 
       check_budget:
         opcode: operator_less_than_or_equals
         isReporter: true
-        inputs:
-          OPERAND1:
-            variable: preco
-          OPERAND2:
-            variable: orcamento
+        args:
+          - variable: preco
+          - variable: orcamento
 
       store_resultado:
         opcode: data_set_variable_to
         next: print_result
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "resultado"
-          VALUE:
+          value:
             node: check_budget
 
       # Print result before returning - build message with operator_add
       concat_result_1:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            literal: "   [TOOL] verificar_orcamento returning: "
-          OPERAND2:
-            variable: resultado
+        args:
+          - literal: "   [TOOL] verificar_orcamento returning: "
+          - variable: resultado
 
       concat_result_2:
         opcode: operator_add
         isReporter: true
-        inputs:
-          OPERAND1:
-            node: concat_result_1
-          OPERAND2:
-            literal: "\n"
+        args:
+          - node: concat_result_1
+          - literal: "\n"
 
       print_result:
         opcode: io_print
         next: return_result
-        inputs:
-          STRING:
-            node: concat_result_2
+        args:
+          - node: concat_result_2
 
       return_result:
         opcode: workflow_return
         next: null
-        inputs:
-          VALUE:
-            variable: resultado
+        args:
+          - variable: resultado

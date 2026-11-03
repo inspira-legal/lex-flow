@@ -9,41 +9,39 @@ workflows:
       start:
         opcode: workflow_start
         next: print_intro
-        inputs: {}
 
       print_intro:
         opcode: io_print
         next: try_divide
-        inputs:
-          STRING:
-            literal: "=== Testing Basic Try-Catch ===\n\n"
+        args:
+          - literal: "=== Testing Basic Try-Catch ===\n\n"
 
       # Try-catch node for division by zero
       try_divide:
         opcode: control_try
         next: print_done
-        inputs:
-          TRY:
+        kwargs:
+          try:
             branch: do_divide
-          CATCH1:
-            exception_type: "ZeroDivisionError"
-            var: "error"
-            body:
-              branch: handle_error
+          catch:
+            - exception_type: "ZeroDivisionError"
+              var: "error"
+              body:
+                branch: handle_error
 
       # Try body - will throw ZeroDivisionError
       do_divide:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: result
-          VALUE:
+          value:
             node: divide_calc
 
       divide_calc:
         opcode: operator_divide
-        inputs:
+        kwargs:
           left:
             literal: 10
           right:
@@ -54,27 +52,23 @@ workflows:
       handle_error:
         opcode: io_print
         next: print_error_var
-        inputs:
-          STRING:
-            literal: "✓ Caught exception: "
+        args:
+          - literal: "✓ Caught exception: "
 
       print_error_var:
         opcode: io_print
         next: print_newline
-        inputs:
-          STRING:
-            variable: error
+        args:
+          - variable: error
 
       print_newline:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n"
+        args:
+          - literal: "\n"
 
       print_done:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n✅ Try-catch basic test passed!\n"
+        args:
+          - literal: "\n✅ Try-catch basic test passed!\n"

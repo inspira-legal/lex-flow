@@ -12,13 +12,11 @@ workflows:
       start:
         opcode: workflow_start
         next: print_msg
-        inputs: {}
       print_msg:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "This is the helper's main workflow!\n"
+        args:
+          - literal: "This is the helper's main workflow!\n"
 
   - name: greet
     interface:
@@ -30,19 +28,16 @@ workflows:
       start:
         opcode: workflow_start
         next: print_hello
-        inputs: {}
       print_hello:
         opcode: io_print
         next: print_name
-        inputs:
-          STRING:
-            literal: "Hello, "
+        args:
+          - literal: "Hello, "
       print_name:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            variable: name
+        args:
+          - variable: name
 
   - name: add_numbers
     interface:
@@ -55,17 +50,13 @@ workflows:
       start:
         opcode: workflow_start
         next: calculate
-        inputs: {}
       calculate:
         opcode: operator_add
         next: return_result
-        inputs:
-          OPERAND1:
-            variable: a
-          OPERAND2:
-            variable: b
+        args:
+          - variable: a
+          - variable: b
       return_result:
         opcode: workflow_return
-        inputs:
-          VALUE:
-            node: calculate
+        args:
+          - node: calculate

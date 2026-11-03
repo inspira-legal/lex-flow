@@ -23,21 +23,19 @@ workflows:
       start:
         opcode: workflow_start
         next: print_header
-        inputs: {}
 
       print_header:
         opcode: io_print
         next: do_search
-        inputs:
-          STRING:
-            literal: "\n=== Web Search Demo ===\n\n"
+        args:
+          - literal: "\n=== Web Search Demo ===\n\n"
 
       # === Perform Search ===
 
       search:
         opcode: web_search
         isReporter: true
-        inputs:
+        kwargs:
           query:
             variable: query
           max_results:
@@ -48,10 +46,10 @@ workflows:
       do_search:
         opcode: data_set_variable_to
         next: print_query
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "results"
-          VALUE:
+          value:
             node: search
 
       # === Display Results ===
@@ -59,36 +57,32 @@ workflows:
       print_query:
         opcode: io_print
         next: print_query_value
-        inputs:
-          STRING:
-            literal: "Query: "
+        args:
+          - literal: "Query: "
 
       print_query_value:
         opcode: io_print
         next: print_newline1
-        inputs:
-          STRING:
-            variable: query
+        args:
+          - variable: query
 
       print_newline1:
         opcode: io_print
         next: print_results_header
-        inputs:
-          STRING:
-            literal: "\n\n"
+        args:
+          - literal: "\n\n"
 
       print_results_header:
         opcode: io_print
         next: get_results_list
-        inputs:
-          STRING:
-            literal: "Results:\n"
+        args:
+          - literal: "Results:\n"
 
       # Get results array from response
       results_list:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: results
           key:
@@ -97,10 +91,10 @@ workflows:
       get_results_list:
         opcode: data_set_variable_to
         next: loop_results
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "results"
-          VALUE:
+          value:
             node: results_list
 
       # === Loop Through Results ===
@@ -108,12 +102,12 @@ workflows:
       loop_results:
         opcode: control_foreach
         next: print_footer
-        inputs:
-          VAR:
+        kwargs:
+          var:
             literal: "result"
-          ITERABLE:
+          iterable:
             variable: results
-          BODY:
+          body:
             branch: print_result
 
       # === Print Each Result ===
@@ -121,14 +115,13 @@ workflows:
       print_result:
         opcode: io_print
         next: print_title
-        inputs:
-          STRING:
-            literal: "\n---\n"
+        args:
+          - literal: "\n---\n"
 
       get_title:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: result
           key:
@@ -137,21 +130,19 @@ workflows:
       print_title:
         opcode: io_print
         next: print_url_label
-        inputs:
-          STRING:
-            node: get_title
+        args:
+          - node: get_title
 
       print_url_label:
         opcode: io_print
         next: print_url
-        inputs:
-          STRING:
-            literal: "\nURL: "
+        args:
+          - literal: "\nURL: "
 
       get_url:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: result
           key:
@@ -160,21 +151,19 @@ workflows:
       print_url:
         opcode: io_print
         next: print_content_label
-        inputs:
-          STRING:
-            node: get_url
+        args:
+          - node: get_url
 
       print_content_label:
         opcode: io_print
         next: print_content
-        inputs:
-          STRING:
-            literal: "\nContent: "
+        args:
+          - literal: "\nContent: "
 
       get_content:
         opcode: dict_get
         isReporter: true
-        inputs:
+        kwargs:
           d:
             variable: result
           key:
@@ -183,15 +172,13 @@ workflows:
       print_content:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            node: get_content
+        args:
+          - node: get_content
 
       # === Footer ===
 
       print_footer:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n\n=== Search Complete ===\n"
+        args:
+          - literal: "\n\n=== Search Complete ===\n"

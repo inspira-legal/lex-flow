@@ -125,14 +125,12 @@ workflows:
       start:
         opcode: workflow_start
         next: print_hello
-        inputs: {}
 
       print_hello:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "Hello, LexFlow!\n"
+        args:
+          - literal: "Hello, LexFlow!\n"
 ```
 
 Run the workflow:

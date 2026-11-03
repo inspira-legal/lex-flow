@@ -48,7 +48,6 @@ workflows:
       start:
         opcode: workflow_start
         next: print_header
-        inputs: {}
 
       # ========================================================================
       # HEADER
@@ -56,36 +55,32 @@ workflows:
       print_header:
         opcode: io_print
         next: print_separator
-        inputs:
-          STRING:
-            literal: "\n================================================================================\n"
+        args:
+          - literal: "\n================================================================================\n"
 
       print_separator:
         opcode: io_print
         next: print_title
-        inputs:
-          STRING:
-            literal: "                      PDF INGESTION PIPELINE\n"
+        args:
+          - literal: "                      PDF INGESTION PIPELINE\n"
 
       print_title:
         opcode: io_print
         next: print_settings_header
-        inputs:
-          STRING:
-            literal: "================================================================================\n\n"
+        args:
+          - literal: "================================================================================\n\n"
 
       # Print settings
       print_settings_header:
         opcode: io_print
         next: print_pdf_file
-        inputs:
-          STRING:
-            literal: "Settings:\n"
+        args:
+          - literal: "Settings:\n"
 
       format_pdf_file:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "  PDF File:    "
           right:
@@ -94,7 +89,7 @@ workflows:
       pdf_file_with_newline:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: pdf_file
           right:
@@ -103,14 +98,13 @@ workflows:
       print_pdf_file:
         opcode: io_print
         next: print_collection
-        inputs:
-          STRING:
-            node: format_pdf_file
+        args:
+          - node: format_pdf_file
 
       format_collection:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "  Collection:  "
           right:
@@ -119,7 +113,7 @@ workflows:
       collection_with_newline:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: collection
           right:
@@ -128,14 +122,13 @@ workflows:
       print_collection:
         opcode: io_print
         next: print_chunk_size
-        inputs:
-          STRING:
-            node: format_collection
+        args:
+          - node: format_collection
 
       format_chunk_size:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "  Chunk Size:  "
           right:
@@ -144,14 +137,14 @@ workflows:
       chunk_size_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: chunk_size
 
       chunk_size_with_newline:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: chunk_size_str
           right:
@@ -160,14 +153,13 @@ workflows:
       print_chunk_size:
         opcode: io_print
         next: print_overlap
-        inputs:
-          STRING:
-            node: format_chunk_size
+        args:
+          - node: format_chunk_size
 
       format_overlap:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "  Overlap:     "
           right:
@@ -176,14 +168,14 @@ workflows:
       overlap_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: overlap
 
       overlap_with_newline:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: overlap_str
           right:
@@ -192,9 +184,8 @@ workflows:
       print_overlap:
         opcode: io_print
         next: connect_qdrant
-        inputs:
-          STRING:
-            node: format_overlap
+        args:
+          - node: format_overlap
 
       # ========================================================================
       # STEP 1: Connect to Qdrant
@@ -202,31 +193,30 @@ workflows:
       print_step1:
         opcode: io_print
         isReporter: true
-        inputs:
-          STRING:
-            literal: "[1/6] Connecting to Qdrant... "
+        args:
+          - literal: "[1/6] Connecting to Qdrant... "
 
       do_connect_qdrant:
         opcode: qdrant_connect
         isReporter: true
-        inputs:
+        kwargs:
           url:
             variable: qdrant_url
 
       connect_qdrant:
         opcode: data_set_variable_to
         next: print_step1_done
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "qdrant_client"
-          VALUE:
+          value:
             node: do_connect_qdrant
 
       # Force print_step1 to execute by referencing it
       step1_done_msg:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: print_step1
           right:
@@ -235,9 +225,8 @@ workflows:
       print_step1_done:
         opcode: io_print
         next: create_collection
-        inputs:
-          STRING:
-            node: step1_done_msg
+        args:
+          - node: step1_done_msg
 
       # ========================================================================
       # STEP 2: Create Collection (if not exists)
@@ -245,14 +234,13 @@ workflows:
       print_step2:
         opcode: io_print
         isReporter: true
-        inputs:
-          STRING:
-            literal: "[2/6] Creating collection (if needed)... "
+        args:
+          - literal: "[2/6] Creating collection (if needed)... "
 
       do_create_collection:
         opcode: qdrant_create_collection
         isReporter: true
-        inputs:
+        kwargs:
           client:
             variable: qdrant_client
           name:
@@ -261,21 +249,21 @@ workflows:
             literal: 768
 
       create_collection:
-        opcode: control_if
+        opcode: control_if_else
         next: extract_pdf
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             node: do_create_collection
-          THEN:
+          then:
             branch: print_created
-          ELSE:
+          else:
             branch: print_exists
 
       # Force step2 print
       step2_created_msg:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: print_step2
           right:
@@ -284,14 +272,13 @@ workflows:
       print_created:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            node: step2_created_msg
+        args:
+          - node: step2_created_msg
 
       step2_exists_msg:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: print_step2
           right:
@@ -300,9 +287,8 @@ workflows:
       print_exists:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            node: step2_exists_msg
+        args:
+          - node: step2_exists_msg
 
       # ========================================================================
       # STEP 3: Extract text from PDF
@@ -310,44 +296,43 @@ workflows:
       print_step3:
         opcode: io_print
         isReporter: true
-        inputs:
-          STRING:
-            literal: "[3/6] Extracting text from PDF... "
+        args:
+          - literal: "[3/6] Extracting text from PDF... "
 
       do_extract_pdf:
         opcode: pdf_extract_text
         isReporter: true
-        inputs:
+        kwargs:
           file_path:
             variable: pdf_file
 
       extract_pdf:
         opcode: data_set_variable_to
         next: print_step3_done
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "pdf_text"
-          VALUE:
+          value:
             node: do_extract_pdf
 
       text_length:
         opcode: string_length
         isReporter: true
-        inputs:
+        kwargs:
           text:
             variable: pdf_text
 
       text_length_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             node: text_length
 
       step3_done_msg_part1:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: print_step3
           right:
@@ -356,7 +341,7 @@ workflows:
       step3_done_msg:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: step3_done_msg_part1
           right:
@@ -365,9 +350,8 @@ workflows:
       print_step3_done:
         opcode: io_print
         next: chunk_text
-        inputs:
-          STRING:
-            node: step3_done_msg
+        args:
+          - node: step3_done_msg
 
       # ========================================================================
       # STEP 4: Chunk the text
@@ -375,14 +359,13 @@ workflows:
       print_step4:
         opcode: io_print
         isReporter: true
-        inputs:
-          STRING:
-            literal: "[4/6] Chunking text... "
+        args:
+          - literal: "[4/6] Chunking text... "
 
       do_chunk_text:
         opcode: text_chunk
         isReporter: true
-        inputs:
+        kwargs:
           text:
             variable: pdf_text
           chunk_size:
@@ -393,39 +376,39 @@ workflows:
       chunk_text:
         opcode: data_set_variable_to
         next: store_chunk_count
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "chunks"
-          VALUE:
+          value:
             node: do_chunk_text
 
       get_chunk_count:
         opcode: list_length
         isReporter: true
-        inputs:
+        kwargs:
           items:
             variable: chunks
 
       store_chunk_count:
         opcode: data_set_variable_to
         next: print_step4_done
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "chunk_count"
-          VALUE:
+          value:
             node: get_chunk_count
 
       chunk_count_str:
         opcode: str
         isReporter: true
-        inputs:
+        kwargs:
           value:
             variable: chunk_count
 
       step4_done_msg_part1:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: print_step4
           right:
@@ -434,7 +417,7 @@ workflows:
       step4_done_msg:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: step4_done_msg_part1
           right:
@@ -443,9 +426,8 @@ workflows:
       print_step4_done:
         opcode: io_print
         next: generate_embeddings
-        inputs:
-          STRING:
-            node: step4_done_msg
+        args:
+          - node: step4_done_msg
 
       # ========================================================================
       # STEP 5: Generate embeddings for all chunks
@@ -453,14 +435,13 @@ workflows:
       print_step5:
         opcode: io_print
         isReporter: true
-        inputs:
-          STRING:
-            literal: "[5/6] Generating embeddings... "
+        args:
+          - literal: "[5/6] Generating embeddings... "
 
       do_generate_embeddings:
         opcode: embedding_create_batch
         isReporter: true
-        inputs:
+        kwargs:
           texts:
             variable: chunks
           model:
@@ -473,16 +454,16 @@ workflows:
       generate_embeddings:
         opcode: data_set_variable_to
         next: print_step5_done
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "embeddings"
-          VALUE:
+          value:
             node: do_generate_embeddings
 
       step5_done_msg:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: print_step5
           right:
@@ -491,9 +472,8 @@ workflows:
       print_step5_done:
         opcode: io_print
         next: init_build_loop
-        inputs:
-          STRING:
-            node: step5_done_msg
+        args:
+          - node: step5_done_msg
 
       # ========================================================================
       # STEP 6: Build IDs and payloads, then upsert to Qdrant
@@ -501,15 +481,14 @@ workflows:
       print_step6:
         opcode: io_print
         next: build_loop
-        inputs:
-          STRING:
-            literal: "[6/6] Upserting to Qdrant... "
+        args:
+          - literal: "[6/6] Upserting to Qdrant... "
 
       # Generate a base ID from random number (simulates timestamp for unique IDs)
       base_id:
         opcode: math_random
         isReporter: true
-        inputs:
+        kwargs:
           min_val:
             literal: 100000
           max_val:
@@ -518,58 +497,58 @@ workflows:
       init_build_loop:
         opcode: data_set_variable_to
         next: reset_ids
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "current_index"
-          VALUE:
+          value:
             literal: 0
 
       # Reset ids to empty list
       reset_ids:
         opcode: data_set_variable_to
         next: reset_payloads
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "ids"
-          VALUE:
+          value:
             literal: []
 
       reset_payloads:
         opcode: data_set_variable_to
         next: print_step6
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "payloads"
-          VALUE:
+          value:
             literal: []
 
       # Loop to build IDs and payloads for each chunk
       build_loop:
         opcode: control_foreach
         next: do_upsert
-        inputs:
-          VAR:
+        kwargs:
+          var:
             literal: "current_chunk"
-          ITERABLE:
+          iterable:
             variable: chunks
-          BODY:
+          body:
             branch: build_loop_body
 
       # Build loop body: append ID and payload for current chunk
       build_loop_body:
         opcode: data_set_variable_to
         next: build_payload
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "ids"
-          VALUE:
+          value:
             node: append_id
 
       # Generate unique ID: base_id * 1000 + current_index
       current_id:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: base_id_scaled
           right:
@@ -578,7 +557,7 @@ workflows:
       base_id_scaled:
         opcode: operator_multiply
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: base_id
           right:
@@ -587,7 +566,7 @@ workflows:
       append_id:
         opcode: list_append
         isReporter: true
-        inputs:
+        kwargs:
           items:
             variable: ids
           value:
@@ -597,22 +576,21 @@ workflows:
       build_payload:
         opcode: data_set_variable_to
         next: increment_index
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "payloads"
-          VALUE:
+          value:
             node: append_payload
 
       # Create payload dictionary with text, source, and chunk_index
       payload_base:
         opcode: dict_create
         isReporter: true
-        inputs: {}
 
       payload_with_text:
         opcode: dict_set
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: payload_base
           key:
@@ -623,7 +601,7 @@ workflows:
       payload_with_source:
         opcode: dict_set
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: payload_with_text
           key:
@@ -634,7 +612,7 @@ workflows:
       payload_with_index:
         opcode: dict_set
         isReporter: true
-        inputs:
+        kwargs:
           d:
             node: payload_with_source
           key:
@@ -645,7 +623,7 @@ workflows:
       append_payload:
         opcode: list_append
         isReporter: true
-        inputs:
+        kwargs:
           items:
             variable: payloads
           value:
@@ -655,16 +633,16 @@ workflows:
       increment_index:
         opcode: data_set_variable_to
         next: null
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "current_index"
-          VALUE:
+          value:
             node: next_index
 
       next_index:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             variable: current_index
           right:
@@ -676,42 +654,35 @@ workflows:
       do_qdrant_upsert:
         opcode: qdrant_upsert_batch
         isReporter: true
-        inputs:
-          client:
-            variable: qdrant_client
-          collection:
-            variable: collection
-          ids:
-            variable: ids
-          vectors:
-            variable: embeddings
-          payloads:
-            variable: payloads
+        args:
+          - variable: qdrant_client
+          - variable: collection
+          - variable: ids
+          - variable: embeddings
+          - variable: payloads
 
       do_upsert:
-        opcode: control_if
+        opcode: control_if_else
         next: print_footer
-        inputs:
-          CONDITION:
+        kwargs:
+          condition:
             node: do_qdrant_upsert
-          THEN:
+          then:
             branch: print_upsert_done
-          ELSE:
+          else:
             branch: print_upsert_failed
 
       print_upsert_done:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "Done\n"
+        args:
+          - literal: "Done\n"
 
       print_upsert_failed:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "Failed!\n"
+        args:
+          - literal: "Failed!\n"
 
       # ========================================================================
       # FOOTER
@@ -719,14 +690,13 @@ workflows:
       print_footer:
         opcode: io_print
         next: print_success
-        inputs:
-          STRING:
-            literal: "\n================================================================================\n"
+        args:
+          - literal: "\n================================================================================\n"
 
       success_msg_part1:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "SUCCESS: Ingested "
           right:
@@ -735,7 +705,7 @@ workflows:
       success_msg_part2:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: success_msg_part1
           right:
@@ -744,7 +714,7 @@ workflows:
       success_msg_part3:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: success_msg_part2
           right:
@@ -753,7 +723,7 @@ workflows:
       success_msg_part4:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: success_msg_part3
           right:
@@ -762,7 +732,7 @@ workflows:
       success_msg_part5:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: success_msg_part4
           right:
@@ -771,7 +741,7 @@ workflows:
       success_msg:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             node: success_msg_part5
           right:
@@ -780,13 +750,11 @@ workflows:
       print_success:
         opcode: io_print
         next: print_final_separator
-        inputs:
-          STRING:
-            node: success_msg
+        args:
+          - node: success_msg
 
       print_final_separator:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "================================================================================\n\n"
+        args:
+          - literal: "================================================================================\n\n"

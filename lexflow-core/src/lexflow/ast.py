@@ -23,6 +23,7 @@ class Call(BaseModel):
     type: LiteralType["Call"] = "Call"
     name: str
     args: list["Expression"]
+    kwargs: dict[str, "Expression"] = {}
 
 
 class Opcode(BaseModel):
@@ -31,6 +32,7 @@ class Opcode(BaseModel):
     type: LiteralType["Opcode"] = "Opcode"
     name: str
     args: list["Expression"]
+    kwargs: dict[str, "Expression"] = {}
 
 
 # Union type for all expressions
@@ -126,6 +128,7 @@ class OpStmt(BaseModel):
     type: LiteralType["OpStmt"] = "OpStmt"
     name: str
     args: list[Expression]
+    kwargs: dict[str, Expression] = {}
     node_id: Optional[str] = None
 
 
@@ -233,6 +236,32 @@ class Program(BaseModel):
     globals: dict[str, Any] = {}
     externals: dict[str, Workflow] = {}
     main: Workflow
+
+
+def walk(node: BaseModel, _seen: Optional[set[int]] = None):
+    """Yield a node and every AST node nested under it, each one once.
+
+    The parser shares one Statement per node id, so the AST is a DAG: two
+    branches that rejoin point at the same object. Without the visited set
+    this walks the path space instead, which is exponential in depth.
+    """
+    _seen = set() if _seen is None else _seen
+    if id(node) in _seen:
+        return
+    _seen.add(id(node))
+
+    yield node
+    for name in type(node).model_fields:
+        value = getattr(node, name, None)
+        if isinstance(value, dict):
+            children = list(value.values())
+        elif isinstance(value, list):
+            children = value
+        else:
+            children = [value]
+        for child in children:
+            if isinstance(child, BaseModel):
+                yield from walk(child, _seen)
 
 
 # Enable forward references

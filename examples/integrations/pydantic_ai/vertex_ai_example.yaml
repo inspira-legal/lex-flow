@@ -10,20 +10,18 @@ workflows:
       start:
         opcode: workflow_start
         next: intro
-        inputs: {}
 
       intro:
         opcode: io_print
         next: store_model
-        inputs:
-          STRING:
-            literal: "=== Pydantic AI + Vertex AI Example ===\n\n"
+        args:
+          - literal: "=== Pydantic AI + Vertex AI Example ===\n\n"
 
       # Step 1: Create Vertex AI Model (reporter node)
       create_model:
         opcode: pydantic_ai_create_vertex_model
         isReporter: true
-        inputs:
+        kwargs:
           model_name:
             literal: "gemini-2.5-flash"
           project:
@@ -35,24 +33,23 @@ workflows:
       store_model:
         opcode: data_set_variable_to
         next: print_model_created
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "model"
-          VALUE:
+          value:
             node: create_model
 
       print_model_created:
         opcode: io_print
         next: store_agent
-        inputs:
-          STRING:
-            literal: "1. Created Vertex AI model: gemini-2.5-flash\n\n"
+        args:
+          - literal: "1. Created Vertex AI model: gemini-2.5-flash\n\n"
 
       # Step 2: Create Agent (reporter node)
       create_agent:
         opcode: pydantic_ai_create_agent
         isReporter: true
-        inputs:
+        kwargs:
           model:
             variable: "model"
           instructions:
@@ -62,31 +59,29 @@ workflows:
       store_agent:
         opcode: data_set_variable_to
         next: print_agent_created
-        inputs:
-          VARIABLE:
+        kwargs:
+          variable:
             literal: "agent"
-          VALUE:
+          value:
             node: create_agent
 
       print_agent_created:
         opcode: io_print
         next: query_math
-        inputs:
-          STRING:
-            literal: "2. Created AI agent with instructions\n\n"
+        args:
+          - literal: "2. Created AI agent with instructions\n\n"
 
       # Step 3: Math Query
       query_math:
         opcode: io_print
         next: print_math_result
-        inputs:
-          STRING:
-            literal: "3. Asking: What is 15 * 23?\n"
+        args:
+          - literal: "3. Asking: What is 15 * 23?\n"
 
       run_math_query:
         opcode: pydantic_ai_run_sync
         isReporter: true
-        inputs:
+        kwargs:
           agent:
             variable: "agent"
           prompt:
@@ -95,14 +90,13 @@ workflows:
       print_math_result:
         opcode: io_print
         next: query_capital
-        inputs:
-          STRING:
-            node: math_result_str
+        args:
+          - node: math_result_str
 
       math_result_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "   Answer: "
           right:
@@ -112,14 +106,13 @@ workflows:
       query_capital:
         opcode: io_print
         next: print_capital_result
-        inputs:
-          STRING:
-            literal: "\n4. Asking: What is the capital of France?\n"
+        args:
+          - literal: "\n4. Asking: What is the capital of France?\n"
 
       run_capital_query:
         opcode: pydantic_ai_run_sync
         isReporter: true
-        inputs:
+        kwargs:
           agent:
             variable: "agent"
           prompt:
@@ -128,14 +121,13 @@ workflows:
       print_capital_result:
         opcode: io_print
         next: query_code
-        inputs:
-          STRING:
-            node: capital_result_str
+        args:
+          - node: capital_result_str
 
       capital_result_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "   Answer: "
           right:
@@ -145,14 +137,13 @@ workflows:
       query_code:
         opcode: io_print
         next: print_code_result
-        inputs:
-          STRING:
-            literal: "\n5. Asking: Explain recursion in one sentence\n"
+        args:
+          - literal: "\n5. Asking: Explain recursion in one sentence\n"
 
       run_code_query:
         opcode: pydantic_ai_run_sync
         isReporter: true
-        inputs:
+        kwargs:
           agent:
             variable: "agent"
           prompt:
@@ -161,14 +152,13 @@ workflows:
       print_code_result:
         opcode: io_print
         next: final_message
-        inputs:
-          STRING:
-            node: code_result_str
+        args:
+          - node: code_result_str
 
       code_result_str:
         opcode: operator_add
         isReporter: true
-        inputs:
+        kwargs:
           left:
             literal: "   Answer: "
           right:
@@ -177,6 +167,5 @@ workflows:
       final_message:
         opcode: io_print
         next: null
-        inputs:
-          STRING:
-            literal: "\n=== All queries completed! ===\n"
+        args:
+          - literal: "\n=== All queries completed! ===\n"

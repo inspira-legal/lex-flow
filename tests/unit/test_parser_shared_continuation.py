@@ -8,7 +8,9 @@ seconds. The parse result is unchanged (same unfolded structure), only
 the sharing is new.
 """
 
-from lexflow import Parser
+import time
+
+from lexflow import Engine, Parser
 from lexflow.ast import Block, If
 
 
@@ -104,3 +106,23 @@ class TestSharedContinuation:
         by_else = last_along(lambda s: s.else_)
         assert by_then is by_else
         assert by_then.name == "done"
+
+
+class TestWalkVisitsTheDagOnce:
+    """Anything that traverses the AST must follow the DAG, not the path space."""
+
+    def test_walk_yields_each_object_once(self):
+        from lexflow.ast import walk
+
+        program = Parser().parse_dict(_rejoining_gates(20))
+        visited = list(walk(program.main.body))
+        assert len(visited) == len({id(n) for n in visited})
+        assert len(visited) < 500
+
+    def test_engine_construction_stays_linear(self):
+        # 20 rejoining gates = 2**20 paths. Walking them instead of the DAG
+        # took 13s here and blew the suite's 10s timeout.
+        program = Parser().parse_dict(_rejoining_gates(20))
+        start = time.perf_counter()
+        Engine(program)
+        assert time.perf_counter() - start < 1.0
