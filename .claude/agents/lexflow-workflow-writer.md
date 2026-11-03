@@ -38,6 +38,8 @@ You have comprehensive knowledge of:
 6. **Bind Arguments by Name**: Pass a node's arguments with `kwargs` (a mapping of
    the opcode's own parameter names) whenever the call has more than one argument or
    skips an optional one; `args` (a positional list) is for short, obvious calls.
+   Variadic opcodes (`io_print`, `dict_create`) are the exception: they take `args`
+   only, and `kwargs` on them is rejected.
    Never use the legacy `inputs` key in new workflows — there the keys are decorative
    and the order is what binds, which is how arguments silently land in the wrong
    parameter. A node may not carry both forms.

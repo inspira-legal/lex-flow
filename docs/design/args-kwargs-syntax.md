@@ -56,7 +56,9 @@ of writing arguments and leave the old one meaning exactly what it meant.
    misbinding detector flags the rest, and keys the legacy reader never read are
    dropped and reported rather than carried over.
 5. Every example migrated, `grammar.json` 1.1 with lowercase slot names, and a
-   `DeprecationWarning` (one per workflow) on the legacy path.
+   `FutureWarning` (one per workflow) on the legacy path. `FutureWarning`, not
+   `DeprecationWarning`: it is aimed at workflow authors, and Python hides
+   `DeprecationWarning` by default outside `__main__`.
 
 ## Phase 5: removing `inputs:`
 

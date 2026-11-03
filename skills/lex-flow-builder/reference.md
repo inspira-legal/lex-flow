@@ -261,15 +261,17 @@ set_counter:
 #### `list_length`
 Retorna o tamanho de uma lista.
 
-**Inputs**:
-- `list`: Lista para medir
+**Slots** (em `kwargs:`):
+- `items`: Lista para medir
 
 ### Dictionary Operations
 
 #### `dict_create`
 Cria um dicionário vazio (ou com argumentos variáveis).
 
-**Inputs**: Vazio `{}` ou `key1`, `value1`, `key2`, `value2`, etc.
+**Argumentos** (posicionais, via `args:` — `dict_create` é variádico e não aceita
+argumentos nomeados): nenhum, ou pares chave, valor em sequência
+(`args: [{literal: a}, {literal: 1}, {literal: b}, {literal: 2}]`).
 
 **Exemplo**:
 ```yaml
