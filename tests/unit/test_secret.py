@@ -240,6 +240,21 @@ class TestHelpers:
             tainted = tainted[0]
         assert isinstance(tainted, Secret)
 
+    @pytest.mark.parametrize("depth", range(2, 30))
+    def test_nested_tuples_build_inner_first(self, depth):
+        revealed, tainted = Secret(VALUE), "x"
+        for _ in range(depth):
+            revealed, tainted = (revealed,), (tainted,)
+        revealed, tainted = reveal_secrets(revealed), taint(tainted)
+        for _ in range(depth):
+            revealed, tainted = revealed[0], tainted[0]
+        assert type(revealed) is str and revealed == VALUE
+        assert isinstance(tainted, Secret) and tainted.reveal() == "x"
+
+    def test_frozenset_stays_frozenset(self):
+        revealed = reveal_secrets(frozenset({Secret(VALUE)}))
+        assert type(revealed) is frozenset and revealed == frozenset({VALUE})
+
     def test_cycle_through_tuple_and_list(self):
         lst = [Secret(VALUE)]
         tup = (lst, 1)

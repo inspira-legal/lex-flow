@@ -240,6 +240,8 @@ def redact_secrets(value: Any) -> Any:
     """Return the value with every Secret, key or value, replaced by ``***``.
 
     Never mutates; parts that hold no Secret come back as the same objects.
+    Distinct ``Secret`` keys of one dict all become ``***``, so only the last of
+    them survives: ``{Secret("a"): 1, Secret("b"): 2}`` comes back ``{"***": 2}``.
     """
     return _walk(value, lambda v: MASK if isinstance(v, Secret) else v, keys=True)
 
