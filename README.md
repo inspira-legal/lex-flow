@@ -62,13 +62,16 @@ result = await engine.run()
 ### Secret Values
 
 Wrap a credential in `lexflow.secret.Secret` before passing it as an input. A `Secret`
-prints, formats and is returned as `***`; `.reveal()` gives the real value, and
+prints and formats as `***`; `.reveal()` gives the real value, and
 `redact_secrets(value)` replaces every `Secret` in a structure by `***` before you
 serialize it (a bare `json.dumps` raises on a `Secret`).
 
 Each opcode declares a `secret_mode` that decides what it does with one:
 
 - `pass`: moves the object without opening it (`dict_get`, `list_append`, `io_print`).
+  An opcode that mutates an argument in place (`dict_set`, `chat_add_user`,
+  `chat_with_agent`) must be `pass`, because `taint` and `reveal` hand it a rebuilt copy
+  when the argument holds a `Secret`.
 - `reveal`: receives the real value and returns its result as is (`http_*`, client
   constructors that take a credential).
 - `taint` (the default): receives the real value; if any argument held a `Secret`,

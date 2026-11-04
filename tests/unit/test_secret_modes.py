@@ -245,13 +245,45 @@ class TestDeclaringModes:
             default_registry.signatures.pop("_test_secret_helper_op")
             default_registry._secret_modes.pop("_test_secret_helper_op")
 
+    async def test_register_again_without_mode_resets_to_taint(self):
+        reg = OpcodeRegistry()
+
+        @reg.register(name="t_op", secret_mode="reveal")
+        async def first(value):
+            return value
+
+        @reg.register(name="t_op")
+        async def second(value):
+            return value
+
+        assert reg.get_secret_mode("t_op") == "taint"
+
+
+# Opcodes that mutate an argument in place: taint and reveal would hand them a
+# rebuilt copy when the argument holds a Secret, so they must stay pass.
+MUTATES_IN_PLACE = [
+    "dict_set",
+    "dict_update",
+    "dict_pop",
+    "dict_setdefault",
+    "dict_clear",
+    "object_set",
+    "object_remove",
+    "chat_add_user",
+    "chat_add_assistant",
+    "chat_add_message",
+    "chat_clear",
+    "chat_with_agent",
+]
+
 
 class TestCoreClassification:
     @pytest.mark.parametrize(
         "name",
         ["dict_get", "list_append", "object_get", "io_print", "io_input", "throw"]
         + ["assert_equals", "task_exception"]
-        + ["channel_send", "task_result", "print_info", "workflow_start"],
+        + ["channel_send", "task_result", "print_info", "workflow_start"]
+        + MUTATES_IN_PLACE,
     )
     async def test_pass(self, name):
         assert default_registry.get_secret_mode(name) == "pass"
@@ -279,6 +311,11 @@ class TestCoreOpcodes:
     async def test_dict_get_returns_the_secret(self):
         secret = Secret(VALUE)
         assert await self.call("dict_get", {"K": secret}, "K") is secret
+
+    async def test_dict_set_mutates_the_callers_dict_holding_a_secret(self):
+        env = {"API_KEY": Secret(VALUE)}
+        await self.call("dict_set", env, "X", 1)
+        assert env["X"] == 1 and isinstance(env["API_KEY"], Secret)
 
     async def test_operator_add_taints(self):
         result = await self.call("operator_add", "Bearer ", Secret(VALUE))
@@ -348,6 +385,52 @@ class TestCoreOpcodes:
         assert isinstance(message, Secret) and VALUE in message.reveal()
         message = await self.call("task_exception", plain)
         assert type(message) is str and "abc" in message
+
+
+class FakeAgent:
+    def __init__(self, error: Exception | None = None):
+        self.prompts = []
+        self.error = error
+
+    async def run(self, prompt):
+        self.prompts.append(prompt)
+        if self.error:
+            raise self.error
+        return SimpleNamespace(output="reply")
+
+
+class TestChatWithAgent:
+    async def call(self, *args):
+        return await default_registry.call("chat_with_agent", list(args))
+
+    async def test_secret_message_stays_secret_in_history(self):
+        agent, history = FakeAgent(), []
+        response = await self.call(agent, history, Secret(VALUE))
+        assert [type(m["content"]) for m in history] == [Secret, Secret]
+        assert isinstance(response, Secret) and history[1]["content"] is response
+        assert VALUE not in str(history) and VALUE in agent.prompts[-1]
+
+    async def test_history_holding_a_secret_grows_in_place(self):
+        agent = FakeAgent()
+        history = await default_registry.call("chat_add_user", [[], Secret(VALUE)])
+        response = await self.call(agent, history, "next")
+        assert len(history) == 3
+        assert isinstance(response, Secret)
+        assert VALUE in agent.prompts[-1] and "User: next" in agent.prompts[-1]
+
+    async def test_without_secret_nothing_changes(self):
+        agent, history = FakeAgent(), [{"role": "user", "content": "hi"}]
+        response = await self.call(agent, history, "again")
+        assert type(response) is str and len(history) == 3
+        assert all(type(m["content"]) is str for m in history)
+
+    async def test_exception_is_marked_when_a_secret_was_seen(self):
+        with pytest.raises(RuntimeError) as info:
+            await self.call(FakeAgent(RuntimeError("down")), [], Secret(VALUE))
+        assert is_secret_exception(info.value)
+        with pytest.raises(RuntimeError) as info:
+            await self.call(FakeAgent(RuntimeError("down")), [], "plain")
+        assert not is_secret_exception(info.value)
 
 
 class FakeResponse:

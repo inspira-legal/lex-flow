@@ -130,6 +130,9 @@ Each opcode declares how it treats a `Secret` with `secret_mode` on `@opcode(...
   opcodes that send credentials out (HTTP headers, client constructors).
 - `"pass"`: arguments and result are untouched; the opcode sees `Secret` objects. Use it
   for opcodes that only move values around (`dict_get`, `list_append`, `io_print`).
+  An opcode that mutates an argument in place must be `pass`: `taint` and `reveal` hand
+  it a rebuilt copy when the argument holds a `Secret`. If it needs the real value, it
+  opens it with `reveal_secrets` only where the value goes out (see `chat_with_agent`).
 
 ```python
 @opcode(secret_mode="reveal")
