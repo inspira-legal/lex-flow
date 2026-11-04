@@ -14,6 +14,13 @@ on:
   schedule:
     - cron: '0 9 * * 1'  # Segunda-feira 9h
 
+# O passo de criar issue falhava com 403 "Resource not accessible by
+# integration": sem um bloco permissions o GITHUB_TOKEN não recebe
+# issues: write.
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   check-sync:
     runs-on: ubuntu-latest
