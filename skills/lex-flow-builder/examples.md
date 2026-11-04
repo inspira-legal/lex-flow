@@ -1,5 +1,15 @@
 # LexFlow Workflow Examples
 
+> [!WARNING]
+> **Os templates deste arquivo não são executáveis e não devem ser copiados.**
+> Eles descrevem um formato que o parser nunca aceitou: sem a chave `workflows:`,
+> com `nodes` como lista de `{id, opcode, ...}`, `variables` como lista, e inputs
+> na forma `{NAME: {type, value}}`. Nenhum deles parseia.
+>
+> Para a sintaxe real, use `reference.md` e os workflows em `examples/`, que são
+> testados. Reescrever este arquivo é trabalho pendente, anterior e independente da
+> mudança para `args`/`kwargs`.
+
 ## Template 1: Hello World Básico
 
 ```yaml

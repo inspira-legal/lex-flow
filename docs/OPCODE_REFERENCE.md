@@ -1175,7 +1175,7 @@ Example YAML:
     agent_call:
       opcode: ai_agent_with_tools
       isReporter: true
-      inputs:
+      kwargs:
         agent: {variable: "my_agent"}
         messages: {literal: "Calculate 15 * 23"}
         tools:
@@ -5545,7 +5545,7 @@ Usage in workflow:
     subscribe:
       opcode: pubsub_subscribe_stream
       isReporter: true
-      inputs:
+      kwargs:
         subscriber: { node: create_subscriber }
         project_id: { variable: project_id }
         subscription_id: { variable: subscription_id }
@@ -5554,12 +5554,10 @@ Usage in workflow:
 
     process_messages:
       opcode: control_async_foreach
-      inputs:
-        VAR: { literal: "msg" }
-        ITERABLE: { node: subscribe }
-      branches:
-        BODY:
-          - handle_message
+      kwargs:
+        var: { literal: "msg" }
+        iterable: { node: subscribe }
+        body: { branch: handle_message }
 
 **Parameters:**
 

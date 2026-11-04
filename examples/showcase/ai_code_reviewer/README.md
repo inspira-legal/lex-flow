@@ -175,7 +175,7 @@ Edit the `create_reviewer` node's `instructions` to customize what the AI focuse
 create_reviewer:
   opcode: pydantic_ai_create_agent
   isReporter: true
-  inputs:
+  kwargs:
     model:
       variable: model
     instructions:
@@ -200,7 +200,7 @@ Change the model in the `create_model` node:
 create_model:
   opcode: pydantic_ai_create_vertex_model
   isReporter: true
-  inputs:
+  kwargs:
     model_name:
       literal: "gemini-2.5-pro"  # Use Pro for more detailed analysis
     project:

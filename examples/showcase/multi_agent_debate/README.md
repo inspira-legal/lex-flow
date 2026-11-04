@@ -188,7 +188,8 @@ Each agent has a distinct `instructions` parameter that shapes its behavior:
 ```yaml
 create_advocate:
   opcode: pydantic_ai_create_agent
-  inputs:
+  isReporter: true
+  kwargs:
     model: { variable: "model" }
     instructions:
       literal: |
@@ -209,7 +210,7 @@ create_history:
 # Add messages to history
 add_advocate_to_history:
   opcode: chat_add_message
-  inputs:
+  kwargs:
     history: { variable: debate_history }
     role: { literal: "user" }
     content: { node: format_advocate_history }
@@ -218,7 +219,7 @@ add_advocate_to_history:
 history_as_prompt:
   opcode: chat_to_prompt
   isReporter: true
-  inputs:
+  kwargs:
     history: { variable: debate_history }
 ```
 
@@ -229,14 +230,14 @@ The debate uses a `control_while` loop with a round counter:
 ```yaml
 debate_loop:
   opcode: control_while
-  inputs:
-    CONDITION: { node: check_continue }
-    BODY: { branch: print_round_header }
+  kwargs:
+    condition: { node: check_continue }
+    body: { branch: print_round_header }
 
 check_continue:
   opcode: operator_and
   isReporter: true
-  inputs:
+  kwargs:
     left: { variable: continue_debate }
     right: { node: round_not_exceeded }
 ```
@@ -249,7 +250,7 @@ Prompts are built dynamically using string concatenation:
 build_advocate_prompt:
   opcode: operator_add
   isReporter: true
-  inputs:
+  kwargs:
     left: { literal: "DEBATE TOPIC: " }
     right: { node: advocate_prompt_with_topic }
 ```

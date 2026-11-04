@@ -372,7 +372,7 @@ def register_pubsub_opcodes():
             subscribe:
               opcode: pubsub_subscribe_stream
               isReporter: true
-              inputs:
+              kwargs:
                 subscriber: { node: create_subscriber }
                 project_id: { variable: project_id }
                 subscription_id: { variable: subscription_id }
@@ -381,12 +381,10 @@ def register_pubsub_opcodes():
 
             process_messages:
               opcode: control_async_foreach
-              inputs:
-                VAR: { literal: "msg" }
-                ITERABLE: { node: subscribe }
-              branches:
-                BODY:
-                  - handle_message
+              kwargs:
+                var: { literal: "msg" }
+                iterable: { node: subscribe }
+                body: { branch: handle_message }
         """
         subscription_path = f"projects/{project_id}/subscriptions/{subscription_id}"
 

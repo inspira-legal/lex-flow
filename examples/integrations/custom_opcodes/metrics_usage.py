@@ -16,34 +16,34 @@ WORKFLOW = {
             "interface": {"inputs": [], "outputs": []},
             "variables": {"sum": 0},
             "nodes": {
-                "start": {"opcode": "workflow_start", "next": "loop", "inputs": {}},
+                "start": {"opcode": "workflow_start", "next": "loop"},
                 "loop": {
                     "opcode": "control_for",
                     "next": "print_result",
-                    "inputs": {
-                        "VAR": {"literal": "i"},
-                        "START": {"literal": 0},
-                        "END": {"literal": 10},
-                        "BODY": {"branch": "loop_body"},
+                    "kwargs": {
+                        "var": {"literal": "i"},
+                        "start": {"literal": 0},
+                        "end": {"literal": 10},
+                        "body": {"branch": "loop_body"},
                     },
                 },
                 "loop_body": {
                     "opcode": "data_set_variable_to",
                     "next": None,
-                    "inputs": {
-                        "VARIABLE": {"literal": "sum"},
-                        "VALUE": {"node": "add_sum"},
+                    "kwargs": {
+                        "variable": {"literal": "sum"},
+                        "value": {"node": "add_sum"},
                     },
                 },
                 "add_sum": {
                     "opcode": "operator_add",
                     "next": None,
-                    "inputs": {"A": {"variable": "sum"}, "B": {"variable": "i"}},
+                    "kwargs": {"left": {"variable": "sum"}, "right": {"variable": "i"}},
                 },
                 "print_result": {
                     "opcode": "io_print",
                     "next": None,
-                    "inputs": {"STRING": {"variable": "sum"}},
+                    "args": [{"variable": "sum"}],
                 },
             },
         }
