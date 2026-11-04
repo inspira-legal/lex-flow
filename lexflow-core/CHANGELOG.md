@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.20.4 (2026-11-04)
+
+### Bug Fixes
+
+- **ci**: Grant issues write so the skill-sync workflow can file its issue
+  ([#126](https://github.com/inspira-legal/lex-flow/pull/126),
+  [`d84e606`](https://github.com/inspira-legal/lex-flow/commit/d84e6069c4a3a8437e9013903b5533245aee403f))
+
+### Documentation
+
+- Teach args/kwargs everywhere the old syntax survived
+  ([#129](https://github.com/inspira-legal/lex-flow/pull/129),
+  [`cc71b1f`](https://github.com/inspira-legal/lex-flow/commit/cc71b1f05cb7b4ce8c9f6b1bd7c615e48f9e5ccf))
+
+
 ## v1.20.3 (2026-10-29)
 
 ### Bug Fixes
