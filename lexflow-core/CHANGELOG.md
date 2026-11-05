@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.21.0 (2026-11-05)
+
+### Features
+
+- **core**: Secret type and per-opcode secret modes (WAVE-989)
+  ([#151](https://github.com/inspira-legal/lex-flow/pull/151),
+  [`a4f5d97`](https://github.com/inspira-legal/lex-flow/commit/a4f5d97d3b0202ca462237a70e4809fe557d9a13))
+
+
 ## v1.20.4 (2026-11-04)
 
 ### Bug Fixes
