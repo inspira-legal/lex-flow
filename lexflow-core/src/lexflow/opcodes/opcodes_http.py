@@ -11,6 +11,7 @@ import json as json_module
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from ..sessions import open_session
+from ..secret import REVEAL
 from .opcodes import opcode, register_category
 
 try:
@@ -68,7 +69,7 @@ def register_http_opcodes():
 
     if AIOHTTP_AVAILABLE:
 
-        @opcode(category="http")
+        @opcode(category="http", secret_mode=REVEAL)
         async def http_get(
             url: str,
             headers: Optional[Dict[str, str]] = None,
@@ -102,7 +103,7 @@ def register_http_opcodes():
                         "json": json_data,
                     }
 
-        @opcode(category="http")
+        @opcode(category="http", secret_mode=REVEAL)
         async def http_post(
             url: str,
             data: Optional[Dict[str, Any]] = None,
@@ -148,7 +149,7 @@ def register_http_opcodes():
                         "json": json_data,
                     }
 
-        @opcode(category="http")
+        @opcode(category="http", secret_mode=REVEAL)
         async def http_post_json(
             url: str,
             json: Dict[str, Any],
@@ -184,7 +185,7 @@ def register_http_opcodes():
                         "json": json_data,
                     }
 
-        @opcode(category="http")
+        @opcode(category="http", secret_mode=REVEAL)
         async def http_post_data(
             url: str,
             data: str,
@@ -220,7 +221,7 @@ def register_http_opcodes():
                         "json": json_data,
                     }
 
-        @opcode(category="http")
+        @opcode(category="http", secret_mode=REVEAL)
         async def http_request(
             method: str,
             url: str,
@@ -267,7 +268,7 @@ def register_http_opcodes():
         # HTTP Streaming Operations
         # =====================================================================
 
-        @opcode(category="http")
+        @opcode(category="http", secret_mode=REVEAL)
         async def http_stream_lines(
             url: str,
             headers: Optional[Dict[str, str]] = None,
@@ -294,7 +295,7 @@ def register_http_opcodes():
                         if decoded:
                             yield decoded
 
-        @opcode(category="http")
+        @opcode(category="http", secret_mode=REVEAL)
         async def http_stream_chunks(
             url: str,
             chunk_size: int = 8192,
@@ -398,7 +399,7 @@ def register_http_opcodes():
                         "json": json_data,
                     }
 
-        @opcode(category="http")
+        @opcode(category="http", secret_mode=REVEAL)
         async def http_session_create(
             timeout: float = 30.0,
             headers: Optional[Dict[str, str]] = None,
@@ -414,7 +415,7 @@ def register_http_opcodes():
             """
             return HTTPSession(timeout=timeout, headers=headers)
 
-        @opcode(category="http")
+        @opcode(category="http", secret_mode=REVEAL)
         async def http_session_get(
             session: HTTPSession,
             url: str,
@@ -432,7 +433,7 @@ def register_http_opcodes():
             """
             return await session.get(url, headers=headers)
 
-        @opcode(category="http")
+        @opcode(category="http", secret_mode=REVEAL)
         async def http_session_post(
             session: HTTPSession,
             url: str,

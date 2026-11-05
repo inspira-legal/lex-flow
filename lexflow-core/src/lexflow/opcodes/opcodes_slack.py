@@ -27,6 +27,7 @@ from urllib.parse import urlparse
 
 import aiohttp
 
+from ..secret import REVEAL
 from .opcodes import opcode, register_category
 
 if TYPE_CHECKING:
@@ -113,7 +114,7 @@ def register_slack_opcodes():
     # Client Management
     # =========================================================================
 
-    @opcode(category="slack")
+    @opcode(category="slack", secret_mode=REVEAL)
     async def slack_create_client(token: str) -> AsyncWebClient:
         """Create a Slack Web API client.
 

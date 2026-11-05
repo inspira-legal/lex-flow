@@ -4892,6 +4892,11 @@ This opcode:
 4. Adds the response to history
 5. Returns the response
 
+It is ``pass`` because it mutates ``history`` in place: the list must arrive as
+the caller's own, ``Secret`` values intact. Only the prompt sent to the agent
+carries real values; when the history or the message held a ``Secret``, the
+response (returned and appended) is a ``Secret`` and an exception is marked.
+
 Args:
     agent: A pydantic-ai Agent instance
     history: The chat history list (will be modified)
@@ -5643,9 +5648,10 @@ Args:
     task: LexFlowTask handle from control_spawn
 
 Returns:
-    Exception message as string, or None if succeeded/not done
+    Exception message as string (a Secret when the failing opcode saw one),
+    or None if succeeded/not done
 
-**Returns:** `Optional[str]`
+**Returns:** `Union[str, lexflow.secret.Secret, NoneType]`
 
 ---
 

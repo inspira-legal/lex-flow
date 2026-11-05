@@ -11,6 +11,7 @@ Authentication:
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..sessions import open_session
+from ..secret import REVEAL
 from .opcodes import opcode, register_category
 
 try:
@@ -424,7 +425,7 @@ def register_apollo_opcodes():
     # Authentication
     # ============================================================================
 
-    @opcode(category="apollo")
+    @opcode(category="apollo", secret_mode=REVEAL)
     async def apollo_create_client(
         api_key: str,
     ) -> ApolloClient:

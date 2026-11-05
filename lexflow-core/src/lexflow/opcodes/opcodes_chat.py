@@ -12,6 +12,13 @@ Chat History Format:
 
 from typing import Any, List, Optional
 
+from ..secret import (
+    PASS,
+    Secret,
+    contains_secret,
+    mark_secret_exception,
+    reveal_secrets,
+)
 from .opcodes import opcode, register_category
 
 # Register category at module load time (no external deps)
@@ -25,7 +32,7 @@ register_category(
 )
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_create() -> List[dict]:
     """Create a new empty chat history.
 
@@ -35,7 +42,7 @@ async def chat_create() -> List[dict]:
     return []
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_add_message(history: List[dict], role: str, content: str) -> List[dict]:
     """Add a message to chat history.
 
@@ -56,7 +63,7 @@ async def chat_add_message(history: List[dict], role: str, content: str) -> List
     return history
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_add_user(history: List[dict], content: str) -> List[dict]:
     """Add a user message to chat history.
 
@@ -71,7 +78,7 @@ async def chat_add_user(history: List[dict], content: str) -> List[dict]:
     return history
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_add_assistant(history: List[dict], content: str) -> List[dict]:
     """Add an assistant message to chat history.
 
@@ -86,7 +93,7 @@ async def chat_add_assistant(history: List[dict], content: str) -> List[dict]:
     return history
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_get_last(
     history: List[dict], role: Optional[str] = None
 ) -> Optional[dict]:
@@ -112,7 +119,7 @@ async def chat_get_last(
     return None
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_length(history: List[dict]) -> int:
     """Get the number of messages in chat history.
 
@@ -125,7 +132,7 @@ async def chat_length(history: List[dict]) -> int:
     return len(history)
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_clear(history: List[dict]) -> List[dict]:
     """Clear all messages from chat history.
 
@@ -186,7 +193,7 @@ async def chat_to_prompt(history: List[dict]) -> str:
     return "\n".join(lines)
 
 
-@opcode(category="chat")
+@opcode(category="chat", secret_mode=PASS)
 async def chat_with_agent(agent: Any, history: List[dict], user_message: str) -> str:
     """Send a message to an AI agent with conversation history context.
 
@@ -197,6 +204,11 @@ async def chat_with_agent(agent: Any, history: List[dict], user_message: str) ->
     4. Adds the response to history
     5. Returns the response
 
+    It is ``pass`` because it mutates ``history`` in place: the list must arrive as
+    the caller's own, ``Secret`` values intact. Only the prompt sent to the agent
+    carries real values; when the history or the message held a ``Secret``, the
+    response (returned and appended) is a ``Secret`` and an exception is marked.
+
     Args:
         agent: A pydantic-ai Agent instance
         history: The chat history list (will be modified)
@@ -206,25 +218,31 @@ async def chat_with_agent(agent: Any, history: List[dict], user_message: str) ->
         The assistant's response string
     """
     history.append({"role": "user", "content": user_message})
+    saw_secret = contains_secret(history)
 
     if len(history) == 1:
-        prompt = user_message
+        prompt = reveal_secrets(user_message)
     else:
         context_lines = []
         for message in history[:-1]:
             role = message.get("role", "unknown").capitalize()
-            content = message.get("content", "")
+            content = reveal_secrets(message.get("content", ""))
             context_lines.append(f"{role}: {content}")
 
         prompt = (
             "Previous conversation:\n"
             + "\n".join(context_lines)
-            + f"\n\nUser: {user_message}\n\n"
+            + f"\n\nUser: {reveal_secrets(user_message)}\n\n"
             + "Respond to the user's latest message, taking into account the conversation history."
         )
 
-    result = await agent.run(prompt)
-    response = result.output
+    try:
+        result = await agent.run(prompt)
+    except Exception as e:
+        if saw_secret:
+            mark_secret_exception(e)
+        raise
+    response = Secret(result.output) if saw_secret else result.output
 
     history.append({"role": "assistant", "content": response})
 

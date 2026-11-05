@@ -11,6 +11,7 @@ Authentication:
 from typing import Any, Dict, List, Optional, Union
 
 from ..sessions import open_session
+from ..secret import REVEAL
 from .opcodes import opcode, register_category
 
 try:
@@ -212,7 +213,7 @@ def register_hubspot_opcodes():
     # Authentication
     # ============================================================================
 
-    @opcode(category="hubspot")
+    @opcode(category="hubspot", secret_mode=REVEAL)
     async def hubspot_create_client(
         access_token: str,
     ) -> HubSpotClient:

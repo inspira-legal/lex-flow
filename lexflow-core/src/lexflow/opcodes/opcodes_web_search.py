@@ -17,6 +17,7 @@ import os
 import time
 from typing import Any, Dict, List, Optional
 
+from ..secret import REVEAL
 from .opcodes import opcode, register_category
 
 try:
@@ -97,7 +98,7 @@ def register_web_search_opcodes():
         order=215,
     )
 
-    @opcode(category="web_search")
+    @opcode(category="web_search", secret_mode=REVEAL)
     async def web_search_create_client(api_key: str) -> TavilyClient:
         """Create a Tavily API client for web search operations.
 

@@ -25,6 +25,7 @@ from .ast import (
     Statement,
 )
 from .opcodes import OpcodeRegistry
+from .secret import Secret, is_secret_exception
 from .metrics import ExecutionMetrics, NullMetrics
 
 if TYPE_CHECKING:
@@ -245,7 +246,7 @@ class Executor:
                 if self._matches_exception(e, handler.exception_type):
                     # Bind exception message to variable if specified
                     if handler.var_name:
-                        self.rt.scope[handler.var_name] = str(e)
+                        self.rt.scope[handler.var_name] = self._catch_message(e)
 
                     # Execute handler body
                     return await self.exec(handler.body)
@@ -257,6 +258,12 @@ class Executor:
             # Always execute finally block if present
             if finally_:
                 await self.exec(finally_)
+
+    @staticmethod
+    def _catch_message(exception: Exception) -> str | Secret:
+        """The message a catch binds; a Secret when the opcode that raised saw one."""
+        message = str(exception)
+        return Secret(message) if is_secret_exception(exception) else message
 
     def _matches_exception(
         self, exception: Exception, expected_type: Optional[str]
