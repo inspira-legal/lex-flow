@@ -67,8 +67,10 @@ This command will:
 Pre-commit hooks ensure code quality by running formatters, linters, and documentation generators before each commit:
 
 ```bash
-uv run pre-commit install
+uvx pre-commit install
 ```
+
+pre-commit runs through `uvx`, in its own environment, and is not a project dependency: it pulls `virtualenv` and `filelock`, whose patched versions need Python 3.11 while lex-flow supports 3.10.
 
 This installs hooks that automatically:
 - Format code with `ruff format`
@@ -79,10 +81,10 @@ This installs hooks that automatically:
 **Run hooks manually:**
 ```bash
 # Run on all files
-uv run pre-commit run --all-files
+uvx pre-commit run --all-files
 
 # Run on staged files only
-uv run pre-commit run
+uvx pre-commit run
 ```
 
 ### 5. Activate the Virtual Environment
