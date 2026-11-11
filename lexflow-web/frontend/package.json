@@ -77,8 +77,11 @@
     "vitest": "^4.0.18"
   },
   "overrides": {
-    "dompurify": "^3.4.14",
-    "esbuild": "^0.28.2"
+    "dompurify": "^3.4.17",
+    "esbuild": "^0.28.2",
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.1"
+    }
   },
   "keywords": [
     "lexflow",
