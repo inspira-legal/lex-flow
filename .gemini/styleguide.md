@@ -44,10 +44,9 @@ At the end of the review, add a summary:
 
 ## Project Context
 
-LexFlow is a monorepo with three packages:
+LexFlow is a monorepo with two packages:
 - **lexflow-core** — Core execution engine (parser, AST, evaluator, runtime, opcodes). This is the library consumed by other repos.
 - **lexflow-cli** — Command-line interface.
-- **lexflow-web** — Visual editor (React/TypeScript frontend) + FastAPI backend. APIs here are for dev/test only.
 
 Architecture: `YAML/JSON Input -> Parser -> AST -> Engine/Evaluator/Executor -> Opcodes -> Output`
 
@@ -81,14 +80,12 @@ from .opcodes.opcodes import opcode, default_registry, OpcodeRegistry
 |----|------|
 | M1 | Optional dependencies MUST follow the graceful degradation pattern |
 | M2 | Pydantic v2 only — no v1 compatibility patterns |
-| M3 | FastAPI app uses factory pattern (`create_app()`) |
 | M4 | Thread-safe state MUST use `ContextVar`, not global variables |
 | M5 | Ruff is mandatory — do not disable or bypass pre-commit hooks |
 | M6 | Async tests use `pytestmark = pytest.mark.asyncio` with 10s timeout |
 | M7 | Core MUST NOT assume a specific deployment environment |
 | M8 | New core modules must follow existing single-responsibility separation |
 | M9 | Imports from internal modules have no stability guarantee |
-| M10 | POST endpoints return errors in body (`success=False`); GET endpoints use `HTTPException` |
 
 ### LOW
 
@@ -98,7 +95,7 @@ from .opcodes.opcodes import opcode, default_registry, OpcodeRegistry
 | L2 | Manual post-construction dependency wiring in Engine is the accepted pattern |
 | L3 | `ParseError` is an internal detail — the public contract raises `ValueError` |
 | L4 | Ruff uses default configuration — do not add custom rules without prior discussion |
-| L5 | APIs in this repo are for dev/test only — endpoint security is not in scope |
+| L5 | This repo ships no HTTP API — endpoint security is not in scope |
 
 ---
 
@@ -109,7 +106,7 @@ from .opcodes.opcodes import opcode, default_registry, OpcodeRegistry
 Commit messages MUST follow: `<type>(<scope>): <description>`
 
 Valid types: `feat`, `fix`, `docs`, `chore`, `style`, `test`
-Valid scopes: `core`, `web`, `cli`, `ai`, `examples`
+Valid scopes: `core`, `cli`, `ai`, `examples`
 
 Breaking changes MUST include `BREAKING CHANGE:` in the commit footer. Semantic-release depends on this format for automated versioning.
 
@@ -337,12 +334,6 @@ No Pydantic v1 compatibility patterns allowed:
 - Use `model_rebuild()` for self-referencing models
 - No `from pydantic.v1 import ...`
 
-### M3 — FastAPI Factory Pattern
-
-The web package uses `create_app() -> FastAPI` factory pattern. Uvicorn runs with `factory=True`. Do not instantiate FastAPI at module level.
-
-Reference: `lexflow-web/src/lexflow_web/app.py`
-
 ### M4 — ContextVar for Thread-Safe State
 
 When state needs to be passed through async execution contexts, use `contextvars.ContextVar`. Never use module-level global variables for mutable state.
@@ -374,15 +365,6 @@ New core modules must follow the existing single-responsibility separation patte
 ### M9 — Internal Module Stability
 
 Imports from internal modules (`from lexflow.parser import ...`, `from lexflow.engine import ...`) have no stability guarantee. Only exports from `lexflow-core/src/lexflow/__init__.py` are part of the stable public API.
-
-### M10 — API Error Handling Pattern
-
-APIs in this repo are for dev/test only. The established pattern is:
-- **POST endpoints** (`/api/parse`, `/api/validate`, `/api/execute`): catch exceptions and return errors in response body with `success=False` and HTTP 200.
-- **GET endpoints** (`/api/examples/*`): use `HTTPException` with appropriate status codes (404, 400).
-- **WebSocket**: errors sent as `{"type": "error", "message": str(e)}`.
-
-New endpoints should follow this pattern consistently.
 
 ---
 
@@ -418,7 +400,7 @@ The core uses a specific exception hierarchy — flag PRs that deviate:
 | `ImportError` | Missing optional dependency (with install instructions in message) | Optional dep modules |
 | `TypeError` | Wrong argument types to opcodes | Opcodes |
 
-The core does **NOT** use `HTTPException` — that is exclusively for the web layer (`lexflow-web`).
+The core does **NOT** use `HTTPException`.
 
 Pattern for opcode error handling:
 ```python
@@ -441,7 +423,7 @@ Ruff uses default configuration (no custom `[tool.ruff]` section in pyproject.to
 
 ### L5 — API Security Scope
 
-APIs in this repo are for dev/test only. Endpoint security (auth, CORS, rate limiting) is not in scope for this repository. That is the responsibility of consuming repositories.
+This repo ships no HTTP API. Endpoint security (auth, CORS, rate limiting) is not in scope for this repository. That is the responsibility of consuming repositories.
 
 ---
 
@@ -455,7 +437,6 @@ The core uses these established design patterns. New code should be consistent w
 - **Null Object Pattern** for metrics — `NullMetrics` provides same interface as `ExecutionMetrics` but does nothing (zero overhead when disabled).
 - **Post-construction dependency wiring** in Engine — manual injection after construction to avoid circular imports (accepted pattern, see L2).
 - **Context Variable Pattern** — `ContextVar` for thread-safe state passing in async contexts.
-- **Factory Pattern** — `create_app()` for FastAPI in web package.
 
 Reference:
 - `lexflow-core/src/lexflow/engine.py` — wiring and orchestration
@@ -508,8 +489,6 @@ When in doubt about patterns, check these canonical files:
 | Opcode development | `lexflow-core/src/lexflow/opcodes/opcodes_http.py` |
 | Optional dependency module | `lexflow-core/src/lexflow/opcodes/opcodes_web_search.py` |
 | AST with discriminated unions | `lexflow-core/src/lexflow/ast.py` |
-| FastAPI factory pattern | `lexflow-web/src/lexflow_web/app.py` |
-| API endpoint patterns | `lexflow-web/src/lexflow_web/api.py` |
 | ContextVar usage | `lexflow-core/src/lexflow/opcodes/opcodes_pydantic_ai.py` |
 | Unit tests with mocking | `tests/unit/test_web_search_opcodes.py` |
 | Integration tests with YAML | `tests/integration/async_features/test_background_tasks.py` |

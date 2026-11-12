@@ -17,7 +17,6 @@ Skills são assistentes especializados do Claude Code para auxiliar no desenvolv
 
 **Tech Stack**:
 - Backend: Python (lexflow-core, lexflow-cli)
-- Frontend: TypeScript (lexflow-web)
 - Formato: YAML/JSON
 - Arquitetura: Node-based graph com opcodes
 

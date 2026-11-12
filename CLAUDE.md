@@ -9,7 +9,6 @@ LexFlow is a stack-based visual programming workflow interpreter written in Pyth
 **Monorepo Structure:**
 - `lexflow-core/` - Core engine and runtime
 - `lexflow-cli/` - Command-line interface tool
-- `lexflow-web/` - Web frontend for visualization and execution
 - Root `pyproject.toml` - Combined package configuration
 
 ## Developing Workflows and Opcodes
@@ -683,7 +682,6 @@ This monorepo uses **semantic-release** with independent versioning for each pac
 |---------|------------|---------|
 | lexflow-core | `core-v{version}` | `core-v1.2.0` |
 | lexflow-cli | `cli-v{version}` | `cli-v1.0.0` |
-| lexflow-web | `web-v{version}` | `web-v0.5.0` |
 
 ### Commit Convention
 
@@ -697,7 +695,7 @@ Use conventional commits to trigger automatic releases:
 | `feat!:` or `BREAKING CHANGE:` | Major (X.0.0) | `feat!: redesign API` |
 | `chore:`, `docs:`, `test:` | No release | `docs: update readme` |
 
-**Scope tags:** Use `(core)`, `(cli)`, or `(web)` to indicate which package the change affects.
+**Scope tags:** Use `(core)` or `(cli)` to indicate which package the change affects.
 
 ### Manual Version Check
 
