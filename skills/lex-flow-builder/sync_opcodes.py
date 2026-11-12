@@ -32,7 +32,7 @@ def extract_opcodes_from_official(official_path: Path) -> Set[str]:
     content = official_path.read_text()
 
     # Padrão: ### `opcode_name(...)` ou ## opcode_name
-    pattern = r'###?\s+`?([a-z_]+)[\(\`]'
+    pattern = r"###?\s+`?([a-z_]+)[\(\`]"
     matches = re.findall(pattern, content)
 
     opcodes.update(matches)
@@ -52,7 +52,7 @@ def extract_opcodes_from_skill(skill_path: Path) -> Set[str]:
     content = skill_path.read_text()
 
     # Mesmo padrão
-    pattern = r'###?\s+`?([a-z_]+)[\(\`]'
+    pattern = r"###?\s+`?([a-z_]+)[\(\`]"
     matches = re.findall(pattern, content)
 
     opcodes.update(matches)
@@ -64,21 +64,33 @@ def extract_opcodes_from_skill(skill_path: Path) -> Set[str]:
 def categorize_opcodes(opcodes: List[str]) -> Dict[str, List[str]]:
     """Categoriza opcodes por tipo/importância"""
     categories = {
-        "essential": [],      # Muito comuns, devem estar na skill
-        "useful": [],         # Úteis, bom ter
-        "specialized": [],    # Específicos, opcional
+        "essential": [],  # Muito comuns, devem estar na skill
+        "useful": [],  # Úteis, bom ter
+        "specialized": [],  # Específicos, opcional
     }
 
     # Categorias essenciais (muito usadas)
     essential_prefixes = [
-        "workflow_", "io_", "operator_", "control_",
-        "data_", "dict_", "list_", "http_", "str"
+        "workflow_",
+        "io_",
+        "operator_",
+        "control_",
+        "data_",
+        "dict_",
+        "list_",
+        "http_",
+        "str",
     ]
 
     # Úteis (integrações comuns)
     useful_prefixes = [
-        "slack_", "google_", "github_", "file_",
-        "json_", "yaml_", "csv_"
+        "slack_",
+        "google_",
+        "github_",
+        "file_",
+        "json_",
+        "yaml_",
+        "csv_",
     ]
 
     for opcode in opcodes:
