@@ -54,14 +54,12 @@ Before submitting a PR, verify:
 |----|------|---------|
 | M1 | Optional dependencies follow graceful degradation: `try/except ImportError` + `*_AVAILABLE` flag + `register_*_opcodes()`; check for API keys in resource getters | [Repo Patterns > Optional Dependencies](#optional-dependencies) |
 | M2 | Pydantic v2 only — no v1 compatibility patterns | [Repo Patterns > Pydantic](#pydantic) |
-| M3 | FastAPI app uses factory pattern (`create_app()`) | [Repo Patterns > FastAPI](#fastapi) |
 | M4 | Thread-safe state MUST use `ContextVar`, not global variables | [Repo Patterns > State](#state-management) |
 | M5 | Ruff is mandatory — do not disable or bypass pre-commit hooks | [Repo Patterns > Linting](#linting) |
 | M6 | Async tests use `pytestmark = pytest.mark.asyncio`; global 10s timeout via `pytest.ini` | [Tests](#tests-and-functional-validation) |
 | M7 | Core MUST NOT assume a specific deployment environment | [Core Extension](#what-belongs-in-core) |
 | M8 | New core modules must follow existing single-responsibility separation | [Core Extension](#what-belongs-in-core) |
 | M9 | Imports from internal modules (`from lexflow.parser import ...`) have no stability guarantee | [Contracts > Backward Compatibility](#backward-compatibility) |
-| M10 | POST endpoints return errors in body (`success=False`); GET endpoints use `HTTPException` | [Contracts > API](#api-endpoints) |
 | M11 | Core MUST NOT include logging frameworks — consumers configure their own | [Observability](#observability) |
 
 ### LOW
@@ -72,7 +70,7 @@ Before submitting a PR, verify:
 | L2 | Manual post-construction dependency wiring in Engine is the accepted pattern for circular imports | [Repo Patterns > Architecture](#architecture) |
 | L3 | `ParseError` is an internal detail — the public contract raises `ValueError` | [Exceptions](#exceptions-and-errors) |
 | L4 | Ruff uses default configuration — do not add custom rules without prior discussion | [Repo Patterns > Linting](#linting) |
-| L5 | APIs in this repo are for dev/test only — endpoint security is not in scope | [Security](#security) |
+| L5 | This repo ships no HTTP API — endpoint security is not in scope | [Security](#security) |
 
 ---
 
@@ -85,7 +83,7 @@ Before submitting a PR, verify:
 Format: `<type>(<scope>): <description>`
 
 Valid types: `feat`, `fix`, `perf`, `refactor`, `docs`, `chore`, `test`
-Valid scopes: `core`, `web`, `cli`, `ai`, `examples`, `ci`, `opcode`
+Valid scopes: `core`, `cli`, `ai`, `examples`, `ci`, `opcode`
 
 Breaking changes MUST include `BREAKING CHANGE:` in the commit footer. This triggers a major version bump via semantic-release.
 
@@ -176,21 +174,11 @@ Reference files:
 
 Reference: `lexflow-core/src/lexflow/ast.py`
 
-### FastAPI
-
-**Rule M3** — The web package uses a factory pattern.
-
-- App is created via `create_app() -> FastAPI`
-- Uvicorn runs with `factory=True`
-- Routers are included with appropriate prefixes (`/api` for REST, root for WebSocket)
-
-Reference: `lexflow-web/src/lexflow_web/app.py`
-
 ### State Management
 
 **Rule M4** — Thread-safe state uses `ContextVar`.
 
-When state needs to be passed through async execution contexts (e.g., tool call tracking, WebSocket send/receive), use `contextvars.ContextVar` — never module-level globals.
+When state needs to be passed through async execution contexts (e.g., tool call tracking, channel send/receive), use `contextvars.ContextVar` — never module-level globals.
 
 ```python
 # Good
@@ -375,18 +363,6 @@ from .opcodes.opcodes import opcode, default_registry, OpcodeRegistry
 - Include `BREAKING CHANGE:` in the commit message footer
 - This triggers a major version bump via semantic-release
 
-### API Endpoints
-
-**Rule M10** — APIs in this repo are for development/testing only.
-
-- **POST endpoints** (`/api/parse`, `/api/validate`, `/api/execute`): return errors in response body with `success=False` and HTTP 200. The frontend expects consistent JSON.
-- **GET endpoints** (`/api/examples/*`): use `HTTPException` with appropriate status codes (404, 400).
-- **WebSocket**: errors sent as `{"type": "error", "message": str(e)}`.
-
-This pattern is intentional. Production API error handling is the responsibility of consuming repositories.
-
-Reference: `lexflow-web/src/lexflow_web/api.py`
-
 ---
 
 ## Exceptions and Errors
@@ -398,7 +374,7 @@ Reference: `lexflow-web/src/lexflow_web/api.py`
 - `asyncio.TimeoutError` for task and channel timeouts (e.g., `await_task`, `channel_receive`).
 - `ImportError` with descriptive message for missing optional dependencies.
 
-The core does **not** use `HTTPException` — that is exclusively for the web layer.
+The core does **not** use `HTTPException`.
 
 Pattern for opcode error handling:
 ```python
@@ -437,10 +413,7 @@ Reference: `lexflow-core/src/lexflow/metrics.py`
 
 ## Security
 
-**Rule L5** — The APIs in this repo are for development/testing only. Endpoint security (auth, CORS, rate limiting) is **not in scope** — that is the responsibility of consuming repositories.
-
-**What IS enforced in core**:
-- **Path traversal protection** in the `get_example` endpoint (see `lexflow-web/src/lexflow_web/api.py`).
+**Rule L5** — This repo ships no HTTP API. Endpoint security (auth, CORS, rate limiting) is **not in scope** — that is the responsibility of consuming repositories.
 
 **What to watch in PRs**:
 - New endpoints that read files should validate paths against traversal.
@@ -458,8 +431,6 @@ Reference: `lexflow-core/src/lexflow/metrics.py`
 | Opcode development | `lexflow-core/src/lexflow/opcodes/opcodes_http.py` |
 | Optional dependency module | `lexflow-core/src/lexflow/opcodes/opcodes_web_search.py` |
 | AST with discriminated unions | `lexflow-core/src/lexflow/ast.py` |
-| FastAPI factory pattern | `lexflow-web/src/lexflow_web/app.py` |
-| API endpoint patterns | `lexflow-web/src/lexflow_web/api.py` |
 | Unit tests with mocking | `tests/unit/test_web_search_opcodes.py` |
 | Integration tests with YAML | `tests/integration/async_features/test_background_tasks.py` |
 | Custom metrics | `lexflow-core/src/lexflow/metrics.py` |

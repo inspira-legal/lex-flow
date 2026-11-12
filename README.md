@@ -1,6 +1,6 @@
 # LexFlow
 
-A stack-based visual programming workflow interpreter. Define workflows in YAML/JSON, visualize them in a node-based editor, and execute them with an async Python engine.
+A stack-based visual programming workflow interpreter. Define workflows in YAML/JSON and execute them with an async Python engine.
 
 ## Packages
 
@@ -8,7 +8,6 @@ A stack-based visual programming workflow interpreter. Define workflows in YAML/
 |---------|-------------|
 | [lexflow-core](./lexflow-core/) | Core interpreter engine |
 | [lexflow-cli](./lexflow-cli/) | Command-line interface |
-| [lexflow-web](./lexflow-web/) | Visual editor & web backend |
 
 ## Quick Start
 
@@ -18,18 +17,6 @@ A stack-based visual programming workflow interpreter. Define workflows in YAML/
 uv tool install lexflow-cli
 lexflow examples/basics/hello_world.yaml
 ```
-
-### Embed the Visual Editor
-
-```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/inspira-legal/lex-flow@web-v1.3.1/lexflow-web/frontend/dist/lexflow-editor.css">
-<script src="https://cdn.jsdelivr.net/gh/inspira-legal/lex-flow@web-v1.3.1/lexflow-web/frontend/dist/lexflow-editor.umd.js"></script>
-<script>
-  LexFlowEditor.mount('#editor', { theme: 'dark' });
-</script>
-```
-
-See [lexflow-web](./lexflow-web/) for full documentation.
 
 ### Use as a Library
 

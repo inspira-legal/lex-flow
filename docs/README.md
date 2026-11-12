@@ -6,6 +6,6 @@ Before you keep reading keep in mind that LexFlow is still in early development 
 
 ## Documentation Files
 
-### LexFlow Web (Visual Editor)
-
-- [Getting Started](../lexflow-web/docs/GETTING_STARTED.md) - Installation and setup
+- [Getting Started](GETTING_STARTED.md) - Installation and first workflows
+- [Grammar Reference](GRAMMAR_REFERENCE.md) - Workflow syntax and structure
+- [Opcode Reference](OPCODE_REFERENCE.md) - All available opcodes

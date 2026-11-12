@@ -94,8 +94,8 @@ Launch the **selected agents in parallel** using the `Task` tool with `subagent_
 - Input: `git log` output + diff of `__init__.py` and opcode files.
 
 **Agent 2 — Code Patterns & Architecture** *(requires: python_source, config, api, or opcode)*
-- Rules: M2, M3, M4, M5, M7, M8, L2, L4
-- Checks: Pydantic v2 patterns, FastAPI factory pattern, ContextVar usage, ruff compliance, single-responsibility, no deployment assumptions.
+- Rules: M2, M4, M5, M7, M8, L2, L4
+- Checks: Pydantic v2 patterns, ContextVar usage, ruff compliance, single-responsibility, no deployment assumptions.
 - Input: Full diff of Python source files (excluding tests).
 
 **Agent 3 — Tests & Validation** *(requires: python_source, test, or opcode)*
@@ -109,8 +109,8 @@ Launch the **selected agents in parallel** using the `Task` tool with `subagent_
 - Input: Diff of opcode files + any new module files.
 
 **Agent 5 — Security & Contracts** *(requires: api, or python_source with file I/O / env vars)*
-- Rules: M10, L3, L5 + Security section
-- Checks: Path traversal in file-reading endpoints, SSRF risks, hardcoded secrets, API error handling patterns, exception conventions.
+- Rules: L3, L5 + Security section
+- Checks: Path traversal in file-reading code, SSRF risks, hardcoded secrets, exception conventions.
 - Input: Full diff focusing on API endpoints, file I/O, and environment variable usage.
 
 Each agent MUST return findings in this format:
@@ -197,7 +197,7 @@ The review produces a structured markdown report following `REPORT_TEMPLATE.md`.
 1. Detects branch `feature/new-endpoint`, base `main`.
 2. Categorizes files: `python_source`, `api`, `test` → selects Agents 1, 2, 3, 5 (skips Agent 4 — no opcode files).
 3. Spawns 4 parallel subagents.
-4. Consolidates: 0 HIGH, 1 MEDIUM (M10 — POST endpoint using HTTPException instead of body error).
+4. Consolidates: 0 HIGH, 1 MEDIUM (M4 — module-level global used for async state instead of a ContextVar).
 5. Verdict: **NEEDS DISCUSSION**.
 
 **Scenario 4 — Auto-detect context**
