@@ -75,8 +75,6 @@ ahead of the core leaves readers writing workflows the deployed runtime cannot p
 
 ## Known, deliberately untouched
 
-- `lexflow-web/visualization.py` reads `inputs` directly and does not render migrated
-  workflows. The frontend is being discontinued.
 - `skills/lex-flow-builder/examples.md` documents a node shape the parser has never
   accepted (`nodes` as a list of `{id, opcode, inputs: {NAME: {type, value}}}`). It
   is pre-existing and wider than this change.

@@ -24,7 +24,6 @@ jobs:
     outputs:
       core: ${{ steps.changes.outputs.core }}
       cli: ${{ steps.changes.outputs.cli }}
-      web: ${{ steps.changes.outputs.web }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -38,8 +37,6 @@ jobs:
               - 'lexflow-core/**'
             cli:
               - 'lexflow-cli/**'
-            web:
-              - 'lexflow-web/**'
 
   release-core:
     needs: detect-changes
@@ -160,55 +157,3 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: semantic-release version
 
-  release-web:
-    needs: [detect-changes, release-core, update-docs, release-cli]
-    if: always() && (needs.detect-changes.outputs.web == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_all == true))
-    runs-on: ubuntu-latest
-    steps:
-      - uses: webfactory/ssh-agent@v0.10.0
-        with:
-          ssh-private-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
-
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
-
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.11'
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-
-      - name: Install Python dependencies
-        run: pip install python-semantic-release
-
-      - name: Pull latest changes
-        run: git pull origin main
-
-      - name: Build frontend library
-        working-directory: lexflow-web/frontend
-        run: |
-          npm ci
-          npm run build:all
-
-      - name: Commit dist files
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin git@github.com:inspira-legal/lex-flow.git
-          git add -f lexflow-web/frontend/dist/lexflow-editor.umd.js
-          git add -f lexflow-web/frontend/dist/lexflow-editor.es.js
-          git add -f lexflow-web/frontend/dist/lexflow-editor.css
-          git add -f lexflow-web/frontend/dist/types/
-          git diff --staged --quiet || git commit -m "chore(web): build frontend library [skip ci]"
-          git pull --rebase origin main
-          git push origin main
-
-      - name: Bump version, push and create GitHub release
-        working-directory: lexflow-web
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: semantic-release version

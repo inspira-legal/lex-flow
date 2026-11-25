@@ -1,2 +1,0 @@
-import type { MainLayoutProps } from "./types";
-export declare function MainLayout({ canvas, editor, nodeEditor, executionPanel, palette, className, onSave, showSaveButton, saveButtonLabel, showExamples, }: MainLayoutProps): import("react").JSX.Element;

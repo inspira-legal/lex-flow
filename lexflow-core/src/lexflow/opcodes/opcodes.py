@@ -86,7 +86,7 @@ class CategoryInfo:
     icon: str = "⚡"
     requires: Optional[str] = None  # pip extra required (e.g., "ai", "http")
     order: int = field(default=100)  # display order in docs
-    description: str = ""  # user-facing description (e.g., PT-BR for frontend)
+    description: str = ""  # user-facing description (e.g., PT-BR)
 
     def to_dict(self) -> dict:
         """Convert to dict for grammar.json export."""
@@ -188,7 +188,7 @@ class OpcodeRegistry:
             icon: Emoji icon for UI display
             requires: pip extra required (e.g., "ai" for lexflow[ai])
             order: Display order in docs (lower = earlier)
-            description: User-facing description (e.g., PT-BR for frontend)
+            description: User-facing description (e.g., PT-BR)
 
         Returns:
             The registered CategoryInfo

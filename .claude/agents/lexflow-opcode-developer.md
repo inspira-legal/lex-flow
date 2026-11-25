@@ -514,7 +514,7 @@ Key points:
 
 ### Category Registration
 
-Group related opcodes under a category for the visual editor palette:
+Group related opcodes under a category:
 
 ```python
 from .opcodes import register_category

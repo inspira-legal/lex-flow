@@ -10,7 +10,6 @@ Guide users through creating LexFlow workflows - a visual, stack-based programmi
 ## Tech Stack do LexFlow
 
 - **Backend**: Python (lexflow-core, lexflow-cli)
-- **Frontend**: TypeScript (lexflow-web editor visual)
 - **Formato**: Workflows em YAML/JSON
 - **Arquitetura**: Node-based graph com opcodes
 
