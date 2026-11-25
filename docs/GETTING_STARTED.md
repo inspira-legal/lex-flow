@@ -4,7 +4,7 @@ This guide will walk you through installing LexFlow and running your first workf
 
 ## Prerequisites
 
-- Python 3.10 or higher
+- Python 3.11.5 or higher
 - [uv](https://docs.astral.sh/uv/) - Fast Python package installer and environment manager
 
 ## Installation
@@ -210,7 +210,7 @@ If you see import errors when running workflows:
 
 ### Python Version Issues
 
-LexFlow requires Python 3.10 or higher:
+LexFlow requires Python 3.11.5 or higher:
 
 ```bash
 # Check your Python version
