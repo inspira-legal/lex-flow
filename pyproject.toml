@@ -55,3 +55,7 @@ dev = [
 [tool.ruff.lint]
 # ponytail: ruff 0.16 widened the default rule set; pin the old default so bumps don't light up untouched code
 select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.format]
+# note: ruff 0.17 formats Python blocks inside Markdown; docs keep their hand-written layout
+exclude = ["*.md"]
